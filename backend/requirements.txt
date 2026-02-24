@@ -1,0 +1,5 @@
+Flask
+SQLAlchemy
+psycopg2-binary
+kafka-python
+requests

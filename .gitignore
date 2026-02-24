@@ -1,0 +1,42 @@
+# ======================
+# Python
+# ======================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual environments
+venv/
+backend/venv/
+ml-service/venv/
+
+# Environment files
+.env
+
+# ======================
+# Node
+# ======================
+node_modules/
+dashboard/node_modules/
+
+# ======================
+# Models
+# ======================
+model/
+*.pkl
+*.h5
+
+# ======================
+# Datasets
+# ======================
+datasets/
+*.csv
+dataset/CICIDS2017/
+*.csv
+# ======================
+# OS
+# ======================
+.DS_Store
+Thumbs.db
