@@ -4,7 +4,8 @@ ALERT_TOPIC = "security-alerts"
 
 ML_SERVICE_URL = "http://localhost:8001"
 
-DATABASE_URL = "postgresql://threatuser:threatpass@localhost:5431/threatdb"
+#DATABASE_URL = "postgresql://threatuser:threatpass@localhost:5431/threatdb"
+DATABASE_URL = "postgresql://postgres:root@localhost:5432/threatdb"
 
 # MODE FLAGS
-ENABLE_KAFKA = True   # set False for local-only mode
+ENABLE_KAFKA = False  # set False for local-only mode

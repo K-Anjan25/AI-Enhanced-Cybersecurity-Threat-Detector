@@ -13,8 +13,17 @@ def role_required(required_role):
             db = SessionLocal()
             username = get_jwt_identity()
             user = db.query(User).filter_by(username=username).first()
+            
+            if not user:
+                db.close()
+                return jsonify({"message": "User not found"}), 404
+            
+            if user.role =="super_admin":
+                db.close()
+                return fn(*args, **kwargs)
 
-            if not user or user.role != required_role:
+            if user.role != required_role:
+                db.close()
                 return jsonify({"message": "Access forbidden"}), 403
 
             return fn(*args, **kwargs)

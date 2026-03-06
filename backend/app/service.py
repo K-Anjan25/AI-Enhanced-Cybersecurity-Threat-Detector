@@ -6,7 +6,7 @@ from app.database import SessionLocal
 from app.models import SecurityAlert
 
 
-def process_log(log: dict, produce_kafka: bool = True):
+def process_log(log: dict, produce_kafka: bool = True, company_id: str = None):
 
     # Detect type
     if "bytes" in log and "duration" in log:
@@ -66,7 +66,7 @@ def process_log(log: dict, produce_kafka: bool = True):
 
     if is_anomaly:
         db = SessionLocal()
-        db.add(SecurityAlert(**alert))
+        db.add(SecurityAlert(company_id=company_id, **alert))
         db.commit()
         db.close()
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { loginUser } from "../services/api";
 
-function Login({ setAuthenticated }) {
+function Login({ setAuthenticated, switchToRegister }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,20 +20,7 @@ function Login({ setAuthenticated }) {
     };
 
   return (
-    // <div>
-    //   <h2>Login</h2>
-    //   <input
-    //     placeholder="Username"
-    //     onChange={(e) => setUsername(e.target.value)}
-    //   />
-    //   <input
-    //     type="password"
-    //     placeholder="Password"
-    //     onChange={(e) => setPassword(e.target.value)}
-    //   />
-    //   <button onClick={handleLogin}>Login</button>
-    // </div>
-
+    
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-2xl w-96 border border-gray-700">
         <h2 className="text-3xl font-bold text-cyan-400 text-center mb-6">
@@ -69,6 +56,16 @@ function Login({ setAuthenticated }) {
           >
             Login
           </button>
+          <p className="text-sm text-gray-400 text-center mt-4">
+            Don't have an account?{" "}
+            <button
+              type="button"
+              className="text-cyan-400 hover:underline"
+              onClick={switchToRegister}
+            >
+              Register
+            </button>
+          </p>
         </form>
       </div>
     </div>
