@@ -47,6 +47,8 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 
 ## Project Structure
 
+```
+
 AI-Enhanced-Cybersecurity-Threat-Detector/
 ├── backend/ # Flask backend service
 ├── ml-service/ # FastAPI ML microservice
@@ -55,39 +57,51 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 ├── datasets/ # Local datasets (not committed)
 ├── diagrams/ # Architecture diagrams
 └── README.md
-
----
+```
 
 ## Datasets
 
 This project uses public datasets **only for local training**:
 
+```
+
 - CICIDS2017
 - UNSW-NB15
+```
 
 Datasets are stored locally under `/datasets` and are **excluded from version control**.
-
----
 
 ## Running the Project (Local)
 
 ### 1. Start infrastructure
 
+```
+
 cd docker
 docker compose up -d
+```
 
 ### 2. Start ML service
 
+```
+
 cd ml-service
 python -m uvicorn app.main:app --reload --port 8001
+```
 
 ### 3. Start backend
 
+```
+
 cd backend
 python app.py
+```
 
 ### 4. Start dashboard
+
+```
 
 cd dashboard
 npm install
 npm start
+```
