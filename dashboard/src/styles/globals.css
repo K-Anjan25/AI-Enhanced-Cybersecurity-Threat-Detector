@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-app-bg;
+  }
+}
+
+/* Custom Scrollbar Styling for SOC Data Tables & Logs */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0f1c; /* app-bg */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155; /* line-bright */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* slate-600 */
+}

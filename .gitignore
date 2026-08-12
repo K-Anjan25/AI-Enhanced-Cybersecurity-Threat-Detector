@@ -6,10 +6,12 @@ __pycache__/
 *.pyo
 *.pyd
 *.log
+.pytest_cache/
 
 # Virtual environments
 venv/
 backend/venv/
+backend/.venv/
 ml-service/venv/
 
 # Environment files
@@ -20,6 +22,7 @@ ml-service/venv/
 # ======================
 node_modules/
 dashboard/node_modules/
+dashboard/build/
 
 # ======================
 # Models
@@ -35,6 +38,14 @@ datasets/
 *.csv
 dataset/CICIDS2017/
 *.csv
+
+# ======================
+# Local / editor / design assets (not part of the codebase)
+# ======================
+.vscode/
+SKILL.md/
+ui-design/
+
 # ======================
 # OS
 # ======================

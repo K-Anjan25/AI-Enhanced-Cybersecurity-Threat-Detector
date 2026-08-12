@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: threat-ai-config
+  namespace: threat-ai
+data:
+  # Runtime / CORS
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  CORS_ORIGINS: '["http://localhost:3000","https://dashboard.example.com"]'
+  # Auth security
+  COOKIE_AUTH: "true"
+  COOKIE_SECURE: "true"
+  LOGIN_MAX_ATTEMPTS: "5"
+  LOGIN_RATE_LIMIT_PER_MINUTE: "10"
+  # ML service URL (K8s service DNS)
+  ML_SERVICE_URL: "http://ml-service:8001"
+  # Engine defaults
+  ENGINE_SENSITIVITY: "MEDIUM"
+  MAX_CONCURRENT_SCANS: "10"
+  AUTO_QUARANTINE: "false"
+  LOG_RETENTION_DAYS: "30"
+  # Stream processing (disabled by default in this manifest; enable with
+  # Kafka toggled via the engine settings UI or env override)
+  ENABLE_KAFKA: "false"

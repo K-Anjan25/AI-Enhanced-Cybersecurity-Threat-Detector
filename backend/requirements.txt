@@ -1,5 +1,12 @@
-Flask
-SQLAlchemy
+fastapi
+uvicorn[standard]
+sqlalchemy
 psycopg2-binary
+pydantic[email]
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
 kafka-python
 requests
+python-multipart

@@ -1,0 +1,13 @@
+[project]
+name = "threat-ai-backend"
+version = "2.0.0"
+description = "AI-Enhanced Cybersecurity Threat Detector - FastAPI backend"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.black]
+line-length = 110

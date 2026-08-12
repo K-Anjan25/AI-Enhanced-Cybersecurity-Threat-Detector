@@ -1,54 +1,98 @@
-import os
-from dotenv import load_dotenv
-from flask import Flask
-from flask_cors import CORS
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager
-from app.routes import api
-from app.database import Base, engine, SessionLocal
-from app.models import TokenBlocklist
-from app.kafka_consumer import start_consumer
-from app.config import ENABLE_KAFKA
-import threading
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import logging
+import sys
+import time
+import uuid
+from sqlalchemy import text
 
-load_dotenv()
+from app.core.config import settings
+from app.core.database import Base, engine
+from app.core.migrations import run_additive_migrations, ensure_default_org
+from app.models import TokenBlocklist, User, SecurityAlert, DetectionRule, IpReputation, EngineSetting, AuditLog
+from app.api.v1.router import api_router
 
-bcrypt = Bcrypt()
-jwt = JWTManager()
-
-
-def create_app():
-    app = Flask(__name__)
-
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 900  # 15 min
-    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = 604800  # 7 days
-    app.config["JWT_BLACKLIST_ENABLED"] = True
-    app.config["JWT_BLACKLIST_TOKEN_CHECKS"] = ["access", "refresh"]
-
-    CORS(app)
-    jwt.init_app(app)
-
-    app.register_blueprint(api)
-
-    # ✅ Register blocklist callback INSIDE factory
-    @jwt.token_in_blocklist_loader
-    def check_if_token_revoked(jwt_header, jwt_payload):
-        db = SessionLocal()
-        token = db.query(TokenBlocklist).filter_by(
-            jti=jwt_payload["jti"]
-        ).first()
-        db.close()
-        return token is not None
-
-    return app
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 
 
-Base.metadata.create_all(bind=engine)
-app = create_app()
+# --- Structured logging -----------------------------------------------------
+_LOGGER = logging.getLogger("app")
+if not _LOGGER.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter(
+        "ts=%(asctime)s level=%(levelname)s logger=%(name)s %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S%z",
+    ))
+    _LOGGER.addHandler(handler)
+_LOGGER.setLevel(settings.LOG_LEVEL or "INFO")
 
-if ENABLE_KAFKA:
-    threading.Thread(target=start_consumer, daemon=True).start()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+# --- Request-ID + access-log middleware ------------------------------------
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    """Attach a request id and log one structured line per request."""
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Request-ID"] = request_id
+    _LOGGER.info(
+        "method=%s path=%s status=%s duration_ms=%.1f request_id=%s ip=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+        request_id,
+        request.client.host if request.client else "-",
+    )
+    return response
+
+
+# Middleware must be registered BEFORE routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def startup_event():
+    try:
+        run_additive_migrations(engine)
+        Base.metadata.create_all(bind=engine)
+        ensure_default_org(engine)
+        _LOGGER.info("Database tables verified/created successfully!")
+    except Exception as exc:  # pragma: no cover - DB may be offline during tests/dev
+        _LOGGER.warning("Could not create database tables: %s", exc)
+
+
+app.include_router(api_router, prefix="/api/v1")
+
+
+@app.get("/")
+def health_check():
+    return {"status": "healthy", "service": settings.PROJECT_NAME, "version": settings.VERSION}
+
+
+@app.get("/health/live")
+def liveness_probe():
+    """Liveness probe: the process is up and can answer requests."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def readiness_probe():
+    """Readiness probe: dependencies (database) are reachable."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:  # pragma: no cover - depends on DB availability
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "reason": f"database unreachable: {exc}"},
+        )
+    return {"status": "ready"}

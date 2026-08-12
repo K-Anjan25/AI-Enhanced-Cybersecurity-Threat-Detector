@@ -1,0 +1,106 @@
+import React, { Suspense, JSX } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "./store/store";
+
+import DashboardLayout from "./layouts/DashboardLayout";
+import RequireAuth from "./routes/RequireAuth";
+import Login from "./features/auth/pages/Login";
+import Register from "./features/auth/pages/Register";
+import Profile from "./features/account/pages/Profile";
+import Account from "./features/account/components/Account";
+import ResetPassword from "./features/auth/components/ResetPassword";
+
+const ThreatAlertsPage = React.lazy(() => import("./pages/ThreatAlertsPage"));
+const LogHistoryPage = React.lazy(() => import("./pages/LogHistoryPage"));
+const AIAnalyticsPage = React.lazy(() => import("./pages/AIAnalyticsPage"));
+const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
+const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
+const AdminEngineSettings = React.lazy(() => import("./pages/admin/engineSettings"));
+const AdminAuditLogs = React.lazy(() => import("./pages/admin/systemLogs"));
+
+const FallbackLoader: React.FC = () => (
+  <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
+    <div className="flex items-center space-x-2">
+      <div className="w-3 h-3 bg-accent-primary rounded-full animate-ping" />
+      <span>Loading Threat AI Telemetry...</span>
+    </div>
+  </div>
+);
+
+export default function App(): JSX.Element {
+  // Use the RootState exported from the store (not a local redefinition).
+  // userSlice state shape: { user, isLoggedIn, loading, error }
+  const { user, loading } = useSelector((state: RootState) => state.user);
+
+  if (loading) {
+    return <FallbackLoader />;
+  }
+
+  const storedRole = localStorage.getItem("user_role")?.toUpperCase();
+  const userRoles: string[] = (
+    (user as any)?.roles ||
+    (storedRole ? [storedRole] : localStorage.getItem("auth_status") ? ["ANALYST"] : [])
+  ).map((role: string) => role.toUpperCase());
+
+  const storedPermissions = localStorage.getItem("user_permissions");
+  const userPermissions: string[] = (user as any)?.permissions?.length
+    ? (user as any).permissions
+    : storedPermissions
+    ? JSON.parse(storedPermissions)
+    : [];
+
+  return (
+    <Router>
+      <Suspense fallback={<FallbackLoader />}>
+        <Routes>
+          {/* Public Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Protected SOC Dashboard Shell */}
+          <Route
+            path="/"
+            element={
+              <RequireAuth
+                allowedRoles={["ANALYST", "USER", "ADMIN"]}
+                roles={userRoles}
+                permissions={userPermissions}
+              />
+            }
+          >
+            <Route element={<DashboardLayout />}>
+              <Route index element={<Navigate to="/alerts" replace />} />
+              <Route path="alerts" element={<ThreatAlertsPage />} />
+              <Route path="logs" element={<LogHistoryPage />} />
+              <Route path="analytics" element={<AIAnalyticsPage />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="account" element={<Account />} />
+              <Route
+                path="admin"
+                element={
+                  <RequireAuth
+                    allowedRoles={["ADMIN"]}
+                    allowedPermissions={["users:manage", "audit:read"]}
+                    roles={userRoles}
+                    permissions={userPermissions}
+                  />
+                }
+              >
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="engine-settings" element={<AdminEngineSettings />} />
+                <Route path="system-logs" element={<AdminAuditLogs />} />
+              </Route>
+            </Route>
+          </Route>
+
+          {/* Fallback Catch-All */}
+          <Route path="/unauthorized" element={<Navigate to="/alerts" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
+}

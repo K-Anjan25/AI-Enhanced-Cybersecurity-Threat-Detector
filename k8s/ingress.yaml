@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: threat-ai-ingress
+  namespace: threat-ai
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dashboard.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 3000
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+---
+# Template — copy to a real secret (never commit real values).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: threat-ai-secrets
+  namespace: threat-ai
+type: Opaque
+stringData:
+  database-url: "postgresql://postgres:CHANGE_ME@postgres:5432/threat_ai_db"
+  jwt-secret: "CHANGE_ME_JWT_SECRET"
+  jwt-refresh-secret: "CHANGE_ME_JWT_REFRESH_SECRET"
