@@ -13,6 +13,8 @@ import {
   LayoutDashboard,
   Building2,
   KeyRound,
+  ListChecks,
+  Ban,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -40,6 +42,8 @@ const ADMIN_ITEMS: NavItem[] = [
   { name: "User Management", path: "/admin/users", icon: Settings },
   { name: "Tenants", path: "/admin/tenants", icon: Building2 },
   { name: "Access Roles", path: "/admin/roles", icon: KeyRound },
+  { name: "Detection Rules", path: "/admin/rules", icon: ListChecks },
+  { name: "IP Reputation", path: "/admin/reputation", icon: Ban },
 ];
 
 export interface DashboardLayoutProps {

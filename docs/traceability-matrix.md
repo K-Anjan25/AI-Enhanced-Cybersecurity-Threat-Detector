@@ -79,7 +79,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-STREAM-05 | ML training-serving pipeline (CronJob retrain + hot-swap) | target-design, ml-pipeline.md | contract tests + `training.py` + `POST /retrain` | UT/REV |
 | FR-UI-01..07 | dashboard pages | component-diagram, target-design | `tsc` + `vite build` + UI tests | UI |
 | FR-UI-04 | incident/case management screens (`/incidents`) | class-diagram | `tsc`+`vite build`; `IncidentsPage.tsx` | UI |
-| FR-UI-05 | admin controls (engine settings, rules, reputation) | admin console | `tsc`+`vite build`; `AdminDashboard.tsx` | UI |
+| FR-UI-05 | admin controls (engine settings, rules, reputation) | admin console | `tsc`+`vite build`; `RulesPage.tsx`, `ReputationPage.tsx`, `AdminDashboard.tsx` | UI |
 | FR-UI-06 | audit log + per-role access states (`/admin/system-logs`, `/admin/roles`) | admin endpoints | `tsc`+`vite build` | UI |
 | FR-UI-07 | MITRE ATT&CK + threat-intel context in alert detail modal | class-diagram | `tsc`+`vite build`; `AlertDetailModal.tsx` | UI |
 
@@ -109,9 +109,10 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 - **FR-TENANT-06, FR-UI-05/06** — incident-management, entity-graph
   visualization, SOAR automation, MITRE/threat-intel alert context, and the ML
   retraining pipeline (daily CronJob → `POST /retrain` hot-swap), administrator
-  cross-tenant views (FR-TENANT-06: `/admin/orgs` + filtered roster), and the
-  audit-log + role-state screens (FR-UI-06) are implemented. Remaining work: any
-  leftover FR-UI-05 admin screens and the live K8s rollout for PostgreSQL/Kafka.
+  cross-tenant views (FR-TENANT-06: `/admin/orgs` + filtered roster), the
+  audit-log + role-state screens (FR-UI-06), and the detection-rules + IP
+  reputation screens (FR-UI-05) are implemented. Remaining work: the live K8s
+  rollout for PostgreSQL/Kafka.
 
 ## Notes on test file layout
 

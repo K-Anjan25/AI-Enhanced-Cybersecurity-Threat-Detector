@@ -115,6 +115,36 @@ export default function AdminDashboard(): React.ReactElement {
           </span>
         </Link>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link to="/admin/rules" className={cardCls}>
+          <div>
+            <h3 className="text-lg font-semibold text-content-primary group-hover:text-accent-primary transition">
+              Detection Rules
+            </h3>
+            <p className="text-sm text-content-secondary mt-2">
+              Create, tune and toggle the signature/heuristic rules driving detections.
+            </p>
+          </div>
+          <span className="mt-6 text-accent-primary text-sm font-medium flex items-center">
+            Manage Rules &rarr;
+          </span>
+        </Link>
+
+        <Link to="/admin/reputation" className={cardCls}>
+          <div>
+            <h3 className="text-lg font-semibold text-content-primary group-hover:text-accent-primary transition">
+              IP Reputation
+            </h3>
+            <p className="text-sm text-content-secondary mt-2">
+              Score and blacklist source IPs feeding threat-intel enrichment.
+            </p>
+          </div>
+          <span className="mt-6 text-accent-primary text-sm font-medium flex items-center">
+            Manage Reputation &rarr;
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }
