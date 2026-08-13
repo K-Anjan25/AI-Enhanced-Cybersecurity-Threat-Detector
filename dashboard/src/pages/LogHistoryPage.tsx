@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { uploadLogs, fetchLogHistory } from "../api/alertApi";
 import type { LogHistoryEntry, UploadLogsResponse } from "../types/alert";
+import { PageHeader, Card, SkeletonTable, EmptyState, Button } from "../components/ui";
 
 const LogHistoryPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -54,17 +55,13 @@ const LogHistoryPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">Log Upload & History</h1>
-          <p className="text-sm text-content-secondary mt-1">
-            Upload log files for automated threat scanning and review previous upload results.
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Log Upload & History"
+        description="Upload log files for automated threat scanning and review previous upload results."
+      />
 
-      <section className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-sm">
+      <Card>
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] items-end">
           <label className="block">
             <span className="text-sm font-medium text-content-secondary">Choose a log file</span>
@@ -72,57 +69,60 @@ const LogHistoryPage: React.FC = () => {
               type="file"
               accept=".json,.csv,.log,.txt"
               onChange={handleFileChange}
-              className="mt-2 block w-full text-sm text-content-primary file:border file:px-4 file:py-2 file:rounded-lg file:border-line-subtle file:bg-app-subtle file:text-content-primary"
+              className="mt-2 block w-full text-sm text-content-primary file:border file:px-4 file:py-2 file:rounded-lg file:border-line-subtle file:bg-app-subtle file:text-content-primary file:cursor-pointer file:hover:bg-line-bright file:transition"
             />
           </label>
 
-          <button
+          <Button
             type="button"
             onClick={handleUpload}
             disabled={!selectedFile || isLoading}
-            className="rounded-xl bg-accent-primary px-5 py-3 text-sm font-semibold text-app-bg transition hover:bg-accent-secondary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Uploading..." : "Upload and Scan"}
-          </button>
+            {isLoading ? "Uploading…" : "Upload and Scan"}
+          </Button>
         </div>
 
         {errorMessage && (
-          <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/30 p-4 text-sm text-red-400">
+          <div className="mt-4 rounded-xl bg-status-critical/10 border border-status-critical/30 p-4 text-sm text-status-critical">
             {errorMessage}
           </div>
         )}
 
         {uploadResult && (
-          <div className="mt-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 text-sm text-status-success">
+          <div className="mt-4 rounded-xl bg-status-success/10 border border-status-success/30 p-4 text-sm text-status-success">
             <p className="font-medium">{uploadResult.message}</p>
             <p>File: {uploadResult.filename}</p>
             <p>Scanned: {uploadResult.totalLogsParsed ?? 0}</p>
             <p>Threats Detected: {uploadResult.threatsDetected ?? 0}</p>
           </div>
         )}
-      </section>
+      </Card>
 
-      <section className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <h2 className="text-lg font-semibold text-content-primary">Upload History</h2>
-          <button
+      <Card padded={false} className="overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-6 pt-5">
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary">Upload History</h2>
+            <p className="text-xs text-content-tertiary mt-0.5">Previous uploads and their scan results.</p>
+          </div>
+          <Button
             type="button"
+            variant="secondary"
             onClick={loadHistory}
             disabled={isLoading}
-            className="rounded-xl bg-app-subtle px-4 py-2 text-sm text-content-secondary hover:bg-line-bright transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Refresh
-          </button>
+          </Button>
         </div>
 
-        {isLoading && <p className="text-sm text-content-secondary">Loading history…</p>}
-
-        {!isLoading && history.length === 0 && (
-          <p className="text-sm text-content-secondary">No log uploads recorded yet.</p>
-        )}
-
-        {history.length > 0 && (
-          <div className="overflow-x-auto">
+        {isLoading ? (
+          <SkeletonTable rows={5} cols={4} />
+        ) : history.length === 0 ? (
+          <EmptyState
+            title="No log uploads recorded yet"
+            description="Upload a log file above to begin automated scanning."
+          />
+        ) : (
+          <div className="overflow-x-auto mt-4">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
@@ -134,7 +134,7 @@ const LogHistoryPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-line-subtle text-sm">
                 {history.map((entry) => (
-                  <tr key={`${entry.filename}-${entry.timestamp}`}>
+                  <tr key={`${entry.filename}-${entry.timestamp}`} className="hover:bg-app-subtle/50 transition-colors">
                     <td className="px-4 py-3 font-medium text-content-primary">{entry.filename}</td>
                     <td className="px-4 py-3">{entry.totalLogsParsed}</td>
                     <td className="px-4 py-3">{entry.threatsDetected}</td>
@@ -145,7 +145,7 @@ const LogHistoryPage: React.FC = () => {
             </table>
           </div>
         )}
-      </section>
+      </Card>
     </div>
   );
 };

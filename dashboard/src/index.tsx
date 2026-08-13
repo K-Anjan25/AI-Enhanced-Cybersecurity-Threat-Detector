@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "react-query";
 import store from "./store/store";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ToastProvider } from "./utils/toastBridge";
 import "./index.css";
 
 // 1. Create a QueryClient instance
@@ -23,9 +24,11 @@ root.render(
     <Provider store={store}>
       {/* 2. Wrap App inside QueryClientProvider */}
       <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
+        <ToastProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </ToastProvider>
       </QueryClientProvider>
     </Provider>
   </React.StrictMode>

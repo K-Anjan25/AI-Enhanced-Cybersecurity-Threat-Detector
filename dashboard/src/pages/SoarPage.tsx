@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import SoarApi from "../api/soarApi";
 import type { SoarAction } from "../types/soar";
+import {
+  PageHeader,
+  Card,
+  Select,
+  SkeletonTable,
+  EmptyState,
+} from "../components/ui";
 
 const PAGE_SIZE = 10;
 
@@ -111,38 +118,32 @@ const SoarPage: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-content-primary">SOAR automation</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          Review automated response actions and test rule matching before they run.
-        </p>
-      </header>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="SOAR Automation"
+        description="Review automated response actions and test rule matching before they run."
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-app-surface rounded-xl border border-line-subtle p-5 shadow-sm">
+        <Card>
           <h2 className="text-lg font-semibold text-content-primary tracking-tight">Dry-run evaluator</h2>
           <p className="text-xs text-content-tertiary mt-0.5 mb-4">
             Test a log line against active rules without executing any action.
           </p>
           <form onSubmit={handleEvaluate} className="space-y-3">
-            <div>
-              <label htmlFor="eval-type" className="block text-sm font-medium text-content-secondary mb-1.5">
-                Alert type
-              </label>
-              <select
-                id="eval-type"
-                value={evalType}
-                onChange={(e) => setEvalType(e.target.value)}
-                className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-primary focus:outline-none focus:border-accent-primary transition cursor-pointer"
-              >
-                <option value="system_log">system_log</option>
-                <option value="network">network</option>
-                <option value="authentication">authentication</option>
-                <option value="endpoint">endpoint</option>
-                <option value="email">email</option>
-              </select>
-            </div>
+            <Select
+              id="eval-type"
+              label="Alert type"
+              value={evalType}
+              onChange={(e) => setEvalType(e.target.value)}
+              options={[
+                { value: "system_log", label: "system_log" },
+                { value: "network", label: "network" },
+                { value: "authentication", label: "authentication" },
+                { value: "endpoint", label: "endpoint" },
+                { value: "email", label: "email" },
+              ]}
+            />
             <div>
               <label htmlFor="eval-message" className="block text-sm font-medium text-content-secondary mb-1.5">
                 Message
@@ -161,17 +162,17 @@ const SoarPage: React.FC = () => {
               disabled={evaluating || !evalMessage.trim()}
               className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {evaluating ? "Testing..." : "Test rules"}
+              {evaluating ? "Testing…" : "Test rules"}
             </button>
           </form>
           {evalResult && (
-            <div className="mt-4 px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-400">
+            <div className="mt-4 px-4 py-3 rounded-lg bg-status-success/10 border border-status-success/30 text-sm text-status-success">
               {evalResult}
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="bg-app-surface rounded-xl border border-line-subtle p-5 shadow-sm">
+        <Card>
           <h2 className="text-lg font-semibold text-content-primary tracking-tight">Trigger on alert</h2>
           <p className="text-xs text-content-tertiary mt-0.5 mb-4">
             Fire the response playbook manually for an existing alert ID.
@@ -196,24 +197,24 @@ const SoarPage: React.FC = () => {
               disabled={triggering || !triggerId}
               className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {triggering ? "Triggering..." : "Execute actions"}
+              {triggering ? "Triggering…" : "Execute actions"}
             </button>
           </form>
           {triggerResult && (
-            <div className="mt-4 px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-400">
+            <div className="mt-4 px-4 py-3 rounded-lg bg-status-success/10 border border-status-success/30 text-sm text-status-success">
               {triggerResult}
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
           {error}
         </div>
       )}
 
-      <div className="bg-app-surface rounded-xl border border-line-subtle shadow-sm overflow-hidden">
+      <Card padded={false} className="overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line-subtle">
           <div>
             <h2 className="text-lg font-semibold text-content-primary tracking-tight">Executed actions</h2>
@@ -227,32 +228,27 @@ const SoarPage: React.FC = () => {
             Refresh
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                <th className="px-5 py-3.5">Action</th>
-                <th className="px-5 py-3.5 w-32">Severity</th>
-                <th className="px-5 py-3.5 w-28">Status</th>
-                <th className="px-5 py-3.5 w-24">Alert</th>
-                <th className="px-5 py-3.5 w-44">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-subtle text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-content-tertiary">
-                    Loading actions...
-                  </td>
+        {loading ? (
+          <SkeletonTable rows={6} cols={5} />
+        ) : actions.length === 0 ? (
+          <EmptyState
+            title="No automation actions recorded yet"
+            description="Use the dry-run evaluator or trigger a playbook to see actions here."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                  <th className="px-5 py-3.5">Action</th>
+                  <th className="px-5 py-3.5 w-32">Severity</th>
+                  <th className="px-5 py-3.5 w-28">Status</th>
+                  <th className="px-5 py-3.5 w-24">Alert</th>
+                  <th className="px-5 py-3.5 w-44">Created</th>
                 </tr>
-              ) : actions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-content-tertiary">
-                    No automation actions recorded yet.
-                  </td>
-                </tr>
-              ) : (
-                actions.map((action) => (
+              </thead>
+              <tbody className="divide-y divide-line-subtle text-sm">
+                {actions.map((action) => (
                   <tr key={action.id} className="hover:bg-app-subtle/50 transition-colors">
                     <td className="px-5 py-3.5">
                       <span className="font-mono text-xs text-accent-primary">{action.action_type}</span>
@@ -277,11 +273,11 @@ const SoarPage: React.FC = () => {
                       {action.created_at ? new Date(action.created_at).toLocaleString() : "-"}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {!loading && total > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 border-t border-line-subtle text-xs text-content-secondary gap-3">
@@ -311,7 +307,7 @@ const SoarPage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

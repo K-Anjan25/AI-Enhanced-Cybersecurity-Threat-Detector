@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import EntityApi from "../api/entityApi";
 import EntityGraphView from "../features/entities/components/EntityGraphView";
+import { PageHeader, Select } from "../components/ui";
 import type { EntityType, ThreatEntity } from "../types/entity";
 
 const PAGE_SIZE = 12;
@@ -76,30 +77,25 @@ const EntitiesPage: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-content-primary">Entity graph</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          Extracted indicators from detected threats. Click "Graph" to explore connections.
-        </p>
-      </header>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Entity Graph"
+        description="Extracted indicators from detected threats. Click “Graph” to explore connections."
+      />
 
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={typeFilter}
-          onChange={(e) => {
-            setTypeFilter(e.target.value as EntityType | "");
-            setPage(1);
-          }}
-          className="px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary transition cursor-pointer"
-          aria-label="Filter by entity type"
-        >
-          {ENTITY_TYPES.map((type) => (
-            <option key={type.value || "all"} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
+        <div className="w-52">
+          <Select
+            id="entity-type-filter"
+            aria-label="Filter by entity type"
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value as EntityType | "");
+              setPage(1);
+            }}
+            options={ENTITY_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          />
+        </div>
         <button
           type="button"
           onClick={loadEntities}

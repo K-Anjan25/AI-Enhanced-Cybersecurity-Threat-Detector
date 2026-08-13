@@ -17,6 +17,7 @@ const AIAnalyticsPage = React.lazy(() => import("./pages/AIAnalyticsPage"));
 const IncidentsPage = React.lazy(() => import("./pages/IncidentsPage"));
 const EntitiesPage = React.lazy(() => import("./pages/EntitiesPage"));
 const SoarPage = React.lazy(() => import("./pages/SoarPage"));
+const DashboardOverviewPage = React.lazy(() => import("./pages/DashboardOverviewPage"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const AdminEngineSettings = React.lazy(() => import("./pages/admin/engineSettings"));
@@ -74,9 +75,8 @@ export default function App(): JSX.Element {
             }
           >
             <Route element={<DashboardLayout />}>
-              <Route index element={<Navigate to="/alerts" replace />} />
-              {/* Legacy/alias: the SOC landing page is Threat Alerts. */}
-              <Route path="dashboard" element={<Navigate to="/alerts" replace />} />
+              <Route index element={<DashboardOverviewPage />} />
+              <Route path="dashboard" element={<DashboardOverviewPage />} />
               <Route path="alerts" element={<ThreatAlertsPage />} />
               <Route path="logs" element={<LogHistoryPage />} />
               <Route path="analytics" element={<AIAnalyticsPage />} />

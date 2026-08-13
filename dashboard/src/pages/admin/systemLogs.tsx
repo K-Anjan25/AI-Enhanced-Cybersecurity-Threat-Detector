@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import AuditApi, { AuditLogParams, AuditLogResponse } from "../../api/auditApi";
+import { PageHeader, SkeletonTable, EmptyState } from "../../components/ui";
 
 const PAGE_SIZE = 20;
 
@@ -44,13 +45,11 @@ const SystemLogs: React.FC = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-content-primary">System Audit Logs</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          Immutable audit trail of administrative and detection-engine actions. Admin only.
-        </p>
-      </header>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="System Audit Logs"
+        description="Immutable audit trail of administrative and detection-engine actions. Admin only."
+      />
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <input
@@ -78,6 +77,15 @@ const SystemLogs: React.FC = () => {
         </div>
       )}
 
+      {loading ? (
+        <SkeletonTable rows={8} cols={6} />
+      ) : logs.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="No audit entries found"
+          description="Try clearing the action filter or checking back later."
+        />
+      ) : (
       <div className="bg-app-surface rounded-xl border border-line-subtle shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -92,20 +100,7 @@ const SystemLogs: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-line-subtle text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-content-tertiary">
-                    Loading audit logs...
-                  </td>
-                </tr>
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-content-tertiary">
-                    No audit entries found.
-                  </td>
-                </tr>
-              ) : (
-                logs.map((log) => (
+                {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-app-subtle/50 transition">
                     <td className="px-5 py-3">
                       <span className="font-mono text-xs text-accent-primary bg-accent-primary/10 px-2 py-0.5 rounded">
@@ -122,8 +117,7 @@ const SystemLogs: React.FC = () => {
                       {log.created_at ? new Date(log.created_at).toLocaleString() : "-"}
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
         </div>
@@ -156,6 +150,7 @@ const SystemLogs: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

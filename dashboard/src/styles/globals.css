@@ -3,26 +3,50 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-app-bg;
   }
+
+  /* Consistent, accessible focus ring for keyboard users (WCAG 2.1 AA). */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid theme("colors.accent-primary.DEFAULT");
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Reduced-motion users get instant transitions. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
-/* Custom Scrollbar Styling for SOC Data Tables & Logs */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+@layer components {
+  /* SOC scrollbars for data tables and log viewers. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-::-webkit-scrollbar-track {
-  background: #0a0f1c; /* app-bg */
-}
+  ::-webkit-scrollbar-track {
+    background: #0a0f1c; /* app-bg */
+  }
 
-::-webkit-scrollbar-thumb {
-  background: #334155; /* line-bright */
-  border-radius: 4px;
-}
+  ::-webkit-scrollbar-thumb {
+    background: #2b3750;
+    border-radius: 4px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #475569; /* slate-600 */
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme("colors.line-bright.DEFAULT");
+  }
 }

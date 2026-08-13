@@ -6,6 +6,13 @@ import * as Yup from "yup";
 import Button from "../../../components/ui/Button";
 import TableWithAction from "../../../components/table/TableWithAction";
 import TextInput from "../../../components/common/TextInput";
+import {
+  PageHeader,
+  Modal,
+  ConfirmDialog,
+  Select,
+  SkeletonTable,
+} from "../../../components/ui";
 import { USER_COLUMNS } from "../../../constants/tableColumns";
 import userapi from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -28,8 +35,8 @@ const registerSchema = Yup.object({
 export default function AdminUsers(): React.ReactElement {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-  // Fetch users list
   const { data: users = [], isLoading } = useQuery<User[], Error>(
     ["adminUsers"],
     userapi.getUsers,
@@ -39,7 +46,6 @@ export default function AdminUsers(): React.ReactElement {
     }
   );
 
-  // Create User Mutation
   const createUserMutation = useMutation<User, Error, NewUserPayload>(
     userapi.createUser,
     {
@@ -55,7 +61,6 @@ export default function AdminUsers(): React.ReactElement {
     }
   );
 
-  // Delete/Deactivate User Mutation
   const deleteUserMutation = useMutation<{ success: boolean }, Error, string | number>(
     userapi.deleteUser,
     {
@@ -82,128 +87,105 @@ export default function AdminUsers(): React.ReactElement {
     },
   });
 
-  const handleEdit = (user: User): void => {
-    // Navigate to user edit page or open edit modal
+  const handleDelete = (user: User): void => {
+    setDeleteTarget(user);
   };
 
-  const handleDelete = (user: User): void => {
-    if (window.confirm(`Deactivate access for analyst ${user.username}?`)) {
-      deleteUserMutation.mutate(user.id!);
-    }
+  const confirmDelete = (): void => {
+    if (!deleteTarget) return;
+    deleteUserMutation.mutate(deleteTarget.id!);
+    setDeleteTarget(null);
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-content-primary">
-      {/* Header & Add User Action */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            SOC Analyst Roster
-          </h1>
-          <p className="text-content-secondary text-sm mt-1">
-            Provision, assign tier credentials, and control platform access.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <span>+</span> Add Analyst
-        </Button>
+    <div className="p-6 max-w-7xl mx-auto space-y-6 text-content-primary animate-fade-in">
+      <PageHeader
+        title="SOC Analyst Roster"
+        description="Provision, assign tier credentials, and control platform access."
+        actions={
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <span>+</span> Add Analyst
+          </Button>
+        }
+      />
+
+      <div className="bg-app-surface border border-line-subtle rounded-xl shadow-card overflow-hidden">
+        {isLoading ? (
+          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 1} />
+        ) : (
+          <TableWithAction
+            columns={USER_COLUMNS}
+            rows={users as any}
+            loading={isLoading}
+            onEdit={() => undefined}
+            onDelete={(row) => handleDelete(row as User)}
+          />
+        )}
       </div>
 
-      {/* Users Table */}
-      <div className="bg-app-surface border border-line-subtle rounded-xl shadow-sm overflow-hidden">
-        <TableWithAction
-          columns={USER_COLUMNS}
-          rows={users as any}
-          loading={isLoading}
-          onEdit={(row) => handleEdit(row as User)}
-          onDelete={(row) => handleDelete(row as User)}
-        />
-      </div>
+      <Modal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Register New Analyst"
+        description="Create an account with role-level access permissions."
+        footer={
+          <>
+            <Button type="button" variant="ghost" size="md" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={createUserMutation.isLoading}
+              onClick={() => formik.handleSubmit()}
+            >
+              {createUserMutation.isLoading ? "Creating…" : "Save Account"}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={formik.handleSubmit} className="space-y-4">
+          <TextInput form={formik} name="username" label="Username" />
+          <TextInput form={formik} name="email" label="Email Address" type="email" />
+          <Select
+            id="role"
+            name="role"
+            label="Access Role"
+            value={formik.values.role}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => formik.handleChange(e)}
+            options={[
+              { value: "ANALYST", label: "Tier 1 Analyst" },
+              { value: "SENIOR_ANALYST", label: "Tier 2 Analyst" },
+              { value: "ADMIN", label: "SOC Admin" },
+              { value: "AUDITOR", label: "Auditor" },
+            ]}
+          />
+          <TextInput form={formik} name="password" label="Temporary Password" type="password" />
+        </form>
+      </Modal>
 
-      {/* Add User Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-app-surface border border-line-subtle w-full max-w-md rounded-xl p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b border-line-subtle pb-3">
-              <h3 className="text-lg font-bold text-content-primary">Register New Analyst</h3>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-content-tertiary hover:text-content-primary text-lg font-bold cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
-
-            <form onSubmit={formik.handleSubmit} className="space-y-4">
-              <TextInput form={formik} name="username" label="Username" />
-              <TextInput
-                form={formik}
-                name="email"
-                label="Email Address"
-                type="email"
-              />
-
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="role"
-                  className="text-xs font-semibold text-content-secondary"
-                >
-                  Access Role
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={formik.values.role}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                    formik.handleChange(e)
-                  }
-                  className="bg-app-bg border border-line-subtle text-content-primary rounded-lg p-2.5 text-sm focus:outline-none focus:border-accent-primary transition cursor-pointer"
-                >
-                  <option value="ANALYST">Tier 1 Analyst</option>
-                  <option value="SENIOR_ANALYST">Tier 2 Analyst</option>
-                  <option value="ADMIN">SOC Admin</option>
-                  <option value="AUDITOR">Auditor</option>
-                </select>
-              </div>
-
-              <TextInput
-                form={formik}
-                name="password"
-                label="Temporary Password"
-                type="password"
-              />
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-1/2"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  disabled={createUserMutation.isLoading}
-                  className="w-1/2"
-                >
-                  {createUserMutation.isLoading ? "Creating..." : "Save Account"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Deactivate analyst"
+        message={
+          <>
+            Deactivate access for <strong className="text-content-primary">{deleteTarget?.username}</strong>? They
+            will no longer be able to sign in until re-enabled.
+          </>
+        }
+        confirmLabel="Deactivate"
+        cancelLabel="Cancel"
+        loading={deleteUserMutation.isLoading}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

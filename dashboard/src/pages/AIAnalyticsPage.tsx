@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import AnalyticsApi from "../api/analyticsApi";
 import type { OverviewStats, TopThreat, TrendPoint } from "../types/analytics";
+import { PageHeader, LoadingState, StatCard } from "../components/ui";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
@@ -66,11 +67,11 @@ const AIAnalyticsPage: React.FC = () => {
   }, []);
 
   const kpis = [
-    { label: "Total Alerts", value: overview.total, color: "text-content-primary" },
-    { label: "Critical", value: overview.critical, color: "text-status-critical" },
-    { label: "High", value: overview.high, color: "text-orange-400" },
-    { label: "Medium", value: overview.medium, color: "text-status-warning" },
-    { label: "Low", value: overview.low, color: "text-status-success" },
+    { label: "Total Alerts", value: overview.total, tone: "default" as const },
+    { label: "Critical", value: overview.critical, tone: "critical" as const },
+    { label: "High", value: overview.high, tone: "warning" as const },
+    { label: "Medium", value: overview.medium, tone: "warning" as const },
+    { label: "Low", value: overview.low, tone: "success" as const },
   ];
 
   const pieData = [
@@ -81,37 +82,25 @@ const AIAnalyticsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-content-primary">AI Analytics</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          Aggregated detection telemetry from the AI threat engine.
-        </p>
-      </header>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="AI Analytics"
+        description="Aggregated detection telemetry from the AI threat engine."
+      />
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="p-6 bg-app-surface border border-line-subtle rounded-xl text-sm text-content-tertiary">
-          Loading analytics...
-        </div>
+        <LoadingState label="Loading analytics" />
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {kpis.map((kpi) => (
-              <div
-                key={kpi.label}
-                className="bg-app-surface border border-line-subtle rounded-xl p-5 shadow-sm"
-              >
-                <p className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
-                  {kpi.label}
-                </p>
-                <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>{kpi.value}</p>
-              </div>
+              <StatCard key={kpi.label} label={kpi.label} value={kpi.value} tone={kpi.tone} />
             ))}
           </div>
 
