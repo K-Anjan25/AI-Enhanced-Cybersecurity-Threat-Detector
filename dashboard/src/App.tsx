@@ -22,6 +22,8 @@ const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDash
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const AdminEngineSettings = React.lazy(() => import("./pages/admin/engineSettings"));
 const AdminAuditLogs = React.lazy(() => import("./pages/admin/systemLogs"));
+const TenantsPage = React.lazy(() => import("./pages/admin/TenantsPage"));
+const AccessRolesPage = React.lazy(() => import("./pages/admin/AccessRolesPage"));
 
 const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
@@ -98,6 +100,8 @@ export default function App(): JSX.Element {
               >
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
+                <Route path="tenants" element={<TenantsPage />} />
+                <Route path="roles" element={<AccessRolesPage />} />
                 <Route path="engine-settings" element={<AdminEngineSettings />} />
                 <Route path="system-logs" element={<AdminAuditLogs />} />
               </Route>

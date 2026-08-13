@@ -14,7 +14,7 @@ import {
   SkeletonTable,
 } from "../../../components/ui";
 import { USER_COLUMNS } from "../../../constants/tableColumns";
-import userapi from "../../../api/userApi";
+import AdminApi, { OrgInfo, AdminRosterMember } from "../../../api/adminApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
 
@@ -23,6 +23,7 @@ export interface NewUserPayload {
   email: string;
   role: string;
   password?: string;
+  org_id?: number | string;
 }
 
 const registerSchema = Yup.object({
@@ -36,18 +37,23 @@ export default function AdminUsers(): React.ReactElement {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [orgFilter, setOrgFilter] = useState<string>("");
 
-  const { data: users = [], isLoading } = useQuery<User[], Error>(
-    ["adminUsers"],
-    userapi.getUsers,
+  const { data: orgs = { data: [] as OrgInfo[] } } = useQuery<{ data: OrgInfo[] }>(["adminOrgs"], AdminApi.fetchOrgs, {
+    onError: () => showError("Failed to load tenants"),
+  });
+
+  const { data: users = [], isLoading } = useQuery<AdminRosterMember[], Error>(
+    ["adminUsers", orgFilter],
+    () => AdminApi.fetchRoster(orgFilter ? { org_id: orgFilter } : {}),
     {
       onError: (err: any) =>
-        showError(err?.response?.data?.message || "Failed to load users"),
+        showError(err?.response?.data?.detail || "Failed to load users"),
     }
   );
 
-  const createUserMutation = useMutation<User, Error, NewUserPayload>(
-    userapi.createUser,
+  const createUserMutation = useMutation<AdminRosterMember, Error, NewUserPayload>(
+    AdminApi.createRosterUser,
     {
       onSuccess: () => {
         showSuccess("Analyst account created successfully");
@@ -56,20 +62,20 @@ export default function AdminUsers(): React.ReactElement {
         formik.resetForm();
       },
       onError: (err: any) => {
-        showError(err?.response?.data?.message || "Failed to create account");
+        showError(err?.response?.data?.detail || "Failed to create account");
       },
     }
   );
 
   const deleteUserMutation = useMutation<{ success: boolean }, Error, string | number>(
-    userapi.deleteUser,
+    async (id) => AdminApi.deleteRosterUser(Number(id)),
     {
       onSuccess: () => {
         showSuccess("User account status updated");
         queryClient.invalidateQueries(["adminUsers"]);
       },
       onError: (err: any) => {
-        showError(err?.response?.data?.message || "Failed to update user");
+        showError(err?.response?.data?.detail || "Failed to update user");
       },
     }
   );
@@ -80,6 +86,7 @@ export default function AdminUsers(): React.ReactElement {
       email: "",
       role: "USER",
       password: "",
+      org_id: "",
     },
     validationSchema: registerSchema,
     onSubmit: (values) => {
@@ -115,13 +122,37 @@ export default function AdminUsers(): React.ReactElement {
         }
       />
 
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="w-full sm:w-64">
+          <Select
+            id="org-filter"
+            aria-label="Filter by tenant"
+            value={orgFilter}
+            onChange={(e) => setOrgFilter(e.target.value)}
+            options={[
+              { value: "", label: "All tenants" },
+              ...orgs.data.map((o) => ({ value: String(o.id), label: o.name })),
+            ]}
+          />
+        </div>
+        <p className="text-xs text-content-tertiary">
+          {users.length} user{users.length === 1 ? "" : "s"} · {orgFilter ? "filtered view" : "cross-tenant roster"}
+        </p>
+      </div>
+
       <div className="bg-app-surface border border-line-subtle rounded-xl shadow-card overflow-hidden">
         {isLoading ? (
-          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 1} />
+          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 2} />
         ) : (
           <TableWithAction
-            columns={USER_COLUMNS}
-            rows={users as any}
+            columns={[
+              ...USER_COLUMNS,
+              { id: "org_name", label: "Tenant" },
+            ]}
+            rows={(users as any).map((u: AdminRosterMember) => ({
+              ...u,
+              status: u.is_blocked ? "Blocked" : u.is_active ? "Active" : "Inactive",
+            }))}
             loading={isLoading}
             onEdit={() => undefined}
             onDelete={(row) => handleDelete(row as User)}
@@ -154,6 +185,17 @@ export default function AdminUsers(): React.ReactElement {
         <form onSubmit={formik.handleSubmit} className="space-y-4">
           <TextInput form={formik} name="username" label="Username" />
           <TextInput form={formik} name="email" label="Email Address" type="email" />
+          <Select
+            id="org_id"
+            name="org_id"
+            label="Tenant"
+            value={formik.values.org_id}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => formik.handleChange(e)}
+            options={[
+              { value: "", label: "Current organization (default)" },
+              ...orgs.data.map((o) => ({ value: String(o.id), label: o.name })),
+            ]}
+          />
           <Select
             id="role"
             name="role"

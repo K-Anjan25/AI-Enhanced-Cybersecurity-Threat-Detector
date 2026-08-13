@@ -39,7 +39,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-TENANT-03 | `org_id` FK on tenant tables | database-design ERD | model inspection | REV |
 | FR-TENANT-04 | `ensure_default_org` seed + backfill | migrations.py | `test_tenancy.py` | UT |
 | FR-TENANT-05 | org-scoped queries in services | case_service, alert_service | `test_cases.py`, `test_tenancy.py` | UT |
-| FR-TENANT-06 | admin cross-tenant listing | admin endpoints | — | REV |
+| FR-TENANT-06 | admin cross-tenant listing | admin endpoints (`/admin/orgs`, `/users` filters) | `test_endpoints.py` | IT |
 | FR-DETECT-01 | `POST /analyze` | activity-diagram | `test_endpoints.py` | IT |
 | FR-DETECT-02 | network vs log classifier in `process_log` | alert_service | `test_endpoints.py` | IT |
 | FR-DETECT-03 | `ml_client.predict_*` + `score_to_severity` | component-diagram | `test_endpoints.py` | IT |
@@ -79,6 +79,8 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-STREAM-05 | ML training-serving pipeline (CronJob retrain + hot-swap) | target-design, ml-pipeline.md | contract tests + `training.py` + `POST /retrain` | UT/REV |
 | FR-UI-01..07 | dashboard pages | component-diagram, target-design | `tsc` + `vite build` + UI tests | UI |
 | FR-UI-04 | incident/case management screens (`/incidents`) | class-diagram | `tsc`+`vite build`; `IncidentsPage.tsx` | UI |
+| FR-UI-05 | admin controls (engine settings, rules, reputation) | admin console | `tsc`+`vite build`; `AdminDashboard.tsx` | UI |
+| FR-UI-06 | audit log + per-role access states (`/admin/system-logs`, `/admin/roles`) | admin endpoints | `tsc`+`vite build` | UI |
 | FR-UI-07 | MITRE ATT&CK + threat-intel context in alert detail modal | class-diagram | `tsc`+`vite build`; `AlertDetailModal.tsx` | UI |
 
 ## Non-functional requirements
@@ -106,10 +108,10 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 
 - **FR-TENANT-06, FR-UI-05/06** — incident-management, entity-graph
   visualization, SOAR automation, MITRE/threat-intel alert context, and the ML
-  retraining pipeline (daily CronJob → `POST /retrain` hot-swap) are
-  implemented. Remaining work: administrator cross-tenant views (FR-TENANT-06)
-  in the UI plus the remaining FR-UI-05/06 screens (admin controls, audit-log +
-  role states), and the live K8s rollout for PostgreSQL/Kafka.
+  retraining pipeline (daily CronJob → `POST /retrain` hot-swap), administrator
+  cross-tenant views (FR-TENANT-06: `/admin/orgs` + filtered roster), and the
+  audit-log + role-state screens (FR-UI-06) are implemented. Remaining work: any
+  leftover FR-UI-05 admin screens and the live K8s rollout for PostgreSQL/Kafka.
 
 ## Notes on test file layout
 

@@ -1,15 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.models import User
+from app.models import User, Org
+from app.api.v1.endpoints.auth import require_role
 from app.core.security import get_password_hash
 
 router = APIRouter()
 
 
 @router.get("/")
-def list_users(db: Session = Depends(get_db)):
-    users = db.query(User).all()
+def list_users(
+    org_id: int | None = None,
+    role: str | None = None,
+    search: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
+    """Admin-only, cross-tenant user roster with org/role/search filtering.
+
+    FR-TENANT-06: SOC administrators can list and filter users across every
+    tenant workspace, unlike regular users who never see outside their org.
+    """
+    query = db.query(User, Org).join(Org, User.org_id == Org.id)
+
+    if org_id:
+        query = query.filter(User.org_id == org_id)
+    if role:
+        query = query.filter(User.role == role.upper())
+    if search:
+        like = f"%{search}%"
+        query = query.filter((User.username.ilike(like)) | (User.email.ilike(like)))
+
+    rows = query.order_by(User.created_at.desc()).all()
     return [
         {
             "id": u.id,
@@ -18,17 +40,26 @@ def list_users(db: Session = Depends(get_db)):
             "role": u.role,
             "is_active": u.is_active,
             "is_blocked": u.is_blocked,
+            "clearance_level": u.clearance_level,
+            "department": u.department,
+            "org_id": u.org_id,
+            "org_name": org.name,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
         }
-        for u in users
+        for u, org in rows
     ]
 
 
 @router.post("/", status_code=201)
-def create_user(payload: dict, db: Session = Depends(get_db)):
+def create_user(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
     username = payload.get("username")
     email = payload.get("email")
     password = payload.get("password")
-    role = payload.get("role", "user")
+    role = payload.get("role", "USER")
 
     if not username or not email or not password:
         raise HTTPException(status_code=400, detail="username, email and password are required")
@@ -37,21 +68,34 @@ def create_user(payload: dict, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already exists")
 
+    # Default to the provisioning admin's org; admins may target another tenant.
+    org_id = payload.get("org_id") or current_user.org_id
+    org = db.query(Org).filter(Org.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=400, detail="Unknown org_id")
+
     user = User(
         username=username,
         email=email,
         password=get_password_hash(password),
         role=role,
+        org_id=org.id,
+        clearance_level=payload.get("clearance_level"),
+        department=payload.get("department"),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    return {"id": user.id, "username": user.username, "email": user.email, "role": user.role}
+    return {"id": user.id, "username": user.username, "email": user.email, "role": user.role, "org_id": user.org_id}
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

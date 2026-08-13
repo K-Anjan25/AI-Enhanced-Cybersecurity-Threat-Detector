@@ -85,6 +85,36 @@ export default function AdminDashboard(): React.ReactElement {
           </span>
         </Link>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link to="/admin/tenants" className={cardCls}>
+          <div>
+            <h3 className="text-lg font-semibold text-content-primary group-hover:text-accent-primary transition">
+              Tenants
+            </h3>
+            <p className="text-sm text-content-secondary mt-2">
+              Cross-tenant workspace overview: member counts and lifecycle for every organization.
+            </p>
+          </div>
+          <span className="mt-6 text-accent-primary text-sm font-medium flex items-center">
+            Browse Tenants &rarr;
+          </span>
+        </Link>
+
+        <Link to="/admin/roles" className={cardCls}>
+          <div>
+            <h3 className="text-lg font-semibold text-content-primary group-hover:text-accent-primary transition">
+              Access Roles
+            </h3>
+            <p className="text-sm text-content-secondary mt-2">
+              Render the ABAC matrix: which permissions each role holds, clamped by clearance level.
+            </p>
+          </div>
+          <span className="mt-6 text-accent-primary text-sm font-medium flex items-center">
+            View Access Matrix &rarr;
+          </span>
+        </Link>
+      </div>
     </div>
   );
 }

@@ -268,6 +268,112 @@ def test_audit_logs_admin_only(client, auth_headers, admin_headers):
     assert "data" in allowed.json()
 
 
+def test_admin_orgs_cross_tenant_listing(client, admin_headers, db_session):
+    """FR-TENANT-06: admins can list all orgs cross-tenant with user counts."""
+    from app.models import Org, User
+    from app.core.security import get_password_hash
+
+    org_a = Org(name="Alpha Corp", slug="alpha")
+    db_session.add(org_a)
+    db_session.flush()
+    org_b = Org(name="Beta LLC", slug="beta")
+    db_session.add(org_b)
+    db_session.flush()
+
+    db_session.add_all([
+        User(username="alpha1", email="a1@example.com", password=get_password_hash("pw"), role="ANALYST", org_id=org_a.id),
+        User(username="alpha2", email="a2@example.com", password=get_password_hash("pw"), role="ANALYST", org_id=org_a.id),
+        User(username="beta1", email="b1@example.com", password=get_password_hash("pw"), role="USER", org_id=org_b.id),
+    ])
+    db_session.commit()
+
+    resp = client.get("/api/v1/admin/orgs", headers=admin_headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    by_slug = {o["slug"]: o for o in body["data"]}
+    assert by_slug["alpha"]["user_count"] == 2
+    assert by_slug["beta"]["user_count"] == 1
+    assert "default" in by_slug  # the seeded default tenant is visible too
+
+
+def test_admin_orgs_requires_admin(client, auth_headers):
+    resp = client.get("/api/v1/admin/orgs", headers=auth_headers)
+    assert resp.status_code == 403
+
+
+def test_user_roster_requires_admin(client, auth_headers, admin_headers):
+    anon = client.get("/api/v1/users")
+    assert anon.status_code in (401, 403)
+
+    forbidden = client.get("/api/v1/users", headers=auth_headers)
+    assert forbidden.status_code == 403
+
+    allowed = client.get("/api/v1/users", headers=admin_headers)
+    assert allowed.status_code == 200
+    assert isinstance(allowed.json(), list)
+
+
+def test_user_roster_filters_and_org_info(client, admin_headers, db_session):
+    """FR-TENANT-06: roster supports org/role/search filters + org context."""
+    from app.models import Org, User
+    from app.core.security import get_password_hash
+
+    org_a = Org(name="Alpha Corp", slug="alpha2")
+    db_session.add(org_a)
+    db_session.flush()
+
+    db_session.add_all([
+        User(username="tier1", email="t1@example.com", password=get_password_hash("pw"), role="ANALYST", org_id=org_a.id),
+        User(username="tier2", email="t2@example.com", password=get_password_hash("pw"), role="ANALYST", org_id=org_a.id),
+        User(username="watcher", email="w1@example.com", password=get_password_hash("pw"), role="USER", org_id=org_a.id),
+    ])
+    db_session.commit()
+
+    by_org = client.get(f"/api/v1/users?org_id={org_a.id}", headers=admin_headers).json()
+    assert len(by_org) == 3
+    assert all(u["org_id"] == org_a.id for u in by_org)
+    assert all(u["org_name"] == "Alpha Corp" for u in by_org)
+
+    by_role = client.get(f"/api/v1/users?org_id={org_a.id}&role=ANALYST", headers=admin_headers).json()
+    assert len(by_role) == 2
+
+    by_search = client.get(f"/api/v1/users?search=tier", headers=admin_headers).json()
+    assert {u["username"] for u in by_search} == {"tier1", "tier2"}
+
+
+def test_admin_roles_matrix(client, admin_headers):
+    """FR-UI-06: admins can render the ABAC role->permission matrix."""
+    resp = client.get("/api/v1/admin/roles", headers=admin_headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "data" in body
+    roles = {r["role"] for r in body["data"]}
+    assert {"ADMIN", "ANALYST", "USER"} <= roles
+    admin_row = next(r for r in body["data"] if r["role"] == "ADMIN")
+    assert "audit:read" in admin_row["permissions"]
+    assert admin_row["clearance"] == 4
+
+
+def test_admin_create_user_sets_org(client, admin_headers, db_session):
+    from app.models import Org, User
+
+    org_a = Org(name="Alpha Corp", slug="alpha3")
+    db_session.add(org_a)
+    db_session.flush()
+    db_session.commit()
+
+    resp = client.post(
+        "/api/v1/users",
+        json={"username": "provisioned", "email": "p@example.com", "password": "secret123", "role": "ANALYST", "org_id": org_a.id},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["org_id"] == org_a.id
+
+    created = db_session.query(User).filter(User.username == "provisioned").first()
+    assert created is not None and created.org_id == org_a.id
+
+
 def test_rules_admin_crud(client, admin_headers):
     create_resp = client.post(
         "/api/v1/rules",
