@@ -22,7 +22,7 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 
 - Events are ingested via REST or Kafka
 - The backend calls the ML service for prediction and stores alerts in PostgreSQL
-- The React dashboard visualizes alerts, analytics, admin controls, and audit logs
+- The React dashboard visualizes alerts, analytics, incident management, entity/attack-graph pivoting, SOAR automation, admin controls, and audit logs
 
 ## Tech Stack
 
@@ -56,12 +56,14 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 │   │   ├── log_model.py        # log attack classification
 │   │   ├── email_model.py      # phishing detection
 │   │   ├── dns_model.py        # DNS / domain threat scoring
+│   │   ├── training.py         # shared training lib (CLI + /retrain)
 │   │   └── feature_extractor.py
-│   ├── train.py             # retrain all models (requires datasets)
-│   └── model/               # trained .pkl artifacts
+│   ├── train.py             # CLI: retrain all models (requires datasets)
+│   └── model/               # trained .pkl artifacts + manifest.json
 ├── dashboard/               # React frontend
 │   └── src/
-│       ├── pages/               # ThreatAlerts, LogHistory, AIAnalytics, Login
+│       ├── pages/               # ThreatAlerts, Incidents, Entities, SOAR,
+│       │                       #   LogHistory, AIAnalytics, Login
 │       ├── pages/admin/         # engine settings, audit logs
 │       ├── features/            # dashboard, auth, account, admin
 │       ├── api/                 # axios clients
@@ -103,6 +105,10 @@ pip install -r requirements.txt
 python train.py        # optional: retrain models from datasets
 python -m uvicorn app.main:app --reload --port 8001
 ```
+
+The ml-service also exposes `POST /retrain` (retrains and hot-swaps models in
+memory) and `GET /models` (returns the versioned `manifest.json`). In K8s,
+`k8s/training.yaml` triggers retraining daily at 03:00 UTC.
 
 ### 3. Start the backend
 

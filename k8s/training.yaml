@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ml-training
+  namespace: threat-ai
+  labels:
+    app: ml-training
+    component: ml
+spec:
+  # Daily retrain at 03:00 UTC — FR-STREAM-05 scheduled pipeline trigger.
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 2
+  successfulJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: retrain-trigger
+              # Trigger the in-service retrain endpoint; models are hot-swapped
+              # in-place so no pod restart is needed. busybox includes wget.
+              image: busybox:1.36
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  if wget -q --post-data='{}' --header='Content-Type: application/json' \
+                    -O /dev/null http://ml-service:8001/retrain; then
+                    echo "ML retrain triggered OK"
+                  else
+                    echo "ML retrain trigger FAILED" >&2
+                    exit 1
+                  fi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false

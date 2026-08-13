@@ -11,8 +11,8 @@ Software-engineering documentation for the **AI-Enhanced Cybersecurity Threat De
 | [`non-functional-requirements.md`](non-functional-requirements.md) | NFRS | Non-functional requirements (NFR-xx) with measurable targets + verification |
 | [`database-design.md`](database-design.md) | DB Design | ERD, table catalog, normalization analysis (1NF/2NF/3NF/BCNF), indexes |
 | [`traceability-matrix.md`](traceability-matrix.md) | RTM | FR/NFR → implementation → tests mapping + coverage gaps |
-| [`ml-pipeline.md`](ml-pipeline.md) | ML Ops | Training→serving pipeline, model versioning, feature contract |
-| [`../k8s/README.md`](../k8s/README.md) | Infra | Kubernetes manifests for backend, ml-service, dashboard, HPA, ingress |
+| [`ml-pipeline.md`](ml-pipeline.md) | ML Ops | Training→serving pipeline, scheduled retrain CronJob, model versioning, feature contract |
+| [`../k8s/README.md`](../k8s/README.md) | Infra | Kubernetes manifests for backend, ml-service, training CronJob, dashboard, HPA, ingress |
 | [`../diagrams/README.md`](../diagrams/README.md) | UML | Sequence, class, state, activity, timing, component, deployment diagrams |
 
 ## Related

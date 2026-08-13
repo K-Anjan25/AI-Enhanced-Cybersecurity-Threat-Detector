@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.model import NetworkInput, LogInput, EmailInput, DnsInput
-from app.network_model import predict_network, model_status as network_status
-from app.log_model import predict_log, model_status as log_status
-from app.email_model import predict_email, model_status as email_status
+from app.network_model import predict_network, model_status as network_status, reload as network_reload
+from app.log_model import predict_log, model_status as log_status, reload as log_reload
+from app.email_model import predict_email, model_status as email_status, reload as email_reload
 from app.dns_model import predict_domain
+from app import training
 
 app = FastAPI(
     title="AI Threat Detection Service",
@@ -66,12 +67,38 @@ def health():
 
 @app.get("/models")
 def models_info():
+    manifest = training.load_manifest()
     return {
         "network": network_status(),
         "log": log_status(),
         "email": email_status(),
         "dns": {"loaded": True, "error": None},
+        "manifest": manifest,
     }
+
+
+@app.post("/retrain")
+def retrain_models(request: dict | None = None):
+    """Retrain all models on demand and hot-swap the in-memory artifacts.
+
+    Used by the scheduled training CronJob (k8s/training.yaml). The network
+    model is skipped (status ``skipped``) when the CICIDS dataset is absent, so
+    a retrain never fails just because training data is not mounted. Returns the
+    new versioned manifest after reloading serving models.
+    """
+    if isinstance(request, dict):
+        require_network = bool(request.get("require_network", False))
+    else:
+        require_network = False
+
+    manifest = training.run_training(require_network=require_network)
+
+    # Hot-swap in-memory artifacts so the next /predict calls use the new files.
+    network_reload()
+    log_reload()
+    email_reload()
+
+    return {"status": "ok", "manifest": manifest}
 
 
 @app.get("/info")

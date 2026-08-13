@@ -73,9 +73,13 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-STREAM-01 | normalized-event Kafka publishing | component-diagram | kafka producer tests | UT |
 | FR-STREAM-02 | `alerts.raised` Kafka publishing | component-diagram | kafka producer tests | UT |
 | FR-STREAM-03 | SOAR engine (`actions.executed`, auto + manual trigger) | component-diagram, activity-diagram | `test_soar.py` | UT |
+| FR-STREAM-03 (UI) | SOAR automation screens (`/soar`, dry-run + trigger) | activity-diagram | `tsc`+`vite build`; `SoarPage.tsx` | UI |
 | FR-STREAM-04 | entity/attack-graph service + graph endpoints | component-diagram | `test_entity_graph.py` | UT/IT |
-| FR-STREAM-05 | ML training-serving pipeline | target-design, ml-pipeline.md | contract tests + `train.py` | UT/REV |
+| FR-STREAM-04 (UI) | entity-graph visualization screens (`/entities`, SVG graph) | component-diagram | `tsc`+`vite build`; `EntitiesPage.tsx` | UI |
+| FR-STREAM-05 | ML training-serving pipeline (CronJob retrain + hot-swap) | target-design, ml-pipeline.md | contract tests + `training.py` + `POST /retrain` | UT/REV |
 | FR-UI-01..07 | dashboard pages | component-diagram, target-design | `tsc` + `vite build` + UI tests | UI |
+| FR-UI-04 | incident/case management screens (`/incidents`) | class-diagram | `tsc`+`vite build`; `IncidentsPage.tsx` | UI |
+| FR-UI-07 | MITRE ATT&CK + threat-intel context in alert detail modal | class-diagram | `tsc`+`vite build`; `AlertDetailModal.tsx` | UI |
 
 ## Non-functional requirements
 
@@ -100,16 +104,17 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 
 ## Coverage gaps (next phases)
 
-- **FR-UI-04/05, FR-TENANT-06** — incident-management UI pages, entity-graph
-  visualization UI, and admin cross-tenant views are designed
-  (`target-design.md`, `component-diagram.md`) but not yet implemented. Backend
-  for SOAR and entity-graph is live; `k8s/` manifests + ML pipeline doc are
-  added; remaining work is the dashboard UI, live K8s rollout for PostgreSQL/Kafka,
-  and the automated ML retraining job.
+- **FR-TENANT-06, FR-UI-05/06** — incident-management, entity-graph
+  visualization, SOAR automation, MITRE/threat-intel alert context, and the ML
+  retraining pipeline (daily CronJob → `POST /retrain` hot-swap) are
+  implemented. Remaining work: administrator cross-tenant views (FR-TENANT-06)
+  in the UI plus the remaining FR-UI-05/06 screens (admin controls, audit-log +
+  role states), and the live K8s rollout for PostgreSQL/Kafka.
 
 ## Notes on test file layout
 
 - API/integration tests: `backend/tests/api/test_endpoints.py`
-- Service/unit tests: `backend/tests/services/*` (`test_cases`, `test_mitre`,
-  `test_threat_intel`, `test_tenancy`, `test_ml_client`, `test_helpers`, `test_item_service`)
+- Service/unit tests: `backend/tests/services/*` (`test_cases`, `test_entity_graph`,
+  `test_soar`, `test_mitre`, `test_threat_intel`, `test_tenancy`, `test_ml_client`,
+  `test_helpers`, `test_item_service`)
 - ML contract tests: `backend/tests/contract/test_ml_contract.py`

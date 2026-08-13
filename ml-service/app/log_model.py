@@ -33,6 +33,15 @@ def model_status() -> dict:
     return {"loaded": model is not None, "error": error}
 
 
+def reload() -> dict:
+    """Drop cached artifacts so the next prediction loads the fresh model."""
+    global _model, _model_error
+    _model = None
+    _model_error = None
+    model, error = _load_model()
+    return {"loaded": model is not None, "error": error}
+
+
 def _to_dict(data) -> dict:
     if hasattr(data, "model_dump"):
         return data.model_dump()

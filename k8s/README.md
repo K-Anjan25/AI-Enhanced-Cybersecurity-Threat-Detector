@@ -12,6 +12,7 @@ three services. Satisfies **NFR-PORT-03** (K8s-ready) and **NFR-PORT-02**
 | `configmap.yaml` | env config (runtime, auth, engine) |
 | `backend.yaml` | Backend Deployment (×2) + Service + liveness/readiness probes |
 | `ml-service.yaml` | ML Service Deployment (×2) + Service + HPA (2→6 on CPU) |
+| `training.yaml` | ML training CronJob (daily retrain trigger → `POST /retrain`) |
 | `dashboard.yaml` | Dashboard Deployment (×2) + Service |
 | `ingress.yaml` | Ingress (nginx) routing `/` → dashboard, `/api/*` → backend + Secret template |
 
@@ -44,3 +45,9 @@ kubectl create secret generic threat-ai-secrets \
   deployed and set `KAFKA_BOOTSTRAP_SERVERS`.
 - `COOKIE_AUTH=true` + `COOKIE_SECURE=true` require TLS termination at the
   ingress for cookies to be accepted by browsers.
+- `training.yaml` runs daily (03:00 UTC) and triggers the in-service
+  `POST /retrain` endpoint; models are hot-swapped in place (no pod restart).
+  Artifacts are written to the ml-service container filesystem, so for durable
+  model storage mount a shared PVC at the ml-service `model/` volume and copy
+  the `model/manifest.json` artifacts into it. `concurrencyPolicy: Forbid`
+  prevents overlapping runs.

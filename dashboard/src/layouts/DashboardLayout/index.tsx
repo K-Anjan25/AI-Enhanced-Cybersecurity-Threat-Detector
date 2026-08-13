@@ -19,10 +19,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
   const username: string = localStorage.getItem("username") || "User";
 
-  // Simplified basic navigation items for testing
+  // SOC navigation. Dashboard index redirects to /alerts.
   const navItems: NavItem[] = [
-    { name: "Dashboard", path: "/dashboard", icon: "DSH" },
     { name: "Threat Alerts", path: "/alerts", icon: "ALT" },
+    { name: "Incidents", path: "/incidents", icon: "INC" },
+    { name: "Entity Graph", path: "/entities", icon: "ENT" },
+    { name: "SOAR Automation", path: "/soar", icon: "SOA" },
     { name: "Log History", path: "/logs", icon: "LOG" },
     { name: "Profile Settings", path: "/profile", icon: "SET" },
   ];

@@ -16,7 +16,7 @@ router = APIRouter()
 @router.post("/analyze")
 def analyze(log: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Analyze a single log entry and return the anomaly result."""
-    alert = process_log(log, produce_kafka=False)
+    alert = process_log(log, produce_kafka=False, org_id=current_user.org_id)
     return alert
 
 

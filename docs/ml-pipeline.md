@@ -8,7 +8,8 @@ Addresses **FR-STREAM-05** (training-serving pipeline) and **NFR-PORT-04**
 
 ```mermaid
 flowchart LR
-    DS[(datasets/ CICIDS2017, UNSW-NB15)] --> TR[train.py]
+    DS[(datasets/ CICIDS2017, UNSW-NB15)] --> TR[train.py / POST /retrain]
+    TR --> MAN[(model/manifest.json<br/>version + metrics)]
     TR --> NET[model/network_model.pkl<br/>IsolationForest]
     TR --> LOG[model/log_model.pkl<br/>TF-IDF + LogisticRegression]
     TR --> EMAIL[model/email_model.pkl]
@@ -18,10 +19,22 @@ flowchart LR
     EMAIL --> API
     DNS --> API
     API --> BACKEND[backend ml_client<br/>retry + heuristic fallback]
+    CJS[training.yaml CronJob<br/>daily 03:00 UTC] --> API2[POST /retrain<br/>hot-swap in memory]
+    API2 --> TR
 ```
 
-- **Training:** `ml-service/train.py` reads CSVs from `datasets/`, fits models,
-  and writes `.pkl` artifacts to `ml-service/model/`.
+- **Training:** `ml-service/app/training.py` fits models and writes `.pkl` artifacts
+  plus a versioned `manifest.json` (version, trained-at, per-model status/metrics).
+  The `train.py` CLI requires the CICIDS datasets; the in-service `POST /retrain`
+  endpoint skips the network model gracefully when data is not mounted
+  (`require_network=false`, status `skipped`).
+- **Scheduled retraining (FR-STREAM-05 runtime):** `k8s/training.yaml` is a daily
+  CronJob that triggers `POST /retrain`; the endpoint trains and **hot-swaps**
+  the in-memory models via `network/log/email_model.reload()` so the next
+  predictions use the new artifacts with no pod restart. `concurrencyPolicy:
+  Forbid` prevents overlaps.
+- **Versioning:** every run records `manifest.json`; `GET /models` returns it
+  so the backend can log which model version scored each alert.
 - **Serving:** `ml-service/app/main.py` exposes `POST /predict/{network|log|email|dns}`
   (+ `/detail` and `/batch` variants), `GET /models`, `GET /health`.
 - **Consumption:** the backend's `ml_client` retries (2×, 0.3/0.6 s backoff)
@@ -34,11 +47,11 @@ flowchart LR
 | Stage | Current | v3 target |
 | --- | --- | --- |
 | Data | local `datasets/` CSVs | versioned dataset bucket / volume |
-| Training | `train.py` run by hand | CI job or training CronJob emitting versioned artifacts |
-| Artifacts | `.pkl` files in repo dir | object storage / PVC + model registry (metadata, checksum, metric) |
+| Training | `train.py` CLI + `POST /retrain` + daily CronJob | CI job or training CronJob emitting versioned artifacts |
+| Artifacts | `.pkl` files + `manifest.json` (in-container FS) | object storage / PVC + model registry (metadata, checksum, metric) |
 | Serving | single container loading all 4 models | per-model Deployment + HPA (see `k8s/ml-service.yaml`) |
 | Rolling update | replace container image | canary/rolling via new artifact version + `GET /models` refresh |
-| Retraining trigger | manual | on alert-feedback threshold or scheduled pipeline |
+| Retraining trigger | scheduled (CronJob) + manual | on alert-feedback threshold or scheduled pipeline |
 
 ## Versioning & release contract
 

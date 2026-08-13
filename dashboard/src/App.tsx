@@ -14,6 +14,9 @@ import ResetPassword from "./features/auth/components/ResetPassword";
 const ThreatAlertsPage = React.lazy(() => import("./pages/ThreatAlertsPage"));
 const LogHistoryPage = React.lazy(() => import("./pages/LogHistoryPage"));
 const AIAnalyticsPage = React.lazy(() => import("./pages/AIAnalyticsPage"));
+const IncidentsPage = React.lazy(() => import("./pages/IncidentsPage"));
+const EntitiesPage = React.lazy(() => import("./pages/EntitiesPage"));
+const SoarPage = React.lazy(() => import("./pages/SoarPage"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const AdminEngineSettings = React.lazy(() => import("./pages/admin/engineSettings"));
@@ -72,9 +75,14 @@ export default function App(): JSX.Element {
           >
             <Route element={<DashboardLayout />}>
               <Route index element={<Navigate to="/alerts" replace />} />
+              {/* Legacy/alias: the SOC landing page is Threat Alerts. */}
+              <Route path="dashboard" element={<Navigate to="/alerts" replace />} />
               <Route path="alerts" element={<ThreatAlertsPage />} />
               <Route path="logs" element={<LogHistoryPage />} />
               <Route path="analytics" element={<AIAnalyticsPage />} />
+              <Route path="incidents" element={<IncidentsPage />} />
+              <Route path="entities" element={<EntitiesPage />} />
+              <Route path="soar" element={<SoarPage />} />
               <Route path="profile" element={<Profile />} />
               <Route path="account" element={<Account />} />
               <Route

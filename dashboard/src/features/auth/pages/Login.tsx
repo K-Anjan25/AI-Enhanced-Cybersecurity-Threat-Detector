@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useFormik } from "formik";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
@@ -8,19 +8,14 @@ import ForgotPassword from "../components/ForgotPassword";
 import loginForm from "../../../validators/loginValidator";
 import showSuccess from "../../../utils/showSuccess";
 import { login } from "../../../store/userActions";
-import { AxiosError } from "axios";
+import { getToken } from "../../../utils/token";
 import { UserError } from "../../../types/error";
 
 export default function Login(): React.ReactElement {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
-const { user, loading, isLogedIn } = useSelector((state: RootState) => state.user);
-  useEffect(() => {
-    if (isLogedIn || user) {
-      showSuccess("You have successfully logged in!");
-      navigate("/alerts");
-    }
-  }, [isLogedIn, user, navigate]);
+  // Loading state gates the button while a request is in flight.
+  const { loading } = useSelector((state: RootState) => state.user);
 
   const [isForgetPasswordOpen, setIsForgetPasswordOpen] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>("");
@@ -31,12 +26,20 @@ const { user, loading, isLogedIn } = useSelector((state: RootState) => state.use
       setLoginError("");
       try {
         await dispatch(login(values));
-        navigate("/alerts");
+        // The auth flag is only set after a successful /login, so navigating
+        // off is safe only when the session was actually established.
+        if (getToken()) {
+          showSuccess("You have successfully logged in!");
+          navigate("/alerts");
+        } else {
+          setLoginError(
+            "Authentication failed. Please check your credentials."
+          );
+        }
       } catch (error) {
-        const err = error as AxiosError<UserError>;
+        const err = error as UserError;
         setLoginError(
-          err?.response?.data?.message ||
-            err?.message ||
+          err?.message ||
             "Authentication failed. Please check your credentials."
         );
       } finally {
