@@ -82,6 +82,8 @@ def require_role(role: str):
 @router.get("/me")
 def read_users_me(current_user: User = Depends(get_current_user)):
     """Returns basic info about the currently authenticated user (root path)."""
+    from app.core.abac import subject_permissions
+
     return {
         "status": "success",
         "user": {
@@ -92,6 +94,7 @@ def read_users_me(current_user: User = Depends(get_current_user)):
             "profileImageURL": current_user.profile_image or "",
         },
         "roles": [current_user.role] if current_user.role else [],
+        "permissions": sorted(subject_permissions(current_user)),
     }
 
 

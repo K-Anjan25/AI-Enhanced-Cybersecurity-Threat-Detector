@@ -30,6 +30,19 @@ def test_register_login_me_flow(client, auth_headers):
     assert "ANALYST" in body["roles"]
 
 
+def test_me_returns_permissions_for_abac_gating(client, auth_headers, admin_headers):
+    """The /me payload must include permissions so the dashboard can gate the
+    admin routes (users:manage / audit:read) instead of redirecting to alerts."""
+    analyst = client.get("/api/v1/me", headers=auth_headers).json()
+    assert "permissions" in analyst
+    assert "alerts:read" in analyst["permissions"]
+    assert "users:manage" not in analyst["permissions"]
+
+    admin = client.get("/api/v1/me", headers=admin_headers).json()
+    assert "users:manage" in admin["permissions"]
+    assert "audit:read" in admin["permissions"]
+
+
 def test_login_rejects_bad_credentials(client):
     resp = client.post("/api/v1/login", data={"username": "nobody", "password": "wrong"})
     assert resp.status_code == 401
