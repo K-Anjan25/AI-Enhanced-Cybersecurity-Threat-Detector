@@ -116,9 +116,15 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   (PostgreSQL on 5431, Zookeeper/Kafka) is live and verified end-to-end: the
   backend runs against compose PG with `ENABLE_KAFKA=true`, the `alerts.raised` /
   `raw-logs` / `actions.executed` topics receive JSON events via the shipped
-  producer, and the analyze/ingest paths persist to PG. Remaining work: the live
-  K8s rollout of `k8s/` (backend, dashboard, ml-service, ingress) onto a real
-  cluster.
+  producer, and the analyze/ingest paths persist to PG.
+- **Kubernetes rollout (NFR-PORT-03)** — the full `k8s/` stack (backend ×2,
+  dashboard ×2 nginx/SQL, ml-service ×2 + HPA, in-cluster Postgres, daily
+  retrain CronJob) was rolled out live on a `kind` cluster and verified:
+  register/login/analyze through the Service with real ML predictions
+  (`fallback=false`), alert persisted to in-cluster Postgres with MITRE
+  mapping + threat-intel enrichment, and the dashboard serving with `/api`
+  proxied to the backend. Remaining only for production: an ingress-nginx
+  controller + cert-manager (TLS) and a managed Postgres.
 
 ## Notes on test file layout
 

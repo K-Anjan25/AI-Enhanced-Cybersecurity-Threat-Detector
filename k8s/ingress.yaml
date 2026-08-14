@@ -18,7 +18,7 @@ spec:
               service:
                 name: dashboard
                 port:
-                  number: 3000
+                  number: 80
           - path: /api(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
@@ -27,14 +27,15 @@ spec:
                 port:
                   number: 8000
 ---
-# Template — copy to a real secret (never commit real values).
-apiVersion: v1
-kind: Secret
-metadata:
-  name: threat-ai-secrets
-  namespace: threat-ai
-type: Opaque
-stringData:
-  database-url: "postgresql://postgres:CHANGE_ME@postgres:5432/threat_ai_db"
-  jwt-secret: "CHANGE_ME_JWT_SECRET"
-  jwt-refresh-secret: "CHANGE_ME_JWT_REFRESH_SECRET"
+# Template — copy to a real secret (never commit real values). See k8s/README
+# "Apply" for the kubectl create secret command.
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: threat-ai-secrets
+#   namespace: threat-ai
+# type: Opaque
+# stringData:
+#   database-url: "postgresql://postgres:CHANGE_ME@postgres:5432/threat_ai_db"
+#   jwt-secret: "CHANGE_ME_JWT_SECRET"
+#   jwt-refresh-secret: "CHANGE_ME_JWT_REFRESH_SECRET"

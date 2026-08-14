@@ -17,24 +17,24 @@ spec:
         app: dashboard
     spec:
       containers:
-        - name: dashboard
-          image: threat-ai/dashboard:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 3000
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "256Mi"
+            - name: dashboard
+              image: threat-ai/dashboard:latest
+              imagePullPolicy: IfNotPresent
+              ports:
+                - containerPort: 80
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: 80
+                initialDelaySeconds: 5
+                periodSeconds: 10
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -45,5 +45,5 @@ spec:
   selector:
     app: dashboard
   ports:
-    - port: 3000
-      targetPort: 3000
+    - port: 80
+      targetPort: 80

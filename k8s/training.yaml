@@ -25,6 +25,9 @@ spec:
               # in-place so no pod restart is needed. busybox includes wget.
               image: busybox:1.36
               imagePullPolicy: IfNotPresent
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
               command:
                 - /bin/sh
                 - -c
@@ -36,6 +39,3 @@ spec:
                     echo "ML retrain trigger FAILED" >&2
                     exit 1
                   fi
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false

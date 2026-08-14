@@ -16,6 +16,16 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        # Wait for Postgres before starting so startup migrations don't race
+        # the DB (tables are otherwise never created if the DB is late).
+        - name: wait-for-postgres
+          image: postgres:15
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - until pg_isready -h postgres -U threatuser -d threatdb; do echo "waiting for postgres"; sleep 3; done
       containers:
         - name: backend
           image: threat-ai/backend:latest
