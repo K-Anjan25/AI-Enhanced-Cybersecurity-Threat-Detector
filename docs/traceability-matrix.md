@@ -116,7 +116,10 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   (PostgreSQL on 5431, Zookeeper/Kafka) is live and verified end-to-end: the
   backend runs against compose PG with `ENABLE_KAFKA=true`, the `alerts.raised` /
   `raw-logs` / `actions.executed` topics receive JSON events via the shipped
-  producer, and the analyze/ingest paths persist to PG.
+  producer, and the analyze/ingest paths persist to PG. Compose now runs the
+  **complete app** (dashboard+nginx, backend, ml-service, postgres) under a
+  ~1 GiB memory budget (limits sum to ~928 MiB, Kafka/Zookeeper opt-in via
+  `--profile stream`) so the stack runs on 8 GB laptops without hanging the host.
 - **Kubernetes rollout (NFR-PORT-03)** — the full `k8s/` stack (backend ×2,
   dashboard ×2 nginx/SQL, ml-service ×2 + HPA, in-cluster Postgres, daily
   retrain CronJob) was rolled out live on a `kind` cluster and verified:

@@ -46,6 +46,9 @@ dataset/CICIDS2017/
 SKILL.md/
 ui-design/
 
+# Stray runtime DBs (dev leftovers, not part of the codebase)
+backend/threatai_verify.db
+
 # ======================
 # OS
 # ======================
