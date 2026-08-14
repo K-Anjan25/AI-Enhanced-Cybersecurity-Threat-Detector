@@ -87,7 +87,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 
 | ID | Module / design | Test(s) / verification |
 | --- | --- | --- |
-| NFR-PERF-01..05 | alert/scan/predict paths | load test (k6/Locust) — baselined; see targets |
+| NFR-PERF-01..05 | alert/scan/predict paths | `loadtest/` (k6 + Locust); baseline recorded 2026-08-14 |
 | NFR-SEC-01 | `security.py` bcrypt hashing | `test_endpoints.py` password hash check |
 | NFR-SEC-02 | JWT exp + JTI blocklist | `test_endpoints.py` refresh/revoke |
 | NFR-SEC-03 | httpOnly/SameSite cookies | `test_endpoints.py` cookie assertions |

@@ -13,6 +13,11 @@ venv/
 backend/venv/
 backend/.venv/
 ml-service/venv/
+**/.venv/
+
+# Load-test run artifacts (regenerated on each run)
+loadtest/**/baseline-*
+loadtest/**/report-*
 
 # Environment files
 .env
