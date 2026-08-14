@@ -32,6 +32,13 @@ docker compose --profile stream up -d
 
 Backend reads `ENABLE_KAFKA` (default `false` in this stack).
 
+## Authentication mode
+
+The dashboard authenticates via the backend's httpOnly `access_token` /
+`refresh_token` cookies (tokens never reach JavaScript), so the stack sets
+`COOKIE_AUTH=true` and `COOKIE_SECURE=false` (plain `http://localhost:3000`).
+If you expose the stack over HTTPS use `COOKIE_SECURE=true`.
+
 ## Troubleshooting memory hangs on 8 GB laptops
 
 Docker Desktop runs its engine inside a WSL2 VM. On 8 GB hosts cap the VM via

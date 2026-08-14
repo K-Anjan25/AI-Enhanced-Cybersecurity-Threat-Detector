@@ -44,6 +44,11 @@ services:
       ML_SERVICE_URL: http://ml-service:8001
       ENABLE_KAFKA: "false"
       CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+      # The dashboard authenticates via httpOnly access/refresh cookies
+      # (tokens never touch JS), served over plain http on localhost, so
+      # cookie auth must be on and Secure off. Use Secure=true + TLS in prod.
+      COOKIE_AUTH: "true"
+      COOKIE_SECURE: "false"
     ports:
       - "8000:8000"
     mem_limit: 320m
