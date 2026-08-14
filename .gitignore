@@ -61,3 +61,6 @@ backend/threatai_verify.db
 Thumbs.db
 *.lnk
 Videos - Shortcut.lnk
+
+diagrams/
+*.md
