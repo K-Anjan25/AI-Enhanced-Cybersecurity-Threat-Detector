@@ -128,8 +128,9 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   mapping + threat-intel enrichment, and the dashboard serving with `/api`
   proxied to the backend. TLS-at-gateway manifests are now shipped
   (`k8s/tls/issuers.yaml` + TLS/HTTPS-redirect/HSTS annotations on the
-  Ingress; install steps in `k8s/README.md`). Remaining only for production:
-  apply the ingress-nginx + cert-manager manifests and a managed Postgres.
+  Ingress; install steps in `k8s/README.md`), and the managed-Postgres swap is
+  documented in the same README. Remaining only for production: apply the
+  ingress-nginx + cert-manager manifests and create the managed-DB Secret.
 
 ## Notes on test file layout
 

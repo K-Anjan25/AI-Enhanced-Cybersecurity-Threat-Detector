@@ -37,6 +37,27 @@ kubectl create secret generic threat-ai-secrets \
   -n threat-ai
 ```
 
+## Production: use a managed Postgres
+
+`postgres.yaml` is the **demo** database (in-cluster, single replica, PVC
+storage). For production, point the backend at a managed service instead —
+the backend runs additive migrations on startup, so no manifest change is
+needed beyond the Secret:
+
+```bash
+# e.g. AWS RDS / GCP Cloud SQL / Neon / Supabase
+kubectl create secret generic threat-ai-secrets \
+  --from-literal=database-url='postgresql://threat:CHANGE_ME@db.example.com:5432/threatdb?sslmode=require' \
+  --from-literal=jwt-secret='...' \
+  --from-literal=jwt-refresh-secret='...' \
+  -n threat-ai
+
+kubectl delete -f k8s/postgres.yaml   # drop the demo DB once managed one is wired
+```
+
+This avoids single-replica storage by replacing it with a HA/managed Postgres
+(automated backups, failover) and let the backend HPA scale freely.
+
 ## Prerequisites
 
 - Images `threat-ai/backend:latest`, `threat-ai/ml-service:latest`,
