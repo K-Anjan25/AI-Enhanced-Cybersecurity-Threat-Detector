@@ -73,7 +73,8 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 ├── datasets/                # Local training data (not committed)
 ├── diagrams/                # Architecture diagrams
 ├── docs/                    # Requirements, DB design, traceability, ML pipeline
-├── k8s/                     # Kubernetes manifests (v3)
+├── k8s/                     # Kubernetes manifests (v3, incl. TLS via cert-manager)
+├── loadtest/                # k6 + Locust load suites (NFR-PERF baseline)
 └── README.md
 ```
 
