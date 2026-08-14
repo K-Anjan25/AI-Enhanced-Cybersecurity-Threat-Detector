@@ -6,8 +6,23 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     nginx.ingress.kubernetes.io/use-regex: "true"
+    # --- TLS at the gateway (NFR-SEC-10) ---
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "false"
+    nginx.ingress.kubernetes.io/hsts-preload: "false"
+    # cert-manager issues/rotates the certificate into `threat-ai-tls`.
+    # For an offline/kind demo switch this to `threat-ai-selfsigned`
+    # (see k8s/tls/issuers.yaml and the k8s README).
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - dashboard.example.com
+      secretName: threat-ai-tls
   rules:
     - host: dashboard.example.com
       http:

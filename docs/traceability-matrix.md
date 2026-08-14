@@ -97,7 +97,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | NFR-SEC-07 | secrets via `.env` | repo scan + `.gitignore` review |
 | NFR-SEC-08 | ABAC-gated endpoints | endpoint coverage audit |
 | NFR-SEC-09 | org-scoped queries | `test_cases.py`, `test_tenancy.py` |
-| NFR-SEC-10 | TLS at gateway | deployment config review |
+| NFR-SEC-10 | TLS at gateway | `k8s/ingress.yaml` (TLS + HTTPS redirect + HSTS) + `k8s/tls/issuers.yaml` (self-signed + Let's Encrypt), `COOKIE_SECURE=true` |
 | NFR-REL-01..05 | probes, fallback, persistence, kafka toggle | `test_endpoints.py`, fault-injection, integration tests |
 | NFR-SCAL-01..04 | HPA, indexes, topic scheme, org partitioning | manifest + schema review |
 | NFR-USE-01..05 | dashboard UX | UI tests / walkthrough |
@@ -126,8 +126,10 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   register/login/analyze through the Service with real ML predictions
   (`fallback=false`), alert persisted to in-cluster Postgres with MITRE
   mapping + threat-intel enrichment, and the dashboard serving with `/api`
-  proxied to the backend. Remaining only for production: an ingress-nginx
-  controller + cert-manager (TLS) and a managed Postgres.
+  proxied to the backend. TLS-at-gateway manifests are now shipped
+  (`k8s/tls/issuers.yaml` + TLS/HTTPS-redirect/HSTS annotations on the
+  Ingress; install steps in `k8s/README.md`). Remaining only for production:
+  apply the ingress-nginx + cert-manager manifests and a managed Postgres.
 
 ## Notes on test file layout
 

@@ -15,7 +15,8 @@ three services. Satisfies **NFR-PORT-03** (K8s-ready) and **NFR-PORT-02**
 | `ml-service.yaml` | ML Service Deployment (×2) + Service + HPA (2→6 on CPU) |
 | `training.yaml` | ML training CronJob (daily retrain trigger → `POST /retrain`) |
 | `dashboard.yaml` | Dashboard Deployment (×2) + Service (nginx static build, port 80) |
-| `ingress.yaml` | Ingress (nginx) routing `/` → dashboard, `/api/*` → backend |
+| `ingress.yaml` | TLS Ingress (nginx) routing `/` → dashboard, `/api/*` → backend; cert-manager issues `threat-ai-tls` |
+| `tls/issuers.yaml` | cert-manager ClusterIssuers: self-signed (offline/kind demo) + Let's Encrypt staging/prod |
 
 The dashboard image (`dashboard/Dockerfile`) builds the Vite SPA with
 `REACT_APP_BASE_URL=/api/v1` and serves it from nginx, which reverse-proxies
@@ -44,6 +45,44 @@ kubectl create secret generic threat-ai-secrets \
   managed DB); the backend runs additive migrations on startup.
 - Ingress-nginx controller + cert-manager (TLS) in the cluster.
 - Metrics server for HPA autoscaling.
+
+## TLS at the gateway (NFR-SEC-10)
+
+The `ingress.yaml` terminates TLS: HTTP is force-redirected to HTTPS
+(`ssl-redirect`/`force-ssl-redirect` + HSTS) and cert-manager provisions the
+`threat-ai-tls` secret. Install the controllers once per cluster:
+
+```bash
+# 1. ingress-nginx controller (pin a release; see https://github.com/kubernetes/ingress-nginx/releases)
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/v1.11.3/deploy/static/provider/kind/deploy.yaml
+
+# 2. cert-manager (CRDs + controllers; pin a release; see https://cert-manager.io/docs/installation/)
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+```
+
+Then create the issuer set and point the DNS name at the ingress IP/load balancer:
+
+```bash
+kubectl apply -f k8s/tls/issuers.yaml
+# set your domain in k8s/ingress.yaml (dashboard.example.com) and your ACME
+# email in k8s/tls/issuers.yaml, then:
+kubectl apply -f k8s/ingress.yaml
+kubectl get certificate -n threat-ai threat-ai-tls   # becomes READY when issued
+```
+
+- **Internet + DNS:** use `letsencrypt-prod` (already the Ingress default).
+- **Offline / kind demo:** swap the Ingress annotation to the bundled local CA:
+
+  ```bash
+  kubectl annotate ingress threat-ai-ingress -n threat-ai \
+    cert-manager.io/cluster-issuer=threat-ai-selfsigned-ca --overwrite
+  ```
+
+  The self-signed CA issues an ECDSA cert for `dashboard.example.com` with no
+  external calls; browsers will show an untrusted-CA warning, which is expected.
+- With TLS in place the backend's `COOKIE_AUTH=true` + `COOKIE_SECURE=true`
+  cookies are accepted by browsers (the same-origin `/api` proxy and the
+  `https://dashboard.example.com` origin in the ConfigMap `CORS_ORIGINS`).
 
 ## Notes
 

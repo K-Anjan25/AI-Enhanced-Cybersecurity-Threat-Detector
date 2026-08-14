@@ -1,0 +1,83 @@
+# cert-manager ClusterIssuers for TLS at the gateway (NFR-SEC-10).
+#
+# Pick ONE issuer for the annotation `cert-manager.io/cluster-issuer` on the
+# Ingress (k8s/ingress.yaml):
+#   * letsencrypt-prod   -> real, publicly-trusted certs (Internet + DNS required)
+#   * letsencrypt-staging-> test ACME certs (avoids Let's Encrypt rate limits)
+#   * threat-ai-selfsigned -> offline / kind demo; powers a local CA that issues
+#                             certs for the Ingress host. Browsers will warn
+#                             (untrusted CA) but TLS terminates and the backend
+#                             httpOnly Secure cookies work end-to-end.
+#
+# All three are safe to apply together; only the one referenced by the Ingress
+# annotation will be used.
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: threat-ai-selfsigned
+spec:
+  selfSigned: {}
+---
+# Internal CA chaining off the self-signed issuer, so the issuer itself can mint
+# leaf certificates for arbitrary hosts without an external ACME endpoint.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: threat-ai-selfsigned-ca
+spec:
+  ca:
+    secretName: threat-ai-selfsigned-ca-private-key
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: threat-ai-selfsigned-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: threat-ai-selfsigned-ca
+  secretName: threat-ai-selfsigned-ca-private-key
+  duration: 8760h # 1 year demo root
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: threat-ai-selfsigned
+    kind: ClusterIssuer
+---
+# For a proper ACME setup: replace the Ingress annotation value with
+# `letsencrypt-prod`. The default lets the certificate request use the
+# HTTP-01 solver through the same nginx ingress controller.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com # CHANGE_ME: real receiving email for expiry notices
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com # CHANGE_ME: real receiving email for expiry notices
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
