@@ -27,3 +27,8 @@ def test_unclassified_fallback():
 def test_phishing_mapping():
     result = map_alert("log", "spearphishing email blocked")
     assert result["technique_id"] == "T1566"
+
+
+def test_int_port_does_not_crash():
+    result = map_alert("system_log", "brute force", "10.0.0.9", 22)
+    assert result["technique_id"] == "T1110"

@@ -7,6 +7,8 @@ MITRE ATT&CK dataset feed; the interface (``map_alert``) stays the same.
 
 from __future__ import annotations
 
+import re
+
 from typing import Optional
 
 # (tactic, technique_id, technique_name) <- keyword triggers
@@ -45,20 +47,26 @@ _NETWORK_RULES: list[tuple[tuple[str, str, str], tuple[str, ...]]] = [
 ]
 
 
+def _keyword_in(keyword: str, text: str) -> bool:
+    """Word-boundary match so short keywords (e.g. ``rce``) don't match
+    inside longer words (e.g. ``force``)."""
+    return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+
+
 def map_alert(alert_type: str | None, message: str | None, source_ip: str | None = None, src_port: str | None = None) -> dict:
     """Return a MITRE ATT&CK mapping ``{tactic, technique_id, technique}``.
 
     Matches are keyword-based and best-effort; unknown patterns map to
     ``"Unclassified"`` so every alert still carries ATT&CK metadata.
     """
-    text = ((message or "") + " " + (source_ip or "") + " " + (src_port or "")).lower()
+    text = f"{message or ''} {source_ip or ''} {src_port or ''}".lower()
     for (tactic, tech_id, tech_name), keywords in _RULES:
-        if any(k in text for k in keywords):
+        if any(_keyword_in(k, text) for k in keywords):
             return {"tactic": tactic, "technique_id": tech_id, "technique": tech_name}
 
     if alert_type == "network":
         for (tactic, tech_id, tech_name), keywords in _NETWORK_RULES:
-            if any(k in text for k in keywords):
+            if any(_keyword_in(k, text) for k in keywords):
                 return {"tactic": tactic, "technique_id": tech_id, "technique": tech_name}
 
     return {"tactic": "Unclassified", "technique_id": "N/A", "technique": "Unclassified"}

@@ -111,8 +111,14 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   retraining pipeline (daily CronJob → `POST /retrain` hot-swap), administrator
   cross-tenant views (FR-TENANT-06: `/admin/orgs` + filtered roster), the
   audit-log + role-state screens (FR-UI-06), and the detection-rules + IP
-  reputation screens (FR-UI-05) are implemented. Remaining work: the live K8s
-  rollout for PostgreSQL/Kafka.
+  reputation screens (FR-UI-05) are implemented.
+- **Container runtime (FR-OPS / NFR-PORT)** — the docker-compose stack
+  (PostgreSQL on 5431, Zookeeper/Kafka) is live and verified end-to-end: the
+  backend runs against compose PG with `ENABLE_KAFKA=true`, the `alerts.raised` /
+  `raw-logs` / `actions.executed` topics receive JSON events via the shipped
+  producer, and the analyze/ingest paths persist to PG. Remaining work: the live
+  K8s rollout of `k8s/` (backend, dashboard, ml-service, ingress) onto a real
+  cluster.
 
 ## Notes on test file layout
 

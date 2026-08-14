@@ -95,7 +95,13 @@ cd docker
 docker compose up -d
 ```
 
-The compose file exposes PostgreSQL on port **5431**. Adjust `DATABASE_URL` in `backend/.env` if your DB uses a different port.
+The compose file exposes PostgreSQL on port **5431**. Adjust `DATABASE_URL` in `backend/.env` if your DB uses a different port. Verified compose runtime (see `docker/docker-compose.yml`):
+
+- PostgreSQL on `localhost:5431` (`threatuser` / `threatpass` / `threatdb`)
+- Zookeeper + Kafka on `localhost:2181` / `localhost:9092`
+
+To point the backend at the compose stack, export these before starting it:
+`DATABASE_URL=postgresql://threatuser:threatpass@localhost:5431/threatdb`, `ENABLE_KAFKA=true`.
 
 ### 2. Start the ML service
 

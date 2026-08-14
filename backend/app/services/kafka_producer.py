@@ -11,7 +11,11 @@ if settings.ENABLE_KAFKA:
 
     def _publish(topic: str, event: dict, key: str | None = None) -> None:
         """Publish a JSON event to a topic, optionally keyed (tenant/entity)."""
-        producer.send(topic, event, key=key.encode() if key else None)
+        producer.send(
+            topic,
+            event,
+            key=str(key).encode() if key is not None else None,
+        )
         producer.flush()
 
     def send_alert(alert: dict) -> None:

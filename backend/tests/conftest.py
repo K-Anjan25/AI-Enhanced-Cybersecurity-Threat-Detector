@@ -1,3 +1,9 @@
+import os
+
+# Force the app-level engine (readiness probe, startup migrations) to an
+# in-memory SQLite so the suite is hermetic and never depends on a live PG.
+os.environ["DATABASE_URL"] = "sqlite://"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
