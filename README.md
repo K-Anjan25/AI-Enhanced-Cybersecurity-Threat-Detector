@@ -88,19 +88,34 @@ Stored locally under `/datasets`, excluded from version control.
 
 ## Running the Project (Local)
 
-### 1. Start infrastructure (PostgreSQL, optionally Kafka)
+### 1. Run the whole app with Docker (lightweight, ~1 GB budget)
 
 ```bash
 cd docker
 docker compose up -d
 ```
 
-The compose file exposes PostgreSQL on port **5431**. Adjust `DATABASE_URL` in `backend/.env` if your DB uses a different port. Verified compose runtime (see `docker/docker-compose.yml`):
+Now the compose file runs the **complete application stack** (`docker compose up -d`):
 
-- PostgreSQL on `localhost:5431` (`threatuser` / `threatpass` / `threatdb`)
-- Zookeeper + Kafka on `localhost:2181` / `localhost:9092`
+- **dashboard** on `http://localhost:3000` — frontend (nginx), same-origin `/api` proxy
+- **backend** on `http://localhost:8000` — API, migrations auto-run
+- **ml-service** on `http://localhost:8001` — ML detection
+- **postgres** on `localhost:5431` (`threatuser` / `threatpass` / `threatdb`)
 
-To point the backend at the compose stack, export these before starting it:
+Per-container memory limits sum to **~928 MiB**, sized for an 8 GB laptop
+(host WSL2 VM capped via `%UserProfile%\.wslconfig`; on 8 GB use
+`memory=2GB`, `processors=2`, `swap=2GB`).
+
+Kafka/Zookeeper are **opt-in** (they need ~2 GiB on their own and are
+excluded by default to keep the 1 GB budget):
+
+```bash
+docker compose --profile stream up -d
+```
+
+Backend is configured for the stack by default (`DATABASE_URL=...@postgres:5432/...`,
+`ENABLE_KAFKA=false`, `ML_SERVICE_URL=http://ml-service:8001`). To instead run the
+backend natively against the compose Postgres, export:
 `DATABASE_URL=postgresql://threatuser:threatpass@localhost:5431/threatdb`, `ENABLE_KAFKA=true`.
 
 ### 2. Start the ML service

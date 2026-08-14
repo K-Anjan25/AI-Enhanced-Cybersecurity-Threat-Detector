@@ -1,44 +1,121 @@
-version: "3.8"
+# ============================================================================
+# Threat AI stack — tuned for a 1GB container budget (8GB laptop host).
+#
+# Default (docker compose up -d): postgres + backend + ml-service + dashboard
+#   Sum of memory limits: 192 + 320 + 320 + 96 = 928 MiB  <= 1 GiB
+#
+# Streaming demo (Kafka) is OPT-IN and NOT included by default, because
+# ZooKeeper + Kafka (JVM) need ~1.5-2 GiB on their own:
+#   docker compose --profile stream up -d
+# (Run that only on a machine that can spare >2 GiB.)
+# ============================================================================
 
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  kafka:
-    image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-
   postgres:
     image: postgres:15
-    container_name: postgres
-    ports:
-      - "5431:5432"
+    container_name: threatai-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: threatdb
       POSTGRES_USER: threatuser
       POSTGRES_PASSWORD: threatpass
+    ports:
+      - "5431:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    mem_limit: 192m
+    mem_reservation: 96m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U threatuser -d threatdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  backend:
+    build: ../backend
+    container_name: threatai-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://threatuser:threatpass@postgres:5432/threatdb
+      ML_SERVICE_URL: http://ml-service:8001
+      ENABLE_KAFKA: "false"
+      CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+    ports:
+      - "8000:8000"
+    mem_limit: 320m
+    mem_reservation: 160m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  ml-service:
+    build: ../ml-service
+    container_name: threatai-ml
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    mem_limit: 320m
+    mem_reservation: 160m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  dashboard:
+    build:
+      context: ../dashboard
+      args:
+        REACT_APP_BASE_URL: /api/v1
+    container_name: threatai-dashboard
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    mem_limit: 96m
+    mem_reservation: 48m
+    cpus: 0.25
+
+  # ---- OPT-IN streaming (needs >1 GiB, do not enable on an 8GB laptop) ----
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    profiles: ["stream"]
+    container_name: threatai-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    mem_limit: 384m
+    cpus: 0.5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    profiles: ["stream"]
+    container_name: threatai-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    ports:
+      - "9092:9092"
+    mem_limit: 768m
+    cpus: 1.0
 
 volumes:
   postgres_data:
