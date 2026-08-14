@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import User, Org
-from app.api.v1.endpoints.auth import require_role
+from app.core.security import require_role
 from app.core.security import get_password_hash
+from app.services import item_service
 
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 def list_users(
     org_id: int | None = None,
     role: str | None = None,
@@ -50,7 +51,7 @@ def list_users(
     ]
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 def create_user(
     payload: dict,
     db: Session = Depends(get_db),
@@ -102,4 +103,56 @@ def delete_user(
 
     db.delete(user)
     db.commit()
+    item_service.audit(db, action="USER_DELETED", actor=current_user.username, resource=f"user:{user_id}")
     return {"success": True}
+
+
+@router.patch("/{user_id}")
+def update_user(
+    user_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if "role" in payload:
+        user.role = payload.get("role")
+    if "is_active" in payload:
+        user.is_active = bool(payload.get("is_active"))
+
+    db.commit()
+    db.refresh(user)
+
+    item_service.audit(
+        db,
+        action="USER_UPDATED",
+        actor=current_user.username,
+        resource=f"user:{user.id}",
+        details=str(payload),
+    )
+    return {"id": user.id, "role": user.role, "is_active": user.is_active}
+
+
+@router.patch("/{user_id}/block")
+def block_user(
+    user_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_blocked = bool(payload.get("is_blocked", True))
+    db.commit()
+    item_service.audit(
+        db,
+        action="USER_BLOCKED" if user.is_blocked else "USER_UNBLOCKED",
+        actor=current_user.username,
+        resource=f"user:{user.id}",
+    )
+    return {"id": user.id, "is_blocked": user.is_blocked}

@@ -108,17 +108,6 @@ def predict_log(data: dict):
     return result
 
 
-def predict_network_batch(items: list[dict]):
-    try:
-        return _post_with_retry(
-            f"{settings.ML_SERVICE_URL}/predict/network/batch",
-            items,
-            timeout=30,
-        )
-    except requests.ConnectionError:
-        return [fallback_predict_network(d) for d in items]
-
-
 def predict_log_batch(items: list[dict]):
     # ensure each entry is formatted correctly
     payloads = []

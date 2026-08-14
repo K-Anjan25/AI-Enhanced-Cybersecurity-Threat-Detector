@@ -19,10 +19,10 @@ from app.api.v1.endpoints import (
 api_router = APIRouter()
 
 api_router.include_router(auth.router, tags=["Authentication"])
-api_router.include_router(users.router, prefix="/user", tags=["Users"])
+api_router.include_router(users.router, prefix="/user", tags=["Profile"])
 api_router.include_router(alerts.router, tags=["Alerts & Analysis"])
 api_router.include_router(ingest.router, tags=["Ingestion"])
-api_router.include_router(public_users.router, prefix="/users", tags=["Public Users"])
+api_router.include_router(public_users.router, prefix="/users", tags=["User Administration"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(engine.router, tags=["Engine Settings"])
 api_router.include_router(audit.router, tags=["Audit Logs"])

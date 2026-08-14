@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import User
 from app.services.user_service import get_profile_data, update_user_profile_data, update_user_password
-from app.api.v1.endpoints.auth import get_current_user
+from app.core.security import get_current_user
 from app.core.abac import subject_permissions, effective_clearance, effective_department
 
 router = APIRouter()

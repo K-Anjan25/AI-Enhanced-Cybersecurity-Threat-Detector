@@ -1,14 +1,8 @@
-from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models import AuditLog
-
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 def severity_to_score(severity: str) -> float:
@@ -95,13 +89,3 @@ def create_audit_log(
     db.commit()
     db.refresh(entry)
     return entry
-
-
-def require_field(payload: dict, key: str) -> str:
-    value = payload.get(key)
-    if not value:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"'{key}' is required",
-        )
-    return value

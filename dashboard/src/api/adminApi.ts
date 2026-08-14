@@ -56,12 +56,12 @@ export const createRosterUser = async (payload: Record<string, any>): Promise<Ad
 };
 
 export const updateRosterUser = async (userId: number, payload: Record<string, any>): Promise<Record<string, any>> => {
-  const { data } = await api.patch(`/admin/users/${userId}`, payload);
+  const { data } = await api.patch(`/users/${userId}`, payload);
   return data;
 };
 
 export const deleteRosterUser = async (userId: number): Promise<{ success: boolean }> => {
-  const { data } = await api.delete<{ success: boolean }>(`/admin/users/${userId}`);
+  const { data } = await api.delete<{ success: boolean }>(`/users/${userId}`);
   return data;
 };
 

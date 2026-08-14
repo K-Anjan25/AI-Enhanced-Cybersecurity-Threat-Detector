@@ -44,13 +44,6 @@ class IpReputationOut(BaseModel):
         from_attributes = True
 
 
-class IpReputationUpdate(BaseModel):
-    threat_score: Optional[float] = None
-    is_blocked: Optional[bool] = None
-    category: Optional[str] = None
-    notes: Optional[str] = None
-
-
 class EngineSettings(BaseModel):
     detectionSensitivity: str = "MEDIUM"
     maxConcurrentScans: int = 10

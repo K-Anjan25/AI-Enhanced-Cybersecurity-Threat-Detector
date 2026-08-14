@@ -181,23 +181,12 @@ def can(user: User, permission: str, resource: Optional[dict] = None) -> bool:
 # FastAPI dependency helpers
 # ---------------------------------------------------------------------------
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-_bearer = HTTPBearer()
+from app.core.security import get_current_user
 
 
-def _resolve_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-    db: Session = Depends(get_db),
-) -> User:
-    """Resolve the authenticated subject by delegating to auth.get_current_user.
-
-    Imported lazily inside the function to avoid a module-level circular
-    dependency between core/abac and api/v1/endpoints/auth.
-    """
-    from app.api.v1.endpoints.auth import get_current_user
-
-    return get_current_user(request=None, credentials=credentials, db=db)
+def _resolve_current_user(current_user: User = Depends(get_current_user)) -> User:
+    """Resolve the authenticated subject via the shared core/security dependency."""
+    return current_user
 
 
 def require_permission(permission: str):

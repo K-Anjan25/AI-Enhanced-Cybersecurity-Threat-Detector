@@ -1,82 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from fastapi.security import HTTPBearer, OAuth2PasswordRequestForm, HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordRequestForm, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
 from app.core.database import get_db
 from app.core.config import settings
 from jose import jwt, JWTError
-from app.utils.email_utils import send_email
 from app.models import User, TokenBlocklist, Org
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token
+from app.core.security import (
+    security,
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    create_refresh_token,
+    get_current_user,
+    require_role,
+)
+from app.utils.email_utils import send_email
 from app.utils.rate_limit import RateLimiter
 
 router = APIRouter()
-security = HTTPBearer(auto_error=False)
 
 login_limiter = RateLimiter(limit=settings.LOGIN_RATE_LIMIT_PER_MINUTE, window_seconds=60)
-
-
-def _decode_access_token(token: str, db: Session, credentials_exception: HTTPException) -> User:
-    """Shared token -> user resolution for Bearer headers and httpOnly cookies."""
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-
-        # Optional: Check if token JTI is blocklisted
-        jti = payload.get("jti")
-        if jti and db.query(TokenBlocklist).filter_by(jti=jti).first():
-            raise HTTPException(status_code=401, detail="Token has been revoked")
-
-    except JWTError:
-        raise credentials_exception
-
-    user = db.query(User).filter(User.username == username).first()
-    if user is None:
-        raise credentials_exception
-    if user.is_blocked:
-        raise HTTPException(status_code=403, detail="Account is blocked")
-
-    return user
-
-
-def get_current_user(
-    request: Request = None,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-):
-    """
-    Resolves the current authenticated user from either an Authorization
-    Bearer header or the httpOnly access_token cookie (when COOKIE_AUTH is
-    enabled). This keeps JWTs out of localStorage while remaining backward
-    compatible with Bearer-token clients.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    token = credentials.credentials if credentials else None
-    if token is None and settings.COOKIE_AUTH and request is not None:
-        token = request.cookies.get("access_token")
-
-    if not token:
-        raise credentials_exception
-
-    return _decode_access_token(token, db, credentials_exception)
-
-
-def require_role(role: str):
-    def _dependency(user: User = Depends(get_current_user)):
-        if not user:
-            raise HTTPException(status_code=401, detail="Unauthorized")
-        user_role = getattr(user, "role", "user") or "user"
-        if user_role.lower() != role.lower() and role.lower() != "any":
-            raise HTTPException(status_code=403, detail="Forbidden")
-        return user
-    return _dependency
 
 
 @router.get("/me")

@@ -51,3 +51,5 @@ ui-design/
 # ======================
 .DS_Store
 Thumbs.db
+*.lnk
+Videos - Shortcut.lnk

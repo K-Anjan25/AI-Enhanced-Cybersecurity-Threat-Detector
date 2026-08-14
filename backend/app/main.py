@@ -10,7 +10,6 @@ from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.migrations import run_additive_migrations, ensure_default_org
-from app.models import TokenBlocklist, User, SecurityAlert, DetectionRule, IpReputation, EngineSetting, AuditLog
 from app.api.v1.router import api_router
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
