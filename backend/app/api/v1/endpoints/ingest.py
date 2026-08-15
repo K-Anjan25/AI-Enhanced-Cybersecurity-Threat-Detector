@@ -5,6 +5,7 @@ import csv
 import io
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.config import settings
 from app.services import alert_service
 from app.services.alert_service import process_batch
 from app.models import SecurityAlert, ScannedAlert, ScanBatch
@@ -23,7 +24,7 @@ def _run_background_scan(batch_id: int, records: list[dict], filename: str, org_
         batch.status = "processing"
         db.commit()
 
-        summary = process_batch(records, filename, produce_kafka=False, org_id=org_id)
+        summary = process_batch(records, filename, produce_kafka=settings.ENABLE_KAFKA, org_id=org_id)
 
         batch.total_logs = summary["total_logs"]
         batch.threats_detected = summary["threats_detected"]

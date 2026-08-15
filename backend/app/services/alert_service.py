@@ -3,7 +3,7 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from app.services.ml_client import predict_network, predict_log
-from app.services.kafka_producer import send_alert
+from app.services.kafka_producer import send_alert, send_normalized, send_raw_log, send_raw_flow
 from app.services.mitre import map_alert
 from app.services.threat_intel import enrich_alert
 from app.services.entity_graph import index_alert
@@ -50,6 +50,30 @@ def process_log(log: dict, produce_kafka: bool = True, db: Optional[Session] = N
     severity = score_to_severity(score, model_type=alert_type)
     mitre = map_alert(alert_type, message, source_ip, log.get("dst_port"))
     intel = enrich_alert(db, source_ip)
+
+    if produce_kafka:
+        # Streaming event chain (FR-STREAM-01/02, FR-DETECT-12): emit the raw
+        # record and a normalized, tenant-keyed event; the anomaly (if any) is
+        # published to alerts.raised below.
+        record = dict(log)
+        record["org_id"] = org_id
+        if alert_type == "network":
+            send_raw_flow(record)
+        else:
+            send_raw_log(record)
+        send_normalized(
+            {
+                "tenant_id": org_id,
+                "source": log.get("source") or log.get("src_ip") or "unknown",
+                "type": alert_type,
+                "message": message,
+                "anomaly_score": score,
+                "is_anomaly": is_anomaly,
+                "severity": severity,
+                "timestamp": log.get("timestamp"),
+                "org_id": org_id,
+            }
+        )
 
     alert = {
         "alert_type": alert_type,

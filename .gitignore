@@ -62,8 +62,8 @@ Thumbs.db
 *.lnk
 Videos - Shortcut.lnk
 
-diagrams/
-*.md
+# diagrams/
+# *.md
 
-docs/
-*.md
+# docs/
+# *.md

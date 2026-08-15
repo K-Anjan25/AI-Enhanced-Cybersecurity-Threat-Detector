@@ -8,6 +8,7 @@ from app.models import SecurityAlert, User
 from app.services.alert_service import process_log
 from app.core.abac import require_permission
 from app.core.security import get_current_user
+from app.core.config import settings
 from app.utils.helpers import serialize_alert
 
 router = APIRouter()
@@ -16,7 +17,7 @@ router = APIRouter()
 @router.post("/analyze")
 def analyze(log: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Analyze a single log entry and return the anomaly result."""
-    alert = process_log(log, produce_kafka=False, org_id=current_user.org_id)
+    alert = process_log(log, produce_kafka=settings.ENABLE_KAFKA, org_id=current_user.org_id)
     return alert
 
 

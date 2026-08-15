@@ -27,6 +27,10 @@ if settings.ENABLE_KAFKA:
     def send_raw_flow(record: dict) -> None:
         _publish(settings.RAW_FLOW_TOPIC, record, key=record.get("org_id"))
 
+    def send_normalized(event: dict) -> None:
+        """Publish a normalized event to ``events.normalized`` (tenant-keyed)."""
+        _publish(settings.NORMALIZED_TOPIC, event, key=event.get("org_id"))
+
     def send_action(event: dict) -> None:
         _publish(settings.ACTION_TOPIC, event, key=event.get("org_id"))
 
@@ -45,6 +49,9 @@ else:
 
     def send_raw_flow(record):
         _noop(record)
+
+    def send_normalized(event):
+        _noop(event)
 
     def send_action(event):
         _noop(event)
