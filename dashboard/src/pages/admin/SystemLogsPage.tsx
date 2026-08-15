@@ -49,6 +49,8 @@ const SystemLogs: React.FC = () => {
       <PageHeader
         title="System Audit Logs"
         description="Immutable audit trail of administrative and detection-engine actions. Admin only."
+        backTo="/admin"
+        crumbs={[{ label: "Admin", to: "/admin" }, { label: "System Audit Logs" }]}
       />
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">

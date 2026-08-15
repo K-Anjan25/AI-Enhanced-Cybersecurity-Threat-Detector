@@ -129,6 +129,8 @@ const RulesPage: React.FC = () => {
       <PageHeader
         title="Detection Rules"
         description="Tunable signatures and heuristics used by the detection engine. Changes are audited."
+        backTo="/admin"
+        crumbs={[{ label: "Admin", to: "/admin" }, { label: "Detection Rules" }]}
         actions={
           <button
             type="button"

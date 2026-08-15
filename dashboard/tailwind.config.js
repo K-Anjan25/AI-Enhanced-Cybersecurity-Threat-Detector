@@ -3,6 +3,10 @@ module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Inter Variable"', "Inter", "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono Variable"', "JetBrains Mono", "ui-monospace", "monospace"],
+      },
       colors: {
         "app-bg": {
           DEFAULT: "#0a0f1c",
@@ -23,7 +27,7 @@ module.exports = {
           DEFAULT: "#94a3b8",
         },
         "content-tertiary": {
-          DEFAULT: "#64748b",
+          DEFAULT: "#7c8ca3",
         },
         "accent-primary": {
           DEFAULT: "#22d3ee",
@@ -68,6 +72,10 @@ module.exports = {
           "0%": { opacity: "0", transform: "translateY(2px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         "scale-in": {
           "0%": { opacity: "0", transform: "scale(0.97)" },
           "100%": { opacity: "1", transform: "scale(1)" },
@@ -79,6 +87,7 @@ module.exports = {
       },
       animation: {
         "fade-in": "fade-in 160ms ease-out",
+        "fade-up": "fade-up 240ms ease-out",
         "scale-in": "scale-in 140ms ease-out",
         "slide-in-right": "slide-in-right 200ms ease-out",
       },

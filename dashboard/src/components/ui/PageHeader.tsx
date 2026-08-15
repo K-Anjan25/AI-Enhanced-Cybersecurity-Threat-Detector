@@ -1,16 +1,34 @@
 import React from "react";
+import { BackButton } from "./BackButton";
+import { Breadcrumbs, Crumb } from "./Breadcrumbs";
 
 export interface PageHeaderProps {
   title: string;
   description?: string;
   actions?: React.ReactNode;
   badge?: React.ReactNode;
+  /** Route/count to navigate back to when the page is a deep view. */
+  backTo?: string | number;
+  /** Breadcrumb trail shown above the title. */
+  crumbs?: Crumb[];
 }
 
-/** Consistent page heading: title + description + optional actions. */
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions, badge }) => (
+/** Consistent page heading: optional back/breadcrumbs + title + description + actions. */
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions, badge, backTo, crumbs }) => (
   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-    <div>
+    <div className="min-w-0">
+      {(backTo !== undefined || (crumbs && crumbs.length > 0)) && (
+        <div className="mb-1.5 flex items-center gap-1">
+          {crumbs && crumbs.length > 0 ? (
+            <>
+              <BackButton to={backTo} label="" className="px-1.5" />
+              <Breadcrumbs items={crumbs} />
+            </>
+          ) : (
+            <BackButton to={backTo} />
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-2.5">
         <h1 className="text-2xl font-bold text-content-primary tracking-tight">{title}</h1>
         {badge}

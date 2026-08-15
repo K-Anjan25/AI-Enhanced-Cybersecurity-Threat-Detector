@@ -50,6 +50,8 @@ const AccessRolesPage: React.FC = () => {
       <PageHeader
         title="Access Roles"
         description="Attribute-based access control (ABAC) matrix. Permissions are granted by role and clamped by clearance level."
+        backTo="/admin"
+        crumbs={[{ label: "Admin", to: "/admin" }, { label: "Access Roles" }]}
         actions={
           <button
             type="button"

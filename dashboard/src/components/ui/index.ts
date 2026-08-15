@@ -9,3 +9,5 @@ export { Modal } from "./Modal";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Select } from "./Select";
 export { PageHeader } from "./PageHeader";
+export { BackButton } from "./BackButton";
+export { Breadcrumbs } from "./Breadcrumbs";

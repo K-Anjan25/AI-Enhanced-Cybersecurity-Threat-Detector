@@ -65,6 +65,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
         <button
           type="button"
           aria-label="Notifications"
+          title="Notifications"
           className="relative w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer"
         >
           <Bell size={16} aria-hidden />

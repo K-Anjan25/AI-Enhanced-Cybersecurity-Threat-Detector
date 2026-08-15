@@ -118,6 +118,8 @@ const ReputationPage: React.FC = () => {
       <PageHeader
         title="IP Reputation"
         description="Threat-intel scoring and blacklist status for observed source IPs. Changes are audited."
+        backTo="/admin"
+        crumbs={[{ label: "Admin", to: "/admin" }, { label: "IP Reputation" }]}
         actions={
           <button
             type="button"

@@ -15,6 +15,7 @@ import {
   KeyRound,
   ListChecks,
   Ban,
+  Rows3,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -46,6 +47,8 @@ const ADMIN_ITEMS: NavItem[] = [
   { name: "IP Reputation", path: "/admin/reputation", icon: Ban },
 ];
 
+type Density = "comfortable" | "compact";
+
 export interface DashboardLayoutProps {
   children?: ReactNode;
   onLogout?: () => void;
@@ -53,6 +56,10 @@ export interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [density, setDensity] = useState<Density>(() => {
+    const saved = localStorage.getItem("td_density");
+    return saved === "compact" ? "compact" : "comfortable";
+  });
   const location = useLocation();
 
   const username: string = localStorage.getItem("username") || "User";
@@ -76,6 +83,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
       ? location.pathname.startsWith(item.path)
       : location.pathname === item.path;
 
+  const toggleDensity = (): void => {
+    const next: Density = density === "comfortable" ? "compact" : "comfortable";
+    setDensity(next);
+    localStorage.setItem("td_density", next);
+  };
+
   const renderItem = (item: NavItem): React.ReactElement => {
     const active = isActive(item);
     const Icon = item.icon;
@@ -98,15 +111,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
   };
 
   return (
-    <div className="h-screen w-screen bg-app-bg text-content-primary flex overflow-hidden">
+    <div
+      className="h-screen w-screen bg-app-bg text-content-primary flex overflow-hidden"
+      data-density={density}
+    >
       <aside
         className={cn(
-          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex flex-col justify-between shrink-0 z-30",
+          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex flex-col justify-between shrink-0 z-30 overflow-hidden",
           isSidebarOpen ? "w-64" : "w-[68px]"
         )}
       >
-        <div>
-          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle shrink-0">
             {isSidebarOpen && (
               <Link to="/" className="text-lg font-bold text-accent-primary truncate tracking-tight hover:text-accent-glow transition">
                 ThreatDetector AI
@@ -125,7 +141,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             </button>
           </div>
 
-          <nav className="p-3 space-y-1.5 mt-2">
+          {/* Scrollable nav: overflow-y-auto keeps the footer pinned when the
+              item list exceeds the viewport height. */}
+          <nav className="p-3 space-y-1.5 mt-2 flex-1 overflow-y-auto min-h-0">
             {NAV_ITEMS.map(renderItem)}
 
             {adminVisible && (
@@ -139,23 +157,32 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
           </nav>
         </div>
 
-        <div className="p-4 border-t border-line-subtle flex items-center gap-3">
+        <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0">
           <div className="w-9 h-9 rounded-full bg-accent-primary text-app-bg flex items-center justify-center font-bold shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
           {isSidebarOpen && (
-            <div className="overflow-hidden">
+            <div className="overflow-hidden flex-1 min-w-0">
               <p className="text-sm font-semibold text-content-primary truncate">{username}</p>
               <p className="text-xs text-accent-primary capitalize">{userRole}</p>
             </div>
           )}
+          <button
+            type="button"
+            onClick={toggleDensity}
+            title={density === "comfortable" ? "Switch to compact density" : "Switch to comfortable density"}
+            aria-pressed={density === "compact"}
+            className="p-2 rounded-lg text-content-secondary hover:bg-app-subtle hover:text-content-primary transition cursor-pointer"
+          >
+            <Rows3 size={16} aria-hidden />
+          </button>
         </div>
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <Navbar onLogout={onLogout} />
 
-        <main className="p-6 flex-1 min-w-0 w-full overflow-y-auto">
+        <main key={location.pathname} className="p-6 flex-1 min-w-0 w-full overflow-y-auto animate-fade-up">
           {children || <Outlet />}
         </main>
       </div>

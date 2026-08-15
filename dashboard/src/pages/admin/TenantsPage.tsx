@@ -32,6 +32,8 @@ const TenantsPage: React.FC = () => {
       <PageHeader
         title="Tenants"
         description="Cross-tenant workspace overview for SOC administrators. Every tenant is isolated from the others."
+        backTo="/admin"
+        crumbs={[{ label: "Admin", to: "/admin" }, { label: "Tenants" }]}
         actions={
           <button
             type="button"

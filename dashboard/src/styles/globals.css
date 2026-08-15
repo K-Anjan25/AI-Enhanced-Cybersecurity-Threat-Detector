@@ -49,4 +49,34 @@
   ::-webkit-scrollbar-thumb:hover {
     background: theme("colors.line-bright.DEFAULT");
   }
+
+  /* Compact density: tightens app shell + card padding and row gaps. */
+  [data-density="compact"] main {
+    padding: 1rem;
+  }
+  [data-density="compact"] main [class*="space-y-"] > * + * {
+    margin-top: 0.875rem;
+  }
+  [data-density="compact"] main .p-6 {
+    padding: 1.125rem;
+  }
+  [data-density="compact"] main .px-5 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  [data-density="compact"] main .py-3 {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  /* Subtle 60 ms staggered entrance for sibling lists (e.g. alert rows). */
+  .list-stagger > * {
+    animation: fade-in 180ms ease-out both;
+  }
+  .list-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .list-stagger > *:nth-child(2) { animation-delay: 60ms; }
+  .list-stagger > *:nth-child(3) { animation-delay: 120ms; }
+  .list-stagger > *:nth-child(4) { animation-delay: 180ms; }
+  .list-stagger > *:nth-child(5) { animation-delay: 240ms; }
+  .list-stagger > *:nth-child(n + 6) { animation-delay: 300ms; }
 }

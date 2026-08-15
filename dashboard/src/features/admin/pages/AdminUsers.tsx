@@ -109,6 +109,8 @@ export default function AdminUsers(): React.ReactElement {
       <PageHeader
         title="SOC Analyst Roster"
         description="Provision, assign tier credentials, and control platform access."
+        backTo="/admin"
+        crumbs={[{ label: "Admin", to: "/admin" }, { label: "Analyst Roster" }]}
         actions={
           <Button
             type="button"
