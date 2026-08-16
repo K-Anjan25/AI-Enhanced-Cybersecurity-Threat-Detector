@@ -34,6 +34,30 @@ Each `/predict/*/detail` endpoint (and `/predict/email`, `/predict/dns`) returns
 - `GET /models` — model loading status
 - `GET /health`, `GET /info`
 
+## Explainability
+
+Each detection family has a companion endpoint that explains *why* a decision
+was reached — top contributing terms (TF-IDF coefficients) for the log/email
+classifiers, per-feature deviation from the training centroid for the
+IsolationForest, and the fired rules for DNS. All responses share a stable
+shape that a UI can render generically:
+
+```json
+{
+  "contributions": [
+    { "term": "sql injection", "score": 0.42, "direction": "attack", "source": "keyword" }
+  ],
+  "summary": "Driven by: sql injection.",
+  "method": "coefficients + keyword evidence",
+  "model_error": null
+}
+```
+
+- `POST /explain/log`, `POST /explain/email`, `POST /explain/network`, `POST /explain/dns`
+
+Dependency-free: no SHAP or extra runtime deps; coefficient/centroid evidence is
+extracted directly from the already-loaded sklearn pipelines.
+
 ## Run Locally
 
 ```bash

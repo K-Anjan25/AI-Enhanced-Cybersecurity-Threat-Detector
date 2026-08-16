@@ -5,6 +5,7 @@ from app.network_model import predict_network, model_status as network_status, r
 from app.log_model import predict_log, model_status as log_status, reload as log_reload
 from app.email_model import predict_email, model_status as email_status, reload as email_reload
 from app.dns_model import predict_domain
+from app.explain import explain_log, explain_email, explain_network, explain_dns
 from app import training
 
 app = FastAPI(
@@ -58,6 +59,26 @@ def email_prediction(data: EmailInput):
 @app.post("/predict/dns")
 def dns_prediction(data: DnsInput):
     return predict_domain(data)
+
+
+@app.post("/explain/log")
+def log_explanation(data: LogInput):
+    return explain_log(data)
+
+
+@app.post("/explain/email")
+def email_explanation(data: EmailInput):
+    return explain_email(data)
+
+
+@app.post("/explain/network")
+def network_explanation(data: NetworkInput):
+    return explain_network(data)
+
+
+@app.post("/explain/dns")
+def dns_explanation(data: DnsInput):
+    return explain_dns(data)
 
 
 @app.get("/health")
