@@ -1,5 +1,7 @@
 # AI-Enhanced Cybersecurity Threat Detector
 
+[![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
+
 An end-to-end cybersecurity system that detects anomalous network traffic, malicious logs, phishing emails, and suspicious DNS queries using machine learning and stream processing.
 
 The project supports both **local (REST)** and **streaming (Kafka)** execution modes.
