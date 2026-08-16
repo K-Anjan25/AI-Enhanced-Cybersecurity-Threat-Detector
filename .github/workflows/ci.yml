@@ -57,3 +57,15 @@ jobs:
         run: npm ci
       - name: Typecheck + build
         run: npm run build
+
+  k8s:
+    name: K8s manifest validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bmuschko/setup-kubeconform@v1
+        with:
+          kubeconform-version: "0.6.3"
+      - name: Validate manifests
+        run: |
+          kubeconform -summary -verbose -strict -ignore-missing-schemas k8s/
