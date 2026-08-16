@@ -69,7 +69,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-AUDIT-02 | append-only (ORM rejects UPDATE/DELETE) | database-design | `test_endpoints.py` (append-only) | UT |
 | FR-AUDIT-03 | `GET /audit-logs` (audit:read) | abac catalog | `test_endpoints.py` | IT |
 | FR-AUDIT-04 | `/health/live` + `/health/ready` | component-diagram | `test_endpoints.py` | IT |
-| FR-AUDIT-05 | `X-Request-ID` tracing | middleware | REV |
+| FR-AUDIT-05 | `X-Request-ID` tracing | middleware | `test_endpoints.py` (echo + generate) | IT |
 | FR-STREAM-01 | `kafka_producer.send_normalized` in `process_log` event chain (tenant-keyed, `ENABLE_KAFKA`) | component-diagram | `test_kafka_producer.py` | UT |
 | FR-STREAM-02 | `alerts.raised` Kafka publishing | component-diagram | `test_kafka_producer.py` (alert leg of chain) | UT |
 | FR-STREAM-03 | SOAR engine (`actions.executed`, auto + manual trigger) | component-diagram, activity-diagram | `test_soar.py` | UT |

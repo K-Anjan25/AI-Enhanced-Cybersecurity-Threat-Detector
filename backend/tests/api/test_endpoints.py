@@ -21,6 +21,19 @@ def test_readiness_probe(client):
     assert resp.json()["status"] == "ready"
 
 
+def test_x_request_id_tracing_echoes_header(client):
+    resp = client.get("/health/live", headers={"X-Request-ID": "trace-abc123"})
+    assert resp.status_code == 200
+    assert resp.headers["X-Request-ID"] == "trace-abc123"
+
+
+def test_x_request_id_generated_when_absent(client):
+    resp = client.get("/health/live")
+    assert resp.status_code == 200
+    assert "X-Request-ID" in resp.headers
+    assert resp.headers["X-Request-ID"]
+
+
 def test_register_login_me_flow(client, auth_headers):
     # /me with bearer token
     resp = client.get("/api/v1/me", headers=auth_headers)
