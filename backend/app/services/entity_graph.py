@@ -10,9 +10,11 @@ from __future__ import annotations
 import ipaddress
 import re
 import uuid
+from collections import deque
 from typing import Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.models import Entity, EntityLink, SecurityAlert
 from app.utils.helpers import paginate
@@ -237,4 +239,140 @@ def serialize_entity(entity: Entity) -> dict:
         "meta": entity.meta,
         "first_seen": entity.first_seen.isoformat() if entity.first_seen else None,
         "last_seen": entity.last_seen.isoformat() if entity.last_seen else None,
+    }
+
+
+def _adjacency(db: Session, org_id: int | None) -> dict[int, list[EntityLink]]:
+    """Group out-edges by source entity id (org-scoped, all links)."""
+    query = db.query(EntityLink)
+    if org_id is not None:
+        query = query.filter(EntityLink.org_id == org_id)
+    adj: dict[int, list[EntityLink]] = {}
+    for edge in query.all():
+        adj.setdefault(edge.source_entity_id, []).append(edge)
+    return adj
+
+
+def graph_summary(db: Session, org_id: int | None = None) -> dict:
+    """Aggregate metrics for the attack graph: node/edge counts, top-risk and
+    most-linked entities (hubs), and the entity-type breakdown."""
+    entity_query = db.query(Entity)
+    if org_id is not None:
+        entity_query = entity_query.filter(Entity.org_id == org_id)
+
+    nodes = entity_query.count()
+
+    link_query = db.query(EntityLink)
+    if org_id is not None:
+        link_query = link_query.filter(EntityLink.org_id == org_id)
+    edges = link_query.count()
+
+    # Type breakdown.
+    type_rows = (
+        db.query(Entity.entity_type, func.count(Entity.id))
+        .filter(Entity.org_id == org_id if org_id is not None else True)
+        .group_by(Entity.entity_type)
+        .all()
+    )
+    by_type = {t: int(c) for t, c in type_rows}
+
+    # Top risk.
+    top_risk_rows = (
+        entity_query.order_by(Entity.risk_score.desc())
+        .limit(5)
+        .all()
+    )
+    top_risk = [serialize_entity(e) for e in top_risk_rows if e is not None]
+
+    # Hubs: entities with the most out-links.
+    adj = _adjacency(db, org_id)
+    if adj:
+        hub_ids = sorted(adj, key=lambda k: len(adj[k]), reverse=True)[:5]
+        hubs = []
+        for hid in hub_ids:
+            entity = db.query(Entity).filter(Entity.id == hid).first()
+            if entity is not None:
+                hubs.append({**serialize_entity(entity), "degree": len(adj[hid])})
+    else:
+        hubs = []
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "by_type": by_type,
+        "top_risk": top_risk,
+        "hubs": hubs,
+    }
+
+
+def shortest_path(db: Session, from_id: int, to_id: int, org_id: int | None = None) -> dict:
+    """BFS shortest directed path from ``from_id`` to ``to_id``.
+
+    Returns ``path`` (ordered entity list incl. both endpoints), ``links``
+    (edges traversed), and ``hops``. Empty when no direct path exists.
+    """
+    start = get_entity(db, from_id, org_id=org_id)
+    goal = get_entity(db, to_id, org_id=org_id)
+    if start is None or goal is None:
+        return {"path": [], "links": [], "hops": None, "reachable": False}
+
+    if from_id == to_id:
+        return {
+            "path": [serialize_entity(start)],
+            "links": [],
+            "hops": 0,
+            "reachable": True,
+        }
+
+    adj = _adjacency(db, org_id)
+    # Rich parent pointers allow edge reconstruction after BFS completes.
+    queue = deque([start])
+    visited = {start.id: (None, None)}  # node_id -> (parent_node_id, edge_id)
+
+    while queue:
+        current = queue.popleft()
+        if current.id == goal.id:
+            break
+        for edge in adj.get(current.id, []):
+            if edge.target_entity_id in visited:
+                continue
+            target = db.query(Entity).filter(Entity.id == edge.target_entity_id).first()
+            if target is None:
+                continue
+            visited[target.id] = (current.id, edge.id)
+            queue.append(target)
+
+    if goal.id not in visited:
+        return {"path": [], "links": [], "hops": None, "reachable": False}
+
+    # Reconstruct path node ids and edge ids in order from start -> goal.
+    node_ids: list[int] = []
+    edge_ids: list[int] = []
+    node_id: int | None = goal.id
+    while node_id is not None:
+        node_ids.append(node_id)
+        parent, edge_id = visited[node_id]
+        if edge_id is not None:
+            edge_ids.append(edge_id)
+        node_id = parent
+    node_ids.reverse()
+    edge_ids.reverse()
+
+    nodes = [serialize_entity(db.query(Entity).filter(Entity.id == nid).first()) for nid in node_ids]
+    links = []
+    edges_by_id = {e.id: e for e in db.query(EntityLink).filter(EntityLink.id.in_(edge_ids)).all()}
+    for i, nid in enumerate(node_ids[:-1]):
+        edge = edges_by_id.get(edge_ids[i])
+        if edge is not None:
+            links.append({
+                "source": nid,
+                "target": node_ids[i + 1],
+                "relation": edge.relation,
+            })
+
+    return {
+        "path": nodes,
+        "links": links,
+        "hops": len(links),
+        "reachable": True,
     }

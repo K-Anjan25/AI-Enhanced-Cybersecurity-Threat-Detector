@@ -104,3 +104,93 @@ def test_serialize_entity_shape(db_session, org_fixture):
     assert data["entity_type"] == "ip"
     assert data["occurrences"] == 1
     assert data["risk_score"] == 0.0
+
+
+def test_graph_summary_counts_and_hubs(db_session, org_fixture, build_alert):
+    alert = build_alert(org_id=org_fixture.id)
+    entity_graph.index_alert(db_session, alert)
+    db_session.commit()
+
+    summary = entity_graph.graph_summary(db_session, org_id=org_fixture.id)
+    assert summary["nodes"] >= 2
+    assert summary["edges"] >= 1
+    assert "ip" in summary["by_type"]
+    assert summary["top_risk"][0]["value"] == "203.0.113.5"
+    assert len(summary["hubs"]) >= 1
+    assert "degree" in summary["hubs"][0]
+
+
+def test_graph_summary_scoped_by_org(db_session, org_fixture, build_alert):
+    other = Org(name="Other", slug="other3")
+    db_session.add(other)
+    db_session.commit()
+
+    entity_graph.index_alert(db_session, build_alert(org_id=org_fixture.id))
+    entity_graph.index_alert(db_session, build_alert(org_id=other.id, message="other deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"))
+    db_session.commit()
+
+    summary_a = entity_graph.graph_summary(db_session, org_id=org_fixture.id)
+    summary_b = entity_graph.graph_summary(db_session, org_id=other.id)
+    assert summary_a["nodes"] == 2
+    assert summary_b["nodes"] == 2
+    assert summary_a["by_type"]["ip"] == 1
+    assert "hash" in summary_a["by_type"]
+
+
+def test_shortest_path_finds_direct_link(db_session, org_fixture, build_alert):
+    alert = build_alert(org_id=org_fixture.id)
+    entity_graph.index_alert(db_session, alert)
+    db_session.commit()
+
+    ips = db_session.query(Entity).filter(Entity.entity_type == "ip").all()
+    hashes = db_session.query(Entity).filter(Entity.entity_type == "hash").all()
+    assert len(ips) >= 1 and len(hashes) >= 1
+
+    result = entity_graph.shortest_path(db_session, ips[0].id, hashes[0].id, org_id=org_fixture.id)
+    assert result["reachable"] is True
+    assert result["hops"] == 1
+    assert len(result["path"]) == 2
+    assert len(result["links"]) == 1
+
+
+def test_shortest_path_returns_empty_when_unreachable(db_session, org_fixture):
+    a = entity_graph.upsert_entity(db_session, "ip", "192.0.2.1", org_fixture.id)
+    b = entity_graph.upsert_entity(db_session, "ip", "192.0.2.2", org_fixture.id)
+    db_session.commit()
+    result = entity_graph.shortest_path(db_session, a.id, b.id, org_id=org_fixture.id)
+    assert result["reachable"] is False
+    assert result["path"] == []
+    assert result["hops"] is None
+
+
+def test_shortest_path_self_is_zero_hops(db_session, org_fixture):
+    a = entity_graph.upsert_entity(db_session, "ip", "192.0.2.10", org_fixture.id)
+    db_session.commit()
+    result = entity_graph.shortest_path(db_session, a.id, a.id, org_id=org_fixture.id)
+    assert result["reachable"] is True
+    assert result["hops"] == 0
+
+
+def test_shortest_path_two_hop(db_session, org_fixture):
+    """a -> b -> c should yield a 2-hop path through b."""
+    a = entity_graph.upsert_entity(db_session, "ip", "192.0.2.20", org_fixture.id)
+    b = entity_graph.upsert_entity(db_session, "ip", "192.0.2.21", org_fixture.id)
+    c = entity_graph.upsert_entity(db_session, "ip", "192.0.2.22", org_fixture.id)
+    alert = SecurityAlert(
+        alert_type="system_log",
+        source_ip="192.0.2.20",
+        severity="LOW",
+        score=0.1,
+        message=f"flow from {b.value}",
+        org_id=org_fixture.id,
+    )
+    db_session.add(alert)
+    db_session.flush()
+    entity_graph.link_entities(db_session, a, b, alert, "communicates")
+    entity_graph.link_entities(db_session, b, c, alert, "communicates")
+    db_session.commit()
+
+    result = entity_graph.shortest_path(db_session, a.id, c.id, org_id=org_fixture.id)
+    assert result["reachable"] is True
+    assert result["hops"] == 2
+    assert [n["value"] for n in result["path"]] == ["192.0.2.20", "192.0.2.21", "192.0.2.22"]

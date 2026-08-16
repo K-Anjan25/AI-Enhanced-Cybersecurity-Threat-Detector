@@ -30,6 +30,26 @@ def list_entities(
     }
 
 
+@router.get("/summary")
+def graph_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregate attack-graph metrics: node/edge counts, top-risk + hub entities."""
+    return entity_graph.graph_summary(db, org_id=current_user.org_id)
+
+
+@router.get("/path")
+def entity_path(
+    from_id: int = Query(..., ge=1),
+    to_id: int = Query(..., ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Shortest directed path between two entities (BFS)."""
+    return entity_graph.shortest_path(db, from_id, to_id, org_id=current_user.org_id)
+
+
 @router.get("/{entity_id}")
 def get_entity(
     entity_id: int,

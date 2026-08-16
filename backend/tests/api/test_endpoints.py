@@ -478,3 +478,70 @@ def test_forgot_password_reset_link_development_only(client, db_session, monkeyp
         assert "reset_link" not in resp.json()
     finally:
         settings.ENVIRONMENT = original
+
+
+def test_entity_graph_summary_endpoint(client, db_session, auth_headers):
+    from app.models import SecurityAlert
+    from app.services import entity_graph
+
+    alert = SecurityAlert(
+        alert_type="system_log",
+        source_ip="203.0.113.5",
+        severity="HIGH",
+        score=0.87,
+        message="Malicious payload deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        org_id=1,
+    )
+    db_session.add(alert)
+    db_session.flush()
+    entity_graph.index_alert(db_session, alert)
+    db_session.commit()
+
+    resp = client.get("/api/v1/entities/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["nodes"] >= 2
+    assert "by_type" in body and "ip" in body["by_type"]
+    assert len(body["hubs"]) >= 1
+
+
+def test_entity_graph_path_endpoint(client, db_session, auth_headers):
+    from app.models import SecurityAlert
+    from app.services import entity_graph
+
+    alert = SecurityAlert(
+        alert_type="system_log",
+        source_ip="203.0.113.5",
+        severity="HIGH",
+        score=0.87,
+        message="Malicious payload deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        org_id=1,
+    )
+    db_session.add(alert)
+    db_session.flush()
+    entity_graph.index_alert(db_session, alert)
+    db_session.commit()
+
+    from app.models import Entity
+
+    ip = db_session.query(Entity).filter(Entity.entity_type == "ip").first()
+    hsh = db_session.query(Entity).filter(Entity.entity_type == "hash").first()
+
+    resp = client.get(
+        f"/api/v1/entities/path?from_id={ip.id}&to_id={hsh.id}",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["reachable"] is True
+    assert body["hops"] == 1
+    assert len(body["path"]) == 2
+
+
+def test_entity_graph_path_invalid_id(client, auth_headers):
+    resp = client.get(
+        "/api/v1/entities/path?from_id=999999&to_id=888888",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["reachable"] is False
