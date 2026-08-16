@@ -14,6 +14,8 @@ import {
   Cell,
 } from "recharts";
 import AnalyticsApi from "../api/analyticsApi";
+import MlApi from "../api/mlApi";
+import type { BenchmarkReport, ExplainKind, ExplanationResponse } from "../types/ml";
 import type { OverviewStats, TopThreat, TrendPoint } from "../types/analytics";
 import { PageHeader, LoadingState, StatCard } from "../components/ui";
 
@@ -42,6 +44,17 @@ const AIAnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [benchmark, setBenchmark] = useState<BenchmarkReport | null>(null);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
+
+  const [explainKind, setExplainKind] = useState<ExplainKind>("log");
+  const [explainInput, setExplainInput] = useState(
+    "SQL injection exploit detected on database"
+  );
+  const [explanation, setExplanation] = useState<ExplanationResponse | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explainError, setExplainError] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -65,6 +78,34 @@ const AIAnalyticsPage: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    MlApi.fetchBenchmark()
+      .then((report) => {
+        if (!cancelled) setBenchmark(report);
+      })
+      .catch(() => {
+        if (!cancelled) setBenchmarkError("Unable to reach the ML benchmark (service down?).");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleExplain = async () => {
+    if (!explainInput.trim()) return;
+    setExplainLoading(true);
+    setExplainError(null);
+    try {
+      const result = await MlApi.explain(explainKind, explainInput.trim());
+      setExplanation(result);
+    } catch (err: any) {
+      setExplainError(err?.detail || "Failed to compute explanation");
+    } finally {
+      setExplainLoading(false);
+    }
+  };;
 
   const kpis = [
     { label: "Total Alerts", value: overview.total, tone: "default" as const },
@@ -244,6 +285,138 @@ const AIAnalyticsPage: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-content-primary mb-4">Model Explainability</h3>
+              <p className="text-xs text-content-tertiary mb-4">
+                Why did the model flag this? Paste a sample to see the contributing signals.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                <select
+                  value={explainKind}
+                  onChange={(e) => setExplainKind(e.target.value as ExplainKind)}
+                  className="bg-app-bg border border-line-subtle rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-accent-primary cursor-pointer"
+                >
+                  <option value="log">Security log</option>
+                  <option value="email">Email</option>
+                  <option value="network">Network flow (port,bytes)</option>
+                  <option value="dns">DNS domain</option>
+                </select>
+                <input
+                  type="text"
+                  value={explainInput}
+                  onChange={(e) => setExplainInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleExplain()}
+                  placeholder={
+                    explainKind === "network"
+                      ? "e.g. 3389, 25000000"
+                      : explainKind === "dns"
+                      ? "e.g. update-account.tk"
+                      : "Paste log / email text…"
+                  }
+                  className="flex-1 px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+                />
+                <button
+                  type="button"
+                  onClick={handleExplain}
+                  disabled={explainLoading}
+                  className="px-4 py-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-sm font-medium text-accent-primary transition disabled:opacity-40"
+                >
+                  {explainLoading ? "Explaining…" : "Explain"}
+                </button>
+              </div>
+
+              {explainError && (
+                <p className="text-xs text-red-400 mb-3">{explainError}</p>
+              )}
+
+              {explanation && (
+                <div className="space-y-2">
+                  <p className="text-sm text-content-secondary">{explanation.summary}</p>
+                  <div className="space-y-1.5">
+                    {explanation.contributions.length === 0 ? (
+                      <p className="text-xs text-content-tertiary">No strong signals found.</p>
+                    ) : (
+                      explanation.contributions.map((c, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-app-bg border border-line-subtle"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                c.direction === "attack"
+                                  ? "bg-red-400"
+                                  : c.direction === "attention"
+                                  ? "bg-amber-400"
+                                  : "bg-emerald-400"
+                              }`}
+                            />
+                            <span className="text-sm text-content-primary truncate">{c.term}</span>
+                          </div>
+                          <span className="text-xs font-mono text-content-secondary shrink-0">
+                            {typeof c.score === "number" ? c.score.toFixed(3) : "-"}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <p className="text-[11px] text-content-tertiary pt-1">{explanation.method}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-content-primary mb-4">Model Benchmark</h3>
+              {benchmarkError ? (
+                <p className="text-xs text-content-tertiary">{benchmarkError}</p>
+              ) : !benchmark ? (
+                <p className="text-xs text-content-tertiary">Loading benchmark…</p>
+              ) : (
+                <div className="space-y-3">
+                  {benchmark.models.map((m) => (
+                    <div
+                      key={m.model}
+                      className="px-4 py-3 rounded-lg bg-app-bg border border-line-subtle"
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <span className="text-sm font-medium text-content-primary font-mono">
+                          {m.model}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                            m.status === "ok"
+                              ? "bg-emerald-500/15 text-emerald-400"
+                              : "bg-amber-500/15 text-amber-300"
+                          }`}
+                        >
+                          {m.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-content-tertiary mb-2">{m.model_type}</p>
+                      {m.metrics ? (
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(m.metrics).map(([k, v]) =>
+                            typeof v === "number" ? (
+                              <span
+                                key={k}
+                                className="px-2 py-0.5 rounded bg-app-subtle border border-line-subtle text-[11px] font-mono text-content-secondary"
+                              >
+                                {k.replace(/_/g, " ")}: {v.toFixed(3)}
+                              </span>
+                            ) : null
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-content-tertiary">{m.reason || "No metrics"}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}

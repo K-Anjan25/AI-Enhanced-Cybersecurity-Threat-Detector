@@ -8,6 +8,21 @@ export interface EntityListParams {
   entity_type?: EntityType;
 }
 
+export interface EntityGraphSummary {
+  nodes: number;
+  edges: number;
+  by_type: Record<string, number>;
+  top_risk: ThreatEntity[];
+  hubs: Array<ThreatEntity & { degree: number }>;
+}
+
+export interface EntityPathResult {
+  path: ThreatEntity[];
+  links: Array<{ source: number; target: number; relation: string }>;
+  hops: number | null;
+  reachable: boolean;
+}
+
 export const fetchEntities = async (
   params: EntityListParams
 ): Promise<PaginatedResponse<ThreatEntity>> => {
@@ -35,9 +50,26 @@ export const updateEntityRisk = async (
   return data;
 };
 
+export const fetchEntityGraphSummary = async (): Promise<EntityGraphSummary> => {
+  const { data } = await api.get<EntityGraphSummary>("/entities/summary");
+  return data;
+};
+
+export const fetchEntityPath = async (
+  fromId: number,
+  toId: number
+): Promise<EntityPathResult> => {
+  const { data } = await api.get<EntityPathResult>("/entities/path", {
+    params: { from_id: fromId, to_id: toId },
+  });
+  return data;
+};
+
 export const EntityApi = {
   fetchEntities,
   fetchEntityGraph,
+  fetchEntityGraphSummary,
+  fetchEntityPath,
   updateEntityRisk,
 };
 

@@ -20,6 +20,22 @@ def _post_with_retry(url: str, json, timeout: float = 10.0, max_retries: int = 2
     raise requests.ConnectionError(f"ML service unreachable after {max_retries + 1} attempts: {last_error}")
 
 
+def _get_with_retry(url: str, timeout: float = 10.0, max_retries: int = 2) -> dict:
+    """GET with retries and exponential backoff when the ML service is down."""
+    last_error: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:  # noqa: BLE001 - network errors are expected
+            last_error = exc
+            if attempt < max_retries:
+                import time
+                time.sleep(0.3 * (2 ** attempt))
+    raise requests.ConnectionError(f"ML service unreachable after {max_retries + 1} attempts: {last_error}")
+
+
 # ---------------------------------------------------------------------------
 # Heuristic fallback classification (runs when the ML service is unreachable so
 # a dead svc never turns into a failed scan).

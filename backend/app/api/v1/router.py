@@ -14,6 +14,7 @@ from app.api.v1.endpoints import (
     cases,
     entities,
     soar,
+    ml,
 )
 
 api_router = APIRouter()
@@ -32,3 +33,4 @@ api_router.include_router(reputation.router, tags=["IP Reputation"])
 api_router.include_router(cases.router, tags=["Incident Management"])
 api_router.include_router(entities.router, tags=["Entity Graph"])
 api_router.include_router(soar.router, tags=["SOAR"])
+api_router.include_router(ml.router, tags=["Machine Learning"])

@@ -545,3 +545,58 @@ def test_entity_graph_path_invalid_id(client, auth_headers):
     )
     assert resp.status_code == 200
     assert resp.json()["reachable"] is False
+
+
+def test_ml_benchmark_proxies_to_ml_service(client, auth_headers, monkeypatch):
+    from app.services import ml_client
+    import requests
+
+    def _fake_get(url, timeout=None):
+        class _Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"version": "x", "models": [{"model": "log_model", "status": "ok"}]}
+
+        return _Resp()
+
+    monkeypatch.setattr(ml_client.requests, "get", _fake_get)
+    resp = client.get("/api/v1/ml/benchmark", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["models"][0]["model"] == "log_model"
+
+
+def test_ml_explain_log_proxies_payload(client, auth_headers, monkeypatch):
+    from app.services import ml_client
+
+    captured = {}
+
+    def _fake_post(url, json=None, timeout=None, max_retries=None):
+        captured["url"] = url
+        captured["payload"] = json
+
+        class _Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"contributions": [{"term": "sql injection", "direction": "attack"}]}
+
+        return _Resp()
+
+    monkeypatch.setattr(ml_client.requests, "post", _fake_post)
+    resp = client.post(
+        "/api/v1/ml/explain/log",
+        headers=auth_headers,
+        json={"message": "SQL injection exploit detected", "level": "ERROR"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["contributions"][0]["term"] == "sql injection"
+    assert captured["url"].endswith("/explain/log")
+    assert captured["payload"]["message"] == "SQL injection exploit detected"
+
+
+def test_ml_explain_network_requires_payload_auth(client, db_session):
+    resp = client.post("/api/v1/ml/explain/network", json={"dst_port": 3389})
+    assert resp.status_code in (401, 403)

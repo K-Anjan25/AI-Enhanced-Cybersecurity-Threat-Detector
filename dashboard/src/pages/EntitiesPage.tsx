@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import EntityApi from "../api/entityApi";
+import EntityApi, { type EntityGraphSummary, type EntityPathResult } from "../api/entityApi";
 import EntityGraphView from "../features/entities/components/EntityGraphView";
-import { PageHeader, Select } from "../components/ui";
+import { PageHeader, Select, StatCard } from "../components/ui";
 import type { EntityType, ThreatEntity } from "../types/entity";
 
 const PAGE_SIZE = 12;
@@ -39,6 +39,13 @@ const EntitiesPage: React.FC = () => {
   const [graphRoot, setGraphRoot] = useState<ThreatEntity | null>(null);
   const [adjustingId, setAdjustingId] = useState<number | null>(null);
 
+  const [summary, setSummary] = useState<EntityGraphSummary | null>(null);
+  const [pathFrom, setPathFrom] = useState("");
+  const [pathTo, setPathTo] = useState("");
+  const [pathResult, setPathResult] = useState<EntityPathResult | null>(null);
+  const [pathLoading, setPathLoading] = useState(false);
+  const [pathError, setPathError] = useState<string | null>(null);
+
   const loadEntities = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -61,6 +68,39 @@ const EntitiesPage: React.FC = () => {
   useEffect(() => {
     loadEntities();
   }, [loadEntities]);
+
+  useEffect(() => {
+    let cancelled = false;
+    EntityApi.fetchEntityGraphSummary()
+      .then((s) => {
+        if (!cancelled) setSummary(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleFindPath = async () => {
+    const from = Number(pathFrom);
+    const to = Number(pathTo);
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from <= 0 || to <= 0) {
+      setPathError("Enter two valid entity IDs.");
+      return;
+    }
+    setPathLoading(true);
+    setPathError(null);
+    try {
+      const result = await EntityApi.fetchEntityPath(from, to);
+      setPathResult(result);
+    } catch (err: any) {
+      setPathError(err?.detail || "Failed to find path");
+    } finally {
+      setPathLoading(false);
+    }
+  };
 
   const handleRiskAdjust = async (entity: ThreatEntity, riskScore: number) => {
     setAdjustingId(entity.id);
@@ -110,6 +150,86 @@ const EntitiesPage: React.FC = () => {
           {error}
         </div>
       )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Graph nodes" value={summary?.nodes ?? 0} tone="default" />
+        <StatCard label="Graph edges" value={summary?.edges ?? 0} tone="default" />
+        <StatCard label="Top hub degree" value={summary?.hubs?.[0]?.degree ?? 0} tone="warning" />
+        <StatCard
+          label="Indicators"
+          value={
+            summary ? Object.values(summary.by_type || {}).reduce((a, b) => a + b, 0) : 0
+          }
+          tone="success"
+        />
+      </div>
+
+      <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+        <h3 className="text-sm font-semibold text-content-primary mb-3">Path Finder</h3>
+        <p className="text-xs text-content-tertiary mb-4">
+          Trace the shortest directed attack path between two indicators by entity ID
+          (find IDs in the table below).
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="number"
+            min={1}
+            value={pathFrom}
+            onChange={(e) => setPathFrom(e.target.value)}
+            placeholder="From entity ID"
+            className="w-full sm:w-48 px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+          />
+          <input
+            type="number"
+            min={1}
+            value={pathTo}
+            onChange={(e) => setPathTo(e.target.value)}
+            placeholder="To entity ID"
+            className="w-full sm:w-48 px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+          />
+          <button
+            type="button"
+            onClick={handleFindPath}
+            disabled={pathLoading}
+            className="px-4 py-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-sm font-medium text-accent-primary transition disabled:opacity-40"
+          >
+            {pathLoading ? "Tracing…" : "Trace path"}
+          </button>
+        </div>
+
+        {pathError && <p className="text-xs text-red-400 mt-3">{pathError}</p>}
+
+        {pathResult && (
+          <div className="mt-4">
+            {pathResult.reachable && pathResult.path.length > 0 ? (
+              <>
+                <p className="text-xs text-content-tertiary mb-2">
+                  {pathResult.hops} hop{pathResult.hops === 1 ? "" : "s"}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {pathResult.path.map((node, idx) => (
+                    <React.Fragment key={`${node.id}-${idx}`}>
+                      {idx > 0 && <span className="text-content-tertiary text-xs">→</span>}
+                      <button
+                        type="button"
+                        onClick={() => setGraphRoot(node)}
+                        title="Open graph for this entity"
+                        className="px-2.5 py-1 rounded-md text-xs font-mono border border-line-bright bg-app-subtle hover:bg-line-bright text-content-primary transition"
+                      >
+                        {node.value}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-content-tertiary">
+                No path exists between these entities.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="bg-app-surface rounded-xl border border-line-subtle shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
