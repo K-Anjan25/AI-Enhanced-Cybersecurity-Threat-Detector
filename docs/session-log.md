@@ -73,6 +73,25 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   (`d5fe608`, `8dfd4b8`, `7851fe7`, `432ad50`, `e1755e4`).
 - `docs/session-log.md` (this file) written.
 
+## Phase 11 — Enhancement pass (CI + analyst tooling)
+
+- CI enforcement: `.github/workflows/ci.yml` with backend pytest, ml-service
+  pytest, dashboard typecheck+build, and k8s manifest validation via
+  kubeconform (catches broken charts on every push) (`bc41f47`).
+- Dashboard CI badge in README (`2eb0ddd`).
+- SOAR playbooks: explicit rule->action overrides with full CRUD API +
+  dashboard manager; inactive playbooks fall back to heuristics
+  (`71d15bc`).
+- ML explainability: dependency-free `/explain/*` endpoints surfacing
+  coefficient/keyword/centroid/rule evidence for every model family
+  (`6a1f608`).
+- Model benchmark harness: `GET /benchmark` evaluating deployed artifacts
+  against holdout sets; observed network outlier rate tracked against expected
+  contamination (`b13a730`).
+- Entity-graph enhancements: `GET /entities/summary` (aggregate metrics + hubs)
+  and `GET /entities/path` (BFS shortest path between indicators)
+  (`d1374ab`).
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
