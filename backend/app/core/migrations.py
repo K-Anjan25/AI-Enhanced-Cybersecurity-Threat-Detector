@@ -50,7 +50,7 @@ def ensure_default_org(engine) -> None:
             text("SELECT id FROM orgs WHERE slug = 'default' LIMIT 1")
         ).scalar()
         # Backfill existing tenant-owned rows into the default org.
-        for table in ("security_alerts", "scanned_alerts", "scan_batches", "cases", "entities", "entity_links", "soar_actions"):
+        for table in ("security_alerts", "scanned_alerts", "scan_batches", "cases", "entities", "entity_links", "soar_actions", "soar_playbooks"):
             conn.execute(
                 text(f"UPDATE {table} SET org_id = :oid WHERE org_id IS NULL"),
                 {"oid": org_id},

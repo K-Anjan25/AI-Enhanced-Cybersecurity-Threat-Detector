@@ -1,6 +1,16 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Index
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    JSON,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -24,3 +34,27 @@ class SoarAction(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     alert = relationship("SecurityAlert")
+
+
+class SoarPlaybook(Base):
+    """An explicit rule -> action override for the SOAR engine.
+
+    Detection rules auto-map to actions by name/severity heuristics; a playbook
+    lets an admin pin a rule to a specific action, which takes precedence over
+    the heuristic when both apply. Playbooks are tenant-scoped and one per rule.
+    """
+
+    __tablename__ = "soar_playbooks"
+    __table_args__ = (
+        UniqueConstraint("org_id", "rule_id", name="uq_soar_playbook_rule"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False, index=True)
+    rule_id = Column(Integer, ForeignKey("detection_rules.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(150), nullable=False)
+    action_type = Column(String(50), nullable=False)  # one of SUPPORTED_ACTIONS
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    rule = relationship("DetectionRule")

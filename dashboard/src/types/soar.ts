@@ -21,3 +21,13 @@ export interface TriggerResponse {
   executed: Array<Record<string, unknown>>;
   count: number;
 }
+
+export interface SoarPlaybook {
+  id: number;
+  rule_id?: number | null;
+  rule_name?: string | null;
+  name: string;
+  action_type: string;
+  is_active: boolean;
+  created_at?: string | null;
+}

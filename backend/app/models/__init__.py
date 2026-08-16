@@ -5,7 +5,7 @@ from app.models.token import TokenBlocklist
 from app.models.alert import SecurityAlert, ScannedAlert, ScanBatch
 from app.models.case import Case
 from app.models.entity import Entity, EntityLink
-from app.models.soar import SoarAction
+from app.models.soar import SoarAction, SoarPlaybook
 from app.models.item import DetectionRule, IpReputation, EngineSetting, AuditLog
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "Entity",
     "EntityLink",
     "SoarAction",
+    "SoarPlaybook",
     "DetectionRule",
     "IpReputation",
     "EngineSetting",

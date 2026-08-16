@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import SoarApi from "../api/soarApi";
-import type { SoarAction } from "../types/soar";
+import RulesApi from "../api/rulesApi";
+import type { SoarAction, SoarPlaybook } from "../types/soar";
 import {
   PageHeader,
   Card,
@@ -26,6 +27,15 @@ const severityBadge: Record<string, string> = {
   critical: "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
+const PLAYBOOK_ACTIONS = [
+  "BLOCK_SOURCE_IP",
+  "QUARANTINE_ENDPOINT",
+  "REVOKE_CREDENTIALS",
+  "ALERT_OPERATOR",
+  "DISABLE_ACCOUNT",
+  "REVIEW_ONLY",
+];
+
 const SoarPage: React.FC = () => {
   const [actions, setActions] = useState<SoarAction[]>([]);
   const [total, setTotal] = useState(0);
@@ -41,6 +51,15 @@ const SoarPage: React.FC = () => {
   const [triggerId, setTriggerId] = useState<string>("");
   const [triggerResult, setTriggerResult] = useState<string | null>(null);
   const [triggering, setTriggering] = useState(false);
+
+  const [playbooks, setPlaybooks] = useState<SoarPlaybook[]>([]);
+  const [rules, setRules] = useState<Array<{ id: number; name: string }>>([]);
+  const [pbRuleId, setPbRuleId] = useState<string>("");
+  const [pbName, setPbName] = useState<string>("");
+  const [pbAction, setPbAction] = useState<string>("BLOCK_SOURCE_IP");
+  const [pbLoading, setPbLoading] = useState(true);
+  const [pbSaving, setPbSaving] = useState(false);
+  const [pbError, setPbError] = useState<string | null>(null);
 
   const loadActions = useCallback(async () => {
     setLoading(true);
@@ -59,6 +78,68 @@ const SoarPage: React.FC = () => {
   useEffect(() => {
     loadActions();
   }, [loadActions]);
+
+  const loadPlaybooks = useCallback(async () => {
+    setPbError(null);
+    try {
+      const [pbRes, ruleRes] = await Promise.all([
+        SoarApi.fetchPlaybooks({ page: 1, limit: 200 }),
+        RulesApi.fetchRules(1, 200),
+      ]);
+      setPlaybooks(pbRes.data);
+      const used = new Set(pbRes.data.map((pb) => pb.rule_id));
+      setRules(ruleRes.data.filter((r) => !used.has(r.id)));
+    } catch (err: any) {
+      setPbError(err?.detail || "Failed to load playbooks");
+    } finally {
+      setPbLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPlaybooks();
+  }, [loadPlaybooks]);
+
+  const handleCreatePlaybook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const ruleId = Number(pbRuleId);
+    if (!Number.isInteger(ruleId) || ruleId <= 0 || !pbName.trim()) return;
+    setPbSaving(true);
+    setPbError(null);
+    try {
+      await SoarApi.createPlaybook({
+        rule_id: ruleId,
+        name: pbName.trim(),
+        action_type: pbAction,
+      });
+      setPbRuleId("");
+      setPbName("");
+      setPbAction("BLOCK_SOURCE_IP");
+      await loadPlaybooks();
+    } catch (err: any) {
+      setPbError(err?.detail || "Failed to create playbook");
+    } finally {
+      setPbSaving(false);
+    }
+  };
+
+  const handleTogglePlaybook = async (pb: SoarPlaybook) => {
+    try {
+      await SoarApi.updatePlaybook(pb.id, { is_active: !pb.is_active });
+      await loadPlaybooks();
+    } catch (err: any) {
+      setPbError(err?.detail || "Failed to update playbook");
+    }
+  };
+
+  const handleDeletePlaybook = async (pb: SoarPlaybook) => {
+    try {
+      await SoarApi.deletePlaybook(pb.id);
+      await loadPlaybooks();
+    } catch (err: any) {
+      setPbError(err?.detail || "Failed to delete playbook");
+    }
+  };
 
   const handleEvaluate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,6 +288,120 @@ const SoarPage: React.FC = () => {
           )}
         </Card>
       </div>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary tracking-tight">Playbooks</h2>
+            <p className="text-xs text-content-tertiary mt-0.5">
+              Pin a detection rule to a specific action, overriding the default mapping.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreatePlaybook} className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+          <Select
+            id="pb-rule"
+            label="Rule"
+            value={pbRuleId}
+            onChange={(e) => setPbRuleId(e.target.value)}
+            options={rules.map((r) => ({ value: String(r.id), label: r.name }))}
+          />
+          <div>
+            <label htmlFor="pb-name" className="block text-sm font-medium text-content-secondary mb-1.5">
+              Name
+            </label>
+            <input
+              id="pb-name"
+              value={pbName}
+              onChange={(e) => setPbName(e.target.value)}
+              placeholder="e.g. Escalate brute force"
+              className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary transition"
+            />
+          </div>
+          <div>
+            <Select
+              id="pb-action"
+              label="Action"
+              value={pbAction}
+              onChange={(e) => setPbAction(e.target.value)}
+              options={PLAYBOOK_ACTIONS.map((a) => ({ value: a, label: a }))}
+            />
+            <button
+              type="submit"
+              disabled={pbSaving || !pbRuleId || !pbName.trim()}
+              className="mt-1.5 w-full px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {pbSaving ? "Saving…" : "Add playbook"}
+            </button>
+          </div>
+        </form>
+
+        {pbError && (
+          <div className="mt-3 px-4 py-2.5 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
+            {pbError}
+          </div>
+        )}
+
+        {pbLoading ? (
+          <div className="mt-4">
+            <SkeletonTable rows={3} cols={4} />
+          </div>
+        ) : playbooks.length === 0 ? (
+          <EmptyState
+            title="No playbooks yet"
+            description="Add a playbook to override a rule's default response action."
+          />
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Rule</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3 w-24">State</th>
+                  <th className="px-4 py-3 w-28">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line-subtle text-sm">
+                {playbooks.map((pb) => (
+                  <tr key={pb.id} className="hover:bg-app-subtle/50 transition-colors">
+                    <td className="px-4 py-3 text-content-primary">{pb.name}</td>
+                    <td className="px-4 py-3 text-xs text-content-tertiary">{pb.rule_name || "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-accent-primary">{pb.action_type}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${pb.is_active ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-app-subtle text-content-secondary border-line-subtle"}`}>
+                        {pb.is_active ? "active" : "paused"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePlaybook(pb)}
+                          className="px-2.5 py-1 bg-app-subtle hover:bg-line-bright border border-line-subtle text-xs text-content-secondary rounded-lg transition"
+                        >
+                          {pb.is_active ? "Pause" : "Enable"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePlaybook(pb)}
+                          className="px-2.5 py-1 bg-status-critical/10 hover:bg-status-critical/20 border border-status-critical/30 text-xs text-status-critical rounded-lg transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       {error && (
         <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">

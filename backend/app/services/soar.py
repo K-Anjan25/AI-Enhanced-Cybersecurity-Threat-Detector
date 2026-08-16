@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError
 
-from app.models import DetectionRule, SoarAction
+from app.models import DetectionRule, SoarAction, SoarPlaybook
 from app.services.kafka_producer import send_action
 
 # List of actions this phase can auto-execute. Each maps severity thresholds to
@@ -44,15 +44,22 @@ ACTION_DEFAULT_SEVERITY = {
 _CVE_RE = re.compile(r"\bCVE-\d{4}-\d{4,7}\b")
 
 
-def evaluate_alert(alert: dict, rules: Sequence[DetectionRule]) -> list[dict]:
+def evaluate_alert(alert: dict, rules: Sequence[DetectionRule], playbooks: Sequence[SoarPlaybook] | None = None) -> list[dict]:
     """Pure rule evaluation: return a list of matched actions for an alert.
 
     ``alert`` is the normalized alert dict produced by ``process_log``.
+
+    Explicit playbook mappings (rule -> action) take precedence over the
+    name/severity heuristics when a matching rule also has a playbook.
     """
     actions: list[dict] = []
     message = (alert.get("message") or "").lower()
     alert_type = (alert.get("alert_type") or "").lower()
     mitre_tech = (alert.get("mitre_technique_id") or "").lower()
+
+    playbook_by_rule: dict[int, SoarPlaybook] = {}
+    if playbooks:
+        playbook_by_rule = {pb.rule_id: pb for pb in playbooks if getattr(pb, "is_active", True)}
 
     for rule in rules:
         if not getattr(rule, "is_active", True):
@@ -70,13 +77,18 @@ def evaluate_alert(alert: dict, rules: Sequence[DetectionRule]) -> list[dict]:
         if not matched:
             continue
 
-        action_type = _action_for_rule(rule)
+        playbook = playbook_by_rule.get(rule.id)
+        if playbook is not None:
+            action_type = playbook.action_type
+        else:
+            action_type = _action_for_rule(rule)
         sev = (rule.severity or ACTION_DEFAULT_SEVERITY[action_type]).upper()
         actions.append({
             "action_type": action_type,
             "severity": sev,
             "rule_name": rule.name,
             "rule_id": rule.id,
+            "playbook": playbook.name if playbook is not None else None,
         })
 
     # No rule matched but the alert is grave: always notify the operator.
@@ -111,14 +123,14 @@ def _severity_rank(sev: Optional[str]) -> int:
     return {"LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}.get((sev or "LOW").upper(), 0)
 
 
-def respond_to_alert(db, alert: dict, rules: Sequence[DetectionRule]) -> list[dict]:
+def respond_to_alert(db, alert: dict, rules: Sequence[DetectionRule], playbooks: Sequence[SoarPlaybook] | None = None) -> list[dict]:
     """Evaluate an alert and execute every matched action.
 
     Returns the executed action dicts (audited). Publishing to Kafka and the
     DB insert are both best-effort; a failure never raises out to the caller
     (ingestion must not break because SOAR is down).
     """
-    matched = evaluate_alert(alert, rules)
+    matched = evaluate_alert(alert, rules, playbooks=playbooks)
     results: list[dict] = []
     for m in matched:
         if m["action_type"] not in SUPPORTED_ACTIONS:
@@ -186,3 +198,79 @@ def list_actions(db, page: int = 1, limit: int = 20, org_id: Optional[int] = Non
     if org_id is not None:
         query = query.filter(SoarAction.org_id == org_id)
     return paginate(db, query, page, limit)
+
+
+# ---------------------------------------------------------------------------
+# Playbooks (explicit rule -> action overrides)
+# ---------------------------------------------------------------------------
+
+
+def list_playbooks(db, org_id: int, page: int = 1, limit: int = 100) -> tuple[list, int]:
+    from app.utils.helpers import paginate
+
+    query = db.query(SoarPlaybook).order_by(SoarPlaybook.name.asc())
+    if org_id is not None:
+        query = query.filter(SoarPlaybook.org_id == org_id)
+    return paginate(db, query, page, limit)
+
+
+def get_playbook(db, org_id: int, playbook_id: int) -> SoarPlaybook | None:
+    return (
+        db.query(SoarPlaybook)
+        .filter(SoarPlaybook.id == playbook_id, SoarPlaybook.org_id == org_id)
+        .first()
+    )
+
+
+def create_playbook(db, org_id: int, *, rule_id: int, name: str, action_type: str) -> SoarPlaybook:
+    if action_type not in SUPPORTED_ACTIONS:
+        raise ValueError(f"Unsupported action type: {action_type}")
+    playbook = SoarPlaybook(
+        org_id=org_id,
+        rule_id=rule_id,
+        name=name,
+        action_type=action_type,
+        is_active=True,
+    )
+    db.add(playbook)
+    db.commit()
+    db.refresh(playbook)
+    return playbook
+
+
+def update_playbook(db, org_id: int, playbook_id: int, *, name: str | None = None, action_type: str | None = None, is_active: bool | None = None) -> SoarPlaybook | None:
+    playbook = get_playbook(db, org_id, playbook_id)
+    if playbook is None:
+        return None
+    if action_type is not None:
+        if action_type not in SUPPORTED_ACTIONS:
+            raise ValueError(f"Unsupported action type: {action_type}")
+        playbook.action_type = action_type
+    if name is not None:
+        playbook.name = name
+    if is_active is not None:
+        playbook.is_active = is_active
+    db.commit()
+    db.refresh(playbook)
+    return playbook
+
+
+def delete_playbook(db, org_id: int, playbook_id: int) -> bool:
+    playbook = get_playbook(db, org_id, playbook_id)
+    if playbook is None:
+        return False
+    db.delete(playbook)
+    db.commit()
+    return True
+
+
+def serialize_playbook(pb: SoarPlaybook) -> dict:
+    return {
+        "id": pb.id,
+        "rule_id": pb.rule_id,
+        "rule_name": pb.rule.name if pb.rule else None,
+        "name": pb.name,
+        "action_type": pb.action_type,
+        "is_active": pb.is_active,
+        "created_at": pb.created_at.isoformat() if pb.created_at else None,
+    }
