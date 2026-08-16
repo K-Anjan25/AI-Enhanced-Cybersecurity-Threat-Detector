@@ -226,3 +226,15 @@ def load_manifest(model_dir: str = DEFAULT_MODEL_DIR) -> Optional[dict]:
             return json.load(fh)
     except Exception:
         return None
+
+
+def load_manifest_benchmark(model_dir: str = DEFAULT_MODEL_DIR) -> Optional[dict]:
+    """Read the persisted benchmark report (None if a run never happened)."""
+    path = os.path.join(model_dir, "benchmark.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return None

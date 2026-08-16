@@ -53,6 +53,8 @@ shape that a UI can render generically:
 }
 ```
 
+- `GET /benchmark` — run a fresh evaluation of deployed artifacts against holdout sets
+- `GET /benchmark/latest` — read the most recently persisted `model/benchmark.json`
 - `POST /explain/log`, `POST /explain/email`, `POST /explain/network`, `POST /explain/dns`
 
 Dependency-free: no SHAP or extra runtime deps; coefficient/centroid evidence is

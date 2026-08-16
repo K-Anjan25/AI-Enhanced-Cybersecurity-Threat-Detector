@@ -6,6 +6,7 @@ from app.log_model import predict_log, model_status as log_status, reload as log
 from app.email_model import predict_email, model_status as email_status, reload as email_reload
 from app.dns_model import predict_domain
 from app.explain import explain_log, explain_email, explain_network, explain_dns
+from app.benchmark import run_benchmark
 from app import training
 
 app = FastAPI(
@@ -139,3 +140,15 @@ def network_batch(inputs: list[NetworkInput]):
 @app.post("/predict/log/batch")
 def log_batch(inputs: list[LogInput]):
     return {"results": [predict_log(item) for item in inputs]}
+
+
+@app.get("/benchmark")
+def benchmark_report():
+    """Evaluate deployed artifacts against holdout sets (see app/benchmark.py)."""
+    return run_benchmark()
+
+
+@app.get("/benchmark/latest")
+def last_benchmark():
+    """Read the most recent persisted benchmark report (None if never run)."""
+    return training.load_manifest_benchmark()
