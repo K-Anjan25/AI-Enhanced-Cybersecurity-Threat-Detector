@@ -32,6 +32,16 @@ k6 run -e BASE_HOST=http://localhost:8000 -e ML_HOST=http://localhost:8001  \
 `https://dashboard.example.com/api/v1`). Thresholds are enforced by k6, so a
 ratio that misses a target exits non-zero (CI-failing).
 
+### CI (GitHub Actions)
+
+The `loadtest` job in `.github/workflows/ci.yml` boots the compose stack
+(postgres + backend + ml-service) and runs `threat-ai.js` with `CI=true`. In
+CI mode the strict p95 latency gates are relaxed (the dev-size compose `cpus`
+limits make them unreliable on shared runners) and the job instead gates on
+**failure rate < 1%** for every endpoint, recording the latencies as a
+baseline. Set `CI=false` (or unset) locally to enforce the full NFR-PERF
+contract.
+
 ## Run (Locust)
 
 ```bash

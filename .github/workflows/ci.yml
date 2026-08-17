@@ -73,3 +73,33 @@ jobs:
       - name: Validate manifests
         run: |
           kubeconform -summary -verbose -strict -ignore-missing-schemas k8s/
+
+  loadtest:
+    name: Load test (k6 vs compose stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + boot stack (postgres + backend + ml-service)
+        run: |
+          docker compose -f docker/docker-compose.yml up -d --build postgres backend ml-service
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/health/ready >/dev/null 2>&1 \
+               && curl -sf http://localhost:8001/health >/dev/null 2>&1; then
+              echo "stack ready after ${i}x5s"
+              break
+            fi
+            sleep 5
+          done
+          curl -sf http://localhost:8000/health/ready >/dev/null
+          curl -sf http://localhost:8001/health >/dev/null
+      - name: Install k6
+        run: |
+          curl -sL https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz | tar -xz
+          echo "$PWD/k6-v0.52.0-linux-amd64" >> "$GITHUB_PATH"
+      - name: Run k6 NFR-PERF suite
+        env:
+          BASE_HOST: http://localhost:8000
+          ML_HOST: http://localhost:8001
+          TOKENPASS: "ChangeMe#2026"
+          CI: "true"
+        run: k6 run loadtest/k6/threat-ai.js
