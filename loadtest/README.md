@@ -39,8 +39,12 @@ The `loadtest` job in `.github/workflows/ci.yml` boots the compose stack
 CI mode the strict p95 latency gates are relaxed (the dev-size compose `cpus`
 limits make them unreliable on shared runners) and the job instead gates on
 **failure rate < 1%** for every endpoint, recording the latencies as a
-baseline. Set `CI=false` (or unset) locally to enforce the full NFR-PERF
-contract.
+baseline. CI mode also scales the analysed mix down to a smoke level — 5 VUs
+and an upload every 30th iteration (instead of 15 VUs / every 10th) — so the
+background-scan fan-out (each 100-line upload = 100 sequential ML calls) does
+not saturate the CPU-capped containers and the failure-rate gate stays
+meaningful. Set `CI=false` (or unset) locally to enforce the full NFR-PERF
+contract at full concurrency.
 
 ## Run (Locust)
 

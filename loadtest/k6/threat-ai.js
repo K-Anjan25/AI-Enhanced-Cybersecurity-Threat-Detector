@@ -34,6 +34,12 @@ const IS_CI = (__ENV.CI || "false") === "true";
 // arrival rate and gates on failure-rate only; local runs enforce the full
 // contract at 55/s.
 const PREDICT_RATE = IS_CI ? 15 : 55;
+// CI smoke mode keeps the mix of analysed paths but scales concurrency and
+// upload frequency down so the dev-size compose stack (cpus: 0.5) is not
+// saturated by background scans (each 100-line upload fans out to 100 ML
+// calls). The strict NFR-PERF latency contract is enforced in local runs only.
+const MAIN_VUS = IS_CI ? 5 : 15;
+const UPLOAD_EVERY = IS_CI ? 30 : 10;
 
 // Custom disaggregated metrics so thresholds map 1:1 to NFR IDs.
 const analyzeLatency = new Trend("perf_analyze_latency", true);
@@ -50,7 +56,7 @@ export const options = {
   scenarios: {
     main: {
       executor: "constant-vus",
-      vus: 15,
+      vus: MAIN_VUS,
       duration: "90s",
       exec: "main",
     },
@@ -119,12 +125,13 @@ const batchLines = Array.from(
 ).join("\n");
 
 export function setup() {
+  const creds = credentials();
   const reg = http.post(
     `${API}/register`,
-    JSON.stringify({ ...credentials(), email: "k6loadtest@test.local" }),
+    JSON.stringify({ username: creds.username, password: creds.password, email: "k6loadtest@test.local" }),
     { headers: { "Content-Type": "application/json" } },
   );
-  const form = new URLSearchParams(credentials()).toString();
+  const form = `username=${encodeURIComponent(creds.username)}&password=${encodeURIComponent(creds.password)}`;
   const login = http.post(`${API}/login`, form, {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
@@ -152,7 +159,7 @@ export function main(data) {
   sleep(0.2);
 
   // NFR-PERF-02/03: batch upload (100 lines) + poll to completion.
-  if (__ITER % 10 === 0) {
+  if (__ITER % UPLOAD_EVERY === 0) {
     const file = http.file(batchLines, "loadtest.log", "text/plain");
     const res = http.post(`${API}/upload-logs`, { log_file: file }, authHeaders(data.token));
     uploadLatency.add(res.timings.duration);
