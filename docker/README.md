@@ -39,13 +39,40 @@ heuristics for network flows until you either:
 
 ## Streaming (Kafka) — opt-in
 
-Kafka + Zookeeper need ~2 GiB on their own, so they are excluded by default:
+Kafka + Zookeeper need ~2 GiB on their own, so they are excluded by default.
+To run the streaming event chain (`raw-logs`, `alerts.raised`,
+`actions.executed` topics), start the profile **and** enable the backend
+producer:
 
 ```bash
 docker compose --profile stream up -d
+# enable Kubernetes-less streaming end to end:
+echo "ENABLE_KAFKA=true" > .env
+docker compose up -d --no-deps backend
 ```
 
-Backend reads `ENABLE_KAFKA` (default `false` in this stack).
+`ENABLE_KAFKA` defaults to `false` in `docker-compose.yml` (so the
+no-stream stack works without a broker); the backend reads
+`KAFKA_BOOTSTRAP_SERVERS=kafka:9092`.
+
+**Dual listener:** the broker advertises two listeners so both containers and
+the host can connect —
+
+- in-network (`kafka:9092`) — used by the backend producer,
+- host (`localhost:29092`) — for host-side tools/consumers, e.g.:
+
+  ```bash
+  docker exec threatai-kafka kafka-console-consumer --bootstrap-server \
+    localhost:29092 --topic alerts.raised --from-beginning
+  ```
+
+  A single advertised listener (e.g. `localhost:9092`) is unreachable from
+  inside the compose network — the backend would throw
+  `KafkaTimeoutError: Failed to update metadata` on every send.
+
+Verify the chain end-to-end: log in, `POST /api/v1/analyze`, then consume the
+three topics above — each should show a JSON event keyed by `org_id`, with the
+alert carrying MITRE + threat-intel enrichment.
 
 ## Authentication mode
 

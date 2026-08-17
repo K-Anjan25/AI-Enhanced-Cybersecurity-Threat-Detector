@@ -42,7 +42,10 @@ services:
     environment:
       DATABASE_URL: postgresql://threatuser:threatpass@postgres:5432/threatdb
       ML_SERVICE_URL: http://ml-service:8001
-      ENABLE_KAFKA: "false"
+      # Kafka is opt-in: enable with ENABLE_KAFKA=true (e.g. docker/.env) when
+      # running the stream profile, otherwise the producer would block.
+      ENABLE_KAFKA: "${ENABLE_KAFKA:-false}"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
       # The dashboard authenticates via httpOnly access/refresh cookies
       # (tokens never touch JS), served over plain http on localhost, so
@@ -112,13 +115,20 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # Dual-listener setup: the in-network listener (kafka:9092) is what the
+      # backend publishes through; the HOST listener (localhost:29092) is for
+      # tools/console consumers run on the host (host.docker.internal would
+      # also work for the host listener). A single advertised listener would
+      # be unreachable from one side — see README/notes.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     ports:
-      - "9092:9092"
+      - "29092:29092"
     mem_limit: 768m
     cpus: 1.0
 
