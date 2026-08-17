@@ -13,7 +13,7 @@ three services. Satisfies **NFR-PORT-03** (K8s-ready) and **NFR-PORT-02**
 | `postgres.yaml` | In-cluster PostgreSQL Deployment + PVC + Service (demo; use a managed DB in production) |
 | `backend.yaml` | Backend Deployment (×2) + initContainer wait-for-postgres + Service + liveness/readiness probes |
 | `ml-service.yaml` | ML Service Deployment (×2) + Service + HPA (2→6 on CPU) |
-| `training.yaml` | ML training CronJob (daily retrain trigger → `POST /retrain`) |
+| `training.yaml` | ML training CronJob (daily retrain trigger → `POST /retrain`; network model opt-in) |
 | `dashboard.yaml` | Dashboard Deployment (×2) + Service (nginx static build, port 80) |
 | `ingress.yaml` | TLS Ingress (nginx) routing `/` → dashboard, `/api/*` → backend; cert-manager issues `threat-ai-tls` |
 | `tls/issuers.yaml` | cert-manager ClusterIssuers: self-signed (offline/kind demo) + Let's Encrypt staging/prod |
@@ -61,7 +61,12 @@ This avoids single-replica storage by replacing it with a HA/managed Postgres
 ## Prerequisites
 
 - Images `threat-ai/backend:latest`, `threat-ai/ml-service:latest`,
-  `threat-ai/dashboard:latest` built from the repo Dockerfiles.
+  `threat-ai/dashboard:latest` built from the repo Dockerfiles. The
+  `ml-service` image is **self-contained**: its Dockerfile runs
+  `python train.py` at build time, baking the log/email classifiers in, so the
+  deployment serves real predictions and `/benchmark` + `/explain` work out of
+  the box with no manual `/retrain`. The network model needs the CICIDS2017
+  dataset and is skipped unless it is present at build/retrain time.
 - A PostgreSQL instance reachable at the `database-url` (e.g. Helm chart or
   managed DB); the backend runs additive migrations on startup.
 - Ingress-nginx controller + cert-manager (TLS) in the cluster.
@@ -116,10 +121,15 @@ kubectl get certificate -n threat-ai threat-ai-tls   # becomes READY when issued
   ingress for cookies to be accepted by browsers.
 - `training.yaml` runs daily (03:00 UTC) and triggers the in-service
   `POST /retrain` endpoint; models are hot-swapped in place (no pod restart).
-  Artifacts are written to the ml-service container filesystem, so for durable
-  model storage mount a shared PVC at the ml-service `model/` volume and copy
-  the `model/manifest.json` artifacts into it. `concurrencyPolicy: Forbid`
-  prevents overlapping runs.
+  Because `retrain` defaults to `require_network=false` and the build-time
+  trained log/email models are already baked in, the CronJob mostly refreshes
+  log/email classifiers with current request data. Network model training
+  requires the CICIDS2017 dataset: build the image with the dataset in scope,
+  or mount it into the running pods and call `/retrain` with
+  `{"require_network": true}`. Hot-swaps are volatile (written to the container
+  filesystem) and reset to the baked models on pod restart; for durable
+  retrained artifacts mount a shared PVC at the `model/` volume. `concurrencyPolicy:
+  Forbid` prevents overlapping runs.
 - **Local verification on kind** — the full stack was rolled out on a `kind`
   cluster (`kubectl apply -f k8s/` after `kind load docker-image` of the three
   images + `kubectl create secret generic threat-ai-secrets ...`). Verified:

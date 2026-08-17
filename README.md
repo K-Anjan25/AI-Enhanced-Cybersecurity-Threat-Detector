@@ -126,13 +126,16 @@ backend natively against the compose Postgres, export:
 ```bash
 cd ml-service
 pip install -r requirements.txt
-python train.py        # optional: retrain models from datasets
+python train.py        # optional: retrain (log/email baked; network needs../datasets/CICIDS2017)
 python -m uvicorn app.main:app --reload --port 8001
 ```
 
-The ml-service also exposes `POST /retrain` (retrains and hot-swaps models in
-memory) and `GET /models` (returns the versioned `manifest.json`). In K8s,
-`k8s/training.yaml` triggers retraining daily at 03:00 UTC.
+The ml-service image is **self-contained**: its Dockerfile runs `python train.py`
+at build time, so the log/email classifiers are baked in and `/benchmark` +
+`/explain` work out of the box (network model is skipped unless CICIDS2017 data
+is present). Running locally, the service also exposes `POST /retrain` (retrains
+and hot-swaps models in memory) and `GET /models` (returns the versioned
+`manifest.json`). In K8s, `k8s/training.yaml` triggers a daily retrain at 03:00 UTC.
 
 ### 3. Start the backend
 

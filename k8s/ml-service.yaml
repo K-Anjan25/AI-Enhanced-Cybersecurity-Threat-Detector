@@ -18,6 +18,9 @@ spec:
     spec:
       containers:
         - name: ml-service
+          # Self-contained image: log/email models are trained during the
+          # Docker build, so predictions/benchmark/explain work out of the box.
+          # Network model requires CICIDS2017 data (skipped by default).
           image: threat-ai/ml-service:latest
           imagePullPolicy: IfNotPresent
           ports:

@@ -65,7 +65,9 @@ extracted directly from the already-loaded sklearn pipelines.
 ```bash
 pip install -r requirements.txt
 
-# (re)train the models (requires ../datasets/CICIDS2017)
+# (re)train models. Log/email come from built-in corpora (no data needed);
+# network requires ../datasets/CICIDS2017 (skipped otherwise — train.py
+# defaults to --require-network off).
 python train.py
 
 uvicorn app.main:app --reload --port 8001
@@ -74,6 +76,10 @@ uvicorn app.main:app --reload --port 8001
 Models are cached in `model/*.pkl` and loaded lazily. If a model file is missing, the service falls back to deterministic heuristics so it never fails at startup.
 
 ## Docker
+
+The image is self-contained — the `Dockerfile` runs `python train.py` at build
+time so log/email models are baked in (network skipped unless CICIDS2017 is in
+the build context):
 
 ```bash
 docker build -t ml-service .
