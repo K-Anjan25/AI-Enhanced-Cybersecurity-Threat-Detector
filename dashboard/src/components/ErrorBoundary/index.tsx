@@ -16,8 +16,31 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren<{}>, 
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // TODO: send to logging/telemetry service
-    // console.error("Uncaught error:", error, info);
+    // Send to the backend audit trail (append-only) so client errors surface
+    // in the system logs instead of only the console.
+    try {
+      const payload = {
+        message: error?.message || String(error),
+        component_stack: info?.componentStack || null,
+        url: typeof window !== "undefined" ? window.location.href : null,
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+      };
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/api/v1/telemetry/client-error",
+          new Blob([JSON.stringify(payload)], { type: "application/json" })
+        );
+      } else {
+        void fetch("/api/v1/telemetry/client-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
+      }
+    } catch (reportErr) {
+      console.error("Telemetry report failed:", reportErr);
+    }
   }
 
   render() {

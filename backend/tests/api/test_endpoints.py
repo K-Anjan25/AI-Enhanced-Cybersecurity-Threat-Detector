@@ -600,3 +600,38 @@ def test_ml_explain_log_proxies_payload(client, auth_headers, monkeypatch):
 def test_ml_explain_network_requires_payload_auth(client, db_session):
     resp = client.post("/api/v1/ml/explain/network", json={"dst_port": 3389})
     assert resp.status_code in (401, 403)
+
+
+def test_client_error_telemetry_records_audit(client, db_session, auth_headers):
+    from app.models import AuditLog
+
+    resp = client.post(
+        "/api/v1/telemetry/client-error",
+        headers=auth_headers,
+        json={
+            "message": "TypeError: x is undefined",
+            "component_stack": "at AlertsPage",
+            "url": "http://localhost:3000/alerts",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["recorded"] is True
+
+    entry = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "CLIENT_ERROR")
+        .order_by(AuditLog.created_at.desc())
+        .first()
+    )
+    assert entry is not None
+    assert entry.resource == "dashboard"
+    assert entry.actor == "analyst1"
+    assert "TypeError: x is undefined" in entry.details
+
+
+def test_client_error_telemetry_requires_auth(client, db_session):
+    resp = client.post(
+        "/api/v1/telemetry/client-error",
+        json={"message": "TypeError: x is undefined"},
+    )
+    assert resp.status_code in (401, 403)
