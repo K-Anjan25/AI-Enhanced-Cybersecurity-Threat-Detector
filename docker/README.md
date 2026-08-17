@@ -17,10 +17,25 @@ Sum of limits: **~928 MiB** (fits a 1 GiB container budget).
 
 ```bash
 cd docker
-docker compose up -d
+docker compose up -d --build   # --build bakes fresh models on ml-service rebuild
 ```
 
 Then open **http://localhost:3000** (login/register → analyze logs → alerts).
+
+## ML models: baked at build time (no manual retrain)
+
+The ml-service `Dockerfile` trains the log/email classifiers during the image
+build (`RUN python train.py`), so `/benchmark` and `/explain` show real model
+results out of the box and predictions use the trained classifiers — no manual
+`POST /retrain` required.
+
+The **network (IsolationForest) model needs the CICIDS2017 dataset**
+(`datasets/CICIDS2017/*.csv`), which is not part of the build context. It is
+gracefully skipped at build time, and the service falls back to deterministic
+heuristics for network flows until you either:
+
+- trigger the in-service retrain: `curl -X POST http://localhost:8001/retrain -H 'Content-Type: application/json' -d '{"require_network": true}'` (with data mounted), or
+- build the image with the dataset in scope so it trains during the build.
 
 ## Streaming (Kafka) — opt-in
 
