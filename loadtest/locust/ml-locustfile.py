@@ -27,7 +27,7 @@ class MLUser(HttpUser):
     # No think time: constant-arrival throughput, not pacing.
     wait_time = constant(0)
 
-    @task
+    @task(6)
     def predict_log(self):
         with self.client.post(
             "/predict/log",
@@ -38,3 +38,25 @@ class MLUser(HttpUser):
         ) as resp:
             if resp.status_code != 200:
                 resp.failure(f"predict/log returned {resp.status_code}")
+
+    @task(1)
+    def explain_log(self):
+        with self.client.post(
+            "/explain/log",
+            json=LOG_SAMPLE,
+            headers={"Content-Type": "application/json"},
+            name="explain/log",
+            catch_response=True,
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"explain/log returned {resp.status_code}")
+
+    @task(1)
+    def benchmark(self):
+        with self.client.get(
+            "/benchmark",
+            name="benchmark",
+            catch_response=True,
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"benchmark returned {resp.status_code}")

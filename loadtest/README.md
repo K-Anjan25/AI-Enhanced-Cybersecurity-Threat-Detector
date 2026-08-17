@@ -42,7 +42,8 @@ pip install locust
 locust -f locustfile.py -H http://localhost:8000 --headless \
        -u 20 -r 4 -t 90s --csv baseline-backend --html report-backend.html
 
-# ml-service NFR-PERF-05 (steady arrival, 50+ req/s)
+# ml-service NFR-PERF-05 (steady arrival, 50+ req/s; also exercises
+# /explain/log and /benchmark alongside /predict/log)
 locust -f ml-locustfile.py -H http://localhost:8001 --headless \
        -u 50 -r 10 -t 30s --csv baseline-ml --html report-ml.html
 ```
@@ -91,3 +92,13 @@ already sustains 67–96 predictions/s, beating the 50/s requirement.
 
 Re-run the suites after onboarding CI compute of a suitable spec; the targets
 are the authoritative contract.
+
+**Spot check (2026-08-17, same host, baked-in models)** — a short 20 s soak of
+the extended ml suite (`/predict/log` + `/explain/log` + `/benchmark`) ran with
+**0 failures**. `/predict/log` sustained ~15 req/s at p95 ≈ 1.1 s and
+`/explain/log` ~2.2 req/s at p95 ≈ 1.1 s. `/benchmark` was the outlier
+(avg ≈ 3.1 s, p95 ≈ 4.3 s): it re-runs holdout evaluation on every call, so it
+is a diagnostics endpoint, not a hot path. The host was again near the 8 GB RAM
+ceiling (the compose stack had been OOM-killed earlier and was restarted
+without the Kafka/Zookeeper `stream` profile), so treat these as dev-hardware
+numbers; the authoritative thresholds remain the 50 req/s NFR-PERF-05 contract.
