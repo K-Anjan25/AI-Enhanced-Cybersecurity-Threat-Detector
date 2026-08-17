@@ -92,11 +92,28 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   and `GET /entities/path` (BFS shortest path between indicators)
   (`d1374ab`).
 
+## Phase 12 — Model bake-in + deployable artifacts
+
+- ml-service Dockerfile now runs `python train.py` at build time, baking the
+  log/email classifiers into the image (`a8c3ab8`); the gitignored `model/`
+  `COPY` that broke fresh clones was removed. `train.py` gained a
+  `--require-network` flag (default off) so the network model is skipped
+  gracefully when CICIDS2017 isn't in the build context.
+- k8s manifests + READMEs aligned: `ml-service.yaml`, `training.yaml`,
+  `k8s/README.md`, `README.md`, `ml-service/README.md` now document the
+  self-contained image and the network-model opt-in (`9daf5e0`).
+- Bugfix: playbook manager fetched rules with `limit=200`, but the backend
+  caps rules at 100 → 422 → `Promise.all` rejected and the playbook list /
+  rule selector stayed empty (`01740a4`).
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
   build`, Docker E2E smoke, live `kind` rollout).
 - FR-AUDIT-05 (`X-Request-ID` tracing) verified via integration tests
   (`test_endpoints.py` echo + generate cases) and marked `IT` in the matrix.
+- The ml-service image ships with real log/email models baked in; the
+  network (IsolationForest) model requires CICIDS2017 data at
+  build/retrain time (skipped by default).
 - Remaining for production only: apply ingested ingress-nginx + cert-manager
   manifests and create the managed-DB Secret (see `k8s/README.md`).

@@ -74,9 +74,13 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-STREAM-02 | `alerts.raised` Kafka publishing | component-diagram | `test_kafka_producer.py` (alert leg of chain) | UT |
 | FR-STREAM-03 | SOAR engine (`actions.executed`, auto + manual trigger) | component-diagram, activity-diagram | `test_soar.py` | UT |
 | FR-STREAM-03 (UI) | SOAR automation screens (`/soar`, dry-run + trigger) | activity-diagram | `tsc`+`vite build`; `SoarPage.tsx` | UI |
-| FR-STREAM-04 | entity/attack-graph service + graph endpoints | component-diagram | `test_entity_graph.py` | UT/IT |
-| FR-STREAM-04 (UI) | entity-graph visualization screens (`/entities`, SVG graph) | component-diagram | `tsc`+`vite build`; `EntitiesPage.tsx` | UI |
+| FR-STREAM-03 (playbooks) | explicit rule→action playbook CRUD (`/soar/playbooks`), dashboard manager, inactive fallback | component-diagram, activity-diagram | `test_soar.py` (playbook CRUD + override + fallback); `SoarPage.tsx` | UT/UI |
+| FR-STREAM-04 | entity/attack-graph service + graph endpoints (+ `/summary`, `/path`) | component-diagram | `test_entity_graph.py`; `test_endpoints.py` (summary/path) | UT/IT |
+| FR-STREAM-04 (UI) | entity-graph visualization screens (`/entities`, SVG graph, summary KPIs + Path Finder) | component-diagram | `tsc`+`vite build`; `EntitiesPage.tsx` | UI |
 | FR-STREAM-05 | ML training-serving pipeline (CronJob retrain + hot-swap) | target-design, ml-pipeline.md | contract tests + `training.py` + `POST /retrain` | UT/REV |
+| FR-STREAM-05 (benchmark) | `GET /benchmark` + `/benchmark/latest` holdout evaluation (ml-service, proxied via backend `/api/v1/ml/*`) | ml-pipeline.md | `ml-service/app/benchmark.py`; `test_endpoints.py` (proxy) | UT/IT |
+| FR-STREAM-05 (explain) | `/explain/{log,email,network,dns}` evidence endpoints (proxy + panels) | ml-pipeline.md | `ml-service/app/explain.py`; `test_endpoints.py` (proxy); `AIAnalyticsPage.tsx` | UT/IT/UI |
+| FR-STREAM-05 (bake-in) | image self-contained: `RUN python train.py` bakes log/email models at build | docker/README.md, k8s/README.md | `train.py --require-network`; Docker build smoke | REV |
 | FR-UI-01..07 | dashboard pages | component-diagram, target-design | `tsc` + `vite build` + UI tests | UI |
 | FR-UI-04 | incident/case management screens (`/incidents`) | class-diagram | `tsc`+`vite build`; `IncidentsPage.tsx` | UI |
 | FR-UI-05 | admin controls (engine settings, rules, reputation) | admin console | `tsc`+`vite build`; `RulesPage.tsx`, `ReputationPage.tsx`, `AdminDashboard.tsx` | UI |
@@ -106,20 +110,23 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 
 ## Coverage gaps (next phases)
 
-- **FR-TENANT-06, FR-UI-05/06** — incident-management, entity-graph
-  visualization, SOAR automation, MITRE/threat-intel alert context, and the ML
-  retraining pipeline (daily CronJob → `POST /retrain` hot-swap), administrator
-  cross-tenant views (FR-TENANT-06: `/admin/orgs` + filtered roster), the
-  audit-log + role-state screens (FR-UI-06), and the detection-rules + IP
-  reputation screens (FR-UI-05) are implemented.
-- **Container runtime (FR-OPS / NFR-PORT)** — the docker-compose stack
-  (PostgreSQL on 5431, Zookeeper/Kafka) is live and verified end-to-end: the
-  backend runs against compose PG with `ENABLE_KAFKA=true`, the `alerts.raised` /
-  `raw-logs` / `actions.executed` topics receive JSON events via the shipped
-  producer, and the analyze/ingest paths persist to PG. Compose now runs the
-  **complete app** (dashboard+nginx, backend, ml-service, postgres) under a
-  ~1 GiB memory budget (limits sum to ~928 MiB, Kafka/Zookeeper opt-in via
-  `--profile stream`) so the stack runs on 8 GB laptops without hanging the host.
+- **ML explainability + benchmark** — `/explain/{log,email,network,dns}`
+  (coefficient/keyword/centroid/rule evidence, dependency-free) and
+  `GET /benchmark` / `/benchmark/latest` (holdout evaluation of deployed
+  artifacts) exposed on ml-service and proxied through the backend
+  (`backend/app/api/v1/endpoints/ml.py`), surfaced in
+  `AIAnalyticsPage.tsx` (Explainability + Benchmark panels).
+- **Entity-graph analytics** — `GET /entities/summary` (aggregate metrics +
+  hubs) and `GET /entities/path` (BFS shortest path) added on top of
+  FR-STREAM-04; `EntitiesPage.tsx` shows summary KPIs + a Path Finder.
+- **SOAR playbooks (FR-STREAM-03)** — explicit rule→action playbook CRUD
+  (`/soar/playbooks`) with a dashboard manager (`SoarPage.tsx`); inactive
+  playbooks fall back to heuristics.
+- **Model bake-in (NFR-PORT-03 / ml Ops)** — ml-service image is
+  self-contained: `RUN python train.py` at build time bakes log/email models
+  in, so predictions/benchmark/explain work out of the box and fresh clones
+  build (no gitignored `model/` COPY). Network model needs CICIDS2017 data at
+  build/retrain time (skipped by default via `--require-network`).
 - **Kubernetes rollout (NFR-PORT-03)** — the full `k8s/` stack (backend ×2,
   dashboard ×2 nginx/SQL, ml-service ×2 + HPA, in-cluster Postgres, daily
   retrain CronJob) was rolled out live on a `kind` cluster and verified:
