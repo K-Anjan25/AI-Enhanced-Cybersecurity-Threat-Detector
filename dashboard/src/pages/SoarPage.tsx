@@ -84,7 +84,7 @@ const SoarPage: React.FC = () => {
     try {
       const [pbRes, ruleRes] = await Promise.all([
         SoarApi.fetchPlaybooks({ page: 1, limit: 200 }),
-        RulesApi.fetchRules(1, 200),
+        RulesApi.fetchRules(1, 100),
       ]);
       setPlaybooks(pbRes.data);
       const used = new Set(pbRes.data.map((pb) => pb.rule_id));
