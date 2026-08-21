@@ -21,7 +21,7 @@ export const Card: React.FC<CardProps> = ({
       "bg-app-surface border border-line-subtle rounded-xl shadow-card",
       padded && "p-5",
       interactive &&
-        "hover:bg-app-surface-raised transition-colors cursor-pointer focus-visible:outline-none",
+        "hover:bg-app-surface-raised hover:border-accent-primary/20 hover:shadow-raised transition-all cursor-pointer focus-visible:outline-none",
       className
     )}
     {...props}

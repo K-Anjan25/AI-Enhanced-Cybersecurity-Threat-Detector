@@ -10,6 +10,8 @@ import showSuccess from "../../../utils/showSuccess";
 import { login } from "../../../store/userActions";
 import { getToken } from "../../../utils/token";
 import { UserError } from "../../../types/error";
+import BrandLogo from "../../../components/BrandLogo";
+import { BRAND_TAGLINE } from "../../../constants/brand";
 
 export default function Login(): React.ReactElement {
   const dispatch = useDispatch<any>();
@@ -51,13 +53,12 @@ export default function Login(): React.ReactElement {
   return (
     <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-app-surface border border-line-subtle rounded-2xl shadow-2xl p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold text-content-primary tracking-wide">
-            SOC Console Login
-          </h2>
-          <p className="text-xs text-content-secondary">
-            Access Threat AI Analytics & System Telemetry
-          </p>
+        <div className="flex flex-col items-center gap-3">
+          <BrandLogo size={36} />
+          <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold text-content-primary tracking-tight">Welcome back</h2>
+            <p className="text-xs tracking-[0.14em] text-content-tertiary uppercase">{BRAND_TAGLINE}</p>
+          </div>
         </div>
 
         {loginError && (
@@ -96,7 +97,7 @@ export default function Login(): React.ReactElement {
           <button
             type="submit"
             disabled={form.isSubmitting || loading}
-            className="w-full py-2.5 bg-accent-primary hover:bg-accent-secondary disabled:bg-accent-secondary text-app-bg rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-glow/60"
+            className="w-full py-2.5 bg-gradient-to-r from-accent-primary to-brand-violet hover:opacity-90 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
           >
             {form.isSubmitting || loading ? (
               <>

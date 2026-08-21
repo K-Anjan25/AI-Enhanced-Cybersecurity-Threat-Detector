@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
+import BrandLogo from "../../components/BrandLogo";
 
 interface NavItem {
   name: string;
@@ -122,16 +123,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         )}
       >
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle shrink-0">
-            {isSidebarOpen && (
-              <Link to="/" className="text-lg font-bold text-accent-primary truncate tracking-tight hover:text-accent-glow transition">
-                ThreatDetector AI
-              </Link>
-            )}
+          <div className="h-16 flex items-center justify-between px-3 border-b border-line-subtle shrink-0">
+            <Link to="/" className="flex items-center min-w-0 hover:opacity-90 transition">
+              <BrandLogo collapsed={!isSidebarOpen} size={isSidebarOpen ? 28 : 26} />
+            </Link>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className={cn(
-                "p-2 rounded-lg bg-app-subtle hover:bg-line-bright text-content-secondary transition text-xs font-semibold cursor-pointer",
+                "p-2 rounded-lg bg-app-subtle hover:bg-line-bright text-content-secondary transition text-xs font-semibold cursor-pointer shrink-0",
                 isSidebarOpen ? "" : "mx-auto"
               )}
               title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}

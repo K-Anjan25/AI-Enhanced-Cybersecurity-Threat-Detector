@@ -8,6 +8,8 @@ import { registerSchema, initialRegisterValues } from "../../../validators/regis
 import { registerUser } from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import BrandLogo from "../../../components/BrandLogo";
+import { BRAND_TAGLINE } from "../../../constants/brand";
 
 export default function Register(): React.ReactElement {
   const navigate = useNavigate();
@@ -35,9 +37,12 @@ export default function Register(): React.ReactElement {
   return (
     <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-app-surface border border-line-subtle rounded-xl shadow-2xl p-8 space-y-6 text-content-primary">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">SOC Analyst Onboarding</h1>
-          <p className="text-xs text-content-secondary">Register for Threat AI Incident Portal Access</p>
+        <div className="flex flex-col items-center gap-3">
+          <BrandLogo size={36} />
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight">Create your analyst account</h1>
+            <p className="text-xs tracking-[0.14em] text-content-tertiary uppercase">{BRAND_TAGLINE}</p>
+          </div>
         </div>
 
         <form onSubmit={formik.handleSubmit} className="space-y-4">

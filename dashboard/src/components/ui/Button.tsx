@@ -8,13 +8,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center font-medium transition-all duration-150 focus:outline-none disabled:opacity-50 active:scale-95 cursor-pointer",
+  "inline-flex items-center justify-center font-medium transition-all duration-150 focus:outline-none disabled:opacity-50 active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-accent-primary/40",
   {
     variants: {
       variant: {
-        primary: "bg-accent-primary text-app-bg hover:opacity-90 shadow-md",
+        primary:
+          "bg-gradient-to-r from-accent-primary to-brand-violet text-white hover:opacity-90 shadow-accent-glow border border-white/10",
         secondary: "bg-app-subtle text-content-primary hover:bg-line-bright border border-line-subtle",
-        danger: "bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30",
+        danger: "bg-status-critical/15 text-red-300 hover:bg-status-critical/25 border border-status-critical/30",
         ghost: "text-content-secondary hover:bg-app-subtle hover:text-content-primary",
       },
       size: {

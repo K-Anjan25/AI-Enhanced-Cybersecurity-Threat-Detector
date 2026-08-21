@@ -11,14 +11,23 @@ module.exports = {
         "app-bg": {
           DEFAULT: "#0a0f1c",
         },
+        "app-void": {
+          DEFAULT: "#060a14",
+        },
         "app-surface": {
           DEFAULT: "#111827",
         },
         "app-surface-raised": {
-          DEFAULT: "#151e2e",
+          DEFAULT: "#141e32",
         },
         "app-subtle": {
           DEFAULT: "#1e293b",
+        },
+        brand: {
+          DEFAULT: "#00e0ff",
+          violet: "#7c3aed",
+          indigo: "#1e1b4b",
+          muted: "#0f172a",
         },
         "content-primary": {
           DEFAULT: "#f1f5f9",
@@ -30,10 +39,10 @@ module.exports = {
           DEFAULT: "#7c8ca3",
         },
         "accent-primary": {
-          DEFAULT: "#22d3ee",
+          DEFAULT: "#00e0ff",
         },
         "accent-secondary": {
-          DEFAULT: "#0e7490",
+          DEFAULT: "#7c3aed",
         },
         "accent-glow": {
           DEFAULT: "#67e8f9",
@@ -45,17 +54,33 @@ module.exports = {
           DEFAULT: "#334155",
         },
         "status-success": {
-          DEFAULT: "#34d399",
+          DEFAULT: "#10b981",
         },
         "status-warning": {
-          DEFAULT: "#fbbf24",
+          DEFAULT: "#f59e0b",
         },
         "status-critical": {
-          DEFAULT: "#f87171",
+          DEFAULT: "#ef4444",
+        },
+        "chart-1": {
+          DEFAULT: "#00e0ff",
+        },
+        "chart-2": {
+          DEFAULT: "#7c3aed",
+        },
+        "chart-3": {
+          DEFAULT: "#10b981",
+        },
+        "chart-4": {
+          DEFAULT: "#f59e0b",
+        },
+        "chart-5": {
+          DEFAULT: "#ec4899",
         },
       },
       boxShadow: {
-        "accent-glow": "0 0 20px rgba(34, 211, 238, 0.35)",
+        "accent-glow": "0 0 24px rgba(0, 224, 255, 0.35)",
+        "violet-glow": "0 0 20px rgba(124, 58, 237, 0.35)",
         card: "0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.18)",
         raised: "0 6px 20px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25)",
         overlay: "0 12px 40px rgba(0, 0, 0, 0.5)",

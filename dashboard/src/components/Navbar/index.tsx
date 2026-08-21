@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
 import { Search, Bell, Settings, LogOut, ShieldCheck } from "lucide-react";
+import BrandLogo from "../BrandLogo";
 
 export interface NavbarProps {
   onLogout?: () => void;
@@ -34,11 +35,8 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
   return (
     <header className="h-16 bg-app-surface border-b border-line-subtle flex items-center justify-between px-6 shrink-0 z-20 w-full">
       <div className="flex items-center gap-4">
-        <Link to="/alerts" className="flex items-center gap-2 group">
-          <span className="text-xl font-bold text-accent-primary">TD</span>
-          <span className="text-lg font-bold text-content-primary tracking-tight">
-            ThreatDetector<span className="text-accent-primary">AI</span>
-          </span>
+        <Link to="/" className="flex items-center hover:opacity-90 transition">
+          <BrandLogo size={26} />
         </Link>
 
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-status-success border border-emerald-500/20">

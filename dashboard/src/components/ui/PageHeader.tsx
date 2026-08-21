@@ -30,10 +30,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, acti
         </div>
       )}
       <div className="flex items-center gap-2.5">
+        <span className="hidden sm:block w-1 h-6 rounded-full bg-gradient-to-b from-accent-primary to-brand-violet shrink-0" aria-hidden />
         <h1 className="text-2xl font-bold text-content-primary tracking-tight">{title}</h1>
         {badge}
       </div>
-      {description && <p className="text-sm text-content-secondary mt-1">{description}</p>}
+      {description && <p className="text-sm text-content-secondary mt-1 max-w-3xl">{description}</p>}
     </div>
     {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
   </div>
