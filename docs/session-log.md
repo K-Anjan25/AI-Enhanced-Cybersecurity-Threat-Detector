@@ -141,6 +141,11 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - Motion: `framer-motion` `PageTransition` (`components/PageTransition.tsx:1`, 220ms `easeOut`) wrapping `DashboardLayout` outlet; respects `prefers-reduced-motion`.
 - Landing: public `/welcome` `LandingPage.tsx:1` (NOCTRA hero, 4-feature grid, CTA → `/register`/`/login`); `App.tsx:29,66` route added; `README.md:1` brand header + design-system note.
 
+## Phase 16 — Docker build fix + live NOCTRA verification
+
+- `dashboard/.dockerignore` added (`369c169`): `node_modules`/`build` ignored → context 157 MB → 6.70 kB, build 138s → 74s; `docker-dashboard` rebuilt and `LandingPage 4.61 kB` verified via `curl :3000` → `NOCTRA — Threat Ops`; `/welcome` landing live. `docker compose ps` shows `backend`/`ml`/`postgres` healthy, `dashboard` up.
+- Live smoke after compose up: `POST /api/v1/register` `smoke_3704` → `POST /api/v1/login` (form `username`+`password`) → `POST /api/v1/analyze` `Failed password…` → `severity=LOW fallback=False` (baked `log_model`).
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
