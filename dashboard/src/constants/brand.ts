@@ -1,12 +1,6 @@
 /**
  * Brand constants — single source of truth for the product identity.
- * Swap BRAND_NAME to re-theme without touching components.
- * Shortlist researched (2026 naming trends: serious, 5-6 letters, plosive, invented):
- *  1. NOCTRA (recommended) — nocturnal sentinel, built for the night shift
- *  2. KESTRA — kestrel hover + orchestration
- *  3. VIGLA — vigilance compressed
- *  4. OBSKRA — obscura, reveals hidden image
- *  5. CORVEX — corvus + vex (raven-intelligent)
+ * NOCTRA kept per decision: serious, 6-char, 2-syllable, hard invented + nocturnal totem, abstract to grow.
  */
 export const BRAND_NAME = "NOCTRA" as const;
 export const BRAND_WORDMARK = "NOCTRA" as const;
@@ -26,5 +20,5 @@ export const BRAND_PALETTE = {
   critical: "#ef4444",
 } as const;
 
-/* Shortlist for future rotation / A/B — kept here so rename is one-line. */
-export const BRAND_SHORTLIST = ["NOCTRA", "KESTRA", "VIGLA", "OBSKRA", "CORVEX"] as const;
+/* Serious 5-6 char, 2-syllable, abstract shortlist — hard invented + animal totem */
+export const BRAND_SHORTLIST = ["NOCTRA", "KESTRA", "ORVEX", "STRYX", "KORVA"] as const;
