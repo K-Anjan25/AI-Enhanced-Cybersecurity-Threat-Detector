@@ -277,12 +277,12 @@ const EntitiesPage: React.FC = () => {
                               width: `${Math.min(entity.risk_score, 100)}%`,
                               backgroundColor:
                                 entity.risk_score >= 75
-                                  ? "#f87171"
+                                  ? "#ef4444"
                                   : entity.risk_score >= 50
-                                  ? "#fb923c"
+                                  ? "#f97316"
                                   : entity.risk_score >= 25
-                                  ? "#fbbf24"
-                                  : "#34d399",
+                                  ? "#f59e0b"
+                                  : "#10b981",
                             }}
                           />
                         </div>

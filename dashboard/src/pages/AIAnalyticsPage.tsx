@@ -31,10 +31,10 @@ const EMPTY_OVERVIEW: OverviewStats = {
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "#f87171",
-  HIGH: "#fb923c",
-  MEDIUM: "#fbbf24",
-  LOW: "#34d399",
+  CRITICAL: "#ef4444",
+  HIGH: "#f97316",
+  MEDIUM: "#f59e0b",
+  LOW: "#10b981",
 };
 
 const AIAnalyticsPage: React.FC = () => {
@@ -162,9 +162,9 @@ const AIAnalyticsPage: React.FC = () => {
                         color: "#f1f5f9",
                       }}
                     />
-                    <Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="critical" stroke="#f87171" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="high" stroke="#fb923c" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="total" stroke="#00e0ff" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="high" stroke="#f97316" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -247,7 +247,7 @@ const AIAnalyticsPage: React.FC = () => {
                           color: "#f1f5f9",
                         }}
                       />
-                      <Bar dataKey="value" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="value" fill="#00e0ff" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

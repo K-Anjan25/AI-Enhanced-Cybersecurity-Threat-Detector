@@ -10,6 +10,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "formik": "^2.4.9",
+    "framer-motion": "^13.1.1",
     "lucide-react": "^1.27.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -26,6 +26,7 @@ const TenantsPage = React.lazy(() => import("./pages/admin/TenantsPage"));
 const AccessRolesPage = React.lazy(() => import("./pages/admin/AccessRolesPage"));
 const RulesPage = React.lazy(() => import("./pages/admin/RulesPage"));
 const ReputationPage = React.lazy(() => import("./pages/admin/ReputationPage"));
+const LandingPage = React.lazy(() => import("./pages/LandingPage"));
 
 const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
@@ -62,7 +63,8 @@ export default function App(): JSX.Element {
     <Router>
       <Suspense fallback={<FallbackLoader />}>
         <Routes>
-          {/* Public Auth Routes */}
+          {/* Public Routes */}
+          <Route path="/welcome" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />

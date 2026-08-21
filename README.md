@@ -1,6 +1,10 @@
-# AI-Enhanced Cybersecurity Threat Detector
+# NOCTRA — AI-Enhanced Cybersecurity Threat Detector
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
+
+> **NOCTRA** — *Silent. Precise. Always watching.* The AI analyst that never blinks.
+>
+> Brand: **NOCTRA** (`noctra.ai`) — 6-char, 2-syllable, hard invented + nocturnal totem, abstract to grow. Full strategy in [`docs/brand-strategy.md`](docs/brand-strategy.md). Dashboard at `/welcome` (marketing landing) → `/alerts` (SOC console).
 
 An end-to-end cybersecurity system that detects anomalous network traffic, malicious logs, phishing emails, and suspicious DNS queries using machine learning and stream processing.
 
@@ -30,7 +34,7 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 
 - **Backend**: Python / FastAPI, SQLAlchemy, PostgreSQL (SQLite for tests), JWT auth (JTI + refresh tokens), optional Kafka streaming
 - **ML Service**: Python / FastAPI, scikit-learn (IsolationForest), TF-IDF + LogisticRegression, pandas, joblib
-- **Frontend**: React, TypeScript, Tailwind CSS, Redux Toolkit, Recharts
+- **Frontend**: React, TypeScript, Tailwind CSS (NOCTRA tokens: `cyan #00e0ff` + `violet #7c3aed` on `void #0a0f1c`), Redux Toolkit, Recharts, Framer Motion
 - **Infrastructure**: Docker, Docker Compose (Kafka, Zookeeper, PostgreSQL)
 
 ## Project Structure

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../components/ui";
 import BrandLogo from "../../components/BrandLogo";
+import PageTransition from "../../components/PageTransition";
 
 interface NavItem {
   name: string;
@@ -181,8 +182,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <Navbar onLogout={onLogout} />
 
-        <main key={location.pathname} className="p-6 flex-1 min-w-0 w-full overflow-y-auto animate-fade-up">
-          {children || <Outlet />}
+        <main key={location.pathname} className="p-6 flex-1 min-w-0 w-full overflow-y-auto">
+          <PageTransition>{children || <Outlet />}</PageTransition>
         </main>
       </div>
     </div>

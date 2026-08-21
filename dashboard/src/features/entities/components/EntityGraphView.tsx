@@ -16,11 +16,11 @@ const RING_SPACING = 120;
 const MAX_DEPTH = 4;
 
 const typeColor: Record<string, string> = {
-  ip: "#22d3ee",
-  domain: "#fbbf24",
+  ip: "#00e0ff",
+  domain: "#f59e0b",
   hash: "#a78bfa",
-  email: "#34d399",
-  file: "#f87171",
+  email: "#10b981",
+  file: "#ef4444",
 };
 
 const typeLabel: Record<string, string> = {
