@@ -128,6 +128,13 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   (`kafka:9092`) while host tooling uses `29092`; `ENABLE_KAFKA` is
   overridable in compose (`326e556`).
 
+## Phase 14 — Brand identity NOCTRA
+
+- Research-driven rebrand to **NOCTRA** (`noctra.ai`) — 6-char, 2-syllable, hard invented + nocturnal totem, abstract to grow (Stripe/Notion pattern). Shortlist refined per 2026 naming analysis: KESTRA / ORVEX / STRYX / KORVA on hard K/T/P/V/X register; NOCTRA kept per decision (`2fb879d`). Full strategy in `docs/brand-strategy.md`.
+- Premium dark-native design system: Tailwind v3 tokens only (no v4 migration) — `app-void #060a14`, brand `cyan #00e0ff` + `violet #7c3aed`, CVD-safe semantics (`#10b981`/`#f59e0b`/`#ef4444` + dot+label), Inter + JetBrains Mono, void glows, `violet-glow` shadow. `tailwind.config.js:10`.
+- Logo: geometric owl-eye / radar sweep diamond (SVG, no assets) + `THREAT OPS` wordmark; favicon `public/favicon.svg`; `index.html` OG/theme meta to `NOCTRA — Threat Ops`.
+- Shell polish: `BrandLogo` wordmark in sidebar + navbar (`DashboardLayout/index.tsx:128`, `Navbar/index.tsx:39`), `Button` gradient primary cyan→violet, `Card` hover brand border, `PageHeader` accent bar, auth pages brand header. `tsc --noEmit && vite build` passes.
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
