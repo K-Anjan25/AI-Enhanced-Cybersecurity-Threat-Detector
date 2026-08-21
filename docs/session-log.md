@@ -106,6 +106,28 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   caps rules at 100 → 422 → `Promise.all` rejected and the playbook list /
   rule selector stayed empty (`01740a4`).
 
+## Phase 13 — Telemetry + load-test CI
+
+- Dashboard client errors are reported to the backend via
+  `POST /api/v1/telemetry/client-error` and land in the append-only audit
+  trail as `CLIENT_ERROR` entries (any authenticated subject, no permission
+  gate) (`7c7ad80`).
+- The `loadtest` job in CI boots the compose stack (postgres + backend +
+  ml-service), installs k6, and runs the NFR-PERF suite (`threat-ai.js`) with
+  `CI=true`: strict p95 latency gates are relaxed (dev-size compose `cpus`
+  limits are unreliable on shared runners) and the job instead gates on
+  failure rate < 1% per endpoint while recording latencies as a baseline
+  (`eb06275`).
+- k6 script made CI-runnable: no object spread / `URLSearchParams`, and the
+  analysed mix scales down to a smoke level in CI mode so the background-scan
+  fan-out doesn't saturate CPU-capped containers (`0d028d5`, `cef765c`).
+- ml-service Locust suite extended to cover `/explain/log` and `/benchmark`
+  alongside `/predict/log`; spot-check baseline noted in `loadtest/README.md`
+  (`229193b`).
+- Docker fix: Kafka listens dual-protocol so the backend publishes in-network
+  (`kafka:9092`) while host tooling uses `29092`; `ENABLE_KAFKA` is
+  overridable in compose (`326e556`).
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
@@ -115,5 +137,8 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - The ml-service image ships with real log/email models baked in; the
   network (IsolationForest) model requires CICIDS2017 data at
   build/retrain time (skipped by default).
+- Every push runs the k6 NFR-PERF suite against the compose stack in CI
+  (failure-rate gate < 1%; latencies recorded as a dev-runner baseline —
+  strict p95 gates still enforced by `CI=false` local runs).
 - Remaining for production only: apply ingested ingress-nginx + cert-manager
   manifests and create the managed-DB Secret (see `k8s/README.md`).

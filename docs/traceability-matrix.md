@@ -70,6 +70,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-AUDIT-03 | `GET /audit-logs` (audit:read) | abac catalog | `test_endpoints.py` | IT |
 | FR-AUDIT-04 | `/health/live` + `/health/ready` | component-diagram | `test_endpoints.py` | IT |
 | FR-AUDIT-05 | `X-Request-ID` tracing | middleware | `test_endpoints.py` (echo + generate) | IT |
+| FR-AUDIT-01 (telemetry) | `POST /telemetry/client-error` → `CLIENT_ERROR` audit entry (append-only, any authenticated subject) | component-diagram | `test_endpoints.py` (records + requires auth) | IT |
 | FR-STREAM-01 | `kafka_producer.send_normalized` in `process_log` event chain (tenant-keyed, `ENABLE_KAFKA`) | component-diagram | `test_kafka_producer.py` | UT |
 | FR-STREAM-02 | `alerts.raised` Kafka publishing | component-diagram | `test_kafka_producer.py` (alert leg of chain) | UT |
 | FR-STREAM-03 | SOAR engine (`actions.executed`, auto + manual trigger) | component-diagram, activity-diagram | `test_soar.py` | UT |
@@ -91,7 +92,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 
 | ID | Module / design | Test(s) / verification |
 | --- | --- | --- |
-| NFR-PERF-01..05 | alert/scan/predict paths | `loadtest/` (k6 + Locust); baseline recorded 2026-08-14 |
+| NFR-PERF-01..05 | alert/scan/predict paths | `loadtest/` (k6 + Locust); baseline recorded 2026-08-14; k6 suite runs in CI on every push (`CI=true`: failure-rate gate < 1%, latency baseline) |
 | NFR-SEC-01 | `security.py` bcrypt hashing | `test_endpoints.py` password hash check |
 | NFR-SEC-02 | JWT exp + JTI blocklist | `test_endpoints.py` refresh/revoke |
 | NFR-SEC-03 | httpOnly/SameSite cookies | `test_endpoints.py` cookie assertions |
@@ -127,6 +128,15 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   in, so predictions/benchmark/explain work out of the box and fresh clones
   build (no gitignored `model/` COPY). Network model needs CICIDS2017 data at
   build/retrain time (skipped by default via `--require-network`).
+- **Load-test CI (NFR-PERF-01..05)** — the `loadtest` job boots the compose
+  stack and runs the k6 suite on every push; in `CI=true` mode it gates on
+  failure rate < 1% per endpoint (strict p95 gates remain for local
+  `CI=false` runs) and records latencies as a dev-runner baseline. The ml
+  Locust suite also covers `/explain/log` + `/benchmark`.
+- **Client-error telemetry** — dashboard errors are posted to
+  `POST /api/v1/telemetry/client-error` and stored as immutable
+  `CLIENT_ERROR` audit entries, closing the loop between UI failures and the
+  append-only audit trail.
 - **Kubernetes rollout (NFR-PORT-03)** — the full `k8s/` stack (backend ×2,
   dashboard ×2 nginx/SQL, ml-service ×2 + HPA, in-cluster Postgres, daily
   retrain CronJob) was rolled out live on a `kind` cluster and verified:
