@@ -135,6 +135,12 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - Logo: geometric owl-eye / radar sweep diamond (SVG, no assets) + `THREAT OPS` wordmark; favicon `public/favicon.svg`; `index.html` OG/theme meta to `NOCTRA — Threat Ops`.
 - Shell polish: `BrandLogo` wordmark in sidebar + navbar (`DashboardLayout/index.tsx:128`, `Navbar/index.tsx:39`), `Button` gradient primary cyan→violet, `Card` hover brand border, `PageHeader` accent bar, auth pages brand header. `tsc --noEmit && vite build` passes.
 
+## Phase 15 — Motion + landing + token alignment
+
+- Token alignment across analytics/entities: `SEVERITY_COLORS` and chart strokes unified to NOCTRA tokens (`#ef4444`/`#f97316`/`#f59e0b`/`#10b981`, `#00e0ff`) in `AIAnalyticsPage.tsx:33`, `EntitiesPage.tsx:278`, `EntityGraphView.tsx`; `DashboardOverviewPage.tsx:199` tooltip/gradient to `#141e32`/`#00e0ff`; `AlertList.tsx:89` search responsive.
+- Motion: `framer-motion` `PageTransition` (`components/PageTransition.tsx:1`, 220ms `easeOut`) wrapping `DashboardLayout` outlet; respects `prefers-reduced-motion`.
+- Landing: public `/welcome` `LandingPage.tsx:1` (NOCTRA hero, 4-feature grid, CTA → `/register`/`/login`); `App.tsx:29,66` route added; `README.md:1` brand header + design-system note.
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
