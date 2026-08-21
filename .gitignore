@@ -51,8 +51,12 @@ dataset/CICIDS2017/
 SKILL.md/
 ui-design/
 
+# Claude Code: share launch.json, keep machine-local settings out
+.claude/settings.local.json
+
 # Stray runtime DBs (dev leftovers, not part of the codebase)
 backend/threatai_verify.db
+backend/e2e.db
 
 # ======================
 # OS

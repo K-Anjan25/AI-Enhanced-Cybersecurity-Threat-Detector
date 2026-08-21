@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, Text, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -32,3 +32,16 @@ class Case(Base):
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # --- Autonomous analyst (Phase 18) --------------------------------------
+    # Additive, nullable columns so the existing Incidents page is unaffected.
+    # A case with kind='analyst' is an AI-analyst *decision* surfaced in the Feed.
+    kind = Column(String(30), default="manual", nullable=True)      # manual | analyst
+    analysis = Column(JSON, nullable=True)          # LLM narrative (contract in llm_client)
+    blast_radius = Column(JSON, nullable=True)      # {root_entity_id, nodes, links}
+    proposed_action = Column(JSON, nullable=True)   # {action_type, target, severity, rationale, undo}
+    decision = Column(String(20), default="pending", nullable=True)  # pending|approved|declined|reverted
+    decided_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    decided_at = Column(DateTime, nullable=True)
+    soar_action_id = Column(String(64), nullable=True)  # action_id of the executed SoarAction
+    report = Column(Text, nullable=True)            # generated markdown report

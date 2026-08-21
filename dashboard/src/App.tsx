@@ -18,6 +18,9 @@ const IncidentsPage = React.lazy(() => import("./pages/IncidentsPage"));
 const EntitiesPage = React.lazy(() => import("./pages/EntitiesPage"));
 const SoarPage = React.lazy(() => import("./pages/SoarPage"));
 const DashboardOverviewPage = React.lazy(() => import("./pages/DashboardOverviewPage"));
+const BriefPage = React.lazy(() => import("./pages/BriefPage"));
+const FeedPage = React.lazy(() => import("./pages/FeedPage"));
+const CasePage = React.lazy(() => import("./pages/CasePage"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const AdminEngineSettings = React.lazy(() => import("./pages/admin/EngineSettingsPage"));
@@ -81,7 +84,9 @@ export default function App(): JSX.Element {
             }
           >
             <Route element={<DashboardLayout />}>
-              <Route index element={<DashboardOverviewPage />} />
+              <Route index element={<BriefPage />} />
+              <Route path="feed" element={<FeedPage />} />
+              <Route path="case/:id" element={<CasePage />} />
               <Route path="dashboard" element={<DashboardOverviewPage />} />
               <Route path="alerts" element={<ThreatAlertsPage />} />
               <Route path="logs" element={<LogHistoryPage />} />

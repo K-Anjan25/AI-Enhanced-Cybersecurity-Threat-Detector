@@ -28,6 +28,18 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS mitre_technique VARCHAR(150)",
     # Threat-intel enrichment (v3): JSON blob with source-IP reputation context.
     "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS threat_intel JSON",
+    # Autonomous analyst (v4, Phase 18): additive columns so the "Feed of
+    # decisions" reuses the existing cases table. All nullable -> the legacy
+    # Incidents page (which ignores unknown keys) is unaffected.
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS kind VARCHAR(30) DEFAULT 'manual'",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS analysis JSON",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS blast_radius JSON",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS proposed_action JSON",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS decision VARCHAR(20) DEFAULT 'pending'",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS decided_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS decided_at TIMESTAMP",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS soar_action_id VARCHAR(64)",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS report TEXT",
     # Entity / attack-graph tables are created by Base.metadata.create_all when
     # the app starts; the backfill below keeps them tenant-scoped consistently.
 ]

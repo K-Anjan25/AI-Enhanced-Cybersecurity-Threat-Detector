@@ -11,6 +11,8 @@ import {
   Settings,
   ShieldCheck,
   LayoutDashboard,
+  Sparkles,
+  Inbox,
   Building2,
   KeyRound,
   ListChecks,
@@ -31,7 +33,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { name: "Overview", path: "/", icon: LayoutDashboard },
+  { name: "Brief", path: "/", icon: Sparkles },
+  { name: "Feed", path: "/feed", icon: Inbox },
+  { name: "Overview", path: "/dashboard", icon: LayoutDashboard },
   { name: "Threat Alerts", path: "/alerts", icon: TriangleAlert },
   { name: "Incidents", path: "/incidents", icon: FolderKanban },
   { name: "Entity Graph", path: "/entities", icon: Share2 },
@@ -80,7 +84,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
   const isActive = (item: NavItem): boolean =>
     item.path === "/"
-      ? location.pathname === "/" || location.pathname === "/dashboard"
+      ? location.pathname === "/"
       : item.matchPrefix
       ? location.pathname.startsWith(item.path)
       : location.pathname === item.path;

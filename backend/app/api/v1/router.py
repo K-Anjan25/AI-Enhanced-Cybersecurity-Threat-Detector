@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     soar,
     ml,
     telemetry,
+    analyst,
 )
 
 api_router = APIRouter()
@@ -36,3 +37,4 @@ api_router.include_router(entities.router, tags=["Entity Graph"])
 api_router.include_router(soar.router, tags=["SOAR"])
 api_router.include_router(ml.router, tags=["Machine Learning"])
 api_router.include_router(telemetry.router, tags=["Telemetry"])
+api_router.include_router(analyst.router, tags=["Analyst"])

@@ -172,6 +172,80 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   is left raw.
 - `tsc --noEmit && vite build` passes (built ~23s; CSS 37.6 kB incl. Sora).
 
+## Phase 18 — Autonomous analyst: credential-leak case loop
+
+- **Product reframe** (owner decision 2026-08-21): NOCTRA
+  shifts from a generic multi-tenant SOC *cockpit* to **an autonomous AI security
+  analyst for small companies** — "you employ an analyst, you don't operate a
+  dashboard." Phase 18 builds the product loop as a **thin, non-breaking vertical
+  slice** for one scenario (credential leak): **sense → LLM reasons → plain-English
+  Case with blast radius → drafts a reversible action → human approves → recorded +
+  auto report.** Reuses the existing engine (entity graph, SOAR, append-only audit,
+  multi-tenancy) rather than rebuilding; every legacy page stays reachable as the
+  optional "deep dive."
+- **Additive, non-breaking schema**: reuse the `cases` table — the "feed of
+  decisions" *is* cases, reframed. New nullable columns on `models/case.py`
+  (`kind`, `analysis`, `blast_radius`, `proposed_action`, `decision`,
+  `decided_by_id`, `decided_at`, `soar_action_id`, `report`) + idempotent
+  `ALTER TABLE cases ADD COLUMN IF NOT EXISTS …` in `core/migrations.py`;
+  `create_all` builds them on fresh DBs. `case_service.serialize_case` extended —
+  extra keys are safe for the existing Incidents page, which renders unchanged.
+- **Sense** — `services/scenario.py` `run_credential_leak`: inserts a CRITICAL
+  `credential_leak` `SecurityAlert` (MITRE **T1078**), builds a deterministic blast
+  radius via `entity_graph.upsert_entity`/`link_entities`
+  (`email:jdoe@acme.com` —derives_from→ `account:jdoe` —communicates→ `finance-db`
+  / attacker `ip`), drafts `REVOKE_CREDENTIALS`, and opens a `kind='analyst'`
+  pending case with `ANALYST_CASE_OPENED` audited.
+- **Reason (graceful)** — `services/llm_client.py` `analyze_incident`: synchronous
+  `requests` to the Anthropic Messages API mirroring `ml_client._post_with_retry`
+  (retry/backoff + `x-api-key`/`anthropic-version` headers); returns the analysis
+  JSON contract (`headline`, `what_happened`, `why_it_matters`,
+  `blast_radius_summary`, `recommended_action{action_type,target,rationale,undo}`,
+  `confidence`, `model`, `fallback`). With no `ANTHROPIC_API_KEY` (or
+  `LLM_ENABLED=False`) or on any error/parse failure it returns a deterministic
+  templated `fallback_analyze` (`fallback:true`) — **never raises**, so the demo is
+  meaningful with no key and richer with one. New `config.py` settings
+  `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL="claude-sonnet-5"`/`ANTHROPIC_BASE_URL`/
+  `LLM_ENABLED`/`LLM_TIMEOUT`/`LLM_MAX_TOKENS`.
+- **Decide + reverse + report** — `services/analyst_service.py` drives the reads
+  (`brief`, `feed`, `get_case`) and the human transitions: `approve` runs the
+  drafted action through the existing **record-only** `soar.execute_action` (records
+  a `SoarAction`, stores `soar_action_id`), `revert` records a compensating
+  `ALERT_OPERATOR` entry carrying the `undo` text, `decline` closes with no system
+  change. Each transition stamps `decided_by/at`, generates a markdown report via
+  `services/report.py` `build_case_report` (summary, blast-radius table, decision,
+  action + undo, audit refs), and writes
+  `ANALYST_CASE_{APPROVED,DECLINED,REVERTED}` to the append-only log.
+- **Endpoints** — `api/v1/endpoints/analyst.py` (`prefix=/analyst`, registered in
+  `router.py`): `POST /simulate`, `GET /brief`, `GET /feed`, `GET /cases/{id}`,
+  `POST /cases/{id}/{approve,decline,revert}`, `GET /cases/{id}/report`. Reads use
+  `get_current_user`, writes reuse `require_permission("alerts:write")` (**no new
+  perms**), all org-scoped with the standard `{data,total,page,limit}` envelope.
+- **Calm surfaces** (semantic tokens only, `space-y-6 animate-fade-in`;
+  `api/analystApi.ts` + `types/analyst.ts`): `pages/BriefPage.tsx` — post-login home
+  ("Here's where things stand", StatCards Needs-your-decision / Handled-today /
+  Assets-watched, a "What needs you" list, and a primary **Simulate incident**);
+  `pages/FeedPage.tsx` — decisions table (headline, severity, decision pill, opened)
+  cloned from `IncidentsPage`; `pages/CasePage.tsx` — Explanation (what/why),
+  Blast radius (entities + relations), Recommended action (reversible `undo` note +
+  model/fallback + confidence), and a Decision gate driving `ConfirmDialog`
+  approve/decline/revert with a "View report" reveal. `App.tsx` makes **Brief the
+  index** and adds `feed` + `case/:id`; Overview kept at `/dashboard` (deep dive);
+  `DashboardLayout` gains Brief/Feed/Overview nav. `.claude/launch.json` added for
+  the `noctra-dashboard` dev preview.
+- **Verified**: `pytest` **114 passed, 2 skipped** incl. `tests/test_analyst.py`
+  (simulate→approve happy path with `LLM_ENABLED=False` asserts
+  `Case(kind='analyst')`, executed `SoarAction`, audit rows, `decision='approved'`,
+  non-empty report; decline path records no `SoarAction`; `analyze_incident`
+  returns the full contract with `fallback:true` and no key). `tsc --noEmit &&
+  vite build` clean. Manual browser e2e (no `ANTHROPIC_API_KEY`, fallback
+  reasoning): simulate → case #1 renders narrative + 4-node blast radius +
+  `REVOKE_CREDENTIALS` with reversible note + 90% confidence → **approve** records
+  `soar_action_id` and the markdown report renders → **feed** lists it, **brief**
+  pending drops to 0 / handled 1; **decline** and **revert** exercised on further
+  cases; legacy **Incidents / SOAR / Entity Graph** load unchanged (SOAR shows the
+  recorded action; Entity Graph shows the injected `jdoe`/`finance-db` entities).
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite

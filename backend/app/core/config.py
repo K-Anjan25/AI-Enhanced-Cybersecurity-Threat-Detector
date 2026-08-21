@@ -47,6 +47,16 @@ class Settings(BaseSettings):
     AUDIT_TOPIC: str = "audit.events"
     ML_SERVICE_URL: str = "http://localhost:8001"
 
+    # LLM (Anthropic) reasoning for the autonomous analyst. Optional: when no
+    # API key is configured the analyst degrades to a deterministic templated
+    # narrative so the product loop still works end-to-end (see llm_client).
+    ANTHROPIC_API_KEY: str | None = None
+    ANTHROPIC_MODEL: str = "claude-sonnet-5"
+    ANTHROPIC_BASE_URL: str = "https://api.anthropic.com"
+    LLM_ENABLED: bool = True
+    LLM_TIMEOUT: float = 30.0
+    LLM_MAX_TOKENS: int = 1024
+
     # Email / SMTP settings (accepts both MAIL_* and SMTP_* env names)
     SMTP_HOST: str | None = Field(default=None, alias="MAIL_SERVER")
     SMTP_PORT: int | None = Field(default=None, alias="MAIL_PORT")

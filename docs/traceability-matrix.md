@@ -87,6 +87,14 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 | FR-UI-05 | admin controls (engine settings, rules, reputation) | admin console | `tsc`+`vite build`; `RulesPage.tsx`, `ReputationPage.tsx`, `AdminDashboard.tsx` | UI |
 | FR-UI-06 | audit log + per-role access states (`/admin/system-logs`, `/admin/roles`) | admin endpoints | `tsc`+`vite build` | UI |
 | FR-UI-07 | MITRE ATT&CK + threat-intel context in alert detail modal | class-diagram | `tsc`+`vite build`; `AlertDetailModal.tsx` | UI |
+| FR-ANALYST-01 | scenario injector `scenario.run_credential_leak` (sense: CRITICAL `credential_leak` alert T1078 + deterministic blast radius, opens `kind='analyst'` case) | activity-diagram | `test_analyst.py` | UT |
+| FR-ANALYST-02 | `llm_client.analyze_incident` Anthropic Messages call + deterministic `fallback_analyze` (never raises; `fallback` flag) | activity-diagram | `test_analyst.py` (fallback contract) | UT |
+| FR-ANALYST-03 | blast-radius snapshot on the case (reuses `entity_graph`) | component-diagram | `test_analyst.py` | UT |
+| FR-ANALYST-04 | `analyst_service.approve_case` executes the drafted action via record-only `soar.execute_action` + stores `soar_action_id` | activity-diagram | `test_analyst.py` (executed `SoarAction`) | UT |
+| FR-ANALYST-05 | decline / revert transitions (`revert` records a compensating `ALERT_OPERATOR` entry) + `ANALYST_CASE_*` audit | state-diagram | `test_analyst.py` (decline: no `SoarAction`) | UT |
+| FR-ANALYST-06 | auto markdown report `report.build_case_report` stored on `case.report` at decision time | — | `test_analyst.py` (non-empty report) | UT |
+| FR-ANALYST-07 | `/analyst/*` endpoints (`simulate`/`brief`/`feed`/`cases/{id}`/`approve`/`decline`/`revert`/`report`) reuse `require_permission("alerts:write")`, org-scoped envelope | component-diagram | `test_analyst.py` | IT |
+| FR-ANALYST-08 (UI) | calm surfaces Brief / Feed / Case (`BriefPage`/`FeedPage`/`CasePage`, `ConfirmDialog` approval gate) | target-design | `tsc`+`vite build` | UI |
 
 ## Non-functional requirements
 
@@ -111,6 +119,19 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
 
 ## Coverage gaps (next phases)
 
+- **Autonomous analyst loop (FR-ANALYST-01..08, Phase 18)** — a thin,
+  non-breaking product layer over the existing engine that turns the SOC cockpit
+  into an AI analyst: `scenario.run_credential_leak` senses a credential leak,
+  `llm_client.analyze_incident` reasons in plain English (Anthropic with a
+  deterministic templated fallback, so it works with no API key), the case carries
+  a blast-radius snapshot + a drafted **reversible** `REVOKE_CREDENTIALS`, and
+  `analyst_service.{approve,decline,revert}` gate the human decision — approving
+  runs the action through record-only `soar.execute_action`, stores the
+  `soar_action_id`, generates a markdown report, and audits every transition.
+  Surfaced on calm Brief / Feed / Case screens (`/analyst/*` API). Reuses the
+  `cases` table via additive nullable columns, so the legacy Incidents / SOAR /
+  Entity Graph pages are untouched. Next: real connectors (Okta/EDR/firewall),
+  Ask-NOCTRA chat, and more scenarios.
 - **ML explainability + benchmark** — `/explain/{log,email,network,dns}`
   (coefficient/keyword/centroid/rule evidence, dependency-free) and
   `GET /benchmark` / `/benchmark/latest` (holdout evaluation of deployed

@@ -87,4 +87,15 @@ def serialize_case(case: Case) -> dict:
         "org_id": case.org_id,
         "created_at": case.created_at.isoformat() if case.created_at else None,
         "updated_at": case.updated_at.isoformat() if case.updated_at else None,
+        # Autonomous-analyst (Phase 18) fields. Nullable for legacy cases;
+        # extra keys are safe for existing TS/UI consumers.
+        "kind": getattr(case, "kind", None) or "manual",
+        "analysis": getattr(case, "analysis", None),
+        "blast_radius": getattr(case, "blast_radius", None),
+        "proposed_action": getattr(case, "proposed_action", None),
+        "decision": getattr(case, "decision", None) or "pending",
+        "decided_by_id": getattr(case, "decided_by_id", None),
+        "decided_at": case.decided_at.isoformat() if getattr(case, "decided_at", None) else None,
+        "soar_action_id": getattr(case, "soar_action_id", None),
+        "report": getattr(case, "report", None),
     }
