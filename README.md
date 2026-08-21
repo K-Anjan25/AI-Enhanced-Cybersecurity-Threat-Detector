@@ -34,7 +34,7 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 
 - **Backend**: Python / FastAPI, SQLAlchemy, PostgreSQL (SQLite for tests), JWT auth (JTI + refresh tokens), optional Kafka streaming
 - **ML Service**: Python / FastAPI, scikit-learn (IsolationForest), TF-IDF + LogisticRegression, pandas, joblib
-- **Frontend**: React, TypeScript, Tailwind CSS (NOCTRA tokens: `cyan #00e0ff` + `violet #7c3aed` on `void #0a0f1c`), Redux Toolkit, Recharts, Framer Motion
+- **Frontend**: React, TypeScript, Tailwind CSS (NOCTRA "Obsidian Ember" tokens: `amber #f59e0b` + `sage #84a98c` on `obsidian #0a0a0f`; Inter + Sora display + JetBrains Mono), Redux Toolkit, Recharts, Framer Motion
 - **Infrastructure**: Docker, Docker Compose (Kafka, Zookeeper, PostgreSQL)
 
 ## Project Structure

@@ -218,7 +218,7 @@ const RulesPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(rule)}
-                        className="px-2.5 py-1 text-xs rounded-md bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 transition"
+                        className="px-2.5 py-1 text-xs rounded-md bg-status-critical/15 hover:bg-status-critical/25 border border-status-critical/30 text-status-critical transition"
                       >
                         Delete
                       </button>

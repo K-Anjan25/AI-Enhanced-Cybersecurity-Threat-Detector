@@ -26,8 +26,8 @@ const SEVERITY_STYLES: Record<Severity, { badge: string; dot: string }> = {
     dot: "bg-status-critical",
   },
   HIGH: {
-    badge: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-    dot: "bg-orange-400",
+    badge: "bg-status-warning/15 text-status-warning border-status-warning/30",
+    dot: "bg-status-warning",
   },
   MEDIUM: {
     badge: "bg-status-warning/15 text-status-warning border-status-warning/30",

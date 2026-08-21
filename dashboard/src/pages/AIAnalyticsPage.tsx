@@ -31,10 +31,10 @@ const EMPTY_OVERVIEW: OverviewStats = {
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "#ef4444",
-  HIGH: "#f97316",
-  MEDIUM: "#f59e0b",
-  LOW: "#10b981",
+  CRITICAL: "#e76f51",
+  HIGH: "#f4a261",
+  MEDIUM: "#e9c46a",
+  LOW: "#84a98c",
 };
 
 const AIAnalyticsPage: React.FC = () => {
@@ -151,20 +151,20 @@ const AIAnalyticsPage: React.FC = () => {
               <div className="h-64 mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
-                    <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "#64748b", fontSize: 11 }} allowDecimals={false} />
+                    <CartesianGrid stroke="#23232f" strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
                     <Tooltip
                       contentStyle={{
-                        background: "#111827",
-                        border: "1px solid #334155",
+                        background: "#14141f",
+                        border: "1px solid #2d2d3a",
                         borderRadius: 8,
                         color: "#f1f5f9",
                       }}
                     />
-                    <Line type="monotone" dataKey="total" stroke="#00e0ff" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="high" stroke="#f97316" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="critical" stroke="#e76f51" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="high" stroke="#f4a261" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -185,13 +185,13 @@ const AIAnalyticsPage: React.FC = () => {
                       label={(entry: any) => `${entry.name}: ${entry.value}`}
                     >
                       {pieData.map((entry) => (
-                        <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#64748b"} />
+                        <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#71717a"} />
                       ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        background: "#111827",
-                        border: "1px solid #334155",
+                        background: "#14141f",
+                        border: "1px solid #2d2d3a",
                         borderRadius: 8,
                         color: "#f1f5f9",
                       }}
@@ -236,18 +236,18 @@ const AIAnalyticsPage: React.FC = () => {
                 <div className="h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={Object.entries(overview.by_type || {}).map(([name, value]) => ({ name, value }))}>
-                      <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "#64748b", fontSize: 11 }} allowDecimals={false} />
+                      <CartesianGrid stroke="#23232f" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
                       <Tooltip
                         contentStyle={{
-                          background: "#111827",
-                          border: "1px solid #334155",
+                          background: "#14141f",
+                          border: "1px solid #2d2d3a",
                           borderRadius: 8,
                           color: "#f1f5f9",
                         }}
                       />
-                      <Bar dataKey="value" fill="#00e0ff" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -271,8 +271,8 @@ const AIAnalyticsPage: React.FC = () => {
                       <span
                         className="px-2 py-0.5 rounded text-xs font-semibold"
                         style={{
-                          color: SEVERITY_COLORS[alert.severity] || "#94a3b8",
-                          backgroundColor: `${SEVERITY_COLORS[alert.severity] || "#94a3b8"}22`,
+                          color: SEVERITY_COLORS[alert.severity] || "#a1a1aa",
+                          backgroundColor: `${SEVERITY_COLORS[alert.severity] || "#a1a1aa"}22`,
                         }}
                       >
                         {alert.severity}
@@ -329,7 +329,7 @@ const AIAnalyticsPage: React.FC = () => {
               </div>
 
               {explainError && (
-                <p className="text-xs text-red-400 mb-3">{explainError}</p>
+                <p className="text-xs text-status-critical mb-3">{explainError}</p>
               )}
 
               {explanation && (
@@ -348,10 +348,10 @@ const AIAnalyticsPage: React.FC = () => {
                             <span
                               className={`w-2 h-2 rounded-full shrink-0 ${
                                 c.direction === "attack"
-                                  ? "bg-red-400"
+                                  ? "bg-status-critical"
                                   : c.direction === "attention"
-                                  ? "bg-amber-400"
-                                  : "bg-emerald-400"
+                                  ? "bg-status-warning"
+                                  : "bg-status-success"
                               }`}
                             />
                             <span className="text-sm text-content-primary truncate">{c.term}</span>
@@ -388,8 +388,8 @@ const AIAnalyticsPage: React.FC = () => {
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-semibold ${
                             m.status === "ok"
-                              ? "bg-emerald-500/15 text-emerald-400"
-                              : "bg-amber-500/15 text-amber-300"
+                              ? "bg-status-success/15 text-status-success"
+                              : "bg-status-warning/15 text-status-warning"
                           }`}
                         >
                           {m.status}

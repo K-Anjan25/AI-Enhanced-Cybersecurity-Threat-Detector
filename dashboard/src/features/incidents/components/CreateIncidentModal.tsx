@@ -102,7 +102,7 @@ const CreateIncidentModal: React.FC<Props> = ({
           </div>
 
           {error && (
-            <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+            <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
               {error}
             </div>
           )}

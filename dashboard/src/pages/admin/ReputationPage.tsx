@@ -197,7 +197,7 @@ const ReputationPage: React.FC = () => {
                         className={`px-2.5 py-1 text-xs rounded-md border transition disabled:opacity-50 ${
                           row.is_blocked
                             ? "bg-app-subtle hover:bg-line-bright border-line-subtle text-content-secondary"
-                            : "bg-red-500/15 hover:bg-red-500/25 border-red-500/30 text-red-400"
+                            : "bg-status-critical/15 hover:bg-status-critical/25 border-status-critical/30 text-status-critical"
                         }`}
                       >
                         {blocking === row.ip_address ? "…" : row.is_blocked ? "Unblock" : "Block"}

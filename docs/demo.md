@@ -13,13 +13,13 @@ This is the exact click-path for a Loom/portfolio recording. Stack is `docker co
 
 ## 1. Auth (0:20-0:50)
 
-- Click **Start free** → `/register` — note `BrandLogo` owl-eye + gradient CTA (`cyan #00e0ff → violet #7c3aed`).
+- Click **Start free** → `/register` — note `BrandLogo` owl-eye + gradient CTA (`amber #f59e0b → sage #84a98c`).
 - Register `analyst / analyst@noctra.ai / ChangeMe#2026` (role ANALYST) → **Sign in** → `/login` → same brand header.
 - Login — lands on **SOC Overview** (`/`).
 
 ## 2. SOC Overview (0:50-1:30)
 
-- Show KPI strip (Total / Critical / High / Open Incidents / SOAR) — `StatCard` with NOCTRA tokens; trend `AreaChart` (`#00e0ff` total, `#ef4444` critical on `#141e32` tooltip); Top Threats bars (`bg-accent-primary`).
+- Show KPI strip (Total / Critical / High / Open Incidents / SOAR) — `StatCard` with NOCTRA tokens; trend `AreaChart` (`#f59e0b` total, `#e76f51` critical on `#1e1e2b` tooltip); Top Threats bars (`bg-accent-primary`).
 - Point to **Critical Alerts** rail — 5 most recent, `SeverityBadge` (dot+label, CVD-safe).
 
 ## 3. Triage Queue (1:30-2:30) — Core SOC
@@ -33,12 +33,12 @@ This is the exact click-path for a Loom/portfolio recording. Stack is `docker co
 
 ## 5. Entity Graph (3:10-3:50)
 
-- Open **Entity Graph** (`/entities`) — summary KPIs (nodes/edges/hub degree), **Path Finder** (From ID → To ID → Trace path → `→` pills), table with `Risk score` bar (`#ef4444`/`#f97316`/`#f59e0b`/`#10b981`) + `Graph` pivot → `EntityGraphView` SVG (NOCTRA violet ring).
+- Open **Entity Graph** (`/entities`) — summary KPIs (nodes/edges/hub degree), **Path Finder** (From ID → To ID → Trace path → `→` pills), table with `Risk score` bar (`#e76f51`/`#f4a261`/`#e9c46a`/`#84a98c`) + `Graph` pivot → `EntityGraphView` SVG (NOCTRA sage ring).
 
 ## 6. SOAR & AI Analytics (3:50-4:40)
 
 - **SOAR Automation** (`/soar`) — Dry-run evaluator (`system_log` + message → Test rules → `2 action(s) would fire: BLOCK_SOURCE_IP`), Playbooks table (active/paused), Executed actions audit.
-- **AI Analytics** (`/analytics`) — KPIs, 7-day `LineChart` (`#00e0ff`/`#ef4444`), **Severity Distribution** pie (`SEVERITY_COLORS` NOCTRA), **Model Explainability** (select `log` → paste `SQL injection exploit` → **Explain** → contributions with `attack`/`attention`/`benign` dots), **Model Benchmark** cards (`ok`/`warn`).
+- **AI Analytics** (`/analytics`) — KPIs, 7-day `LineChart` (`#f59e0b`/`#e76f51`), **Severity Distribution** pie (`SEVERITY_COLORS` NOCTRA), **Model Explainability** (select `log` → paste `SQL injection exploit` → **Explain** → contributions with `attack`/`attention`/`benign` dots), **Model Benchmark** cards (`ok`/`warn`).
 
 ## 7. Admin (4:40-5:00) — Close
 

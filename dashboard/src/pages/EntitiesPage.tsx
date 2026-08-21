@@ -15,18 +15,18 @@ const ENTITY_TYPES: Array<{ value: EntityType | ""; label: string }> = [
 ];
 
 const typeColor: Record<string, string> = {
-  ip: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
-  domain: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  hash: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  email: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  file: "bg-red-500/15 text-red-400 border-red-500/30",
+  ip: "bg-chart-1/15 text-chart-1 border-chart-1/30",
+  domain: "bg-chart-4/15 text-chart-4 border-chart-4/30",
+  hash: "bg-chart-5/15 text-chart-5 border-chart-5/30",
+  email: "bg-chart-2/15 text-chart-2 border-chart-2/30",
+  file: "bg-chart-3/15 text-chart-3 border-chart-3/30",
 };
 
 const riskColor = (score: number): string => {
-  if (score >= 75) return "bg-red-500/15 text-red-400 border-red-500/30";
-  if (score >= 50) return "bg-orange-500/15 text-orange-400 border-orange-500/30";
-  if (score >= 25) return "bg-amber-500/15 text-amber-300 border-amber-500/30";
-  return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+  if (score >= 75) return "bg-status-critical/15 text-status-critical border-status-critical/30";
+  if (score >= 50) return "bg-status-warning/15 text-status-warning border-status-warning/30";
+  if (score >= 25) return "bg-chart-4/15 text-chart-4 border-chart-4/30";
+  return "bg-status-success/15 text-status-success border-status-success/30";
 };
 
 const EntitiesPage: React.FC = () => {
@@ -146,7 +146,7 @@ const EntitiesPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
           {error}
         </div>
       )}
@@ -197,7 +197,7 @@ const EntitiesPage: React.FC = () => {
           </button>
         </div>
 
-        {pathError && <p className="text-xs text-red-400 mt-3">{pathError}</p>}
+        {pathError && <p className="text-xs text-status-critical mt-3">{pathError}</p>}
 
         {pathResult && (
           <div className="mt-4">
@@ -277,12 +277,12 @@ const EntitiesPage: React.FC = () => {
                               width: `${Math.min(entity.risk_score, 100)}%`,
                               backgroundColor:
                                 entity.risk_score >= 75
-                                  ? "#ef4444"
+                                  ? "#e76f51"
                                   : entity.risk_score >= 50
-                                  ? "#f97316"
+                                  ? "#f4a261"
                                   : entity.risk_score >= 25
-                                  ? "#f59e0b"
-                                  : "#10b981",
+                                  ? "#e9c46a"
+                                  : "#84a98c",
                             }}
                           />
                         </div>

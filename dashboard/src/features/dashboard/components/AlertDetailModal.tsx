@@ -6,16 +6,16 @@ interface Props {
 }
 
 const severityBadge: Record<string, string> = {
-  CRITICAL: "bg-red-500/15 text-red-400 border-red-500/30",
-  HIGH: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  MEDIUM: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  LOW: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  CRITICAL: "bg-status-critical/15 text-status-critical border-status-critical/30",
+  HIGH: "bg-status-warning/15 text-status-warning border-status-warning/30",
+  MEDIUM: "bg-chart-4/15 text-chart-4 border-chart-4/30",
+  LOW: "bg-status-success/15 text-status-success border-status-success/30",
 };
 
 const bandBadge: Record<string, string> = {
-  malicious: "bg-red-500/15 text-red-400 border-red-500/30",
-  suspicious: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  low: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  malicious: "bg-status-critical/15 text-status-critical border-status-critical/30",
+  suspicious: "bg-status-warning/15 text-status-warning border-status-warning/30",
+  low: "bg-status-success/15 text-status-success border-status-success/30",
   unknown: "bg-app-subtle text-content-secondary border-line-subtle",
 };
 
@@ -114,7 +114,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                     {String(threatIntel.category || "observed")}
                   </span>
                   {threatIntel.is_blocked ? (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border bg-red-500/15 text-red-400 border-red-500/30">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border bg-status-critical/15 text-status-critical border-status-critical/30">
                       Blocked
                     </span>
                   ) : null}

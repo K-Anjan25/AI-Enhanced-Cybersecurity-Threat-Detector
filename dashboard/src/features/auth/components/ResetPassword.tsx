@@ -51,12 +51,12 @@ export default function ResetPassword() {
         </h2>
 
         {message && (
-          <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 p-2.5 rounded-lg mb-4 text-xs text-center">
+          <div className="bg-status-success/15 border border-status-success/30 text-status-success p-2.5 rounded-lg mb-4 text-xs text-center">
             {message}
           </div>
         )}
         {error && (
-          <div className="bg-red-500/15 border border-red-500/30 text-red-400 p-2.5 rounded-lg mb-4 text-xs text-center">
+          <div className="bg-status-critical/15 border border-status-critical/30 text-status-critical p-2.5 rounded-lg mb-4 text-xs text-center">
             {error}
           </div>
         )}

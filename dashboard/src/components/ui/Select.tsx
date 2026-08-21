@@ -24,7 +24,7 @@ export const Select: React.FC<SelectProps> = ({
     <select
       className={cn(
         "bg-app-bg border rounded-lg px-3.5 py-2 text-sm text-content-primary focus:outline-none transition cursor-pointer",
-        error ? "border-red-500 focus:border-red-500" : "border-line-subtle focus:border-accent-primary",
+        error ? "border-status-critical focus:border-status-critical" : "border-line-subtle focus:border-accent-primary",
         className
       )}
       {...props}
@@ -35,6 +35,6 @@ export const Select: React.FC<SelectProps> = ({
         </option>
       ))}
     </select>
-    {error && <span className="text-xs text-red-400 mt-0.5">{error}</span>}
+    {error && <span className="text-xs text-status-critical mt-0.5">{error}</span>}
   </div>
 );

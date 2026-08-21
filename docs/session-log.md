@@ -146,6 +146,32 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - `dashboard/.dockerignore` added (`369c169`): `node_modules`/`build` ignored → context 157 MB → 6.70 kB, build 138s → 74s; `docker-dashboard` rebuilt and `LandingPage 4.61 kB` verified via `curl :3000` → `NOCTRA — Threat Ops`; `/welcome` landing live. `docker compose ps` shows `backend`/`ml`/`postgres` healthy, `dashboard` up.
 - Live smoke after compose up: `POST /api/v1/register` `smoke_3704` → `POST /api/v1/login` (form `username`+`password`) → `POST /api/v1/analyze` `Failed password…` → `severity=LOW fallback=False` (baked `log_model`).
 
+## Phase 17 — Obsidian Ember palette + Sora display font
+
+- Palette pivot from the launch cyan/violet ("void") theme to **Obsidian Ember**:
+  warm `amber #f59e0b` + `sage #84a98c` + `clay #c9ada7` on near-black `app-bg
+  #0a0a0f` / `app-void #050508`. Every Tailwind token in `tailwind.config.js`
+  (`accent-*`, `status-*`, `chart-1..5`, `app-*`, `content-*`, `line-*`) and
+  `BRAND_PALETTE` in `constants/brand.ts` remapped; `accent-glow`/`sage-glow`
+  shadows, `favicon.svg`, `BrandLogo` (amber mark + sage ring), `index.html`
+  `theme-color`, and `globals.css` radial glows + scrollbar recolored.
+- Added `Sora Variable` as the `display` font (headings + wordmark) alongside
+  Inter (UI) and JetBrains Mono (mono): dep + `index.tsx` import, `fontFamily.display`
+  in `tailwind.config.js`, applied via `font-display` on `PageHeader`, `BrandLogo`,
+  the `LandingPage` hero, and the SOC Overview title.
+- Finished the migration the initial pass had skipped: converted ~43 raw Tailwind
+  color utilities (`bg-emerald-500`, `bg-blue-500`, `bg-orange-500`, `text-red-400`,
+  …) to semantic tokens across 18 files — `SoarPage`, `IncidentsPage`,
+  `AlertDetailModal`, admin `Rules`/`Reputation`/`SystemLogs`/`EngineSettings`,
+  shared `Badge`/`Select`/`TextInput`/`TableWithAction`/`Navbar`, and the auth
+  `ResetPassword`/`Login` + entity error states — so every surface renders through
+  the token system. Severity ramp unified to
+  `status-critical`/`status-warning`/`chart-4`/`status-success`; the solid
+  batch-delete button dropped white-on-terracotta (failed WCAG AA) for the app's
+  tinted `danger` convention. Only the deliberate `text-red-300` danger-button text
+  is left raw.
+- `tsc --noEmit && vite build` passes (built ~23s; CSS 37.6 kB incl. Sora).
+
 ## Status
 
 - All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite

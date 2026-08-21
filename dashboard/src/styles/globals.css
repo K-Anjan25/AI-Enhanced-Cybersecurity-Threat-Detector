@@ -9,13 +9,13 @@
 
   body {
     @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-app-bg;
-    /* Subtle radial brand glow — barely perceptible, conveys depth like Infisical/Cherenkov */
+    /* Obsidian Ember glow — warm amber + muted sage, barely perceptible depth */
     background-image: radial-gradient(
       1200px 600px at 50% -8%,
-      rgba(0, 224, 255, 0.07),
+      rgba(245, 158, 11, 0.07),
       transparent 60%
     ),
-      radial-gradient(900px 500px at 90% 0%, rgba(124, 58, 237, 0.06), transparent 65%);
+      radial-gradient(900px 500px at 90% 0%, rgba(132, 169, 140, 0.06), transparent 65%);
     background-attachment: fixed;
   }
 
@@ -46,11 +46,11 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0f1c; /* app-bg */
+    background: #0a0a0f; /* app-bg Obsidian */
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2b3750;
+    background: #2d2d3a;
     border-radius: 4px;
   }
 

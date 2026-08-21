@@ -33,12 +33,12 @@ Runner-up from prior round **STRIX** (owl genus) kept as reserve alias; **AEGIS/
 
 ### Logo & visual language
 
-- **Mark:** geometric owl-eye / radar sweep. Diamond shield outer (`#00e0ff` @ 8% fill) + inner offset eye (dual arc) + 90° radar sweep negative + pupil. Violet depth ring (`#7c3aed` dashed) for AI dimension. Pure SVG, no assets; crisp 16px favicon → 36px login.
-- **Wordmark:** `NOCTRA` tracked `0.14em`, all-caps, Inter Variable Bold; sub-line `THREAT OPS` `0.18em` / `content-tertiary`. Favicons variant: mark only.
+- **Mark:** geometric owl-eye / radar sweep. Diamond shield outer (`#f59e0b` amber @ 8% fill) + inner offset eye (dual arc) + 90° radar sweep negative + pupil. Sage depth ring (`#84a98c` dashed) for AI dimension. Pure SVG, no assets; crisp 16px favicon → 36px login.
+- **Wordmark:** `NOCTRA` tracked `0.14em`, all-caps, Sora Variable Bold (display); sub-line `THREAT OPS` `0.18em` / `content-tertiary`. Favicons variant: mark only.
 - **Design system (Tailwind v3 — no full v4 migration per scope):**
-  - **Palette (v3 hex, perceptually tuned):** `app-bg #0a0f1c`, `app-void #060a14`, `app-surface #111827`, `app-surface-raised #141e32`, `app-subtle #1e293b`; **brand** `cyan #00e0ff` (Cherenkov cyan-core, piercing on voids) + `violet #7c3aed` (AI secondary); `content-primary #f1f5f9` / `secondary #94a3b8` / `tertiary #7c8ca3`; **semantic** `success #10b981` (blue-green, CVD distinct), `warning #f59e0b` (saturated amber), `critical #ef4444` (vivid red) — paired always with dot+label+icon (WCAG 1.4.1); `chart-1 #00e0ff` … `chart-5 #ec4899`.
-  - **Typography:** Inter Variable (sans, UI) + JetBrains Mono Variable (mono, logs/hashes/IPs). Scale `xxs 0.6875rem` → `2xl`, tight tracking on wordmark, relaxed on body.
-  - **Spacing/shape/shadow:** 4px base; radii `xxs 4px` → `xl 12px` → `2xl`; shadows `card / raised / overlay`; brand glows `accent-glow rgba(0,224,255,.35)` + `violet-glow`.
+  - **Palette — "Obsidian Ember" (v3 hex, perceptually tuned; evolved from the launch cyan/violet in Phase 17):** `app-bg #0a0a0f`, `app-void #050508`, `app-surface #14141f`, `app-surface-raised #1e1e2b`, `app-subtle #23232f`; **brand** `amber #f59e0b` (warm ember accent) + `sage #84a98c` (muted secondary) + `clay #c9ada7`; `content-primary #f1f5f9` / `secondary #a1a1aa` / `tertiary #71717a`; **semantic** `success #84a98c` (sage, CVD distinct), `warning #f4a261` (soft orange), `critical #e76f51` (terracotta) — paired always with dot+label+icon (WCAG 1.4.1); `chart-1 #f59e0b` (amber) / `chart-2 #84a98c` (sage) / `chart-3 #e76f51` (terracotta) / `chart-4 #e9c46a` (gold) / `chart-5 #c9ada7` (clay).
+  - **Typography:** Inter Variable (sans, UI) + Sora Variable (display, headings/wordmark) + JetBrains Mono Variable (mono, logs/hashes/IPs). Scale `xxs 0.6875rem` → `2xl`, tight tracking on wordmark, relaxed on body.
+  - **Spacing/shape/shadow:** 4px base; radii `xxs 4px` → `xl 12px` → `2xl`; shadows `card / raised / overlay`; brand glows `accent-glow rgba(245,158,11,.35)` + `sage-glow`.
   - **Motion:** `fade-in 160ms`, `fade-up 240ms`, `scale-in 140ms`, `slide-in-right 200ms`; respects `prefers-reduced-motion`. No decorative springs.
 
 ---
@@ -67,7 +67,7 @@ Runner-up from prior round **STRIX** (owl genus) kept as reserve alias; **AEGIS/
 
 ### Component architecture
 
-Reusable `components/ui` kit: `Button` (CVA, primary gradient cyan→violet), `Card`/`CardHeader`, `Badge`/`SeverityBadge`/`StatusBadge`, `Skeleton*`, `EmptyState`, `Modal`, `Select`, `PageHeader` (brand accent bar), `Breadcrumbs`/`BackButton`, `BrandLogo`. All token-driven (`bg-app-surface`, `border-line-subtle`, `text-accent-primary`); no hardcoded hex in pages. Background glow in `globals.css` via fixed radial gradients (cyan 7% + violet 6%).
+Reusable `components/ui` kit: `Button` (CVA, primary gradient amber→sage), `Card`/`CardHeader`, `Badge`/`SeverityBadge`/`StatusBadge`, `Skeleton*`, `EmptyState`, `Modal`, `Select`, `PageHeader` (brand accent bar), `Breadcrumbs`/`BackButton`, `BrandLogo`. All token-driven (`bg-app-surface`, `border-line-subtle`, `text-accent-primary`); no hardcoded hex in pages. Background glow in `globals.css` via fixed radial gradients (amber 7% + sage 6%).
 
 ---
 

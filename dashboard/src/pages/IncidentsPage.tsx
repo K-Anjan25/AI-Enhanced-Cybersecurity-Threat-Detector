@@ -21,10 +21,10 @@ const STATUSES = ["open", "triaging", "resolved", "closed"] as const;
 const PRIORITIES = ["low", "medium", "high", "critical"] as const;
 
 const priorityBadge: Record<string, string> = {
-  low: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  medium: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  high: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  critical: "bg-red-500/15 text-red-400 border-red-500/30",
+  low: "bg-status-success/15 text-status-success border-status-success/30",
+  medium: "bg-chart-4/15 text-chart-4 border-chart-4/30",
+  high: "bg-status-warning/15 text-status-warning border-status-warning/30",
+  critical: "bg-status-critical/15 text-status-critical border-status-critical/30",
 };
 
 const IncidentsPage: React.FC = () => {

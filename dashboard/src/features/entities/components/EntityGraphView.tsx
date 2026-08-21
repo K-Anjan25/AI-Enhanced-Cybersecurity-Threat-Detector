@@ -16,11 +16,11 @@ const RING_SPACING = 120;
 const MAX_DEPTH = 4;
 
 const typeColor: Record<string, string> = {
-  ip: "#00e0ff",
-  domain: "#f59e0b",
-  hash: "#a78bfa",
-  email: "#10b981",
-  file: "#ef4444",
+  ip: "#f59e0b",
+  domain: "#e9c46a",
+  hash: "#c9ada7",
+  email: "#84a98c",
+  file: "#e76f51",
 };
 
 const typeLabel: Record<string, string> = {
@@ -32,11 +32,11 @@ const typeLabel: Record<string, string> = {
 };
 
 const typeFill: Record<string, string> = {
-  ip: "rgba(34,211,238,0.15)",
-  domain: "rgba(251,191,36,0.15)",
-  hash: "rgba(167,139,250,0.15)",
-  email: "rgba(52,211,153,0.15)",
-  file: "rgba(248,113,113,0.15)",
+  ip: "rgba(245,158,11,0.15)",
+  domain: "rgba(233,196,106,0.15)",
+  hash: "rgba(201,173,167,0.15)",
+  email: "rgba(132,169,140,0.15)",
+  file: "rgba(231,111,81,0.15)",
 };
 
 interface Positioned {
@@ -138,7 +138,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
           y1={source.y}
           x2={target.x}
           y2={target.y}
-          stroke="#475569"
+          stroke="#71717a"
           strokeWidth={1.25}
           strokeDasharray={edge.relation === "communicates" ? "0" : "4 4"}
           opacity={0.7}
@@ -154,7 +154,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
       const entity = nodeById.get(id);
       if (!entity) return null;
       const r = nodeRadius(entity);
-      const color = typeColor[entity.entity_type] || "#94a3b8";
+      const color = typeColor[entity.entity_type] || "#a1a1aa";
       const isRoot = id === root.id;
       return (
         <g
@@ -167,7 +167,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
         >
           <circle
             r={isRoot ? r + 6 : r}
-            fill={typeFill[entity.entity_type] || "rgba(148,163,184,0.15)"}
+            fill={typeFill[entity.entity_type] || "rgba(161,161,170,0.15)"}
             stroke={color}
             strokeWidth={isRoot ? 3 : 2}
           />
@@ -248,7 +248,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
               Loading graph...
             </div>
           ) : error ? (
-            <div className="absolute inset-0 flex items-center justify-center px-6 text-sm text-red-400 text-center">
+            <div className="absolute inset-0 flex items-center justify-center px-6 text-sm text-status-critical text-center">
               {error}
             </div>
           ) : graph && graph.nodes.length > 0 ? (

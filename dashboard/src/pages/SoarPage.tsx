@@ -13,18 +13,18 @@ import {
 const PAGE_SIZE = 10;
 
 const statusBadge: Record<string, string> = {
-  pending: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  executing: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  executed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  failed: "bg-red-500/15 text-red-400 border-red-500/30",
+  pending: "bg-status-warning/15 text-status-warning border-status-warning/30",
+  executing: "bg-accent-primary/15 text-accent-primary border-accent-primary/30",
+  executed: "bg-status-success/15 text-status-success border-status-success/30",
+  failed: "bg-status-critical/15 text-status-critical border-status-critical/30",
   skipped: "bg-app-subtle text-content-secondary border-line-subtle",
 };
 
 const severityBadge: Record<string, string> = {
-  low: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  medium: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  high: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  critical: "bg-red-500/15 text-red-400 border-red-500/30",
+  low: "bg-status-success/15 text-status-success border-status-success/30",
+  medium: "bg-chart-4/15 text-chart-4 border-chart-4/30",
+  high: "bg-status-warning/15 text-status-warning border-status-warning/30",
+  critical: "bg-status-critical/15 text-status-critical border-status-critical/30",
 };
 
 const PLAYBOOK_ACTIONS = [
@@ -373,7 +373,7 @@ const SoarPage: React.FC = () => {
                       <span className="font-mono text-xs text-accent-primary">{pb.action_type}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${pb.is_active ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-app-subtle text-content-secondary border-line-subtle"}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${pb.is_active ? "bg-status-success/15 text-status-success border-status-success/30" : "bg-app-subtle text-content-secondary border-line-subtle"}`}>
                         {pb.is_active ? "active" : "paused"}
                       </span>
                     </td>

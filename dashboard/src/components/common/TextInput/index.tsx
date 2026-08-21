@@ -39,13 +39,13 @@ export default function TextInput({
         placeholder={placeholder}
         className={`w-full bg-app-bg border rounded-lg px-3.5 py-2 text-sm text-content-primary placeholder-content-tertiary focus:outline-none transition ${
           inputError
-            ? "border-red-500 focus:border-red-500"
+            ? "border-status-critical focus:border-status-critical"
             : "border-line-subtle focus:border-accent-primary"
         }`}
         {...props}
       />
       {typeof inputError === "string" && inputError && (
-        <span className="text-xs text-red-400 mt-0.5">{inputError}</span>
+        <span className="text-xs text-status-critical mt-0.5">{inputError}</span>
       )}
     </div>
   );

@@ -38,8 +38,8 @@ const EMPTY_OVERVIEW: OverviewStats = {
 };
 
 const TOOLTIP_STYLE = {
-  background: "#141e32",
-  border: "1px solid #334155",
+  background: "#1e1e2b",
+  border: "1px solid #2d2d3a",
   borderRadius: 10,
   color: "#f1f5f9",
   fontSize: 12,
@@ -147,7 +147,7 @@ const DashboardOverviewPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-content-primary tracking-tight">SOC Overview</h1>
+            <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">SOC Overview</h1>
             <StatusBadge tone="success" label="Operational" />
           </div>
           <p className="text-sm text-content-secondary mt-1">
@@ -196,16 +196,16 @@ const DashboardOverviewPage: React.FC = () => {
               <AreaChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#00e0ff" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#00e0ff" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} allowDecimals={false} />
+                <CartesianGrid stroke="#23232f" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
+                <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Area type="monotone" dataKey="total" stroke="#00e0ff" strokeWidth={2} fill="url(#gTotal)" />
-                <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={2} fill="url(#gTotal)" />
+                <Line type="monotone" dataKey="critical" stroke="#e76f51" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

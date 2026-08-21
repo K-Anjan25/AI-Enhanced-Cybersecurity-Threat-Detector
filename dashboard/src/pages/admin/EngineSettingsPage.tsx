@@ -73,12 +73,12 @@ const EngineSettingsPage: React.FC = () => {
       </header>
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
           {error}
         </div>
       )}
       {success && (
-        <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-sm text-status-success">
+        <div className="px-4 py-3 rounded-lg bg-status-success/10 border border-status-success/30 text-sm text-status-success">
           {success}
         </div>
       )}

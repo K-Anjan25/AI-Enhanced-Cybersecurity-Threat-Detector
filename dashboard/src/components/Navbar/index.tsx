@@ -39,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
           <BrandLogo size={26} />
         </Link>
 
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-status-success border border-emerald-500/20">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-status-success/10 text-status-success border border-status-success/20">
           <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse"></span>
           LIVE STREAM
         </span>

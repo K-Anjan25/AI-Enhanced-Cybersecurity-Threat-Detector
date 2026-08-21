@@ -62,7 +62,7 @@ export default function Login(): React.ReactElement {
         </div>
 
         {loginError && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded-lg text-center">
+          <div className="bg-status-critical/10 border border-status-critical/30 text-status-critical text-xs p-3 rounded-lg text-center">
             {loginError}
           </div>
         )}
@@ -97,7 +97,7 @@ export default function Login(): React.ReactElement {
           <button
             type="submit"
             disabled={form.isSubmitting || loading}
-            className="w-full py-2.5 bg-gradient-to-r from-accent-primary to-brand-violet hover:opacity-90 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+            className="w-full py-2.5 bg-gradient-to-r from-accent-primary to-brand-sage hover:opacity-90 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
           >
             {form.isSubmitting || loading ? (
               <>

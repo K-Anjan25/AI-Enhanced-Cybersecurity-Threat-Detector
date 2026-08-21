@@ -15,7 +15,7 @@ const LandingPage: React.FC = () => (
           </Link>
           <Link
             to="/register"
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-accent-primary to-brand-violet text-white text-sm font-semibold shadow-accent-glow hover:opacity-90 transition"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-accent-primary to-brand-sage text-white text-sm font-semibold shadow-accent-glow hover:opacity-90 transition"
           >
             Start free
           </Link>
@@ -31,7 +31,7 @@ const LandingPage: React.FC = () => (
               <span className="w-2 h-2 rounded-full bg-accent-primary animate-pulse" />
               NOCTRA — Threat Ops Platform
             </span>
-            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
+            <h1 className="text-4xl lg:text-5xl font-bold font-display tracking-tight leading-tight">
               {BRAND_TAGLINE}
               <span className="block text-content-secondary text-xl font-normal mt-3">The AI analyst that never blinks.</span>
             </h1>
@@ -39,7 +39,7 @@ const LandingPage: React.FC = () => (
               Detect across logs, email and network. Every verdict is explainable. Every response is orchestratable. Built for the SOC night shift — dark-native, WCAG AA, and ready for 10k alerts.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link to="/register" className="px-6 py-3 rounded-xl bg-gradient-to-r from-accent-primary to-brand-violet text-white font-semibold shadow-accent-glow hover:opacity-90 transition">
+              <Link to="/register" className="px-6 py-3 rounded-xl bg-gradient-to-r from-accent-primary to-brand-sage text-white font-semibold shadow-accent-glow hover:opacity-90 transition">
                 Create analyst account
               </Link>
               <Link to="/login" className="px-6 py-3 rounded-xl bg-app-surface border border-line-subtle hover:bg-app-surface-raised transition">

@@ -69,7 +69,7 @@ export default function TableWithAction<T extends TableRowData = TableRowData>({
           {onBatchDelete && (
             <button
               type="button"
-              className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg transition"
+              className="bg-status-critical/15 text-red-300 hover:bg-status-critical/25 border border-status-critical/30 text-xs px-3 py-1.5 rounded-lg transition"
               onClick={() => {
                 onBatchDelete(selected);
                 setSelected([]);
@@ -159,7 +159,7 @@ export default function TableWithAction<T extends TableRowData = TableRowData>({
                             type="button"
                             title="Delete Row"
                             onClick={() => onDelete(row)}
-                            className="p-1 hover:bg-app-subtle rounded text-red-400 hover:text-red-300 transition"
+                            className="p-1 hover:bg-app-subtle rounded text-status-critical hover:text-status-critical/80 transition"
                           >
                             🗑️
                           </button>
