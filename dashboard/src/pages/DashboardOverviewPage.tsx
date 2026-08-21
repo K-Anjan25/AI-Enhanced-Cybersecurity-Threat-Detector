@@ -38,7 +38,7 @@ const EMPTY_OVERVIEW: OverviewStats = {
 };
 
 const TOOLTIP_STYLE = {
-  background: "#151e2e",
+  background: "#141e32",
   border: "1px solid #334155",
   borderRadius: 10,
   color: "#f1f5f9",
@@ -196,16 +196,16 @@ const DashboardOverviewPage: React.FC = () => {
               <AreaChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#00e0ff" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#00e0ff" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
                 <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} />
                 <YAxis tick={{ fill: "#64748b", fontSize: 11 }} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Area type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2} fill="url(#gTotal)" />
-                <Line type="monotone" dataKey="critical" stroke="#f87171" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="total" stroke="#00e0ff" strokeWidth={2} fill="url(#gTotal)" />
+                <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

@@ -86,11 +86,11 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative w-full sm:w-64">
             <input
               type="text"
               placeholder="Search alerts…"
-              className="w-64 pl-3 pr-4 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary transition"
+              className="w-full pl-3 pr-4 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary transition"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
