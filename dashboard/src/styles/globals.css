@@ -7,6 +7,14 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /* Sora display face for headings — geometric premium, distinct from Inter body. */
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    letter-spacing: -0.01em;
+  }
+
   body {
     @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-app-bg;
     /* Obsidian Ember glow — warm amber + muted sage, barely perceptible depth */
