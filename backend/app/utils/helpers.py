@@ -16,23 +16,17 @@ def severity_to_score(severity: str) -> float:
     return severity_map.get(severity.upper(), 0.1)
 
 
-def score_to_severity(score: float, model_type: str = "network") -> str:
+def score_to_severity(score: float, model_type: str = "log") -> str:
     """Convert an anomaly score to a severity label.
 
-    For IsolationForest (network), score >= 0 is normal and more negative
-    means more anomalous. Log models return a 0..1 probability where higher
-    is more suspicious.
+    The ml-service contract (see tests/contract/test_ml_contract.py) normalizes
+    BOTH the log and network models to a 0..1 anomaly_score where higher is
+    more suspicious (the network IsolationForest raw decision score is already
+    normalized inside the ml-service before it is returned). The ``model_type``
+    argument is kept for call-site compatibility and reserved for future
+    model-specific bands.
     """
     score = float(score or 0.0)
-    if model_type == "network":
-        if score >= 0:
-            return "LOW"
-        if score > -0.15:
-            return "MEDIUM"
-        if score > -0.4:
-            return "HIGH"
-        return "CRITICAL"
-    # Log / probability model
     if score < 0.4:
         return "LOW"
     if score < 0.7:

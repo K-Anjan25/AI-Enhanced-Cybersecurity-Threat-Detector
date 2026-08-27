@@ -42,9 +42,10 @@ def _contrib_log_with_model(text: str, pipeline) -> list[dict]:
             {
                 "term": word,
                 "score": round(float(value), 4),
-                "direction": "attack" if positive ^ (value < 0) else "benign",
+                # direction: positive coef => pushes toward the attack class,
+                # negative coef => pushes toward benign.
+                "direction": "attack" if positive else "benign",
             }
-            # direction: positive coef => pushes toward attack class
             for word, (value, positive) in ranked
         ]
     except Exception:  # pragma: no cover - defensive, model internals vary
@@ -184,6 +185,27 @@ def explain_network(data) -> dict:
                 })
         except Exception:  # pragma: no cover - defensive
             contributions = []
+
+    if model is None:
+        # Rule-based fallback: surface the heuristic indicators that
+        # predict_network itself would fire, so the explanation is never empty.
+        from app.network_model import predict_network
+
+        result = predict_network(data)
+        for ind in result.get("indicators", []):
+            contributions.append({
+                "term": ind,
+                "score": round(float(result.get("anomaly_score", 0.0)), 3),
+                "direction": "attack" if result.get("is_anomaly") else "attention",
+                "source": "rules",
+            })
+        if not contributions:
+            contributions.append({
+                "term": "no rule-based signals fired",
+                "score": 0.0,
+                "direction": "benign",
+                "source": "rules",
+            })
 
     return {
         "contributions": contributions[:6],

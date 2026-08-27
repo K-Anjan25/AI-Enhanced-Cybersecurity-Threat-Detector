@@ -4,15 +4,21 @@ import type {
   LogHistoryEntry,
   SaveScannedAlertsResponse,
   ScannedThreat,
+  UploadBatchStatus,
   UploadLogsResponse,
 } from "../types/alert";
 
 /**
- * Fetches the list of all detected security alerts
+ * Fetches detected security alerts (server returns {items,total,page,limit}).
+ * Requests the maximum page size so client-side pagination/filtering sees the
+ * full alert list, not just the API default of 20 rows.
  */
-export const fetchAlerts = async (): Promise<Alert[]> => {
-  const response = await api.get<Alert[]>("/alerts");
-  return response.data;
+export const fetchAlerts = async (page = 1, limit = 100): Promise<Alert[]> => {
+  const response = await api.get<{ items: Alert[]; total: number; page: number; limit: number }>(
+    "/alerts",
+    { params: { page, limit } }
+  );
+  return response.data.items ?? [];
 };
 
 /**
@@ -36,6 +42,19 @@ export const fetchLogHistory = async (): Promise<LogHistoryEntry[]> => {
 };
 
 /**
+ * Polls the status of a background scan batch (used to surface the real
+ * threats-detected count after an upload finishes processing).
+ */
+export const fetchUploadBatchStatus = async (
+  batchId: number
+): Promise<UploadBatchStatus> => {
+  const response = await api.get<UploadBatchStatus>(
+    `/uploads/${batchId}`
+  );
+  return response.data;
+};
+
+/**
  * Saves scanned threat entries as system alerts
  */
 export const saveScannedAlerts = async (
@@ -50,6 +69,7 @@ export const saveScannedAlerts = async (
 export const AlertApi = {
   fetchAlerts,
   uploadLogs,
+  fetchUploadBatchStatus,
   saveScannedAlerts,
 };
 

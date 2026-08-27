@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { fetchAlerts } from "../../../api/alertApi";
 import AlertDetailModal from "./AlertDetailModal";
 import { SeverityBadge, SkeletonTable, EmptyState } from "../../../components/ui";
@@ -10,8 +11,9 @@ interface AlertListProps {
 }
 
 const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, onAlertsFetched }) => {
+  const [searchParams] = useSearchParams();
   const [alerts, setAlerts] = useState<any[]>([]);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string>(() => searchParams.get("q") ?? "");
   const [riskFilter, setRiskFilter] = useState<string>("All");
   const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -130,9 +132,9 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                  <th className="px-5 py-3.5 w-44">Timestamp</th>
-                  <th className="px-5 py-3.5">Log Message / Content</th>
-                  <th className="px-5 py-3.5 w-40">Severity</th>
+                  <th scope="col" className="px-5 py-3.5 w-44">Timestamp</th>
+                  <th scope="col" className="px-5 py-3.5">Log Message / Content</th>
+                  <th scope="col" className="px-5 py-3.5 w-40">Severity</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle text-sm">

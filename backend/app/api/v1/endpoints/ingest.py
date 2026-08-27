@@ -3,12 +3,14 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Backgro
 import json
 import csv
 import io
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.security import get_current_user
 from app.services import alert_service
 from app.services.alert_service import process_batch
-from app.models import SecurityAlert, ScannedAlert, ScanBatch
+from app.models import SecurityAlert, ScannedAlert, ScanBatch, User
 from app.utils.helpers import severity_to_score
 
 router = APIRouter()
@@ -46,6 +48,7 @@ async def upload_logs(
     log_file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         contents = await log_file.read()
@@ -69,7 +72,7 @@ async def upload_logs(
             total_logs=len(records),
             threats_detected=0,
             status="pending",
-            org_id=None,  # background scan persists tenant-scoped rows once auth is wired
+            org_id=current_user.org_id,
         )
         db.add(batch)
         db.commit()
@@ -90,10 +93,18 @@ async def upload_logs(
 
 
 @router.get("/uploads/{batch_id}")
-def get_upload_batch_status(batch_id: int, db: Session = Depends(get_db)):
+def get_upload_batch_status(
+    batch_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Return the status and result summary of a background scan batch."""
     batch = db.query(ScanBatch).filter(ScanBatch.id == batch_id).first()
     if not batch:
+        raise HTTPException(status_code=404, detail="Scan batch not found")
+    # Tenant scoping: batches from another org are invisible (legacy NULL-org
+    # batches from before tenancy remain visible to authenticated users).
+    if batch.org_id is not None and batch.org_id != current_user.org_id:
         raise HTTPException(status_code=404, detail="Scan batch not found")
 
     return {
@@ -109,7 +120,11 @@ def get_upload_batch_status(batch_id: int, db: Session = Depends(get_db)):
     }
 
 @router.post("/save-scanned-alerts")
-def save_scanned_alerts(payload: dict, db: Session = Depends(get_db)):
+def save_scanned_alerts(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     threats = payload.get("threats")
     if not isinstance(threats, list):
         raise HTTPException(status_code=400, detail="A threat list is required.")
@@ -134,6 +149,7 @@ def save_scanned_alerts(payload: dict, db: Session = Depends(get_db)):
             severity=severity,
             score=score,
             message=alert_message,
+            org_id=current_user.org_id,
         )
         db.add(security_alert)
         db.flush()
@@ -169,12 +185,17 @@ def save_scanned_alerts(payload: dict, db: Session = Depends(get_db)):
 
 
 @router.get("/logs/history")
-def get_log_history(db: Session = Depends(get_db)):
+def get_log_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Returns persistent upload/scan history from the database (survives restarts).
+    Tenant-scoped: own-org batches plus legacy NULL-org rows.
     """
     batches = (
         db.query(ScanBatch)
+        .filter(or_(ScanBatch.org_id == current_user.org_id, ScanBatch.org_id.is_(None)))
         .order_by(ScanBatch.created_at.desc())
         .limit(50)
         .all()

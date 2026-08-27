@@ -2,12 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+   NOCTRA — DUALITY theming.
+   Two structural scopes, not a toggle:
+   - DAY workspace (:root): navigation, inbox, case lists, tables, settings —
+     the everyday working surface.
+   - NIGHT canvas (.night): where the analyst speaks — AI briefs, reasoning,
+     evidence, blast radius, reports. Panels opt in by adding class "night".
+   Components use semantic tokens only; the scope flips the values.
+   --------------------------------------------------------------------------- */
+:root {
+  /* Day workspace */
+  --c-app-bg: 247 247 245; /* paper */
+  --c-app-surface: 255 255 255;
+  --c-app-surface-raised: 241 241 238;
+  --c-app-subtle: 237 237 234;
+  --c-content-primary: 25 27 34;
+  --c-content-secondary: 86 92 107;
+  --c-content-tertiary: 103 112 127;
+  --c-line-subtle: 229 229 225;
+  --c-line-bright: 214 214 208;
+  --c-accent-primary: 157 124 255; /* lavender #9D7CFF — fills, marks */
+  --c-accent-secondary: 108 92 231; /* deep violet #6C5CE7 — accent text/links on light */
+  --c-status-success: 35 122 87;
+  --c-status-warning: 156 98 12;
+  --c-status-critical: 199 53 74;
+  --c-severity-low: 35 122 87;
+  --c-severity-medium: 156 98 12;
+  --c-severity-high: 180 85 29;
+  --c-severity-critical: 199 53 74;
+}
+
+.night {
+  /* Night canvas — the analyst's voice on ink */
+  --c-app-bg: 12 14 20;
+  --c-app-surface: 20 22 29;
+  --c-app-surface-raised: 26 29 38;
+  --c-app-subtle: 27 30 40;
+  --c-content-primary: 236 238 244;
+  --c-content-secondary: 166 172 191;
+  --c-content-tertiary: 122 128 147;
+  --c-line-subtle: 35 39 53;
+  --c-line-bright: 50 56 80;
+  --c-accent-primary: 157 124 255;
+  --c-accent-secondary: 201 196 255; /* bright lavender on ink */
+  --c-status-success: 76 195 138;
+  --c-status-warning: 229 165 75;
+  --c-status-critical: 242 109 109;
+  --c-severity-low: 82 183 136;
+  --c-severity-medium: 229 165 75;
+  --c-severity-high: 240 130 79;
+  --c-severity-critical: 242 109 109;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Sora display face for headings — geometric premium, distinct from Inter body. */
+  /* Sora display face for page titles — geometric, confident, rare. */
   h1,
   h2,
   h3 {
@@ -16,20 +69,12 @@
   }
 
   body {
-    @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-app-bg;
-    /* Obsidian Ember glow — warm amber + muted sage, barely perceptible depth */
-    background-image: radial-gradient(
-      1200px 600px at 50% -8%,
-      rgba(245, 158, 11, 0.07),
-      transparent 60%
-    ),
-      radial-gradient(900px 500px at 90% 0%, rgba(132, 169, 140, 0.06), transparent 65%);
-    background-attachment: fixed;
+    @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-brand-ink;
   }
 
-  /* Consistent, accessible focus ring for keyboard users (WCAG 2.1 AA). */
+  /* Keyboard focus ring — flips with scope (deep on light, bright on ink). */
   :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid theme("colors.accent-primary.DEFAULT");
+    outline: 2px solid rgb(var(--c-accent-secondary));
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -47,23 +92,24 @@
 }
 
 @layer components {
-  /* SOC scrollbars for data tables and log viewers. */
+  /* Scrollbars resolve per scope (custom properties inherit into the
+     pseudo-element), so day surfaces get light rails and night panels dark. */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0a0f; /* app-bg Obsidian */
+    background: rgb(var(--c-app-subtle));
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2d2d3a;
+    background: rgb(var(--c-line-bright));
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: theme("colors.line-bright.DEFAULT");
+    background: rgb(var(--c-content-tertiary));
   }
 
   /* Compact density: tightens app shell + card padding and row gaps. */
@@ -85,7 +131,7 @@
     padding-bottom: 0.625rem;
   }
 
-  /* Subtle 60 ms staggered entrance for sibling lists (e.g. alert rows). */
+  /* Subtle 60 ms staggered entrance for sibling lists (e.g. case rows). */
   .list-stagger > * {
     animation: fade-in 180ms ease-out both;
   }

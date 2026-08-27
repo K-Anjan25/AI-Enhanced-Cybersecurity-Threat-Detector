@@ -92,6 +92,10 @@ export const userMe = () => async (dispatch: UserDispatch) => {
     if (isAuthFailure(err.response?.status)) {
       dispatch({ type: "USER_ERROR" });
       dispatch(refreshToken() as any);
+    } else {
+      // Network/server failure: stop loading so the app is not stuck on the
+      // global fallback loader; the user can retry via login.
+      dispatch({ type: "USER_ERROR" });
     }
   }
 };

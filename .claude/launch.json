@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "noctra-dashboard",
+      "name": "axiom-dashboard",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "dashboard", "start"],
       "port": 3000

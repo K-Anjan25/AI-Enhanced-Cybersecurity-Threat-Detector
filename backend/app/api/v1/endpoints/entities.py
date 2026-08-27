@@ -14,7 +14,7 @@ router = APIRouter(prefix="/entities", tags=["Entity Graph"])
 def list_entities(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    entity_type: str | None = Query(None, pattern="^(ip|domain|hash|email|file)$"),
+    entity_type: str | None = Query(None, pattern="^(ip|domain|hash|email|file|account|host)$"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

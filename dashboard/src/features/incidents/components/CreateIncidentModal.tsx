@@ -1,6 +1,7 @@
 import React from "react";
 import type { CreateIncidentPayload, Incident } from "../../../types/incident";
 import Button from "../../../components/ui/Button";
+import { getApiError } from "../../../utils/getApiError";
 
 interface Props {
   onClose: () => void;
@@ -35,7 +36,7 @@ const CreateIncidentModal: React.FC<Props> = ({
         source_alert_id: sourceAlertId ?? undefined,
       });
     } catch (err: any) {
-      setError(err?.detail || "Failed to open incident. Please try again.");
+      setError(getApiError(err, "Failed to open incident. Please try again."));
     }
   };
 

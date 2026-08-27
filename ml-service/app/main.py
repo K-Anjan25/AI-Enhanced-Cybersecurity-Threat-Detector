@@ -9,6 +9,13 @@ from app.explain import explain_log, explain_email, explain_network, explain_dns
 from app.benchmark import run_benchmark
 from app import training
 
+import os
+
+# Explicit origin allowlist (comma-separated). Default is the local dev
+# dashboard; "*" disables credentials (browsers reject "*"+credentials).
+_CORS_ENV = os.getenv("ML_CORS_ORIGINS", "http://localhost:3000")
+_CORS_ORIGINS = [o.strip() for o in _CORS_ENV.split(",") if o.strip()]
+
 app = FastAPI(
     title="AI Threat Detection Service",
     version="2.0.0",
@@ -17,8 +24,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_CORS_ORIGINS,
+    # Browsers reject credentialed requests when origins are "*", so
+    # credentials are only enabled for explicit origin lists.
+    allow_credentials="*" not in _CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

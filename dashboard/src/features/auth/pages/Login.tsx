@@ -32,7 +32,7 @@ export default function Login(): React.ReactElement {
         // off is safe only when the session was actually established.
         if (getToken()) {
           showSuccess("You have successfully logged in!");
-          navigate("/alerts");
+          navigate("/");
         } else {
           setLoginError(
             "Authentication failed. Please check your credentials."
@@ -88,7 +88,7 @@ export default function Login(): React.ReactElement {
             <button
               type="button"
               onClick={() => setIsForgetPasswordOpen(true)}
-              className="text-xs text-accent-primary hover:text-accent-glow hover:underline transition"
+              className="text-xs text-accent-primary hover:text-accent-secondary hover:underline transition"
             >
               Forgot Password?
             </button>
@@ -97,7 +97,7 @@ export default function Login(): React.ReactElement {
           <button
             type="submit"
             disabled={form.isSubmitting || loading}
-            className="w-full py-2.5 bg-gradient-to-r from-accent-primary to-brand-sage hover:opacity-90 disabled:opacity-60 text-white rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+            className="w-full py-2.5 bg-accent-primary hover:opacity-90 disabled:opacity-60 text-brand-ink rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
           >
             {form.isSubmitting || loading ? (
               <>

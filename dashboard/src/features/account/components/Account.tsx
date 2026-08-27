@@ -8,6 +8,7 @@ import { UserApi } from "../../../api/userApi";
 import { setToken } from "../../../utils/token";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import { getApiError } from "../../../utils/getApiError";
 
 export default function Account(): React.ReactElement {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function Account(): React.ReactElement {
       navigate("/");
     },
     onError: (err: any) => {
-      showError(err?.response?.data?.message || "Failed to update password");
+      showError(getApiError(err, "Failed to update password"));
     },
   });
 
@@ -72,7 +73,7 @@ export default function Account(): React.ReactElement {
         <button
           type="submit"
           disabled={updateMutation.isLoading}
-          className="w-full mt-2 py-2.5 px-4 bg-accent-primary hover:bg-accent-secondary disabled:bg-accent-secondary disabled:cursor-not-allowed text-app-bg font-medium rounded-lg transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-glow/60"
+          className="w-full mt-2 py-2.5 px-4 bg-accent-primary hover:bg-accent-secondary disabled:bg-accent-secondary disabled:cursor-not-allowed text-brand-ink font-medium rounded-lg transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-secondary/60"
         >
           {updateMutation.isLoading ? (
             <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-app-bg border-t-transparent mr-2" />

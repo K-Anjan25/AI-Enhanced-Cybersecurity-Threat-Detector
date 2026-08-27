@@ -10,7 +10,7 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    PROJECT_NAME: str = "AXIOM AI API"
+    PROJECT_NAME: str = "NOCTRA API"
     VERSION: str = "2.0.0"
 
     DATABASE_URL: str = "postgresql://postgres:root@localhost:5432/threat_ai_db"

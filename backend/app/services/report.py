@@ -44,7 +44,7 @@ def build_case_report(case, analysis: dict, action: dict, decision: str, *, acto
     lines: list[str] = []
     lines.append(f"# Case #{getattr(case, 'id', '?')} - {analysis.get('headline') or case.title}")
     lines.append("")
-    lines.append(f"*Generated {generated} by AXIOM AI analyst ({engine_note}).*")
+    lines.append(f"*Generated {generated} by NOCTRA analyst ({engine_note}).*")
     lines.append("")
 
     lines.append("## Summary")

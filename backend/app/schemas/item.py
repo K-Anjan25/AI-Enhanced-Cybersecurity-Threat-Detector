@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict
+# Severity taxonomy shared with severity_to_score (LOW/MEDIUM/HIGH/CRITICAL).
+Severity = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
 
 class DetectionRuleBase(BaseModel):
     name: str
     description: Optional[str] = None
-    severity: str = "MEDIUM"
+    severity: Severity = "MEDIUM"
     pattern: Optional[str] = None
     is_active: bool = True
 
@@ -18,17 +20,16 @@ class DetectionRuleCreate(DetectionRuleBase):
 class DetectionRuleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    severity: Optional[str] = None
+    severity: Optional[Severity] = None
     pattern: Optional[str] = None
     is_active: Optional[bool] = None
 
 
 class DetectionRuleOut(DetectionRuleBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class IpReputationOut(BaseModel):
@@ -40,8 +41,7 @@ class IpReputationOut(BaseModel):
     notes: Optional[str] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EngineSettings(BaseModel):
@@ -66,5 +66,4 @@ class AuditLogOut(BaseModel):
     ip_address: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

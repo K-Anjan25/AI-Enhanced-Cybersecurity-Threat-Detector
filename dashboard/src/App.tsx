@@ -11,33 +11,33 @@ import Profile from "./features/account/pages/Profile";
 import Account from "./features/account/components/Account";
 import ResetPassword from "./features/auth/components/ResetPassword";
 
-const ThreatAlertsPage = React.lazy(() => import("./pages/ThreatAlertsPage"));
-const LogHistoryPage = React.lazy(() => import("./pages/LogHistoryPage"));
-const AIAnalyticsPage = React.lazy(() => import("./pages/AIAnalyticsPage"));
-const IncidentsPage = React.lazy(() => import("./pages/IncidentsPage"));
-const EntitiesPage = React.lazy(() => import("./pages/EntitiesPage"));
-const SoarPage = React.lazy(() => import("./pages/SoarPage"));
-const DashboardOverviewPage = React.lazy(() => import("./pages/DashboardOverviewPage"));
-const BriefPage = React.lazy(() => import("./pages/BriefPage"));
-const FeedPage = React.lazy(() => import("./pages/FeedPage"));
-const CasePage = React.lazy(() => import("./pages/CasePage"));
-const ActionsPage = React.lazy(() => import("./pages/ActionsPage"));
-const ReportsPage = React.lazy(() => import("./pages/ReportsPage"));
+const ThreatAlertsPage = React.lazy(() => import("./features/alerts/pages/ThreatAlertsPage"));
+const LogHistoryPage = React.lazy(() => import("./features/system/pages/LogHistoryPage"));
+const AIAnalyticsPage = React.lazy(() => import("./features/analytics/pages/AIAnalyticsPage"));
+const IncidentsPage = React.lazy(() => import("./features/incidents/pages/IncidentsPage"));
+const EntitiesPage = React.lazy(() => import("./features/entities/pages/EntitiesPage"));
+const SoarPage = React.lazy(() => import("./features/soar/pages/SoarPage"));
+const DashboardOverviewPage = React.lazy(() => import("./features/dashboard/pages/DashboardOverviewPage"));
+const BriefPage = React.lazy(() => import("./features/inbox/pages/BriefPage"));
+const FeedPage = React.lazy(() => import("./features/cases/pages/FeedPage"));
+const CasePage = React.lazy(() => import("./features/cases/pages/CasePage"));
+const ActionsPage = React.lazy(() => import("./features/actions/pages/ActionsPage"));
+const ReportsPage = React.lazy(() => import("./features/reports/pages/ReportsPage"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
-const AdminEngineSettings = React.lazy(() => import("./pages/admin/EngineSettingsPage"));
-const AdminAuditLogs = React.lazy(() => import("./pages/admin/SystemLogsPage"));
-const TenantsPage = React.lazy(() => import("./pages/admin/TenantsPage"));
-const AccessRolesPage = React.lazy(() => import("./pages/admin/AccessRolesPage"));
-const RulesPage = React.lazy(() => import("./pages/admin/RulesPage"));
-const ReputationPage = React.lazy(() => import("./pages/admin/ReputationPage"));
-const LandingPage = React.lazy(() => import("./pages/LandingPage"));
+const AdminEngineSettings = React.lazy(() => import("./features/admin/pages/EngineSettingsPage"));
+const AdminAuditLogs = React.lazy(() => import("./features/admin/pages/SystemLogsPage"));
+const TenantsPage = React.lazy(() => import("./features/admin/pages/TenantsPage"));
+const AccessRolesPage = React.lazy(() => import("./features/admin/pages/AccessRolesPage"));
+const RulesPage = React.lazy(() => import("./features/admin/pages/RulesPage"));
+const ReputationPage = React.lazy(() => import("./features/admin/pages/ReputationPage"));
+const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
 
 const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
     <div className="flex items-center space-x-2">
       <div className="w-3 h-3 bg-accent-primary rounded-full animate-ping" />
-      <span>Loading NOCTRA AI...</span>
+      <span>Loading NOCTRA...</span>
     </div>
   </div>
 );
@@ -58,11 +58,16 @@ export default function App(): JSX.Element {
   ).map((role: string) => role.toUpperCase());
 
   const storedPermissions = localStorage.getItem("user_permissions");
+  const parsedStoredPermissions: string[] = (() => {
+    try {
+      return storedPermissions ? JSON.parse(storedPermissions) : [];
+    } catch {
+      return [];
+    }
+  })();
   const userPermissions: string[] = (user as any)?.permissions?.length
     ? (user as any).permissions
-    : storedPermissions
-    ? JSON.parse(storedPermissions)
-    : [];
+    : parsedStoredPermissions;
 
   return (
     <Router>

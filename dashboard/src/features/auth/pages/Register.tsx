@@ -8,6 +8,7 @@ import { registerSchema, initialRegisterValues } from "../../../validators/regis
 import { registerUser } from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import { getApiError } from "../../../utils/getApiError";
 import BrandLogo from "../../../components/BrandLogo";
 import { BRAND_TAGLINE } from "../../../constants/brand";
 
@@ -21,7 +22,7 @@ export default function Register(): React.ReactElement {
       navigate("/login");
     },
     onError: (err: any) => {
-      showError(err?.response?.data?.message || "Registration failed");
+      showError(getApiError(err, "Registration failed"));
     },
   });
 

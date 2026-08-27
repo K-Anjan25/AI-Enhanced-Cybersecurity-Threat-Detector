@@ -157,7 +157,7 @@ def run_phishing_outbreak(db, org_id: int, actor: str, created_by_id: int | None
     analysis = llm_client.analyze_incident(serialize_alert(alert), entities)
     rec = analysis.get("recommended_action") or {}
     proposed_action = {
-        "action_type": rec.get("action_type", "ISOLATE_HOST"),
+        "action_type": rec.get("action_type", "QUARANTINE_ENDPOINT"),
         "target": rec.get("target", f"host:{_WORKSTATION}"),
         "severity": "HIGH",
         "rationale": rec.get("rationale", "Isolate endpoint from network to sever C2 communication."),
@@ -235,7 +235,7 @@ def run_data_exfiltration(db, org_id: int, actor: str, created_by_id: int | None
     analysis = llm_client.analyze_incident(serialize_alert(alert), entities)
     rec = analysis.get("recommended_action") or {}
     proposed_action = {
-        "action_type": rec.get("action_type", "BLOCK_IP"),
+        "action_type": rec.get("action_type", "BLOCK_SOURCE_IP"),
         "target": rec.get("target", f"ip:{_SUSPECT_IP}"),
         "severity": "HIGH",
         "rationale": rec.get("rationale", "Block suspect IP at cloud firewall and attach restrictive IAM boundary."),

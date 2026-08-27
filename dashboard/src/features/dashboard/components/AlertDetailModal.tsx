@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import AnalystApi from "../../../api/analystApi";
 
 interface Props {
   alert: any;
@@ -6,10 +8,10 @@ interface Props {
 }
 
 const severityBadge: Record<string, string> = {
-  CRITICAL: "bg-status-critical/15 text-status-critical border-status-critical/30",
-  HIGH: "bg-status-warning/15 text-status-warning border-status-warning/30",
-  MEDIUM: "bg-chart-4/15 text-chart-4 border-chart-4/30",
-  LOW: "bg-status-success/15 text-status-success border-status-success/30",
+  CRITICAL: "bg-severity-critical/15 text-severity-critical border-severity-critical/30",
+  HIGH: "bg-severity-high/15 text-severity-high border-severity-high/30",
+  MEDIUM: "bg-severity-medium/15 text-severity-medium border-severity-medium/30",
+  LOW: "bg-severity-low/15 text-severity-low border-severity-low/30",
 };
 
 const bandBadge: Record<string, string> = {
@@ -29,6 +31,36 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 export default function AlertDetailModal({ alert, onClose }: Props) {
+  const [linkedCaseId, setLinkedCaseId] = useState<number | null>(null);
+
+  // Bridge to the analyst workflow: if a NOCTRA case was opened from this
+  // alert, offer a direct link (best-effort lookup over the decision feed).
+  useEffect(() => {
+    let alive = true;
+    if (alert?.id == null) return;
+    AnalystApi.fetchFeed({ page: 1, limit: 100 })
+      .then((res) => {
+        if (!alive) return;
+        const rows = Array.isArray(res) ? res : res?.data ?? [];
+        const hit = rows.find((c: { source_alert_id?: number | null }) => c.source_alert_id === alert.id);
+        if (hit) setLinkedCaseId(hit.id);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [alert?.id]);
+
+  // Dialog semantics: Escape closes; backdrop click closes.
+  useEffect(() => {
+    if (alert?.id == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [alert?.id, onClose]);
+
   if (!alert) return null;
 
   const severity = String(alert.severity || alert.risk || "LOW").toUpperCase();
@@ -38,7 +70,15 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
   const hasThreatIntel = threatIntel && Object.keys(threatIntel).length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Alert details${alert.id != null ? ` #${alert.id}` : ""}`}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-app-surface w-full max-w-2xl rounded-xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-lg font-semibold text-content-primary">Alert Details</h3>
@@ -65,6 +105,15 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
             <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono border bg-accent-primary/10 text-accent-primary border-accent-primary/30">
               Alert #{alert.id}
             </span>
+          )}
+          {linkedCaseId != null && (
+            <Link
+              to={`/case/${linkedCaseId}`}
+              onClick={onClose}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border bg-accent-primary text-brand-ink border-transparent hover:opacity-90 transition"
+            >
+              NOCTRA case #{linkedCaseId} →
+            </Link>
           )}
         </div>
 
@@ -145,7 +194,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-medium hover:opacity-90 transition"
+            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition"
           >
             Close
           </button>

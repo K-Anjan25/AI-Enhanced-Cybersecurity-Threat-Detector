@@ -7,6 +7,7 @@ import TextInput from "../../../components/common/TextInput";
 import { requestPasswordReset } from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import { getApiError } from "../../../utils/getApiError";
 
 export interface ForgotPasswordProps {
   onClose: () => void;
@@ -24,7 +25,7 @@ export default function ForgotPassword({ onClose }: ForgotPasswordProps): React.
       onClose();
     },
     onError: (err: any) => {
-      showError(err?.response?.data?.message || "Failed to process request");
+      showError(getApiError(err, "Failed to process request"));
     },
   });
 

@@ -75,8 +75,8 @@ def _post_with_retry(url: str, json_body: dict, headers: dict, timeout: float, m
 # ---------------------------------------------------------------------------
 
 _SYSTEM_PROMPT = (
-    "You are AXIOM AI, an autonomous security analyst working for a growing company "
-    "that needs instant threat reasoning and blast-radius containment. You are given "
+    "You are NOCTRA, an autonomous security analyst working for a growing company "
+    "that needs instant threat reasoning and blast-radius assessment. You are given "
     "one security incident and its blast radius (the connected assets it touches). "
     "Explain it calmly in plain English for a non-expert owner, and recommend ONE reversible response.\n\n"
     "Reply with ONLY a single JSON object (no prose, no markdown fences) with EXACTLY "

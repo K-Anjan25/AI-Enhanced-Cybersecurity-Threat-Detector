@@ -137,10 +137,14 @@ def predict_log_batch(items: list[dict]):
         })
 
     try:
-        return _post_with_retry(
+        data = _post_with_retry(
             f"{settings.ML_SERVICE_URL}/predict/log/batch",
             payloads,
             timeout=30,
         )
     except requests.ConnectionError:
         return [fallback_predict_log(p) for p in payloads]
+    # ml-service wraps batch results in {"results": [...]}; tolerate a bare list.
+    if isinstance(data, dict) and isinstance(data.get("results"), list):
+        return data["results"]
+    return data
