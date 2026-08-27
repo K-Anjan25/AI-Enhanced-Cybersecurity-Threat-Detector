@@ -118,6 +118,9 @@ const AIAnalyticsPage: React.FC = () => {
     { label: "Low", value: overview.low, tone: "success" as const },
   ];
 
+  const maxThreatCount =
+    threats.reduce((m, t) => Math.max(m, t.count || 0), 0) || 1;
+
   const pieData = [
     { name: "CRITICAL", value: overview.severity_distribution?.CRITICAL || 0 },
     { name: "HIGH", value: overview.severity_distribution?.HIGH || 0 },
@@ -223,24 +226,21 @@ const AIAnalyticsPage: React.FC = () => {
                 <p className="text-sm text-content-tertiary">No threat patterns detected yet.</p>
               ) : (
                 <div className="space-y-3">
-                  {(() => {
-                    const maxCount = Math.max(1, ...threats.map((t) => t.count || 0));
-                    return threats.map((t, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <span className="w-5 text-xs font-mono text-content-tertiary">{idx + 1}</span>
-                        <div className="flex-1">
-                          <p className="text-sm text-content-primary truncate">{t.threat}</p>
-                          <div className="h-1.5 bg-app-subtle rounded-full mt-1 overflow-hidden">
-                            <div
-                              className="h-full bg-accent-primary rounded-full"
-                              style={{ width: `${Math.min(100, ((t.count || 0) / maxCount) * 100)}%` }}
-                            />
-                          </div>
+                  {threats.map((t, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <span className="w-5 text-xs font-mono text-content-tertiary">{idx + 1}</span>
+                      <div className="flex-1">
+                        <p className="text-sm text-content-primary truncate">{t.threat}</p>
+                        <div className="h-1.5 bg-app-subtle rounded-full mt-1 overflow-hidden">
+                          <div
+                            className="h-full bg-accent-primary rounded-full"
+                            style={{ width: `${Math.min(100, ((t.count || 0) / maxThreatCount) * 100)}%` }}
+                          />
                         </div>
-                        <span className="text-xs font-mono text-content-secondary">{t.count}</span>
                       </div>
-                    ));
-                  })()}
+                      <span className="text-xs font-mono text-content-secondary">{t.count}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
