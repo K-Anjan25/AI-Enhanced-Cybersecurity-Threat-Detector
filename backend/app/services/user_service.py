@@ -51,13 +51,18 @@ def update_user_profile_data(db: Session, user_id: int, payload: dict):
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Accept username from multiple possible keys
-    new_name = payload.get("username") or payload.get("Name") or payload.get("name")
+    # Accept username from multiple possible keys. `.get(key, next)` (not
+    # `or`) so an explicit empty string is honoured when provided.
+    new_name = payload.get("username", payload.get("Name", payload.get("name")))
     if new_name is not None:
         db_user.username = new_name
 
-    # `profile_image` is the actual column name on the User model
-    profile_img = payload.get("profileImageURL") or payload.get("profile_image_url") or payload.get("profile_image")
+    # `profile_image` is the actual column name on the User model. Empty string
+    # must clear the avatar — a falsy `or` chain would swallow it.
+    profile_img = payload.get(
+        "profileImageURL",
+        payload.get("profile_image_url", payload.get("profile_image")),
+    )
     if profile_img is not None:
         db_user.profile_image = profile_img
 
