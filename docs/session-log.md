@@ -377,3 +377,39 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
     points) → benchmark (models report "skipped — artifact missing", no
     error) → explain/log (contributions + summary + method).
 - **Verification** — `tsc --noEmit && vite build` clean.
+
+## Phase 25 — Profile image upload + interactive/detailed/responsive analytics charts
+
+**Profile image upload** (`backend` + `dashboard`):
+- New `POST /api/v1/user/profile/image` (multipart) in `backend/app/api/v1/endpoints/users.py`:
+  validates content-type (PNG/JPEG/WEBP/GIF) + size (≤5 MB), stores under
+  `backend/uploads/avatars/` with uuid names, deletes the previous avatar file,
+  persists `user.profile_image`, returns `{message, profileImageURL}`.
+- `backend/app/main.py` mounts `StaticFiles` at `/uploads` (dir created eagerly
+  so the mount binds at import; lifespan re-ensures it). Vite dev proxy and
+  `dashboard/nginx.conf` both forward `/uploads/` → backend so avatars load in
+  the preview and in prod. `backend/uploads/` added to `.gitignore`.
+- Profile page: avatar preview with camera badge → hidden file input
+  (client-side type/size validation), upload progress overlay (Spinner light),
+  "Change photo" / "Remove" controls, keep existing "paste URL" field as an
+  alternative; `userApi.uploadProfileImage()` posts FormData with
+  `Content-Type: multipart/form-data` (avoids axios's JSON default).
+- Verified end-to-end via curl: upload 200 → static served on :8000 AND
+  through the :3000 proxy (200 image/png) → profile persisted → re-upload
+  removes the old file (404 on previous URL) → text/plain rejected 400.
+
+**Analytics charts — interactive, detailed, responsive** (`AIAnalyticsPage.tsx`):
+- Alert Trend: 7/14/30/90-day range segmented control (backend `?days=` 1..90
+  already supported), clickable series legend toggling Total/Critical/High/
+  Medium/Low lines, rich themed tooltip with per-series dots + values, cursor
+  line + active dots, summary strip (total / avg per day / peak day), dots
+  shown for ≤14-day ranges, loading overlay while switching ranges.
+- Severity donut: hover-active slices (Sector outerRadius pop via activeShape),
+  center total count, themed tooltip with % of total, legend shows count + %,
+  radius is percentage-based so it scales with container (mobile via useIsMobile).
+- Detections-by-type bars: themed tooltip, hover cursor fill, value labels on
+  top of bars, maxBarSize so bars don't over-bloat on mobile.
+- All chart cards now carry an explanatory subtitle; `CHART_TOOLTIP_STYLE`
+  import dropped (custom tooltips theme through CSS vars instead).
+- Verified: trends?days=7 and days=90 both 200 through the :3000 proxy;
+  `tsc --noEmit && vite build` clean.

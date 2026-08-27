@@ -73,3 +73,6 @@ Videos - Shortcut.lnk
 # docs/
 # *.md*.db
 backend/noctra_preview.db
+
+# Uploaded assets (profile images, ingest artifacts)
+backend/uploads/
