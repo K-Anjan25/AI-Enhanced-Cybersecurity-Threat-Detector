@@ -192,8 +192,8 @@ const ReputationPage: React.FC = () => {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border tabular-nums ${scoreColor(row.threat_score)}`}>
-                      {(row.threat_score * 100).toFixed(0)}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border tabular-nums ${scoreColor(Number(row.threat_score ?? 0))}`}>
+                      {(Number(row.threat_score ?? 0) * 100).toFixed(0)}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-content-secondary">{row.category || "—"}</td>

@@ -142,7 +142,10 @@ export default function Profile(): React.ReactElement {
 
         <form onSubmit={formik.handleSubmit} className="space-y-4">
           <TextInput form={formik} name="Name" label="Name" />
-          <TextInput form={formik} name="email" label="Email Address" type="email" />
+          <TextInput form={formik} name="email" label="Email Address" type="email" readOnly />
+          <p className="-mt-2 text-xs text-content-tertiary">
+            Email is managed by your SOC administrator and cannot be changed here.
+          </p>
           <TextInput form={formik} name="profileImageURL" label="Profile Avatar URL" />
 
           <div className="flex justify-end pt-4">
