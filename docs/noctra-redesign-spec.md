@@ -209,6 +209,24 @@ legacy overview's honest name.
 
 ## 9. NOCTRA Brand Strategy
 
+**Brand style system (user-locked, 2026-08-27).**
+
+| Attribute | Value |
+| --- | --- |
+| Brand style | Intelligence Infrastructure |
+| Wordmark | Precision Neo-Grotesk (Inter, semibold, wide uppercase tracking) |
+| Logo style | Abstract Intelligence Mark ("Night Signal" — N releasing a signal arc + dot) |
+| Visual language | Editorial Enterprise |
+| Interface style | Operational Minimalism |
+| Motion style | Purposeful Intelligence (state-change only; reduced-motion honored) |
+| Color style | Lumen Enterprise (periwinkle accent on ink/paper duality) |
+
+**Avoid list (hard):** cyberpunk · neon · gaming · hacker · sci-fi · generic
+AI purple · generic shield logos · generic lock logos · generic brain logos.
+Current state complies: abstract non-shield mark, periwinkle (not deep
+"AI purple" — see §15 audit), no glow/neon, gradients flattened, motion
+limited to state communication.
+
 **Positioning.** For small companies without a security team, NOCTRA is the
 analyst they employ: it watches continuously, explains plainly, acts only with
 approval, and writes everything down.
@@ -370,7 +388,10 @@ darkened); not shipped in Stage 1 — documented, reversible.
 
 ## 17. Typography System
 
-- **Display:** Sora Variable — wordmark, page titles, case headlines (calm geometric authority).
+- **Wordmark:** Inter (precision neo-grotesk) — semibold, wide uppercase
+  tracking. Infrastructure-grade; the mark is abstract, the wordmark is
+  engineered. (Locked per §9 brand-style brief.)
+- **Display:** Sora Variable — page titles, case headlines (calm geometric authority); one display headline per view.
 - **UI:** Inter Variable — body, tables, controls.
 - **Mono:** JetBrains Mono — indicators, IDs, scores, code/report surfaces.
 - Scale: 28/20/16/14/13/12/11 with 0.6875rem (`xxs`) for dense table meta.
@@ -695,6 +716,22 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
   say NOCTRA.
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
+
+### Addendum — Stage 3: brand-style application + landing rebuild (2026-08-27)
+
+- **Brand style brief locked** (§9 table): Intelligence Infrastructure /
+  Precision Neo-Grotesk wordmark / Abstract Intelligence Mark / Editorial
+  Enterprise / Operational Minimalism / Purposeful Intelligence / Lumen
+  Enterprise + hard avoid list. Compliance pass: wordmark moved from Sora to
+  Inter semibold wide-tracked uppercase (subline demoted to muted); remaining
+  gradients flattened (PageHeader rule, Login CTA) — solid accent only.
+- **Landing rebuilt** product-led: overline → statement → the loop as content
+  (Sense→…→Report strip) → an example case on the night canvas (explicitly
+  labeled "Example — illustrative", mirrors real case-card structure incl.
+  record-only note) → numbered editorial pillars → record-only trust strip.
+  Day hero + night example panel = duality demonstrated. One display
+  headline per view enforced.
+- Verified: tsc + build clean; `/welcome` serving.
 
 ### Addendum — Stage 3 start (⌘K command menu, onboarding, 2026-08-27)
 

@@ -1,14 +1,51 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck, Eye, Zap, Network, Moon } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import BrandLogo from "../components/BrandLogo";
-import { BRAND_TAGLINE, BRAND_TAGLINE_SECONDARY, BRAND_NAME } from "../constants/brand";
+import { BRAND_TAGLINE, BRAND_NAME } from "../constants/brand";
+
+/**
+ * Landing — Intelligence Infrastructure.
+ * Editorial enterprise structure: overline → statement → mechanism → proof.
+ * The example case is clearly labeled illustrative; no fabricated metrics,
+ * no live-data claims. Day workspace hero; one night canvas panel carries
+ * the product's voice — duality demonstrated, not described.
+ */
+
+const LOOP = [
+  "Sense",
+  "Reason",
+  "Explain",
+  "Blast radius",
+  "Propose",
+  "Approve",
+  "Record",
+  "Report",
+];
+
+const PILLARS = [
+  {
+    n: "01",
+    title: "Sense",
+    body: "Telemetry from Okta, CrowdStrike, GuardDuty and Cloudflare becomes one stream of observable events.",
+  },
+  {
+    n: "02",
+    title: "Reason",
+    body: "Every incident is analyzed and explained in plain English — what happened, why it matters, what is affected — with stated confidence, never presented as confirmed fact.",
+  },
+  {
+    n: "03",
+    title: "Decide",
+    body: "NOCTRA proposes one reversible action per case. You approve or decline. It records the decision and writes the report.",
+  },
+];
 
 const LandingPage: React.FC = () => (
   <div className="min-h-screen bg-app-bg text-content-primary flex flex-col">
-    <header className="h-16 border-b border-line-subtle bg-app-surface sticky top-0 z-20 shadow-card">
-      <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
-        <BrandLogo size={32} />
+    <header className="h-16 border-b border-line-subtle bg-app-surface sticky top-0 z-20">
+      <div className="max-w-5xl mx-auto px-6 h-full flex items-center justify-between">
+        <BrandLogo size={30} />
         <div className="flex items-center gap-3">
           <Link
             to="/login"
@@ -18,7 +55,7 @@ const LandingPage: React.FC = () => (
           </Link>
           <Link
             to="/register"
-            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:bg-accent-secondary transition"
+            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:opacity-90 transition"
           >
             Start free
           </Link>
@@ -27,73 +64,159 @@ const LandingPage: React.FC = () => (
     </header>
 
     <main className="flex-1">
-      <section className="max-w-6xl mx-auto px-6 py-16 lg:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-6">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-accent-primary/10 text-accent-secondary border border-accent-primary/30">
-              <Moon size={12} aria-hidden />
-              {BRAND_NAME} — {BRAND_TAGLINE}
-            </span>
-            <h1 className="text-4xl lg:text-5xl font-extrabold font-display tracking-tight text-content-primary leading-tight">
-              {BRAND_TAGLINE}
-              <span className="block text-content-secondary text-xl font-medium mt-3">
-                Employ an AI security analyst; don't operate a complex dashboard.
-              </span>
-            </h1>
-            <p className="text-content-secondary leading-relaxed max-w-xl text-base">
-              {BRAND_NAME} synthesizes multi-source log streams (Okta, CrowdStrike, GuardDuty,
-              Cloudflare) into plain-English incident stories, maps affected blast-radius entities,
-              and drafts reversible remediation actions for your one-click approval. It records
-              every decision — it never executes against your systems.
+      {/* Statement */}
+      <section className="max-w-5xl mx-auto px-6 pt-20 pb-14">
+        <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-content-tertiary">
+          Intelligence infrastructure
+        </p>
+        <h1 className="mt-4 text-4xl lg:text-[3.4rem] font-bold font-display tracking-tight leading-[1.05] max-w-3xl">
+          {BRAND_TAGLINE}
+        </h1>
+        <p className="mt-5 text-base text-content-secondary leading-relaxed max-w-2xl">
+          {BRAND_NAME} is intelligence infrastructure for small security teams. Telemetry
+          goes in; decisions come out. It watches continuously, explains every incident
+          in plain English, maps what is affected, and proposes one reversible action at
+          a time. You approve. It records — it never executes against your systems.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center gap-4">
+          <Link
+            to="/register"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-primary text-brand-ink font-semibold hover:opacity-90 transition"
+          >
+            Start free <ArrowRight size={16} aria-hidden />
+          </Link>
+          <Link
+            to="/login"
+            className="px-6 py-3 rounded-xl bg-app-surface border border-line-subtle text-content-primary font-semibold hover:bg-app-surface-raised transition"
+          >
+            Open console
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-content-tertiary">
+          Self-hosted via Docker Compose or Kubernetes. Your telemetry stays yours.
+        </p>
+      </section>
+
+      {/* Mechanism — the loop as content */}
+      <section className="border-y border-line-subtle bg-app-surface">
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+            {LOOP.map((step, i) => (
+              <React.Fragment key={step}>
+                <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-content-secondary">
+                  {step}
+                </span>
+                {i < LOOP.length - 1 && (
+                  <span className="text-content-tertiary" aria-hidden>
+                    →
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-content-tertiary">
+            The whole product is this loop. Everything else is progressive disclosure.
+          </p>
+        </div>
+      </section>
+
+      {/* Proof — an example case, on the night canvas (illustrative). */}
+      <section className="max-w-5xl mx-auto px-6 py-16">
+        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+          <h2 className="text-2xl font-bold font-sans tracking-tight">One case, end to end</h2>
+          <span className="text-[10px] font-mono uppercase tracking-[0.2em] px-2 py-1 rounded border border-line-subtle bg-app-subtle text-content-tertiary">
+            Example — illustrative
+          </span>
+        </div>
+
+        <div className="night mt-6 bg-app-navy text-content-primary rounded-2xl border border-app-void shadow-navy p-6 lg:p-8">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-content-tertiary">
+              Needs your decision
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/register"
-                className="px-6 py-3 rounded-xl bg-accent-primary text-brand-ink font-bold hover:bg-accent-secondary transition"
-              >
-                Start with {BRAND_NAME}
-              </Link>
-              <Link
-                to="/login"
-                className="px-6 py-3 rounded-xl bg-app-surface border border-line-subtle text-content-primary font-semibold hover:bg-app-surface-raised transition"
-              >
-                Open Console
-              </Link>
-            </div>
-            <p className="text-xs text-content-tertiary">Self-hosted via Docker Compose or Kubernetes</p>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border bg-severity-critical/15 text-severity-critical border-severity-critical/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-severity-critical" />
+              critical
+            </span>
           </div>
 
-          {/* Night canvas — what the analyst does, at a glance. */}
-          <div className="night bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy border border-app-void">
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { icon: Eye, label: "Multi-Source Sense", desc: "Identity / endpoint / cloud logs" },
-                { icon: ShieldCheck, label: "Plain-English Story", desc: "Narrative & threat rationale" },
-                { icon: Zap, label: "Reversible Action", desc: "Drafted SOAR & undo pathway" },
-                { icon: Network, label: "Blast Radius Graph", desc: "Affected asset entity map" },
-              ].map((f) => (
-                <div key={f.label} className="rounded-xl bg-app-void/80 border border-line-bright p-4">
-                  <f.icon size={18} className="text-accent-secondary mb-2" />
-                  <p className="text-sm font-semibold text-content-primary">{f.label}</p>
-                  <p className="text-xs text-content-tertiary mt-0.5">{f.desc}</p>
-                </div>
-              ))}
+          <h3 className="mt-3 text-xl font-bold font-display leading-snug">
+            Leaked corporate credential is being used to sign in
+          </h3>
+          <p className="mt-2 text-sm text-content-secondary leading-relaxed max-w-2xl">
+            An employee credential appeared in breach evidence and is now authenticating
+            from an unrecognized network. The account may be compromised.
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Affected</p>
+              <p className="text-sm font-bold font-mono mt-0.5">4 systems</p>
             </div>
-            <div className="mt-6 rounded-xl bg-app-void border border-line-bright p-4 font-mono text-xs">
-              <p className="text-content-tertiary">POST /api/v1/analyst/simulate</p>
-              <p className="text-accent-secondary mt-1">
-                → CRITICAL — credential_leak alert:T1078 action:REVOKE_CREDENTIALS
-              </p>
-              <p className="text-content-tertiary mt-1">→ awaiting your decision…</p>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Confidence</p>
+              <p className="text-sm font-bold font-mono mt-0.5">96%</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Recommends</p>
+              <p className="text-sm font-bold font-mono text-accent-secondary mt-0.5">REVOKE_CREDENTIALS</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Reversible</p>
+              <p className="text-sm font-bold font-mono mt-0.5">Yes</p>
             </div>
           </div>
+
+          <div className="mt-6 pt-5 border-t border-line-bright flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2 text-xs text-content-secondary">
+              <CheckCircle2 size={14} className="text-status-success" aria-hidden />
+              Approve → <span className="font-mono">action recorded</span> → report generated
+            </div>
+            <span className="sm:ml-auto text-[11px] text-content-tertiary font-mono">
+              record-only — nothing is executed
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Pillars — editorial numbered sections */}
+      <section className="border-t border-line-subtle bg-app-surface">
+        <div className="max-w-5xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-3 gap-10">
+          {PILLARS.map((p) => (
+            <article key={p.n}>
+              <p className="text-[11px] font-mono text-accent-secondary tracking-[0.2em]">{p.n}</p>
+              <h3 className="mt-2 text-lg font-bold font-sans tracking-tight">{p.title}</h3>
+              <p className="mt-2 text-sm text-content-secondary leading-relaxed">{p.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Trust strip */}
+      <section className="border-t border-line-subtle">
+        <div className="max-w-5xl mx-auto px-6 py-10 flex flex-col sm:flex-row sm:items-center gap-4">
+          <p className="text-sm text-content-secondary leading-relaxed">
+            <span className="font-semibold text-content-primary">Record-only by design.</span>{" "}
+            NOCTRA records actions — it never executes them. Every decision is reversible,
+            every step audited, every outcome reported.
+          </p>
+          <Link
+            to="/register"
+            className="sm:ml-auto shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:opacity-90 transition"
+          >
+            Employ your analyst <ArrowRight size={15} aria-hidden />
+          </Link>
         </div>
       </section>
     </main>
 
-    <footer className="border-t border-line-subtle bg-app-surface py-6 text-center text-xs text-content-tertiary">
-      © {new Date().getFullYear()} {BRAND_NAME} — {BRAND_TAGLINE_SECONDARY} Every decision
-      recorded, every action reversible.
+    <footer className="border-t border-line-subtle bg-app-surface py-6">
+      <div className="max-w-5xl mx-auto px-6 flex items-center justify-between gap-4">
+        <BrandLogo size={22} withWordmark={false} />
+        <p className="text-xs text-content-tertiary">
+          © {new Date().getFullYear()} {BRAND_NAME} — See less. Know more.
+        </p>
+      </div>
     </footer>
   </div>
 );

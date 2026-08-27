@@ -57,10 +57,12 @@ const BrandLogo: React.FC<Props> = ({
 
       {withWordmark && !collapsed && (
         <span className="flex flex-col leading-none">
-          <span className="text-[15px] font-extrabold font-display tracking-[0.18em] text-content-primary">
+          {/* Wordmark: precision neo-grotesk (Inter) — infrastructure-grade,
+              not display. Wide uppercase tracking = calibrated, engineered. */}
+          <span className="text-[14px] font-semibold font-sans tracking-[0.22em] text-content-primary">
             {BRAND_NAME}
           </span>
-          <span className="text-[9px] font-bold tracking-[0.28em] text-accent-primary uppercase mt-0.5">
+          <span className="text-[8.5px] font-medium font-sans tracking-[0.3em] text-content-tertiary uppercase mt-1">
             Autonomous Analyst
           </span>
         </span>

@@ -30,7 +30,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, acti
         </div>
       )}
       <div className="flex items-center gap-2.5">
-        <span className="hidden sm:block w-1 h-6 rounded-full bg-gradient-to-b from-accent-primary to-accent-secondary shrink-0" aria-hidden />
+        <span className="hidden sm:block w-1 h-6 rounded-full bg-accent-primary shrink-0" aria-hidden />
         <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">{title}</h1>
         {badge}
       </div>
