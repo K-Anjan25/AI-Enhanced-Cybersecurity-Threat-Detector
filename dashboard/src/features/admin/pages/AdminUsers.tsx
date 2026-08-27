@@ -145,7 +145,7 @@ export default function AdminUsers(): React.ReactElement {
 
       <div className="bg-app-surface border border-line-subtle rounded-2xl shadow-card overflow-hidden">
         {isLoading ? (
-          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 2} />
+          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 2} bare />
         ) : (
           <TableWithAction
             columns={[

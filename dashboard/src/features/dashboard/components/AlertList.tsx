@@ -124,7 +124,7 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
 
       <div className="bg-app-surface rounded-2xl border border-line-subtle shadow-card overflow-hidden">
         {loading ? (
-          <SkeletonTable rows={6} cols={3} />
+          <SkeletonTable rows={6} cols={3} checkbox bare />
         ) : currentPaginatedItems.length === 0 ? (
           <EmptyState
             title="No security alerts found matching your criteria"

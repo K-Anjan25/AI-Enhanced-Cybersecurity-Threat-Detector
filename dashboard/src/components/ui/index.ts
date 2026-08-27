@@ -3,7 +3,7 @@ export { Card, CardHeader } from "./Card";
 export { StatCard } from "./StatCard";
 export { Badge, SeverityBadge, StatusBadge } from "./Badge";
 export { Spinner, LoadingState } from "./Spinner";
-export { Skeleton, SkeletonCard, SkeletonText, SkeletonTable } from "./Skeleton";
+export { Skeleton, SkeletonCard, SkeletonText, SkeletonTable, SkeletonStatCard, SkeletonChart, SkeletonList } from "./Skeleton";
 export { EmptyState } from "./EmptyState";
 export { Modal } from "./Modal";
 export { ConfirmDialog } from "./ConfirmDialog";

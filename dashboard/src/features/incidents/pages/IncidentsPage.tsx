@@ -129,7 +129,7 @@ const IncidentsPage: React.FC = () => {
 
       <Card padded={false} className="overflow-hidden">
         {loading ? (
-          <SkeletonTable rows={6} cols={5} />
+          <SkeletonTable rows={6} cols={5} bare />
         ) : incidents.length === 0 ? (
           <EmptyState
             title={`No incidents${statusFilter ? ` with status "${statusFilter}"` : ""} found`}

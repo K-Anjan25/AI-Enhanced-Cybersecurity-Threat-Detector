@@ -328,3 +328,31 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   light/dark mode). `.night` analyst panels stay dark in both themes by design.
 - **Verification** — `tsc --noEmit && vite build` clean (~1.5s); all new modules
   serve 200 in the live preview.
+
+## Phase 23 — Crescent-moon brand mark, L auth pages, skeleton layout repair
+
+- **Brand mark → crescent moon** — owner confirmed the mark in the direction-L
+  design is a **crescented moon**, not the interim folded-ribbon N. Rewrote
+  `components/BrandLogo.tsx`: full disc r=12 @ (16,16) with a bite disc r=9 @
+  (21,11) removed via mask (exact crescent, no hand-drawn arcs), diagonal
+  `#6C5CE7→#9D7CFF` gradient, `#B18CFF` sparkle at the upper tip; wordmark +
+  sparkle-A + tagline unchanged; `useId` so multiple instances never collide.
+  Favicon `public/favicon.svg` and the brand spec (`docs/noctra-redesign-spec.md`
+  §12–13) updated to the crescent.
+- **Auth pages completed in the new design** — new `features/auth/components/
+  AuthLayout.tsx`: split screen (brand panel with crescent mark, mono overline,
+  display headline with gradient phrase, three product truths; form card on the
+  light canvas) + ThemeToggle top-right. Login and Register rebuilt on it;
+  ResetPassword rebuilt as a matching card (crescent mark, gradient pill,
+  invalid-token state with back-to-sign-in); ForgotPassword modal aligned
+  (rounded-3xl, crescent mark, "Night desk access" overline, accessible close).
+  Login card carries the demo workspace hint.
+- **Skeleton layout repair** — skeletons were replacing whole pages (spinner
+  where a header+cards should be) or double-carding. Added `SkeletonStatCard`,
+  `SkeletonChart`, `SkeletonList`; `SkeletonTable` now echoes real column
+  widths, supports a checkbox column, and a `bare` mode for use inside a Card
+  (no nested chrome). Wired layout-matched skeletons into DashboardOverview,
+  AIAnalytics, Brief, Actions, Reports, Case pages (headers stay visible during
+  load); applied `bare` in Feed, AlertList, Incidents, AdminUsers.
+- **Verification** — `tsc --noEmit && vite build` clean (1.56s); dev server
+  serves `/`, `/login`, `/register` 200.

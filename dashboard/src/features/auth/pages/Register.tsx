@@ -5,6 +5,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
 import { Spinner } from "../../../components/ui";
 import TextInput from "../../../components/common/TextInput";
+import AuthLayout from "../components/AuthLayout";
 import { registerSchema, initialRegisterValues } from "../../../validators/registerValidator";
 import { registerUser } from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -37,50 +38,74 @@ export default function Register(): React.ReactElement {
   });
 
   return (
-    <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-app-surface border border-line-subtle rounded-3xl shadow-card p-8 space-y-6 text-content-primary">
-        <div className="flex flex-col items-center gap-3">
-          <BrandLogo size={36} />
-          <div className="text-center space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight">Create your analyst account</h1>
-            <p className="text-xs tracking-[0.14em] text-content-tertiary uppercase">{BRAND_TAGLINE}</p>
-          </div>
+    <AuthLayout
+      headline={
+        <>
+          Join the analysts{" "}
+          <span className="bg-brand-gradient bg-clip-text text-transparent">
+            guarding the night.
+          </span>
+        </>
+      }
+      subhead="Create your analyst account to start reviewing detections, deciding cases, and recording every step."
+    >
+      <div className="w-full max-w-md mx-auto">
+        {/* Mobile brand header */}
+        <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
+          <BrandLogo size={40} withWordmark={false} />
+          <p className="text-[11px] font-mono uppercase tracking-[0.22em] text-accent-primary font-medium">
+            {BRAND_TAGLINE}
+          </p>
         </div>
 
-        <form onSubmit={formik.handleSubmit} className="space-y-4">
-          <TextInput form={formik} name="username" label="Username" />
-          <TextInput form={formik} name="email" label="Email Address" type="email" />
-          <TextInput form={formik} name="password" label="Password" type="password" />
-          <TextInput
-            form={formik}
-            name="confirmPassword"
-            label="Confirm Password"
-            type="password"
-          />
+        <div className="bg-app-surface border border-line-subtle rounded-3xl shadow-card p-8 space-y-6 text-content-primary">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Create your analyst account
+            </h1>
+            <p className="text-sm text-content-tertiary">
+              Two minutes, then the night desk is yours.
+            </p>
+          </div>
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            disabled={registerMutation.isLoading}
-            className="w-full mt-2"
-          >
-            {registerMutation.isLoading ? (
-              <Spinner variant="light" className="mr-2" />
-            ) : null}
-            {registerMutation.isLoading ? "Creating Account..." : "Create Account"}
-          </Button>
-        </form>
+          <form onSubmit={formik.handleSubmit} className="space-y-4">
+            <TextInput form={formik} name="username" label="Username" />
+            <TextInput form={formik} name="email" label="Email Address" type="email" />
+            <TextInput form={formik} name="password" label="Password" type="password" />
+            <TextInput
+              form={formik}
+              name="confirmPassword"
+              label="Confirm Password"
+              type="password"
+            />
 
-        <div className="text-center pt-2 border-t border-line-subtle">
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={registerMutation.isLoading}
+              className="w-full mt-2"
+            >
+              {registerMutation.isLoading ? (
+                <Spinner variant="light" className="mr-2" />
+              ) : null}
+              {registerMutation.isLoading ? "Creating Account..." : "Create Account"}
+            </Button>
+          </form>
+        </div>
+
+        <div className="text-center mt-6">
           <p className="text-xs text-content-secondary">
             Already have an account?{" "}
-            <Link to="/login" className="text-accent-primary hover:underline font-medium">
+            <Link
+              to="/login"
+              className="text-accent-primary hover:underline font-medium"
+            >
               Sign in
             </Link>
           </p>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

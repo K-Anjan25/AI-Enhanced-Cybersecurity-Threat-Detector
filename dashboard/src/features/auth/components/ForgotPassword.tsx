@@ -3,6 +3,7 @@ import { useFormik } from "formik";
 import { useMutation } from "react-query";
 import * as Yup from "yup";
 import Button from "../../../components/ui/Button";
+import BrandLogo from "../../../components/BrandLogo";
 import TextInput from "../../../components/common/TextInput";
 import { requestPasswordReset } from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -39,13 +40,22 @@ export default function ForgotPassword({ onClose }: ForgotPasswordProps): React.
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-app-surface border border-line-subtle w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-content-primary">
-        <div className="flex justify-between items-center border-b border-line-subtle pb-3">
-          <h3 className="text-lg font-bold text-content-primary">Reset Password</h3>
+      <div className="bg-app-surface border border-line-subtle w-full max-w-sm rounded-3xl p-6 shadow-overlay space-y-4 text-content-primary">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <BrandLogo size={28} withWordmark={false} />
+            <div>
+              <h3 className="text-lg font-bold text-content-primary leading-tight">Reset Password</h3>
+              <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-content-tertiary mt-0.5">
+                Night desk access
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-content-tertiary hover:text-content-primary text-lg font-bold cursor-pointer"
+            aria-label="Close"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-content-tertiary hover:text-content-primary hover:bg-app-subtle transition text-lg font-bold cursor-pointer"
           >
             &times;
           </button>

@@ -11,7 +11,7 @@ import {
   Moon,
   Inbox as InboxIcon,
 } from "lucide-react";
-import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge, Term } from "../../../components/ui";
+import { Button, PageHeader, SeverityBadge, SkeletonCard, SkeletonChart, StatusBadge, Term } from "../../../components/ui";
 import { Select } from "../../../components/ui/Select";
 import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
 import AnalystApi from "../../../api/analystApi";
@@ -169,7 +169,26 @@ const BriefPage: React.FC = () => {
       label: `${n.entity_type}: ${n.value}`,
     })) ?? [];
 
-  if (loading) return <LoadingState label="Preparing your brief…" />;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader
+          title="Analyst Inbox"
+          description="What NOCTRA found while you were away."
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <SkeletonChart className="h-64" />
+            <SkeletonChart className="h-56" />
+          </div>
+          <div className="space-y-6">
+            <SkeletonCard className="h-40" />
+            <SkeletonCard className="h-40" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
