@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader, Card, Button, SeverityBadge, StatusBadge, SkeletonTable, EmptyState } from "../../../components/ui";
+import { PageHeader, Card, Button, SeverityBadge, StatusBadge, SkeletonTable, EmptyState, Term } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
 import type { AnalystCase, Decision } from "../../../types/analyst";
 import type { PaginatedResponse } from "../../../types/pagination";
@@ -54,7 +54,12 @@ const FeedPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="Cases"
-        description="Everything your analyst has surfaced — the story, the blast radius, and the decision each case is waiting on."
+        description={
+          <>
+            Everything your analyst has surfaced — the story, the <Term>blast radius</Term>, and
+            the <Term>decision</Term> each case is waiting on.
+          </>
+        }
         actions={
           <Button type="button" variant="secondary" onClick={loadFeed}>
             Refresh

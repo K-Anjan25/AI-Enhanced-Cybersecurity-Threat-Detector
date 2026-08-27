@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "react-query";
 import AdminApi from "../../../api/adminApi";
 import RulesApi from "../../../api/rulesApi";
+import { Term } from "../../../components/ui";
 
 export interface DashboardMetric {
   title: string;
@@ -83,7 +84,8 @@ export default function AdminDashboard(): React.ReactElement {
               AI & Detection Engine
             </h3>
             <p className="text-sm text-content-secondary mt-2">
-              Configure anomaly confidence thresholds, detection sensitivity, and automated mitigation rules.
+              Configure anomaly <Term>confidence</Term> thresholds, <Term>detection</Term>{" "}
+              sensitivity, and automated mitigation rules.
             </p>
           </div>
           <span className="mt-6 text-accent-primary text-sm font-medium flex items-center">

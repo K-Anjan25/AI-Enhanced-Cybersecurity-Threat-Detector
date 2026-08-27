@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import EntityApi, { type EntityGraphSummary, type EntityPathResult } from "../../../api/entityApi";
 import EntityGraphView from "../../../features/entities/components/EntityGraphView";
-import { PageHeader, Select, StatCard } from "../../../components/ui";
+import { PageHeader, Select, StatCard, Term } from "../../../components/ui";
 import type { EntityType, ThreatEntity } from "../../../types/entity";
 import { getApiError } from "../../../utils/getApiError";
 
@@ -125,8 +125,13 @@ const EntitiesPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Entity Graph"
-        description="Extracted indicators from detected threats. Click “Graph” to explore connections."
+        title={<><Term>Entity</Term> Graph</>}
+        description={
+          <>
+            Extracted indicators from detected threats. Click “Graph” to explore connections
+            between <Term>entities</Term>.
+          </>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-3">
