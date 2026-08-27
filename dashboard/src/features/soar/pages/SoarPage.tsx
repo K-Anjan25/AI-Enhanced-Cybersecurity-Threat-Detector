@@ -8,6 +8,7 @@ import {
   Select,
   SkeletonTable,
   EmptyState,
+  Term,
 } from "../../../components/ui";
 import { getApiError } from "../../../utils/getApiError";
 
@@ -215,8 +216,13 @@ const SoarPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="SOAR Automation"
-        description="See every action the rules engine has recorded, and test rule matching safely — records only, never live execution."
+        title={<><Term>SOAR</Term> Automation</>}
+        description={
+          <>
+            See every action the rules engine has recorded, and test rule matching safely —{" "}
+            <Term>record-only</Term>, never live execution.
+          </>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -270,7 +276,7 @@ const SoarPage: React.FC = () => {
         <Card>
           <h2 className="text-lg font-semibold text-content-primary tracking-tight">Trigger on alert</h2>
           <p className="text-xs text-content-tertiary mt-0.5 mb-4">
-            Fire the response playbook manually for an existing alert ID.
+            Fire the response <Term>playbook</Term> manually for an existing alert ID.
           </p>
           <form onSubmit={handleTrigger} className="space-y-3">
             <div>
@@ -306,7 +312,9 @@ const SoarPage: React.FC = () => {
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-content-primary tracking-tight">Playbooks</h2>
+            <h2 className="text-lg font-semibold text-content-primary tracking-tight">
+              <Term>Playbooks</Term>
+            </h2>
             <p className="text-xs text-content-tertiary mt-0.5">
               Pin a detection rule to a specific action, overriding the default mapping.
             </p>
@@ -364,7 +372,11 @@ const SoarPage: React.FC = () => {
         ) : playbooks.length === 0 ? (
           <EmptyState
             title="No playbooks yet"
-            description="Add a playbook to override a rule's default response action."
+            description={
+              <>
+                Add a <Term>playbook</Term> to override a rule's default response action.
+              </>
+            }
           />
         ) : (
           <div className="mt-4 overflow-x-auto">
@@ -384,7 +396,9 @@ const SoarPage: React.FC = () => {
                     <td className="px-4 py-3 text-content-primary">{pb.name}</td>
                     <td className="px-4 py-3 text-xs text-content-tertiary">{pb.rule_name || "—"}</td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-accent-primary">{pb.action_type}</span>
+                      <Term mono className="font-mono text-xs text-accent-primary">
+                        {pb.action_type}
+                      </Term>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${pb.is_active ? "bg-status-success/15 text-status-success border-status-success/30" : "bg-app-subtle text-content-secondary border-line-subtle"}`}>
@@ -427,7 +441,10 @@ const SoarPage: React.FC = () => {
         <div className="flex items-center justify-between px-5 py-4 border-b border-line-subtle">
           <div>
             <h2 className="text-lg font-semibold text-content-primary tracking-tight">Recorded actions</h2>
-            <p className="text-xs text-content-tertiary mt-0.5">Automation audit trail for this organization. Records only — no external systems were touched.</p>
+            <p className="text-xs text-content-tertiary mt-0.5">
+              Automation audit trail for this organization. <Term>Record-only</Term> — no external
+              systems were touched.
+            </p>
           </div>
           <button
             type="button"
@@ -442,7 +459,11 @@ const SoarPage: React.FC = () => {
         ) : actions.length === 0 ? (
           <EmptyState
             title="No automation actions recorded yet"
-            description="Use the dry-run evaluator or trigger a playbook to see actions here."
+            description={
+              <>
+                Use the dry-run evaluator or trigger a <Term>playbook</Term> to see actions here.
+              </>
+            }
           />
         ) : (
           <div className="overflow-x-auto">
@@ -460,7 +481,9 @@ const SoarPage: React.FC = () => {
                 {actions.map((action) => (
                   <tr key={action.id} className="hover:bg-app-subtle/50 transition-colors">
                     <td className="px-5 py-3.5">
-                      <span className="font-mono text-xs text-accent-primary">{action.action_type}</span>
+                      <Term mono className="font-mono text-xs text-accent-primary">
+                        {action.action_type}
+                      </Term>
                       {action.rule_name && (
                         <span className="block text-xs text-content-tertiary mt-0.5">{action.rule_name}</span>
                       )}
@@ -472,7 +495,7 @@ const SoarPage: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${statusBadge[action.status] || statusBadge.skipped}`}>
-                        {statusLabel[action.status] || action.status}
+                        <Term>{statusLabel[action.status] || action.status}</Term>
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-xs text-content-tertiary">

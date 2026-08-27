@@ -3,7 +3,7 @@ import { BackButton } from "./BackButton";
 import { Breadcrumbs, Crumb } from "./Breadcrumbs";
 
 export interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
   badge?: React.ReactNode;

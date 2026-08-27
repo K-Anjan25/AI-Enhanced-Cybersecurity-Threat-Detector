@@ -8,6 +8,7 @@ import {
   Modal,
   StatusBadge,
   Select,
+  Term,
 } from "../../../components/ui";
 import TextInput from "../../../components/common/TextInput";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -117,8 +118,13 @@ const ReputationPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="IP Reputation"
-        description="Threat-intel scoring and blacklist status for observed source IPs. Changes are audited."
+        title={<>IP <Term>Reputation</Term></>}
+        description={
+          <>
+            Threat-intel scoring and <Term>blacklist</Term> status for observed source IPs.
+            Changes are audited.
+          </>
+        }
         backTo="/admin"
         crumbs={[{ label: "Admin", to: "/admin" }, { label: "IP Reputation" }]}
         actions={
@@ -145,7 +151,12 @@ const ReputationPage: React.FC = () => {
           <EmptyState
             icon={<ShieldOff size={28} />}
             title="No reputation entries yet"
-            description="Add an IP with a threat score, or block addresses from the alerts view."
+            description={
+              <>
+                Add an IP with a threat score, or <Term>blacklist</Term> addresses from the alerts
+                view.
+              </>
+            }
             action={
               <button
                 type="button"
