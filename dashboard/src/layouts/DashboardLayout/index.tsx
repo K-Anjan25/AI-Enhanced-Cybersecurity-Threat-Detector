@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import {
@@ -81,11 +81,17 @@ export interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState<boolean>(false);
   const [density, setDensity] = useState<Density>(() => {
     const saved = localStorage.getItem("td_density");
     return saved === "compact" ? "compact" : "comfortable";
   });
   const location = useLocation();
+
+  // Route changes always close the mobile drawer.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   const username: string = localStorage.getItem("username") || "User";
   const userRole: string = (localStorage.getItem("user_role") || "user").toLowerCase();
@@ -142,10 +148,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
       className="h-screen w-screen bg-app-bg text-content-primary flex overflow-hidden font-sans"
       data-density={density}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-app-surface focus:border focus:border-line-subtle focus:text-content-primary focus:text-sm focus:shadow-overlay"
+      >
+        Skip to content
+      </a>
+
+      {/* Mobile drawer backdrop */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden
+        />
+      )}
+
       <aside
         className={cn(
-          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex flex-col justify-between shrink-0 z-30 overflow-hidden shadow-card",
-          isSidebarOpen ? "w-64" : "w-[68px]"
+          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden shadow-card",
+          // Mobile: overlay drawer (open only). Desktop: static column.
+          "fixed inset-y-0 left-0 z-40 lg:static",
+          mobileNavOpen ? "flex w-64" : "hidden lg:flex",
+          isSidebarOpen ? "lg:w-64" : "lg:w-[68px]"
         )}
       >
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -166,7 +191,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             </button>
           </div>
 
-          <nav className="p-3 space-y-1 mt-2 flex-1 overflow-y-auto min-h-0">
+          <nav aria-label="Primary" className="p-3 space-y-1 mt-2 flex-1 overflow-y-auto min-h-0">
+            {/* Mobile-only close inside the drawer */}
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(false)}
+              className="lg:hidden w-full flex items-center justify-end px-3.5 pb-1 text-content-tertiary hover:text-content-primary transition text-xs font-bold cursor-pointer"
+            >
+              Close ×
+            </button>
             <p
               className={cn(
                 "px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary",
@@ -229,10 +262,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
-        <Navbar onLogout={onLogout} />
+        <Navbar onLogout={onLogout} onOpenNav={() => setMobileNavOpen(true)} />
         <CommandMenu />
 
-        <main key={location.pathname} className="p-6 flex-1 min-w-0 w-full overflow-y-auto">
+        <main
+          key={location.pathname}
+          id="main-content"
+          tabIndex={-1}
+          className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none"
+        >
           <PageTransition>{children || <Outlet />}</PageTransition>
         </main>
       </div>

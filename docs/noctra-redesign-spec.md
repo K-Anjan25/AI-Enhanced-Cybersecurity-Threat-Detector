@@ -732,6 +732,22 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
 
+### Addendum — Stage 4 slice 1: responsive + a11y hardening (2026-08-27)
+
+- **Mobile navigation drawer**: the always-visible 256px sidebar made phones
+  unusable — below `lg` it is now a fixed overlay drawer (hamburger in the
+  top bar, backdrop dismiss, in-drawer close, auto-close on route change).
+  Desktop behavior unchanged (static column, collapse toggle intact).
+- **Topbar responsive**: hamburger (lg-only), full lockup ≥sm / icon-only
+  below, tagline ≥xl only, tightened gutters on narrow screens.
+- **Accessibility**: skip-to-content link + `main#main-content` focus
+  target; `nav[aria-label=Primary]`; notification/profile menus dismiss on
+  outside-click and Escape; AlertDetailModal is now a proper dialog
+  (`role="dialog"`, `aria-modal`, contextual `aria-label`, Escape + backdrop
+  close); all four Recharts wrappers carry `role="img"` + descriptive
+  `aria-label`s. Admin tables verified to scroll horizontally.
+- Verified: tsc + build clean; preview serving.
+
 ### Addendum — Exact brand spec implementation (2026-08-27, latest pass)
 
 - **Logo system replaced per the user's exact specification** (§12–13

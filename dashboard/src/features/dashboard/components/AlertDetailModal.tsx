@@ -51,6 +51,16 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
     };
   }, [alert?.id]);
 
+  // Dialog semantics: Escape closes; backdrop click closes.
+  useEffect(() => {
+    if (alert?.id == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [alert?.id, onClose]);
+
   if (!alert) return null;
 
   const severity = String(alert.severity || alert.risk || "LOW").toUpperCase();
@@ -60,7 +70,15 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
   const hasThreatIntel = threatIntel && Object.keys(threatIntel).length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Alert details${alert.id != null ? ` #${alert.id}` : ""}`}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-app-surface w-full max-w-2xl rounded-xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-lg font-semibold text-content-primary">Alert Details</h3>

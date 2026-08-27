@@ -192,7 +192,7 @@ const DashboardOverviewPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader title="Alert Trend (7 days)" description="Detection volume by severity" />
-          <div className="h-64 mt-4">
+          <div className="h-64 mt-4" role="img" aria-label="Area chart: detection volume by severity over the last 7 days">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <defs>

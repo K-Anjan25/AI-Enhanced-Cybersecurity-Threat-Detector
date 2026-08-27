@@ -149,7 +149,7 @@ const AIAnalyticsPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-content-primary">Alert Trend (7 days)</h3>
-              <div className="h-64 mt-4">
+              <div className="h-64 mt-4" role="img" aria-label="Line chart: alert trend over the last 7 days, total and by severity">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                     <CartesianGrid stroke="#23232f" strokeDasharray="3 3" />
@@ -173,7 +173,7 @@ const AIAnalyticsPage: React.FC = () => {
 
             <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-content-primary">Severity Distribution</h3>
-              <div className="h-64 mt-4">
+              <div className="h-64 mt-4" role="img" aria-label="Pie chart: share of alerts by severity">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -234,7 +234,7 @@ const AIAnalyticsPage: React.FC = () => {
               {Object.keys(overview.by_type || {}).length === 0 ? (
                 <p className="text-sm text-content-tertiary">No detections recorded yet.</p>
               ) : (
-                <div className="h-56">
+                <div className="h-56" role="img" aria-label="Bar chart: detection counts by alert type">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={Object.entries(overview.by_type || {}).map(([name, value]) => ({ name, value }))}>
                       <CartesianGrid stroke="#23232f" strokeDasharray="3 3" vertical={false} />

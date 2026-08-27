@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
-import { Search, Settings, LogOut, ShieldCheck, Bell } from "lucide-react";
+import { Search, Settings, LogOut, ShieldCheck, Bell, Menu } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
 import AnalystApi from "../../api/analystApi";
@@ -12,9 +12,11 @@ const SEEN_KEY = "noctra_notified_at";
 
 export interface NavbarProps {
   onLogout?: () => void;
+  /** Opens the mobile navigation drawer (rendered by DashboardLayout). */
+  onOpenNav?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
+const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
   const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
   const [notes, setNotes] = useState<NotificationItem[]>([]);
@@ -22,6 +24,29 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
   const [search, setSearch] = useState<string>("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Dismiss both menus on outside click or Escape.
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (!headerRef.current?.contains(e.target as Node)) {
+        setIsNotesOpen(false);
+        setIsProfileMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsNotesOpen(false);
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   const username: string = localStorage.getItem("username") || "User";
   const userRole: string = (localStorage.getItem("user_role") || "user").toLowerCase();
@@ -66,13 +91,31 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
   };
 
   return (
-    <header className="h-16 bg-app-surface border-b border-line-subtle flex items-center justify-between px-6 shrink-0 z-20 w-full">
-      <div className="flex items-center gap-4">
-        <Link to="/" className="flex items-center hover:opacity-90 transition">
-          <BrandLogo size={26} />
+    <header
+      ref={headerRef}
+      className="h-16 bg-app-surface border-b border-line-subtle flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 w-full gap-2"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onOpenNav}
+          aria-label="Open navigation"
+          className="lg:hidden w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer shrink-0"
+        >
+          <Menu size={16} aria-hidden />
+        </button>
+
+        <Link to="/" className="flex items-center hover:opacity-90 transition min-w-0" aria-label="NOCTRA home">
+          {/* Full lockup from sm up; icon-only on the narrowest screens. */}
+          <span className="hidden sm:flex">
+            <BrandLogo size={26} />
+          </span>
+          <span className="sm:hidden flex">
+            <BrandLogo size={26} withWordmark={false} />
+          </span>
         </Link>
 
-        <span className="hidden sm:inline text-[11px] font-mono text-content-tertiary">
+        <span className="hidden xl:inline text-[11px] font-mono text-content-tertiary truncate">
           {BRAND_TAGLINE_SECONDARY}
         </span>
       </div>

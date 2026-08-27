@@ -180,13 +180,13 @@ const BriefPage: React.FC = () => {
             : "What NOCTRA found while you were away."
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <select
               value={selectedScenario}
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={simulating}
               aria-label="Scenario to simulate"
-              className="bg-app-subtle border border-line-subtle text-xs text-content-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-primary/60"
+              className="flex-1 sm:flex-none min-w-[190px] bg-app-subtle border border-line-subtle text-xs text-content-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-primary/60"
             >
               <option value="credential_leak">Credential Leak (T1078)</option>
               <option value="phishing_outbreak">Phishing Outbreak (T1566)</option>
