@@ -16,15 +16,14 @@ export const BRAND_TYPOGRAPHY = {
   mono: "JetBrains Mono",
 } as const;
 
-/** "Night Shift" palette — ink foundation + Lumen violet (see docs/noctra-redesign-spec.md §16). */
+/** Brand palette — ink foundation + periwinkle accent (see docs/noctra-redesign-spec.md §16). */
 export const BRAND_PALETTE = {
   voidInk: "#08090d",
   bgInk: "#0c0e14",
   surface: "#14161d",
-  canvas: "#10131c", // night-canvas editorial panels (NOCTRA's voice)
-  lumenViolet: "#8b7cf6", // PRIMARY — brand + primary action
-  lumenBright: "#a8a2ff",
-  lumenGlow: "#c9c4ff",
+  canvas: "#10131c", // editorial canvas panels (NOCTRA's voice)
+  accentPrimary: "#a8a2ff", // PRIMARY — brand + primary action (periwinkle)
+  accentSecondary: "#c9c4ff", // hover / bright accents on dark
   success: "#4cc38a",
   warning: "#e5a54b",
   critical: "#f26d6d",

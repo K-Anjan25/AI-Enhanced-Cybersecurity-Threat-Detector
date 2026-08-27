@@ -88,7 +88,7 @@ export default function Login(): React.ReactElement {
             <button
               type="button"
               onClick={() => setIsForgetPasswordOpen(true)}
-              className="text-xs text-accent-primary hover:text-accent-glow hover:underline transition"
+              className="text-xs text-accent-primary hover:text-accent-secondary hover:underline transition"
             >
               Forgot Password?
             </button>

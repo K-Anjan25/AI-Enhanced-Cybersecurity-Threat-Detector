@@ -76,7 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
             aria-expanded={isProfileMenuOpen}
             aria-haspopup="menu"
-            className="w-9 h-9 rounded-full bg-accent-primary text-app-bg font-bold flex items-center justify-center hover:bg-accent-glow transition ring-2 ring-accent-primary/20 cursor-pointer"
+            className="w-9 h-9 rounded-full bg-accent-primary text-app-bg font-bold flex items-center justify-center hover:bg-accent-secondary transition ring-2 ring-accent-primary/20 cursor-pointer"
           >
             {username.charAt(0).toUpperCase()}
           </button>

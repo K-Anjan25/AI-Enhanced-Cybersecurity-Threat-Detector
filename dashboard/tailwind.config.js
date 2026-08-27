@@ -1,9 +1,9 @@
 /**
- * NOCTRA — "Night Shift" design tokens (dark-first).
+ * NOCTRA design tokens (dark-first).
  * Source of truth for the redesign spec (docs/noctra-redesign-spec.md §16–18).
  * Tokens are semantic (role-named): components must reference these, not raw
- * slate/blue literals. `app-navy` keeps its legacy name and now means the
- * "night canvas" editorial layer (#10131C).
+ * slate/blue literals. `app-navy` keeps its legacy name for the editorial
+ * canvas layer (#10131C).
  */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -16,7 +16,7 @@ module.exports = {
         mono: ['"JetBrains Mono Variable"', "JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
-        // ── Night Shift surfaces (dark-first) ─────────────────────────────
+        // ── Surfaces (dark-first) ─────────────────────────────
         "app-void": {
           DEFAULT: "#08090D", // deepest layer: scroll wells, code surfaces
         },
@@ -37,21 +37,18 @@ module.exports = {
           subtle: "#1B1E28",
         },
 
-        // ── Lumen (brand violet family) ───────────────────────────────────
+        // ── Brand accent (periwinkle family) ────────────────────────────────
+        // Evidence-based choice (spec §15): the light end of the violet family
+        // is unclaimed in security branding and has the strongest contrast.
         brand: {
-          DEFAULT: "#8B7CF6",
-          lumen: "#8B7CF6",
-          glow: "#C9C4FF",
+          DEFAULT: "#A8A2FF",
           ink: "#0C0E14",
         },
         "accent-primary": {
-          DEFAULT: "#8B7CF6", // Lumen violet — brand, primary buttons, links
+          DEFAULT: "#A8A2FF", // brand, primary buttons, links
         },
         "accent-secondary": {
-          DEFAULT: "#A8A2FF", // hover / bright violet
-        },
-        "accent-glow": {
-          DEFAULT: "#C9C4FF", // text-on-dark violet accent
+          DEFAULT: "#C9C4FF", // hover / bright accents on dark
         },
 
         // ── Content ───────────────────────────────────────────────────────
@@ -102,8 +99,6 @@ module.exports = {
       boxShadow: {
         card: "0 1px 2px rgba(4, 6, 12, 0.4), 0 4px 16px rgba(4, 6, 12, 0.28)",
         navy: "0 8px 32px rgba(4, 6, 12, 0.55)",
-        lumen: "0 0 24px rgba(139, 124, 246, 0.28)",
-        "accent-glow": "0 0 24px rgba(139, 124, 246, 0.35)",
         overlay: "0 16px 48px rgba(4, 6, 12, 0.6)",
         raised: "0 8px 24px rgba(4, 6, 12, 0.45)",
       },

@@ -53,8 +53,8 @@ const FeedPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Decisions"
-        description="Everything your analyst has surfaced — what it did, what it's waiting on, and why."
+        title="Cases"
+        description="Everything your analyst has surfaced — the story, the blast radius, and the decision each case is waiting on."
         actions={
           <Button type="button" variant="secondary" onClick={loadFeed}>
             Refresh
@@ -73,8 +73,8 @@ const FeedPage: React.FC = () => {
           <SkeletonTable rows={6} cols={4} />
         ) : cases.length === 0 ? (
           <EmptyState
-            title="No decisions yet"
-            description="When your analyst investigates something, it lands here. Head to the Brief and try “Simulate incident.”"
+            title="No cases yet"
+            description="When your analyst investigates something, it opens a case here. Head to Home and try “Simulate scenario.”"
           />
         ) : (
           <>
@@ -127,7 +127,7 @@ const FeedPage: React.FC = () => {
               <span>
                 Showing <span className="text-content-primary font-medium">{(page - 1) * PAGE_SIZE + 1}</span> -{" "}
                 <span className="text-content-primary font-medium">{Math.min(page * PAGE_SIZE, total)}</span> of{" "}
-                <span className="text-content-primary font-medium">{total}</span> decisions
+                <span className="text-content-primary font-medium">{total}</span> cases
               </span>
               <div className="flex items-center gap-3">
                 <button

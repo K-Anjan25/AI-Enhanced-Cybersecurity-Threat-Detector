@@ -119,7 +119,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         aria-current={active ? "page" : undefined}
         className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
           active
-            ? "bg-accent-primary/15 text-accent-glow border border-accent-primary/30"
+            ? "bg-accent-primary/15 text-accent-secondary border border-accent-primary/30"
             : "text-content-secondary hover:bg-app-surface-raised hover:text-content-primary border border-transparent"
         }`}
       >
@@ -202,13 +202,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         </div>
 
         <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0 bg-app-subtle/50">
-          <div className="w-9 h-9 rounded-xl bg-accent-primary text-app-bg flex items-center justify-center font-bold text-sm shrink-0 shadow-lumen">
+          <div className="w-9 h-9 rounded-xl bg-accent-primary text-app-bg flex items-center justify-center font-bold text-sm shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
           {isSidebarOpen && (
             <div className="overflow-hidden flex-1 min-w-0">
               <p className="text-xs font-bold text-content-primary truncate">{username}</p>
-              <p className="text-[10px] font-medium text-accent-glow capitalize">{userRole}</p>
+              <p className="text-[10px] font-medium text-accent-secondary capitalize">{userRole}</p>
             </div>
           )}
           <button

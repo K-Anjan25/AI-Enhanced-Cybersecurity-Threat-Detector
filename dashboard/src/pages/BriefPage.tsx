@@ -216,7 +216,7 @@ const BriefPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(`/case/${latestCase.id}`)}
-                  className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors shadow-lumen"
+                  className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors"
                 >
                   Review case #{latestCase.id}
                 </button>
@@ -224,7 +224,7 @@ const BriefPage: React.FC = () => {
             </>
           ) : (
             <div className="flex flex-col items-start justify-center h-full gap-3 py-6">
-              <Moon size={22} className="text-accent-glow" aria-hidden />
+              <Moon size={22} className="text-accent-secondary" aria-hidden />
               <h2 className="text-lg font-bold font-display text-content-primary">
                 Nothing needs you right now.
               </h2>

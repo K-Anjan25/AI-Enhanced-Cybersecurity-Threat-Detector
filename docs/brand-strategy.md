@@ -25,7 +25,7 @@ Condensed deliverable for **Phase 1–3** of the rebrand. Full commit diff carri
 
 | # | Name | Etymology / story | Syll. | Trade note | Tagline |
 |---|------|-------------------|-------|------------|---------|
-| **1** | **NOCTRA** ★ | *nocturnal* sentinel — built for the night shift (dark-native SOC) | 2 NOK-tra | Invented, low SaaS collision; `noctra.ai/.io` pattern ownable; ends *A* (2026 coinage trend), plosive K/T | **Silent. Precise. Always watching.** |
+| **1** | **NOCTRA** ★ | *nocturnal* sentinel — watches while the org sleeps (dark-native SOC) | 2 NOK-tra | Invented, low SaaS collision; `noctra.ai/.io` pattern ownable; ends *A* (2026 coinage trend), plosive K/T | **Silent. Precise. Always watching.** |
 | 2 | KESTRA | kestrel (hover-watch → strike) + orchestra (SOAR playbooks) | 2 KES-tra | Distinct from MS Kestrel (infra); ends *A*; hover precision metaphor | Hover. See. Orchestrate. |
 | 3 | VIGLA | *vigilance* compressed, 5 letters | 2 VIG-la | Ultra-short, ends *A*; close to *vigil* for intuition | Vigilance, distilled. |
 | 4 | OBSKRA | *camera obscura* — dark chamber that reveals the image | 2 OB-skra | Hard SK/B, invented, strong recall | Reveal what hides. |

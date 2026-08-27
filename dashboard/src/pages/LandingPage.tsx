@@ -18,7 +18,7 @@ const LandingPage: React.FC = () => (
           </Link>
           <Link
             to="/register"
-            className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-semibold shadow-lumen hover:bg-accent-secondary transition"
+            className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-semibold hover:bg-accent-secondary transition"
           >
             Start free
           </Link>
@@ -30,7 +30,7 @@ const LandingPage: React.FC = () => (
       <section className="max-w-6xl mx-auto px-6 py-16 lg:py-24">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-accent-primary/10 text-accent-glow border border-accent-primary/30">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-accent-primary/10 text-accent-secondary border border-accent-primary/30">
               <Moon size={12} aria-hidden />
               {BRAND_NAME} — {BRAND_TAGLINE}
             </span>
@@ -49,7 +49,7 @@ const LandingPage: React.FC = () => (
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/register"
-                className="px-6 py-3 rounded-xl bg-accent-primary text-app-bg font-bold shadow-lumen hover:bg-accent-secondary transition"
+                className="px-6 py-3 rounded-xl bg-accent-primary text-app-bg font-bold hover:bg-accent-secondary transition"
               >
                 Start with {BRAND_NAME}
               </Link>
@@ -73,7 +73,7 @@ const LandingPage: React.FC = () => (
                 { icon: Network, label: "Blast Radius Graph", desc: "Affected asset entity map" },
               ].map((f) => (
                 <div key={f.label} className="rounded-xl bg-app-void/80 border border-line-bright p-4">
-                  <f.icon size={18} className="text-accent-glow mb-2" />
+                  <f.icon size={18} className="text-accent-secondary mb-2" />
                   <p className="text-sm font-semibold text-content-primary">{f.label}</p>
                   <p className="text-xs text-content-tertiary mt-0.5">{f.desc}</p>
                 </div>
@@ -81,7 +81,7 @@ const LandingPage: React.FC = () => (
             </div>
             <div className="mt-6 rounded-xl bg-app-void border border-line-bright p-4 font-mono text-xs">
               <p className="text-content-tertiary">POST /api/v1/analyst/simulate</p>
-              <p className="text-accent-glow mt-1">
+              <p className="text-accent-secondary mt-1">
                 → CRITICAL — credential_leak alert:T1078 action:REVOKE_CREDENTIALS
               </p>
               <p className="text-content-tertiary mt-1">→ awaiting your decision…</p>

@@ -136,6 +136,7 @@ npm run build
 
 - **Brand Name**: `NOCTRA`
 - **Tagline**: *"Your autonomous security analyst."* (secondary: *"See less. Know more."*)
-- **Design language**: "Night Shift" — dark-first, Lumen violet `#8B7CF6`, Sora / Inter / JetBrains Mono
+- **What it is**: NOCTRA watches your telemetry, explains incidents in plain English, maps the blast radius, and drafts reversible actions — you approve, it records and reports.
+- **Typography**: Sora / Inter / JetBrains Mono
 - **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
 - **Historical (superseded)**: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) · [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png)

@@ -24,7 +24,7 @@ const BrandLogo: React.FC<Props> = ({
   mono = false,
   className,
 }) => {
-  const stroke = mono ? "currentColor" : "#8b7cf6"; // Lumen violet
+  const stroke = mono ? "currentColor" : "#a8a2ff"; // brand accent
   const dotFill = mono ? "currentColor" : "#c9c4ff"; // the finding
 
   return (

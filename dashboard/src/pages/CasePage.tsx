@@ -213,7 +213,7 @@ const CasePage: React.FC = () => {
       {/* Blast radius — night canvas. */}
       <div className="bg-app-navy text-content-primary rounded-2xl border border-line-bright overflow-hidden shadow-navy">
         <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
-          <GitBranch size={16} className="text-accent-glow" aria-hidden />
+          <GitBranch size={16} className="text-accent-secondary" aria-hidden />
           <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Blast Radius Affected Assets</h2>
           <span className="text-xs text-content-tertiary ml-auto font-mono">
             {data.blast_radius?.nodes?.length ?? 0} assets touched
@@ -237,7 +237,7 @@ const CasePage: React.FC = () => {
                   {n.value}
                 </span>
                 {isRoot && (
-                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-accent-glow shrink-0">
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-accent-secondary shrink-0">
                     origin
                   </span>
                 )}
@@ -250,7 +250,7 @@ const CasePage: React.FC = () => {
             {data.blast_radius!.links.map((l, i) => (
               <p key={i} className="text-xs text-content-tertiary font-mono">
                 {nodeById.get(l.source)?.value ?? l.source}
-                <span className="text-accent-glow"> —{l.relation}→ </span>
+                <span className="text-accent-secondary"> —{l.relation}→ </span>
                 {nodeById.get(l.target)?.value ?? l.target}
               </p>
             ))}
@@ -305,7 +305,7 @@ const CasePage: React.FC = () => {
       {/* Ask NOCTRA — interactive analyst chat (night canvas) */}
       <div className="bg-app-navy text-content-primary rounded-2xl border border-line-bright overflow-hidden shadow-navy">
         <div className="px-5 py-3.5 border-b border-line-bright flex items-center gap-2 bg-app-void/60">
-          <MessageSquare size={16} className="text-accent-glow" />
+          <MessageSquare size={16} className="text-accent-secondary" />
           <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
             Ask NOCTRA
           </h2>
@@ -326,7 +326,7 @@ const CasePage: React.FC = () => {
                 className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
                   msg.sender === "user"
                     ? "bg-accent-primary text-app-bg"
-                    : "bg-app-subtle text-accent-glow border border-line-bright"
+                    : "bg-app-subtle text-accent-secondary border border-line-bright"
                 }`}
               >
                 {msg.sender === "user" ? <User size={14} /> : <Bot size={14} />}
@@ -350,7 +350,7 @@ const CasePage: React.FC = () => {
           ))}
           {chatLoading && (
             <div className="flex items-center gap-2 text-xs text-content-tertiary animate-pulse">
-              <Bot size={14} className="text-accent-glow" /> NOCTRA is reasoning…
+              <Bot size={14} className="text-accent-secondary" /> NOCTRA is reasoning…
             </div>
           )}
         </div>
@@ -378,6 +378,9 @@ const CasePage: React.FC = () => {
               <p className="text-sm font-bold text-content-primary">This one's your call.</p>
               <p className="text-xs text-content-tertiary mt-0.5">
                 Approving records the action and generates a report. You can reverse it afterwards.
+              </p>
+              <p className="text-[11px] text-content-tertiary font-mono mt-1">
+                Case opened {data.created_at ? new Date(data.created_at).toLocaleString() : "—"} · waiting on your decision
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -433,6 +436,49 @@ const CasePage: React.FC = () => {
                 {data.report}
               </pre>
             )}
+
+            {/* Case record — timeline built only from real case fields. */}
+            <div className="pt-1 border-t border-line-subtle">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary mb-2 mt-3">
+                Case record
+              </p>
+              <ol className="space-y-1.5">
+                <li className="flex items-baseline gap-2 text-xs text-content-secondary">
+                  <span className="text-accent-secondary" aria-hidden>●</span>
+                  Case opened
+                  <span className="text-content-tertiary font-mono ml-auto">
+                    {data.created_at ? new Date(data.created_at).toLocaleString() : "—"}
+                  </span>
+                </li>
+                {data.source_alert_id && (
+                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
+                    <span className="text-content-tertiary" aria-hidden>●</span>
+                    Linked to alert <span className="font-mono">#{data.source_alert_id}</span>
+                  </li>
+                )}
+                {data.decision !== "pending" && (
+                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
+                    <span className={data.decision === "approved" ? "text-status-success" : "text-content-tertiary"} aria-hidden>●</span>
+                    Decision <span className="font-semibold capitalize">{data.decision}</span> recorded
+                    <span className="text-content-tertiary font-mono ml-auto">
+                      {data.decided_at ? new Date(data.decided_at).toLocaleString() : "—"}
+                    </span>
+                  </li>
+                )}
+                {data.soar_action_id && (
+                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
+                    <span className="text-status-success" aria-hidden>●</span>
+                    SOAR action recorded <span className="font-mono truncate max-w-[220px]" title={data.soar_action_id}>{data.soar_action_id}</span>
+                  </li>
+                )}
+                {data.report && (
+                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
+                    <span className="text-content-tertiary" aria-hidden>●</span>
+                    Report generated
+                  </li>
+                )}
+              </ol>
+            </div>
           </div>
         )}
       </div>

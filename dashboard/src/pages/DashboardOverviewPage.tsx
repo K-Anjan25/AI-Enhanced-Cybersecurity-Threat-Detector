@@ -244,7 +244,7 @@ const DashboardOverviewPage: React.FC = () => {
           title="Critical Alerts"
           description="Highest-priority detections needing triage"
           action={
-            <Link to="/alerts" className="text-xs font-semibold text-accent-primary hover:text-accent-glow transition">
+            <Link to="/alerts" className="text-xs font-semibold text-accent-primary hover:text-accent-secondary transition">
               View all alerts &rarr;
             </Link>
           }

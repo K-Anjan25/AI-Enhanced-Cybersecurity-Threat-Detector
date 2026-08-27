@@ -1,7 +1,7 @@
 # AXIOM AI — Brand Identity & Design System Specification
 
-> **⚠ Superseded:** the product ships as **NOCTRA** ("Night Shift" identity,
-> Lumen violet). The current specification is
+> **⚠ Superseded:** the product ships as **NOCTRA** — your autonomous
+> security analyst. The current specification is
 > [`noctra-redesign-spec.md`](noctra-redesign-spec.md). This AXIOM AI document
 > is retained as the Phase 20 historical decision record.
 

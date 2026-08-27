@@ -22,8 +22,8 @@ human decision. Everything technical survives, reframed as **Advanced /
 deep-dive** experience behind progressive disclosure.
 
 Stage 1 (this pass) ships: the NOCTRA brand (full stack, including the LLM
-persona and generated reports), a new visual identity ("Night Shift" — ink
-foundation, Lumen violet accent), the new navigation architecture, the
+persona and generated reports), a new visual identity (dark-first ink
+foundation, periwinkle accent), the new navigation architecture, the
 Analyst-Inbox home, and trust-accurate language ("recorded", never "executed",
 for record-only SOAR).
 
@@ -268,7 +268,7 @@ Reads as: N = name, arc = transmission/autonomous action, dot = the finding.
 
 ## 13. SVG Logo Specification
 
-- **Primary:** mark in Lumen violet `#8B7CF6` on transparent + wordmark
+- **Primary:** mark in periwinkle `#A8A2FF` on transparent + wordmark
   "NOCTRA" (Sora SemiBold, tracking 0.18em, sentence caps) with sub-line
   "AUTONOMOUS ANALYST" (9px, tracking 0.28em, muted).
 - **Compact mark:** bars+arc+dot only, 1:1. Works at 16/24/32px.
@@ -292,14 +292,44 @@ uses `Activity`. No mixed icon styles, no decorative icon walls.
 
 ## 15. Color Exploration
 
+Round 1 (direction) and Round 2 (accent audit — "is violet actually the
+strongest NOCTRA-owned accent?", researched 2026-08-27):
+
+**Round 1 — direction**
+
 | Direction | Appraisal |
 | --- | --- |
 | A. Obsidian Ember (Phase 17: amber/sage on near-black) | Warm, distinctive — but reads "hearth", not "precision"; amber collides with warning semantics. Retired. |
 | B. Navy + cyan "AI SOC" | The cliché the directive bans. Rejected. |
-| C. Light editorial (Notion-like) + ink | Approachable, but indistinct from generic SaaS; weak night-shift story. Rejected as primary. |
-| D. **Night Shift — ink + Lumen violet** (chosen) | Deep *neutral* ink (not navy) foundation for calm long sessions; one restrained violet accent for brand + primary action; hue-separated severity ramp; violet-led categorical dataviz. Distinctive, security-native, not cyberpunk. |
+| C. Light editorial (Notion-like) + ink | Approachable, but indistinct from generic SaaS. Rejected as primary. |
+| D. **Ink + violet-family accent** (chosen) | Deep *neutral* ink (not navy) foundation for calm long sessions; one restrained accent for brand + primary action; hue-separated severity ramp. Distinctive, security-native, not cyberpunk. |
 
-## 16. Final Color System ("Night Shift", dark-first)
+**Round 2 — which accent can NOCTRA own?**
+
+Competitive color claims in security (researched): blue dominates the
+category (Zscaler, Fortinet, Microsoft, Palo Alto et al.); red = CrowdStrike
+`#FC0000`; orange = Splunk `#FF6600` / Palo Alto; green = Tenable; **deep
+saturated purple `#4500b6→#6100ff` = SentinelOne — explicitly positioned as
+"autonomous AI security"** — i.e. NOCTRA's exact territory — with Wiz also
+building its cloud-security brand on purple.
+
+Elimination: red/amber/green are claimed by severity semantics (a red brand
+accent next to a CRITICAL badge is noise); blue is the category cliché the
+directive bans; teal sits too close to success-green and is well-populated;
+magenta leans toward the critical family. **The violet family is the only hue
+with full semantic headroom** — but the *mid-violet* zone (`#7C3AED`–`#8B7CF6`)
+is exactly where SentinelOne/Wiz live, and the original Phase-14 NOCTRA violet
+(`#7c3aed`) sat squarely in it.
+
+Verdict: **stay in the violet family, but own its light end — periwinkle
+`#A8A2FF`.** Rationale: (1) perceptually distinct at a glance from deep
+saturated "AI purple" (reads moonlight-on-ink, matching the night story);
+(2) unclaimed in security branding; (3) strongest contrast of the family on
+ink — 8.5:1 on `app-bg`, 11.8:1 for `#C9C4FF` (WCAG AA/AAA), vs 5.8:1 for
+`#8B7CF6`; (4) no severity-collision. The deeper `#8B7CF6` is demoted to the
+first categorical dataviz color, where it earns its keep.
+
+## 16. Final Color System (dark-first)
 
 Roles (Tailwind token → hex):
 
@@ -311,9 +341,8 @@ Roles (Tailwind token → hex):
 | `app-surface-raised` | `#1A1D26` | hover/raised |
 | `app-subtle` | `#1B1E28` | table headers, input fills |
 | `app-navy` (legacy name) | `#10131C` | the "night canvas" editorial panels (Brief lead card, blast radius, reports) |
-| `accent-primary` | `#8B7CF6` | Lumen violet — brand, primary buttons, links |
-| `accent-secondary` | `#A8A2FF` | hover/bright violet |
-| `accent-glow` | `#C9C4FF` | text-on-dark violet accents |
+| `accent-primary` | `#A8A2FF` | periwinkle — brand, primary buttons, links (see §15 audit) |
+| `accent-secondary` | `#C9C4FF` | hover / bright accents on dark |
 | `status-success` | `#4CC38A` | approved, healthy |
 | `status-warning` | `#E5A54B` | awaiting decision, high severity |
 | `status-critical` | `#F26D6D` | critical severity, destructive |
@@ -344,8 +373,9 @@ darkened); not shipped in Stage 1 — documented, reversible.
 Single source: `tailwind.config.js` (+ `constants/brand.ts` for non-CSS
 contexts). Tokens are semantic (role-named), never literal in components —
 Stage 1 removes the remaining raw `slate/blue` literals from primary surfaces.
-Shadows: `card` (soft dark), `navy` (canvas depth), `accent-glow` (violet,
-primary CTA only), `overlay`/`raised` (menus/toasts). Motion tokens:
+Shadows: `card` (soft dark), `navy` (canvas depth), `overlay`/`raised`
+(menus/toasts). **No glow shadows on buttons** — accent color carries the
+brand, not halo effects. Motion tokens:
 `fade-in 160ms`, `fade-up 240ms`, `scale-in 140ms`, `slide-in-right 180ms`.
 
 ## 19. UI Design Language
@@ -594,7 +624,7 @@ decorative KPI cards on primary surfaces. Palette per §16.
 `layouts/DashboardLayout`, `App.tsx`, `pages/BriefPage|CasePage|ActionsPage|
 ReportsPage|LandingPage|SoarPage` (copy + token migration), `ui/Button.tsx`,
 `ui/PageHeader.tsx`, `features/auth/pages/Login.tsx` (dead `brand-sage`
-gradient → Lumen tokens); backend `config.py`, `llm_client.py`, `report.py`,
+gradient → accent tokens); backend `config.py`, `llm_client.py`, `report.py`,
 `analyst_service.py`, `analyst.py` (persona strings), `tests/test_analyst.py`
 (comments); `README.md`, `docs/brand-strategy.md`,
 `docs/brand-identity-axiom.md` (supersession banners).
@@ -617,8 +647,10 @@ capability — none removed.
 ## 38. Open Questions / Input Needed (unanswered → documented assumptions)
 
 1. **Brand scope** → assumed full-stack (reports/LLM produce user-facing text).
-2. **Visual direction** → assumed dark-first "Night Shift" (name story,
-   brand history, long-session calm); light theme specced for Stage 3.
+2. **Visual direction** → assumed dark-first ink + violet-family accent
+   (name story, brand history, long-session calm); light theme specced for
+   Stage 3. Accent later audited against the category (§15) and shifted to
+   periwinkle `#A8A2FF`.
 3. **Tagline** → "Your autonomous security analyst." (secondary:
    "See less. Know more.").
 4. **Pacing** → staged per §32; repo green after every stage.
@@ -655,3 +687,16 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
   say NOCTRA.
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
+
+### Addendum — Stage 1.1 (accent audit + copy purge, 2026-08-27)
+
+- Accent audited against the category (§15 Round 2): mid-violet
+  `#8B7CF6` sits in SentinelOne/Wiz territory → **primary accent shifted to
+  periwinkle `#A8A2FF`** (logo, favicon, tokens, ambient wash); `#8B7CF6`
+  retained only as dataviz chart-1.
+- Button glow removed (`shadow-lumen`/`shadow-accent-glow` tokens deleted;
+  all usages cleaned) — accent color carries the brand, not halos.
+- Design-system naming ("Night Shift", "Lumen") removed from all surfaces and
+  docs; copy states what the product *is* (your autonomous security analyst).
+- Re-verified after changes: `tsc --noEmit` + `vite build` clean; built CSS
+  carries the new accent (`rgb(168 162 255)`); no glow shadows in built CSS.

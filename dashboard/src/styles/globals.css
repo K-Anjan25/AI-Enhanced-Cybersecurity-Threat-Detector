@@ -17,11 +17,11 @@
 
   body {
     @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-app-bg;
-    /* Night Shift ambient — Lumen violet rising from the horizon, barely
+    /* Ambient accent wash — periwinkle rising from the horizon, barely
        perceptible depth. The analyst works at night; the product glows. */
     background-image: radial-gradient(
       1200px 600px at 50% -8%,
-      rgba(139, 124, 246, 0.07),
+      rgba(168, 162, 255, 0.07),
       transparent 60%
     ),
       radial-gradient(
