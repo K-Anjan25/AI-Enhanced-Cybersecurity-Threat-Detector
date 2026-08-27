@@ -7,6 +7,7 @@
 >
 > **Brand System & Specification**:
 > - Current redesign spec (IA, Night Shift tokens, product model): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
+> - Commercial-grade frontend redesign (WordPress/WooCommerce research, token + hook + component system, landing, mini-cart drawer): [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
 > - Historical: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) (superseded)
 
 An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.

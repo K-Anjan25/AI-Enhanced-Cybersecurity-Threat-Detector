@@ -11,3 +11,5 @@ export { Select } from "./Select";
 export { PageHeader } from "./PageHeader";
 export { BackButton } from "./BackButton";
 export { Breadcrumbs } from "./Breadcrumbs";
+export { SectionLabel } from "./SectionLabel";
+export { TrustPill } from "./TrustPill";

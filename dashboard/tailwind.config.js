@@ -74,17 +74,44 @@ module.exports = {
         "chart-4": { DEFAULT: "#E77A8B" },
         "chart-5": { DEFAULT: "#7E87A3" },
       },
+      backgroundImage: {
+        // Exact logo gradient (brand spec §12) — hero accent + primary actions.
+        "brand-gradient": "linear-gradient(135deg, #6C5CE7 0%, #9D7CFF 100%)",
+        "brand-gradient-soft":
+          "linear-gradient(135deg, rgba(108,92,231,0.16) 0%, rgba(157,124,255,0.10) 100%)",
+      },
       boxShadow: {
         card: "0 1px 2px rgba(15, 16, 22, 0.05), 0 3px 10px rgba(15, 16, 22, 0.04)",
         navy: "0 8px 32px rgba(8, 9, 13, 0.35)",
         overlay: "0 16px 48px rgba(15, 16, 22, 0.18)",
         raised: "0 8px 24px rgba(15, 16, 22, 0.12)",
+        float: "0 12px 32px rgba(15, 16, 22, 0.16)",
+        hero: "0 24px 64px rgba(8, 9, 13, 0.4)",
       },
       borderRadius: {
         xxs: "4px",
       },
       fontSize: {
         xxs: ["0.6875rem", "1rem"],
+        // ── Fluid type scale (Major Second 1.125 — WP fluid-typography style) ──
+        // Display faces carry brand moments; clamp() scales with the viewport.
+        "display-2xl": [
+          "clamp(2.75rem, 1.6rem + 3.6vw, 4.25rem)",
+          { lineHeight: "1.02", letterSpacing: "-0.03em" },
+        ],
+        "display-xl": [
+          "clamp(2rem, 1.35rem + 2vw, 2.75rem)",
+          { lineHeight: "1.05", letterSpacing: "-0.02em" },
+        ],
+        "display-lg": [
+          "clamp(1.5rem, 1.2rem + 0.9vw, 1.875rem)",
+          { lineHeight: "1.12", letterSpacing: "-0.015em" },
+        ],
+        "display-md": [
+          "clamp(1.25rem, 1.1rem + 0.45vw, 1.5rem)",
+          { lineHeight: "1.2", letterSpacing: "-0.01em" },
+        ],
+        "display-sm": ["1.125rem", { lineHeight: "1.35", letterSpacing: "-0.005em" }],
       },
       keyframes: {
         "fade-in": {

@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
-import { Search, Settings, LogOut, ShieldCheck, Bell, Menu } from "lucide-react";
+import { Search, Settings, LogOut, ShieldCheck, Bell, Menu, Inbox, ArrowRight } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
 import AnalystApi from "../../api/analystApi";
 import type { NotificationItem } from "../../types/analyst";
+import { EVENTS, emit } from "../../lib/events";
+import { useNoctraEvent } from "../../hooks";
 
 const SEEN_KEY = "noctra_notified_at";
 
@@ -22,9 +24,15 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   const [notes, setNotes] = useState<NotificationItem[]>([]);
   const [seenAt, setSeenAt] = useState<string>(() => localStorage.getItem(SEEN_KEY) ?? "");
   const [search, setSearch] = useState<string>("");
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const headerRef = useRef<HTMLElement>(null);
+
+  // Live pending count — the mini-cart pattern: the "Review decisions"
+  // button carries a count pill that updates whenever a case is decided
+  // (case page, drawer, anywhere) via the event bus.
+  useNoctraEvent(EVENTS.PENDING_CHANGED, (n) => setPendingCount(Number(n) || 0));
 
   // Dismiss both menus on outside click or Escape.
   useEffect(() => {
@@ -67,6 +75,12 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   }, [loadNotes]);
 
   const unreadCount = notes.filter((n) => !seenAt || n.at > seenAt).length;
+
+  // Seed the pending pill from the same notifications payload the bell uses.
+  useEffect(() => {
+    const pending = notes.filter((n) => n.kind === "decision_pending").length;
+    if (pending > 0) setPendingCount(pending);
+  }, [notes]);
 
   const openNotes = () => {
     setIsNotesOpen((v) => !v);
@@ -154,6 +168,39 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
       </button>
 
       <div className="flex items-center gap-2">
+        {/* Mini-cart pattern: "Review decisions" is the always-visible primary
+            action with a live pending count pill; opens the slide-out drawer. */}
+        <button
+          type="button"
+          onClick={() => emit(EVENTS.OPEN_PENDING_DRAWER)}
+          aria-label={`Review pending decisions${pendingCount ? ` — ${pendingCount} pending` : ""}`}
+          className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-brand-gradient text-brand-ink text-xs font-semibold hover:opacity-90 transition shadow-float cursor-pointer shrink-0"
+        >
+          Review decisions
+          <span className="inline-flex items-center gap-1">
+            {pendingCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-ink/20 text-brand-ink text-[10px] font-bold flex items-center justify-center tabular-nums">
+                {pendingCount > 99 ? "99+" : pendingCount}
+              </span>
+            )}
+            <ArrowRight size={13} aria-hidden />
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => emit(EVENTS.OPEN_PENDING_DRAWER)}
+          aria-label={`Review pending decisions${pendingCount ? ` — ${pendingCount} pending` : ""}`}
+          className="sm:hidden relative w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer shrink-0"
+        >
+          <Inbox size={16} aria-hidden />
+          {pendingCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-status-critical text-brand-ink text-[9px] font-bold flex items-center justify-center tabular-nums">
+              {pendingCount > 9 ? "9+" : pendingCount}
+            </span>
+          )}
+        </button>
+
         <div className="relative">
           <button
             type="button"

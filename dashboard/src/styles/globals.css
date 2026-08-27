@@ -142,3 +142,24 @@
   .list-stagger > *:nth-child(5) { animation-delay: 240ms; }
   .list-stagger > *:nth-child(n + 6) { animation-delay: 300ms; }
 }
+
+@layer utilities {
+  /* Hide scrollbars on horizontal strips (feature rails, chip rows). */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth in-page anchor scrolling (landing sections). */
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
