@@ -57,7 +57,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         className={cn(
-          "bg-app-surface border border-line-subtle w-full rounded-2xl shadow-overlay animate-scale-in max-h-[85vh] flex flex-col",
+          "bg-white border border-black/10 w-full rounded-3xl shadow-overlay animate-scale-in max-h-[85vh] flex flex-col",
           SIZE_CLASSES[size]
         )}
         onClick={(e) => e.stopPropagation()}
