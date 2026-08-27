@@ -12,6 +12,7 @@ import {
   Inbox as InboxIcon,
 } from "lucide-react";
 import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge } from "../components/ui";
+import OnboardingChecklist, { type OnboardingStep } from "../components/OnboardingChecklist";
 import AnalystApi from "../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../types/analyst";
 import { getApiError } from "../utils/getApiError";
@@ -56,6 +57,10 @@ const BriefPage: React.FC = () => {
   const navigate = useNavigate();
   const [brief, setBrief] = useState<Brief | null>(null);
   const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [feedCases, setFeedCases] = useState<AnalystCase[]>([]);
+  const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(
+    () => localStorage.getItem("noctra_onboarding_dismissed") === "1"
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [simulating, setSimulating] = useState(false);
@@ -66,12 +71,14 @@ const BriefPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [briefData, connData] = await Promise.all([
+      const [briefData, connData, feedData] = await Promise.all([
         AnalystApi.fetchBrief(),
         AnalystApi.fetchConnectors().catch(() => []),
+        AnalystApi.fetchFeed({ page: 1, limit: 100 }).catch(() => ({ data: [] as AnalystCase[] })),
       ]);
       setBrief(briefData);
       setConnectors(connData);
+      setFeedCases(Array.isArray(feedData) ? feedData : feedData?.data ?? []);
     } catch (err: any) {
       setError(getApiError(err, "Failed to load your brief"));
     } finally {
@@ -112,6 +119,49 @@ const BriefPage: React.FC = () => {
   const pendingCases: AnalystCase[] = brief?.top_cases ?? [];
   const latestCase = pendingCases[0];
   const analysis = latestCase?.analysis ?? null;
+
+  // First-run checklist — every step derived from real data or real visits.
+  const onboardingSteps: OnboardingStep[] = [
+    {
+      id: "telemetry",
+      label: "Telemetry is flowing",
+      hint: "Run a simulation (top right) or send logs — assets become observable.",
+      done: (brief?.watching ?? 0) > 0,
+    },
+    {
+      id: "case",
+      label: "Open your first case",
+      hint: "A case is one incident: the story, the blast radius, one decision.",
+      to: "/feed",
+      done: feedCases.length > 0,
+    },
+    {
+      id: "decision",
+      label: "Make your first decision",
+      hint: "Approve or decline — approving records a reversible action.",
+      to: latestCase ? `/case/${latestCase.id}` : "/feed",
+      done: feedCases.some((c) => c.decision !== "pending"),
+    },
+    {
+      id: "record",
+      label: "See the decision recorded",
+      hint: "The Actions log is the audit trail of what was recorded.",
+      to: "/actions",
+      done: localStorage.getItem("noctra_visited_actions") === "1" || feedCases.some((c) => c.decision === "approved"),
+    },
+    {
+      id: "report",
+      label: "Read a case report",
+      hint: "Every decision generates a markdown report you can download.",
+      to: "/reports",
+      done: localStorage.getItem("noctra_visited_reports") === "1" || feedCases.some((c) => c.report),
+    },
+  ];
+
+  const dismissOnboarding = () => {
+    localStorage.setItem("noctra_onboarding_dismissed", "1");
+    setOnboardingDismissed(true);
+  };
   const blastChips =
     latestCase?.blast_radius?.nodes?.slice(0, 4).map((n) => ({
       icon: NODE_ICON[n.entity_type] ?? AppWindow,
@@ -159,6 +209,8 @@ const BriefPage: React.FC = () => {
           {error}
         </div>
       )}
+
+      {!onboardingDismissed && <OnboardingChecklist steps={onboardingSteps} onDismiss={dismissOnboarding} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Lead card — the one thing that needs a decision, on the night canvas. */}

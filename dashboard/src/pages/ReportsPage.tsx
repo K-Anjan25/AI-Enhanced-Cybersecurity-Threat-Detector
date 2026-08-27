@@ -46,6 +46,7 @@ const ReportsPage: React.FC = () => {
 
   useEffect(() => {
     loadReports();
+    localStorage.setItem("noctra_visited_reports", "1");
   }, []);
 
   const handleDownload = (caseObj: AnalystCase) => {

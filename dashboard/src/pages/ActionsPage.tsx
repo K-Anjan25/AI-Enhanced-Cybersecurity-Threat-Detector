@@ -47,6 +47,7 @@ const ActionsPage: React.FC = () => {
 
   useEffect(() => {
     loadActions();
+    localStorage.setItem("noctra_visited_actions", "1");
   }, []);
 
   const handleRevert = async (id: number) => {
