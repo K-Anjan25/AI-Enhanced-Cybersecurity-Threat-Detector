@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
 
-> **NOCTRA** — *Your autonomous security analyst.* (See less. Know more.)
+> **NOCTRA** — *Your autonomous security analyst.*
 > You employ an analyst; you don't operate a dashboard.
 >
 > **Brand System & Specification**:
@@ -136,7 +136,7 @@ npm run build
 ## Brand Specification & Artifacts
 
 - **Brand Name**: `NOCTRA`
-- **Tagline**: *"Your autonomous security analyst."* (secondary: *"See less. Know more."*)
+- **Tagline**: *"Your autonomous security analyst."*
 - **What it is**: NOCTRA watches your telemetry, explains incidents in plain English, maps the blast radius, and drafts reversible actions — you approve, it records and reports.
 - **Typography**: Sora / Inter / JetBrains Mono
 - **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)

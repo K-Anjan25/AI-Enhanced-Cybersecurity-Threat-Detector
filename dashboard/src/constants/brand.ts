@@ -11,7 +11,7 @@
 export const BRAND_NAME = "NOCTRA" as const;
 export const BRAND_WORDMARK = "NOCTRA" as const;
 export const BRAND_TAGLINE = "Your autonomous security analyst." as const;
-export const BRAND_TAGLINE_SECONDARY = "See less. Know more." as const;
+export const BRAND_HERO_LINE = "The analyst your team doesn't have." as const;
 export const BRAND_POSITIONING =
   "NOCTRA is the security analyst a small company employs: it watches continuously, explains plainly, proposes one reversible action, and records every decision." as const;
 export const BRAND_DOMAIN_HINT = "noctra.ai" as const;
