@@ -91,7 +91,7 @@ const ProductCard: React.FC = () => (
 );
 
 const LandingHero: React.FC = () => (
-  <section className="relative overflow-hidden bg-[#F5F5F7] text-neutral-900 pt-32 sm:pt-40 pb-20 sm:pb-28">
+  <section className="relative overflow-hidden bg-app-bg text-content-primary pt-32 sm:pt-40 pb-20 sm:pb-28">
     {/* Soft ambient top light */}
     <div
       aria-hidden
@@ -99,7 +99,7 @@ const LandingHero: React.FC = () => (
     />
 
     <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-neutral-500">
+      <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-content-tertiary">
         Your autonomous security analyst
       </p>
 
@@ -108,7 +108,7 @@ const LandingHero: React.FC = () => (
         <span className="bg-brand-gradient bg-clip-text text-transparent">doesn't have.</span>
       </h1>
 
-      <p className="mt-5 text-base sm:text-lg text-neutral-500 leading-relaxed max-w-2xl mx-auto">
+      <p className="mt-5 text-base sm:text-lg text-content-secondary leading-relaxed max-w-2xl mx-auto">
         NOCTRA watches your tools, explains every incident in plain English, and proposes one
         reversible action at a time. You approve. It records.
       </p>
@@ -122,7 +122,7 @@ const LandingHero: React.FC = () => (
         </Link>
         <a
           href="#product"
-          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-neutral-900 text-sm font-semibold border border-black/10 hover:bg-neutral-50 transition shadow-card"
+          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-app-surface text-content-primary text-sm font-semibold border border-line-subtle hover:bg-app-surface-raised transition shadow-card"
         >
           <PlayCircle size={15} className="text-violet-600" aria-hidden />
           See how it works
@@ -136,9 +136,14 @@ const LandingHero: React.FC = () => (
       </div>
     </div>
 
-    {/* Floating product card */}
+    {/* Floating product card — the "night canvas": NOCTRA's dark workspace
+        shown on the light page. Flip the theme toggle in the nav and the
+        whole app becomes this canvas. */}
     <div className="relative max-w-5xl mx-auto px-4 sm:px-6 mt-16 sm:mt-20">
       <ProductCard />
+      <p className="mt-3 text-center text-[10px] font-mono uppercase tracking-[0.25em] text-content-tertiary">
+        The night canvas — NOCTRA's dark workspace
+      </p>
     </div>
   </section>
 );

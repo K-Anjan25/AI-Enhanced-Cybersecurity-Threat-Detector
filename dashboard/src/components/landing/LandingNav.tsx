@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import BrandLogo from "../BrandLogo";
+import ThemeToggle from "../ThemeToggle";
 import { cn } from "../ui";
 
 /**
@@ -40,7 +41,7 @@ export default function LandingNav() {
     <header className="fixed inset-x-0 top-0 z-40 flex justify-center px-4 pt-3 pointer-events-none">
       <div
         className={cn(
-          "pointer-events-auto flex items-center gap-2 sm:gap-4 rounded-full border border-black/10 bg-white/70 backdrop-blur-xl shadow-float px-3 sm:px-4 h-12 transition-transform duration-300",
+          "pointer-events-auto flex items-center gap-2 sm:gap-4 rounded-full border border-line-subtle bg-app-surface/80 backdrop-blur-xl shadow-float px-3 sm:px-4 h-12 transition-transform duration-300",
           scrolled && "-translate-y-24"
         )}
       >
@@ -53,7 +54,7 @@ export default function LandingNav() {
             <a
               key={a.href}
               href={a.href}
-              className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100/70 transition"
+              className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-content-secondary hover:text-content-primary hover:bg-app-subtle transition"
             >
               {a.label}
             </a>
@@ -61,9 +62,10 @@ export default function LandingNav() {
         </nav>
 
         <div className="flex items-center gap-2 md:ml-2">
+          <ThemeToggle variant="pill" />
           <Link
             to="/login"
-            className="hidden sm:inline-flex px-3.5 py-1.5 rounded-full text-[13px] font-medium text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100/70 transition"
+            className="hidden sm:inline-flex px-3.5 py-1.5 rounded-full text-[13px] font-medium text-content-secondary hover:text-content-primary hover:bg-app-subtle transition"
           >
             Sign in
           </Link>
@@ -78,7 +80,7 @@ export default function LandingNav() {
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={open ? "Close menu" : "Open menu"}
-            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-neutral-700 hover:bg-neutral-100/70 transition cursor-pointer"
+            className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-content-secondary hover:bg-app-subtle transition cursor-pointer"
           >
             {open ? "✕" : "☰"}
           </button>
@@ -88,14 +90,14 @@ export default function LandingNav() {
       {open && (
         <nav
           aria-label="Landing mobile"
-          className="pointer-events-auto md:hidden absolute top-16 w-[calc(100%-2rem)] max-w-sm rounded-3xl border border-black/10 bg-white/95 backdrop-blur-xl shadow-overlay p-3 animate-scale-in"
+          className="pointer-events-auto md:hidden absolute top-16 w-[calc(100%-2rem)] max-w-sm rounded-3xl border border-line-subtle bg-app-surface/95 backdrop-blur-xl shadow-overlay p-3 animate-scale-in"
         >
           {ANCHORS.map((a) => (
             <a
               key={a.href}
               href={a.href}
               onClick={() => setOpen(false)}
-              className="block px-4 py-2.5 rounded-2xl text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition"
+              className="block px-4 py-2.5 rounded-2xl text-sm font-medium text-content-primary hover:bg-app-subtle transition"
             >
               {a.label}
             </a>
@@ -103,7 +105,7 @@ export default function LandingNav() {
           <Link
             to="/login"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2.5 rounded-2xl text-sm font-medium text-neutral-800 hover:bg-neutral-100 transition"
+            className="block px-4 py-2.5 rounded-2xl text-sm font-medium text-content-primary hover:bg-app-subtle transition"
           >
             Sign in
           </Link>

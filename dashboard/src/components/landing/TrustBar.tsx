@@ -17,18 +17,18 @@ const StatItem: React.FC<{ value: number; suffix: string; label: string }> = ({ 
   const n = useCountUp(value, inView);
   return (
     <div ref={ref} className="flex flex-col items-center text-center px-4 py-8">
-      <p className="text-4xl font-semibold font-mono text-neutral-900 tabular-nums tracking-tight">
+      <p className="text-4xl font-semibold font-mono text-content-primary tabular-nums tracking-tight">
         {n}
         {suffix}
       </p>
-      <p className="mt-2 text-xs text-neutral-500 max-w-[13rem]">{label}</p>
+      <p className="mt-2 text-xs text-content-secondary max-w-[13rem]">{label}</p>
     </div>
   );
 };
 
 const TrustBar: React.FC = () => (
-  <section aria-label="Proof points" className="bg-white border-y border-black/5">
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-2 lg:grid-cols-4 divide-x divide-black/5">
+  <section aria-label="Proof points" className="bg-app-surface border-y border-line-subtle">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-2 lg:grid-cols-4 divide-x divide-line-subtle">
       {STATS.map((s) => (
         <StatItem key={s.label} {...s} />
       ))}

@@ -30,10 +30,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, acti
         </div>
       )}
       <div className="flex items-center gap-2.5">
-        <h1 className="text-2xl sm:text-[1.7rem] font-bold font-display text-neutral-900 tracking-tight">{title}</h1>
+        <h1 className="text-2xl sm:text-[1.7rem] font-bold font-display text-content-primary tracking-tight">{title}</h1>
         {badge}
       </div>
-      {description && <p className="text-sm text-neutral-500 mt-1 max-w-3xl">{description}</p>}
+      {description && <p className="text-sm text-content-secondary mt-1 max-w-3xl">{description}</p>}
     </div>
     {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
   </div>

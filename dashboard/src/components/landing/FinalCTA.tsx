@@ -67,7 +67,7 @@ const FinalCTA: React.FC = () => (
             </Link>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-neutral-900 font-semibold hover:bg-neutral-50 transition shadow-card"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-app-surface text-content-primary font-semibold hover:bg-app-surface-raised transition shadow-card border border-line-subtle"
             >
               Open console
             </Link>
@@ -90,17 +90,17 @@ const FinalCTA: React.FC = () => (
       </div>
     </section>
 
-    <footer className="bg-white border-t border-black/5">
+    <footer className="bg-app-surface border-t border-line-subtle">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-10">
         <div className="col-span-2 md:col-span-1">
           <BrandLogo size={24} />
-          <p className="mt-3 text-xs text-neutral-500 leading-relaxed max-w-[16rem]">
+          <p className="mt-3 text-xs text-content-secondary leading-relaxed max-w-[16rem]">
             {BRAND_TAGLINE} Calm, precise, accountable — the analyst a small team employs.
           </p>
         </div>
         {FOOTER_COLS.map((col) => (
           <nav key={col.title} aria-label={col.title}>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">{col.title}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">{col.title}</p>
             <ul className="mt-3 space-y-2">
               {col.links.map((l) => (
                 <li key={l.label}>
@@ -109,12 +109,12 @@ const FinalCTA: React.FC = () => (
                       href={l.to}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-neutral-600 hover:text-violet-600 transition"
+                      className="text-xs text-content-secondary hover:text-accent-secondary transition"
                     >
                       {l.label}
                     </a>
                   ) : (
-                    <Link to={l.to} className="text-xs text-neutral-600 hover:text-violet-600 transition">
+                    <Link to={l.to} className="text-xs text-content-secondary hover:text-accent-secondary transition">
                       {l.label}
                     </Link>
                   )}
@@ -124,10 +124,10 @@ const FinalCTA: React.FC = () => (
           </nav>
         ))}
       </div>
-      <div className="border-t border-black/5">
+      <div className="border-t border-line-subtle">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-[11px] text-neutral-400">© {new Date().getFullYear()} NOCTRA</p>
-          <p className="text-[11px] text-neutral-400 inline-flex items-center gap-1.5">
+          <p className="text-[11px] text-content-tertiary">© {new Date().getFullYear()} NOCTRA</p>
+          <p className="text-[11px] text-content-tertiary inline-flex items-center gap-1.5">
             <FileText size={11} aria-hidden /> Actions are recorded, never executed.
           </p>
         </div>

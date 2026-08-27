@@ -18,14 +18,14 @@ const STEPS = [
 ] as const;
 
 const HowItWorks: React.FC = () => (
-  <section id="how-it-works" className="scroll-mt-24 bg-white border-y border-black/5">
+  <section id="how-it-works" className="scroll-mt-24 bg-app-surface border-y border-line-subtle">
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-24 sm:py-28">
       <div className="max-w-2xl mx-auto text-center">
-        <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-neutral-500">How it works</p>
-        <h2 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-[-0.02em] text-neutral-900 text-balance">
+        <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-content-tertiary">How it works</p>
+        <h2 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-[-0.02em] text-content-primary text-balance">
           The whole product is this loop
         </h2>
-        <p className="mt-4 text-base text-neutral-500 leading-relaxed">
+        <p className="mt-4 text-base text-content-secondary leading-relaxed">
           Sense → reason → explain → propose → approve → record → audit → report. Everything else
           is progressive disclosure.
         </p>
@@ -34,16 +34,16 @@ const HowItWorks: React.FC = () => (
       <ol className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10">
         {STEPS.map((s) => (
           <li key={s.n} className="relative">
-            <p className="text-[11px] font-mono text-violet-600 tracking-[0.2em]">{s.n}</p>
-            <h3 className="mt-2 text-base font-semibold tracking-tight text-neutral-900">{s.title}</h3>
-            <p className="mt-1.5 text-[13px] text-neutral-500 leading-relaxed">{s.body}</p>
+            <p className="text-[11px] font-mono text-accent-secondary tracking-[0.2em]">{s.n}</p>
+            <h3 className="mt-2 text-base font-semibold tracking-tight text-content-primary">{s.title}</h3>
+            <p className="mt-1.5 text-[13px] text-content-secondary leading-relaxed">{s.body}</p>
           </li>
         ))}
       </ol>
 
-      <div className="mt-16 flex flex-col sm:flex-row sm:items-center gap-4 rounded-[1.75rem] border border-black/5 bg-[#F5F5F7] p-7">
-        <p className="text-sm text-neutral-500 leading-relaxed">
-          <span className="font-semibold text-neutral-900">See it end to end in about a minute.</span>{" "}
+      <div className="mt-16 flex flex-col sm:flex-row sm:items-center gap-4 rounded-[1.75rem] border border-line-subtle bg-app-bg p-7">
+        <p className="text-sm text-content-secondary leading-relaxed">
+          <span className="font-semibold text-content-primary">See it end to end in about a minute.</span>{" "}
           Sign in, run a simulated incident, and review your first real case — a credential leak
           with a live blast-radius graph.
         </p>

@@ -36,8 +36,8 @@ export default function Register(): React.ReactElement {
   });
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-black/5 rounded-3xl shadow-card p-8 space-y-6 text-content-primary">
+    <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-app-surface border border-line-subtle rounded-3xl shadow-card p-8 space-y-6 text-content-primary">
         <div className="flex flex-col items-center gap-3">
           <BrandLogo size={36} />
           <div className="text-center space-y-1">

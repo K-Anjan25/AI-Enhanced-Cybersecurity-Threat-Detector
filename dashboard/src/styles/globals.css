@@ -12,6 +12,7 @@
    Components use semantic tokens only; the scope flips the values.
    --------------------------------------------------------------------------- */
 :root {
+  color-scheme: light;
   /* Day workspace */
   --c-app-bg: 247 247 245; /* paper */
   --c-app-surface: 255 255 255;
@@ -46,6 +47,34 @@
   --c-line-bright: 50 56 80;
   --c-accent-primary: 157 124 255;
   --c-accent-secondary: 201 196 255; /* bright lavender on ink */
+  --c-status-success: 76 195 138;
+  --c-status-warning: 229 165 75;
+  --c-status-critical: 242 109 109;
+  --c-severity-low: 82 183 136;
+  --c-severity-medium: 229 165 75;
+  --c-severity-high: 240 130 79;
+  --c-severity-critical: 242 109 109;
+}
+
+/* ── Whole-app DARK MODE ─────────────────────────────────────────────
+   `html.dark` flips every semantic token to the night values (the same
+   ink family as the analyst's night canvas). Components use tokens only,
+   so a single class on <html> themes the entire product. The `.night`
+   panels remain dark in both themes — the analyst's voice never goes
+   light-on-light. */
+html.dark {
+  color-scheme: dark;
+  --c-app-bg: 12 14 20;
+  --c-app-surface: 20 22 29;
+  --c-app-surface-raised: 26 29 38;
+  --c-app-subtle: 27 30 40;
+  --c-content-primary: 236 238 244;
+  --c-content-secondary: 166 172 191;
+  --c-content-tertiary: 122 128 147;
+  --c-line-subtle: 35 39 53;
+  --c-line-bright: 50 56 80;
+  --c-accent-primary: 157 124 255;
+  --c-accent-secondary: 201 196 255;
   --c-status-success: 76 195 138;
   --c-status-warning: 229 165 75;
   --c-status-critical: 242 109 109;

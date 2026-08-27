@@ -9,6 +9,7 @@ import AnalystApi from "../../api/analystApi";
 import type { NotificationItem } from "../../types/analyst";
 import { EVENTS, emit } from "../../lib/events";
 import { useNoctraEvent } from "../../hooks";
+import ThemeToggle from "../ThemeToggle";
 
 const SEEN_KEY = "noctra_notified_at";
 
@@ -102,14 +103,14 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   return (
     <header
       ref={headerRef}
-      className="h-16 bg-white/80 backdrop-blur-xl border-b border-black/5 flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 w-full gap-2 sticky top-0"
+      className="h-16 bg-app-surface/80 backdrop-blur-xl border-b border-line-subtle flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 w-full gap-2 sticky top-0"
     >
       <div className="flex items-center gap-3 min-w-0">
         <button
           type="button"
           onClick={onOpenNav}
           aria-label="Open navigation"
-          className="lg:hidden w-9 h-9 rounded-full bg-neutral-100 border border-black/5 text-neutral-600 hover:text-neutral-900 transition flex items-center justify-center cursor-pointer shrink-0"
+          className="lg:hidden w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer shrink-0"
         >
           <Menu size={16} aria-hidden />
         </button>
@@ -123,28 +124,28 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
           </span>
         </Link>
 
-        <span className="hidden xl:inline text-[11px] font-mono text-neutral-400 truncate">
+        <span className="hidden xl:inline text-[11px] font-mono text-content-tertiary truncate">
           {BRAND_TAGLINE}
         </span>
       </div>
 
       <div className="w-80 max-w-[40%] hidden md:block">
         <div className="relative">
-          <Search size={14} className="absolute inset-y-0 left-3.5 my-auto text-neutral-400" aria-hidden />
+          <Search size={14} className="absolute inset-y-0 left-3.5 my-auto text-content-tertiary" aria-hidden />
           <input
             type="text"
             placeholder="Search IP, threat, hash…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-full bg-neutral-100/80 text-sm text-neutral-900 pl-9 pr-14 py-2 rounded-full border border-transparent focus:outline-none focus:border-violet-400/40 focus:bg-white transition placeholder-neutral-400"
+            className="w-full bg-app-subtle/80 text-sm text-content-primary pl-9 pr-14 py-2 rounded-full border border-transparent focus:outline-none focus:border-accent-primary/40 focus:bg-app-surface transition placeholder-content-tertiary"
           />
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event("noctra:command-menu"))}
             aria-label="Open command menu"
             title="Command menu (⌘K)"
-            className="absolute inset-y-0 right-1.5 my-auto h-6 px-1.5 rounded-full border border-black/5 bg-white text-[10px] font-mono text-neutral-400 hover:text-neutral-700 transition cursor-pointer"
+            className="absolute inset-y-0 right-1.5 my-auto h-6 px-1.5 rounded-full border border-line-subtle bg-app-surface text-[10px] font-mono text-content-tertiary hover:text-content-primary transition cursor-pointer"
           >
             ⌘K
           </button>
@@ -156,12 +157,14 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
         onClick={() => window.dispatchEvent(new Event("noctra:command-menu"))}
         aria-label="Open command menu"
         title="Command menu (⌘K)"
-        className="md:hidden w-9 h-9 rounded-full bg-neutral-100 border border-black/5 text-neutral-600 hover:text-neutral-900 transition flex items-center justify-center cursor-pointer"
+        className="md:hidden w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer"
       >
         <Search size={15} aria-hidden />
       </button>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
+
         {/* Mini-cart pattern: "Review decisions" with a live pending count pill. */}
         <button
           type="button"
@@ -184,7 +187,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
           type="button"
           onClick={() => emit(EVENTS.OPEN_PENDING_DRAWER)}
           aria-label={`Review pending decisions${pendingCount ? ` — ${pendingCount} pending` : ""}`}
-          className="sm:hidden relative w-9 h-9 rounded-full bg-neutral-100 border border-black/5 text-neutral-600 hover:text-neutral-900 transition flex items-center justify-center cursor-pointer shrink-0"
+          className="sm:hidden relative w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer shrink-0"
         >
           <Inbox size={16} aria-hidden />
           {pendingCount > 0 && (
@@ -202,7 +205,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
             aria-haspopup="menu"
             aria-expanded={isNotesOpen}
             title="Notifications"
-            className="relative w-9 h-9 rounded-full bg-neutral-100 border border-black/5 text-neutral-600 hover:text-neutral-900 transition flex items-center justify-center cursor-pointer"
+            className="relative w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer"
           >
             <Bell size={16} aria-hidden />
             {unreadCount > 0 && (
@@ -216,13 +219,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
             <div
               role="menu"
               aria-label="Notifications"
-              className="absolute right-0 mt-2 w-80 bg-white border border-black/5 rounded-2xl shadow-overlay py-2 z-50 animate-scale-in"
+              className="absolute right-0 mt-2 w-80 bg-app-surface border border-line-subtle rounded-2xl shadow-overlay py-2 z-50 animate-scale-in"
             >
-              <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+              <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary">
                 Notifications
               </p>
               {notes.length === 0 ? (
-                <p className="px-4 py-4 text-xs text-neutral-500">
+                <p className="px-4 py-4 text-xs text-content-secondary">
                   Nothing needs your attention — no pending decisions, no recent outcomes.
                 </p>
               ) : (
@@ -236,7 +239,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
                           setIsNotesOpen(false);
                           navigate(`/case/${n.case_id}`);
                         }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition cursor-pointer"
+                        className="w-full text-left px-4 py-2.5 hover:bg-app-subtle transition cursor-pointer"
                       >
                         <span className="flex items-center gap-2">
                           <span
@@ -245,14 +248,14 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
                             }`}
                             aria-hidden
                           />
-                          <span className="text-xs font-medium text-neutral-900 truncate">
+                          <span className="text-xs font-medium text-content-primary truncate">
                             {n.title}
                           </span>
-                          <span className="ml-auto text-[10px] font-mono text-neutral-400 shrink-0">
+                          <span className="ml-auto text-[10px] font-mono text-content-tertiary shrink-0">
                             {new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </span>
-                        <span className="block text-[11px] text-neutral-500 mt-0.5 pl-3.5">
+                        <span className="block text-[11px] text-content-secondary mt-0.5 pl-3.5">
                           {n.detail} · case #{n.case_id}
                         </span>
                       </button>
@@ -281,15 +284,15 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
           {isProfileMenuOpen && (
             <div
               role="menu"
-              className="absolute right-0 mt-2 w-56 bg-white border border-black/5 rounded-2xl shadow-overlay py-2 z-50 animate-scale-in"
+              className="absolute right-0 mt-2 w-56 bg-app-surface border border-line-subtle rounded-2xl shadow-overlay py-2 z-50 animate-scale-in"
             >
-              <div className="px-4 py-2.5 border-b border-black/5 flex items-center gap-3">
+              <div className="px-4 py-2.5 border-b border-line-subtle flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-brand-gradient text-brand-ink flex items-center justify-center font-bold text-xs shrink-0">
                   {username.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-900 truncate">{username}</p>
-                  <p className="text-xs text-violet-600 capitalize flex items-center gap-1">
+                  <p className="text-sm font-semibold text-content-primary truncate">{username}</p>
+                  <p className="text-xs text-accent-secondary capitalize flex items-center gap-1">
                     <ShieldCheck size={11} aria-hidden /> {userRole}
                   </p>
                 </div>
@@ -302,7 +305,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
                   setIsProfileMenuOpen(false);
                   navigate("/profile");
                 }}
-                className="w-full text-left px-4 py-2.5 text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 transition flex items-center gap-2.5 cursor-pointer"
+                className="w-full text-left px-4 py-2.5 text-sm text-content-secondary hover:bg-app-subtle hover:text-content-primary transition flex items-center gap-2.5 cursor-pointer"
               >
                 <Settings size={15} aria-hidden /> Settings
               </button>
@@ -311,7 +314,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
                 type="button"
                 role="menuitem"
                 onClick={handleLogout}
-                className="w-full text-left px-4 py-2.5 text-sm text-status-critical hover:bg-neutral-50 transition flex items-center gap-2.5 cursor-pointer"
+                className="w-full text-left px-4 py-2.5 text-sm text-status-critical hover:bg-app-subtle transition flex items-center gap-2.5 cursor-pointer"
               >
                 <LogOut size={15} aria-hidden /> Logout
               </button>
