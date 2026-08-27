@@ -37,6 +37,12 @@ const PendingDecisionsDrawer: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
+  // Last count we broadcast. refresh() is also a PENDING_CHANGED listener, so
+  // emitting unconditionally would make the drawer retrigger its own refresh
+  // forever — an endless feed-request loop even while closed. Emit only when
+  // the count actually changes; the extra refresh that follows then sees a
+  // stable count and stops.
+  const lastCountRef = useRef(-1);
 
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -44,7 +50,10 @@ const PendingDecisionsDrawer: React.FC = () => {
       const res = await AnalystApi.fetchFeed({ page: 1, limit: 20 });
       const items = (res.data ?? []).filter((c) => c.decision === "pending");
       setPending(items);
-      emit(EVENTS.PENDING_CHANGED, items.length);
+      if (items.length !== lastCountRef.current) {
+        lastCountRef.current = items.length;
+        emit(EVENTS.PENDING_CHANGED, items.length);
+      }
     } catch {
       /* keep last-known list; the drawer stays usable */
     } finally {

@@ -170,7 +170,7 @@ const SoarPage: React.FC = () => {
       setEvalResult(
         result.count === 0
           ? "No actions would fire for this input."
-          : `${result.count} action(s) would fire: ${result.actions
+          : `${result.count} action(s) would fire: ${(result.actions ?? [])
               .map((a) => (a as any).action_type)
               .filter(Boolean)
               .join(", ")}`
@@ -197,7 +197,7 @@ const SoarPage: React.FC = () => {
       setTriggerResult(
         result.count === 0
           ? `Alert #${alertId}: no actions matched. Check that it matches active rules.`
-          : `Alert #${alertId}: ${result.count} action(s) recorded (${result.executed
+          : `Alert #${alertId}: ${result.count} action(s) recorded (${(result.executed ?? [])
               .map((a) => (a as any).action_type)
               .filter(Boolean)
               .join(", ")}). Nothing was executed against external systems.`
