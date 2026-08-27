@@ -249,6 +249,7 @@ def test_upload_logs_background_scan_persists_history(client, auth_headers):
     resp = client.post(
         "/api/v1/upload-logs",
         files={"log_file": ("auth.log", content, "text/plain")},
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -258,17 +259,56 @@ def test_upload_logs_background_scan_persists_history(client, auth_headers):
     batch_id = body["batch_id"]
 
     # Background ran before the response returned, so status is terminal
-    status = client.get(f"/api/v1/uploads/{batch_id}").json()["batch"]
+    status = client.get(f"/api/v1/uploads/{batch_id}", headers=auth_headers).json()["batch"]
     assert status["status"] in ("completed", "failed")
     assert status["filename"] == "auth.log"
 
-    history = client.get("/api/v1/logs/history").json()["logs"]
+    history = client.get("/api/v1/logs/history", headers=auth_headers).json()["logs"]
     assert any(entry["filename"] == "auth.log" for entry in history)
 
 
-def test_upload_batch_status_missing_returns_404(client):
-    resp = client.get("/api/v1/uploads/999999")
+def test_upload_batch_status_missing_returns_404(client, auth_headers):
+    resp = client.get("/api/v1/uploads/999999", headers=auth_headers)
     assert resp.status_code == 404
+
+
+def test_ingest_endpoints_require_auth(client):
+    """Every ingest route is authenticated (was fully open)."""
+    resp = client.post("/api/v1/upload-logs", files={"log_file": ("a.log", "x", "text/plain")})
+    assert resp.status_code == 401
+    assert client.get("/api/v1/logs/history").status_code == 401
+    assert client.get("/api/v1/uploads/1").status_code == 401
+    assert client.post("/api/v1/save-scanned-alerts", json={"threats": []}).status_code == 401
+
+
+def test_log_history_and_batch_status_org_scoped(client, auth_headers, db_session):
+    """Batches from another org are invisible: excluded from history, 404 on fetch."""
+    from app.models import ScanBatch
+
+    foreign = ScanBatch(filename="foreign.log", total_logs=1, threats_detected=0, status="completed", org_id=99_999)
+    db_session.add(foreign)
+    mine = ScanBatch(filename="mine.log", total_logs=1, threats_detected=0, status="completed")
+    db_session.add(mine)
+    db_session.commit()
+
+    history = client.get("/api/v1/logs/history", headers=auth_headers).json()["logs"]
+    names = [entry["filename"] for entry in history]
+    assert "mine.log" in names, names
+    assert "foreign.log" not in names, names
+
+    assert client.get(f"/api/v1/uploads/{foreign.id}", headers=auth_headers).status_code == 404
+    assert client.get(f"/api/v1/uploads/{mine.id}", headers=auth_headers).status_code == 200
+
+
+def test_create_rule_rejects_unknown_severity(client, admin_headers):
+    """Rule severity is constrained to the LOW/MEDIUM/HIGH/CRITICAL taxonomy."""
+    resp = client.post(
+        "/api/v1/rules",
+        json={"name": "bad-sev", "severity": "EXTREME", "pattern": ".*"},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 422
+    assert "severity" in resp.text
 
 
 def test_engine_settings_requires_auth(client):

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -40,6 +41,7 @@ def alert_trends(
     alerts = (
         db.query(SecurityAlert)
         .filter(SecurityAlert.created_at >= since)
+        .filter(or_(SecurityAlert.org_id == current_user.org_id, SecurityAlert.org_id.is_(None)))
         .order_by(SecurityAlert.created_at.asc())
         .all()
     )

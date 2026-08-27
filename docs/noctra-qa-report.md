@@ -205,3 +205,33 @@ the FE are the raw API status value mappings, which are relabeled through
   `vite build` clean · dashboard :3000 → 200 · API :8000 → 200.
 - Brand spec (§9/§12–13) implemented exactly; contrast table re-verified
   (§15 supersession note).
+
+## 9. Security hardening, slice 1 (2026-08-27)
+
+Closes four flagged items from the parked backlog (evidence: live curl + tests).
+
+- **Ingest authentication — FIXED.** All four `/api/v1/ingest` routes
+  (`POST /upload-logs`, `GET /uploads/{id}`, `POST /save-scanned-alerts`,
+  `GET /logs/history`) required **no authentication**; anyone could upload
+  logs and create alerts. Now `get_current_user`-gated; verified live:
+  401/401/401 unauthed, full flow 200 authed. FE unaffected (axios sends
+  cookies; the pages sit behind login).
+- **Tenant scoping — FIXED.** Uploads stamp `org_id` on `ScanBatch` and
+  `SecurityAlert`; `logs/history` filters to own-org + legacy NULL rows;
+  cross-org batch fetch → 404. Alerts list/trends/export and analytics
+  daily-counts now filter the same way (NULL = pre-tenancy rows visible).
+  Verified: `test_log_history_and_batch_status_org_scoped` (foreign org
+  excluded + 404; own visible) and live alerts list (5 visible for the demo
+  analyst — demo data intact).
+- **Rule severity validation — FIXED.** `DetectionRuleCreate/Update`
+  severity is now `Literal[LOW, MEDIUM, HIGH, CRITICAL]` (matches
+  `severity_to_score`); unknown values → 422
+  (`test_create_rule_rejects_unknown_severity`).
+- **ML CORS — FIXED.** `allow_origins=["*"]` + `allow_credentials=True`
+  (invalid + unsafe) replaced with an explicit allowlist from
+  `ML_CORS_ORIGINS` (default `http://localhost:3000`); credentials disabled
+  when `*` is configured.
+
+Tests: backend **121 passed / 2 skipped** (3 new), ml-service **13 passed**,
+`tsc --noEmit` clean. Still parked (next slices): telemetry endpoints
+review, FE uncalled-endpoint cleanup, manual AT audit.

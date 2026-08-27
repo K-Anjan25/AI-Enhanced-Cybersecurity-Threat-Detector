@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from fastapi.responses import StreamingResponse
 import csv
 import io
@@ -35,7 +36,11 @@ def get_alerts(
     page = max(1, page)
     limit = min(max(1, limit), 100)
 
-    query = db.query(SecurityAlert).order_by(SecurityAlert.created_at.desc())
+    query = (
+        db.query(SecurityAlert)
+        .filter(or_(SecurityAlert.org_id == current_user.org_id, SecurityAlert.org_id.is_(None)))
+        .order_by(SecurityAlert.created_at.desc())
+    )
     total = query.count()
     alerts = query.offset((page - 1) * limit).limit(limit).all()
 
@@ -61,7 +66,12 @@ def export_alerts(
     current_user: User = Depends(require_permission("alerts:export")),
 ):
     """Stream all security alerts as a downloadable CSV file (requires alerts:export)."""
-    alerts = db.query(SecurityAlert).order_by(SecurityAlert.created_at.desc()).all()
+    alerts = (
+        db.query(SecurityAlert)
+        .filter(or_(SecurityAlert.org_id == current_user.org_id, SecurityAlert.org_id.is_(None)))
+        .order_by(SecurityAlert.created_at.desc())
+        .all()
+    )
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)

@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict
+# Severity taxonomy shared with severity_to_score (LOW/MEDIUM/HIGH/CRITICAL).
+Severity = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
 
 class DetectionRuleBase(BaseModel):
     name: str
     description: Optional[str] = None
-    severity: str = "MEDIUM"
+    severity: Severity = "MEDIUM"
     pattern: Optional[str] = None
     is_active: bool = True
 
@@ -18,7 +20,7 @@ class DetectionRuleCreate(DetectionRuleBase):
 class DetectionRuleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    severity: Optional[str] = None
+    severity: Optional[Severity] = None
     pattern: Optional[str] = None
     is_active: Optional[bool] = None
 
