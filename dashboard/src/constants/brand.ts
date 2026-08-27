@@ -1,13 +1,13 @@
 /**
- * AXIOM AI Brand Constants — Single Source of Truth.
- * Self-evident threat reasoning, instant blast-radius containment.
+ * NOCTRA Brand Constants — Single Source of Truth.
+ * Silent. Precise. Always watching.
  */
-export const BRAND_NAME = "AXIOM AI" as const;
-export const BRAND_WORDMARK = "AXIOM AI" as const;
-export const BRAND_TAGLINE = "Self-evident threat reasoning. Instant containment." as const;
+export const BRAND_NAME = "NOCTRA" as const;
+export const BRAND_WORDMARK = "NOCTRA" as const;
+export const BRAND_TAGLINE = "Silent. Precise. Always watching." as const;
 export const BRAND_POSITIONING =
-  "The autonomous AI security analyst for growing companies — turns chaotic log telemetry into plain-English story briefs and one-click reversible remediation actions." as const;
-export const BRAND_DOMAIN_HINT = "axiom.ai" as const;
+  "NOCTRA is an autonomous AI security analyst for small companies — you employ an analyst, you don't operate a dashboard." as const;
+export const BRAND_DOMAIN_HINT = "noctra.ai" as const;
 
 export const BRAND_TYPOGRAPHY = {
   display: "Sora",
@@ -16,12 +16,16 @@ export const BRAND_TYPOGRAPHY = {
 } as const;
 
 export const BRAND_PALETTE = {
-  bgLight: "#f4f6fa",
-  navyDark: "#0e1320",
-  cobalt: "#2563eb",
-  emerald: "#10b981",
+  bgVoid: "#050508",
+  bgApp: "#0a0a0f",
+  cardBg: "#12121a",
+  cardBorder: "#1e1e2b",
   amber: "#f59e0b",
+  amberHover: "#d97706",
+  sage: "#84a98c",
+  clay: "#c9ada7",
   critical: "#ef4444",
-  contentPrimary: "#0f172a",
-  contentSecondary: "#475569",
+  warning: "#f59e0b",
+  success: "#10b981",
+  neutral: "#64748b",
 } as const;
