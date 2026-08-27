@@ -4,6 +4,7 @@ import { PageHeader, Card, Button, SeverityBadge, StatusBadge, SkeletonTable, Em
 import AnalystApi from "../api/analystApi";
 import type { AnalystCase, Decision } from "../types/analyst";
 import type { PaginatedResponse } from "../types/pagination";
+import { getApiError } from "../utils/getApiError";
 
 const PAGE_SIZE = 10;
 
@@ -37,7 +38,7 @@ const FeedPage: React.FC = () => {
       setCases(asRows(resp));
       setTotal(resp?.total ?? 0);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load the decision feed");
+      setError(getApiError(err, "Failed to load the decision feed"));
     } finally {
       setLoading(false);
     }

@@ -25,6 +25,7 @@ import {
   EmptyState,
 } from "../components/ui";
 import type { OverviewStats, TopThreat, TrendPoint } from "../types/analytics";
+import { getApiError } from "../utils/getApiError";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
@@ -81,7 +82,7 @@ const DashboardOverviewPage: React.FC = () => {
           : alertPayload?.items || [];
         setLiveAlerts(list);
       } catch (err: any) {
-        if (!cancelled) setError(err?.detail || "Failed to load overview data");
+        if (!cancelled) setError(getApiError(err, "Failed to load overview data"));
       } finally {
         if (!cancelled) setLoading(false);
       }

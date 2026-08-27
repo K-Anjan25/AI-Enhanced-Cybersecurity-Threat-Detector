@@ -14,9 +14,10 @@ import {
   RefreshCw,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "../components/ui";
+import { Button, LoadingState } from "../components/ui";
 import AnalystApi from "../api/analystApi";
 import type { Brief, Connector } from "../types/analyst";
+import { getApiError } from "../utils/getApiError";
 
 const BriefPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ const BriefPage: React.FC = () => {
       setBrief(briefData);
       setConnectors(connData);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load brief data");
+      setError(getApiError(err, "Failed to load brief data"));
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,7 @@ const BriefPage: React.FC = () => {
       const created = await AnalystApi.simulate(selectedScenario);
       navigate(`/case/${created.id}`);
     } catch (err: any) {
-      setError(err?.detail || "Could not simulate an incident");
+      setError(getApiError(err, "Could not simulate an incident"));
       setSimulating(false);
     }
   };
@@ -69,7 +70,7 @@ const BriefPage: React.FC = () => {
         prev.map((c) => (c.id === id ? { ...c, last_sync: "Just now" } : c))
       );
     } catch (err: any) {
-      setError(err?.detail || "Connector sync failed");
+      setError(getApiError(err, "Connector sync failed"));
     } finally {
       setSyncingId(null);
     }
@@ -77,6 +78,33 @@ const BriefPage: React.FC = () => {
 
   const pendingCases = brief?.top_cases ?? [];
   const latestCase = pendingCases[0];
+
+  // Blast-radius chips: derived from the real latest case when available,
+  // falling back to illustrative placeholders when nothing is pending yet.
+  const NODE_ICON: Record<string, typeof Server> = {
+    host: Server,
+    account: UserIcon,
+    ip: Globe,
+    domain: Globe,
+    email: UserIcon,
+    file: AppWindow,
+    hash: AppWindow,
+  };
+  const blastChips =
+    latestCase?.blast_radius?.nodes?.slice(0, 4).map((n) => ({
+      icon: NODE_ICON[n.entity_type] ?? AppWindow,
+      label: `${n.entity_type}: ${n.value}`,
+    })) ??
+    (latestCase
+      ? []
+      : [
+          { icon: Server, label: "Server: Auth-Srv-01" },
+          { icon: UserIcon, label: "User: sysadmin" },
+          { icon: Globe, label: "IP: 10.0.1.50" },
+          { icon: AppWindow, label: "Application: Portal" },
+        ]);
+
+  if (loading) return <LoadingState label="Loading your brief…" />;
 
   return (
     <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">
@@ -180,18 +208,20 @@ const BriefPage: React.FC = () => {
                 Affected Assets (Blast Radius):
               </p>
               <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-slate-800/80 text-slate-200 border border-slate-700">
-                  <Server size={12} className="text-slate-400" /> Server: Auth-Srv-01
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-slate-800/80 text-slate-200 border border-slate-700">
-                  <UserIcon size={12} className="text-slate-400" /> User: sysadmin
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-slate-800/80 text-slate-200 border border-slate-700">
-                  <Globe size={12} className="text-slate-400" /> IP: 10.0.1.50
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-slate-800/80 text-slate-200 border border-slate-700">
-                  <AppWindow size={12} className="text-slate-400" /> Application: Portal
-                </span>
+                {blastChips.length > 0 ? (
+                  blastChips.map((chip) => (
+                    <span
+                      key={chip.label}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-slate-800/80 text-slate-200 border border-slate-700"
+                    >
+                      <chip.icon size={12} className="text-slate-400" /> {chip.label}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400 font-mono">
+                    No affected assets mapped for this incident.
+                  </span>
+                )}
               </div>
             </div>
           </div>

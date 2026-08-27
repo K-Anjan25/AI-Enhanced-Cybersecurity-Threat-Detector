@@ -17,6 +17,8 @@ import {
   EmptyState,
 } from "../components/ui";
 import AnalystApi from "../api/analystApi";
+import { getApiError } from "../utils/getApiError";
+import { showError } from "../utils/showError";
 import type { AnalystCase } from "../types/analyst";
 
 const ActionsPage: React.FC = () => {
@@ -37,7 +39,7 @@ const ActionsPage: React.FC = () => {
       );
       setCases(actionCases);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load containment actions");
+      setError(getApiError(err, "Failed to load containment actions"));
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ const ActionsPage: React.FC = () => {
       const updated = await AnalystApi.revertCase(id);
       setCases((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } catch (err: any) {
-      alert(err?.detail || "Could not revert action");
+      showError(getApiError(err, "Could not revert action"));
     } finally {
       setRevertingId(null);
     }
@@ -113,7 +115,7 @@ const ActionsPage: React.FC = () => {
               description={
                 search
                   ? "No actions match your filter criteria."
-                  : "NOCTRA has not executed any containment actions yet."
+                  : "AXIOM AI has not executed any containment actions yet."
               }
             />
           </div>

@@ -32,7 +32,7 @@ export default function Login(): React.ReactElement {
         // off is safe only when the session was actually established.
         if (getToken()) {
           showSuccess("You have successfully logged in!");
-          navigate("/alerts");
+          navigate("/");
         } else {
           setLoginError(
             "Authentication failed. Please check your credentials."

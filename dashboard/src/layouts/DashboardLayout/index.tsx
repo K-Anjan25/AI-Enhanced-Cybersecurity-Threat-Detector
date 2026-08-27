@@ -51,8 +51,10 @@ const ADMIN_ITEMS: NavItem[] = [
   { name: "Admin Overview", path: "/admin", icon: Settings, matchPrefix: true },
   { name: "User Management", path: "/admin/users", icon: KeyRound },
   { name: "Tenants", path: "/admin/tenants", icon: Building2 },
+  { name: "Access Roles", path: "/admin/roles", icon: ShieldCheck },
   { name: "Detection Rules", path: "/admin/rules", icon: ListChecks },
   { name: "IP Reputation", path: "/admin/reputation", icon: Ban },
+  { name: "Engine Settings", path: "/admin/engine-settings", icon: FolderKanban },
   { name: "System Audit Logs", path: "/admin/system-logs", icon: ScrollText },
 ];
 

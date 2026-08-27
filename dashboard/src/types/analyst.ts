@@ -83,7 +83,7 @@ export interface ReportResponse {
 
 export interface ChatMessage {
   id: string;
-  sender: "user" | "noctra" | "axiom";
+  sender: "user" | "axiom";
   text: string;
   timestamp: string;
   confidence?: number;

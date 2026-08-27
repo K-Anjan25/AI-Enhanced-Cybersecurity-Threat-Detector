@@ -9,6 +9,7 @@ import {
   SkeletonTable,
   EmptyState,
 } from "../components/ui";
+import { getApiError } from "../utils/getApiError";
 
 const PAGE_SIZE = 10;
 
@@ -69,7 +70,7 @@ const SoarPage: React.FC = () => {
       setActions(response.data);
       setTotal(response.total);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load automation actions");
+      setError(getApiError(err, "Failed to load automation actions"));
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ const SoarPage: React.FC = () => {
       const used = new Set(pbRes.data.map((pb) => pb.rule_id));
       setRules(ruleRes.data.filter((r) => !used.has(r.id)));
     } catch (err: any) {
-      setPbError(err?.detail || "Failed to load playbooks");
+      setPbError(getApiError(err, "Failed to load playbooks"));
     } finally {
       setPbLoading(false);
     }
@@ -117,7 +118,7 @@ const SoarPage: React.FC = () => {
       setPbAction("BLOCK_SOURCE_IP");
       await loadPlaybooks();
     } catch (err: any) {
-      setPbError(err?.detail || "Failed to create playbook");
+      setPbError(getApiError(err, "Failed to create playbook"));
     } finally {
       setPbSaving(false);
     }
@@ -128,7 +129,7 @@ const SoarPage: React.FC = () => {
       await SoarApi.updatePlaybook(pb.id, { is_active: !pb.is_active });
       await loadPlaybooks();
     } catch (err: any) {
-      setPbError(err?.detail || "Failed to update playbook");
+      setPbError(getApiError(err, "Failed to update playbook"));
     }
   };
 
@@ -137,7 +138,7 @@ const SoarPage: React.FC = () => {
       await SoarApi.deletePlaybook(pb.id);
       await loadPlaybooks();
     } catch (err: any) {
-      setPbError(err?.detail || "Failed to delete playbook");
+      setPbError(getApiError(err, "Failed to delete playbook"));
     }
   };
 
@@ -160,7 +161,7 @@ const SoarPage: React.FC = () => {
               .join(", ")}`
       );
     } catch (err: any) {
-      setError(err?.detail || "Evaluation failed");
+      setError(getApiError(err, "Evaluation failed"));
     } finally {
       setEvaluating(false);
     }
@@ -190,7 +191,7 @@ const SoarPage: React.FC = () => {
       await loadActions();
     } catch (err: any) {
       setTriggerResult(null);
-      setError(err?.detail || "Trigger failed");
+      setError(getApiError(err, "Trigger failed"));
     } finally {
       setTriggering(false);
     }

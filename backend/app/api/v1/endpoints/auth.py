@@ -94,8 +94,14 @@ def refresh_token(
 
 @router.post("/register", status_code=201)
 def register(data: dict, db: Session = Depends(get_db)):
+    username = data.get("username")
+    email = data.get("email")
+    password = data.get("password")
+    if not username or not email or not password:
+        raise HTTPException(status_code=400, detail="username, email and password are required")
+
     existing = db.query(User).filter(
-        (User.username == data.get("username")) | (User.email == data.get("email"))
+        (User.username == username) | (User.email == email)
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already exists")
@@ -107,11 +113,10 @@ def register(data: dict, db: Session = Depends(get_db)):
         db.add(default_org)
         db.flush()
 
-    hashed_password = get_password_hash(data["password"])
     user = User(
-        username=data["username"],
-        password=hashed_password,
-        email=data.get("email"),
+        username=username,
+        password=get_password_hash(password),
+        email=email,
         role=data.get("role", "user"),
         org_id=default_org.id,
     )
@@ -234,18 +239,17 @@ def forgot_password(data: dict, db: Session = Depends(get_db)):
     if not user:
         return {"message": "If an account exists, a reset link was sent."}
 
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     to_encode = {
         "sub": user.username,
-        "exp": datetime.utcnow() + timedelta(minutes=30),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
         "purpose": "reset",
     }
     token = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.ALGORITHM)
     # If SMTP is configured, send an email with the token; otherwise return token for dev/testing.
     email_sent = False
     if settings.SMTP_HOST and settings.EMAIL_FROM:
-        reset_link = f"{settings.PROJECT_NAME} - Use token: {token}"
         try:
             email_sent = send_email(
                 subject="Password reset for " + settings.PROJECT_NAME,

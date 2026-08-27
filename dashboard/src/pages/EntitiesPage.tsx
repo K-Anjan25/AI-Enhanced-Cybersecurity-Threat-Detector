@@ -3,6 +3,7 @@ import EntityApi, { type EntityGraphSummary, type EntityPathResult } from "../ap
 import EntityGraphView from "../features/entities/components/EntityGraphView";
 import { PageHeader, Select, StatCard } from "../components/ui";
 import type { EntityType, ThreatEntity } from "../types/entity";
+import { getApiError } from "../utils/getApiError";
 
 const PAGE_SIZE = 12;
 const ENTITY_TYPES: Array<{ value: EntityType | ""; label: string }> = [
@@ -12,6 +13,8 @@ const ENTITY_TYPES: Array<{ value: EntityType | ""; label: string }> = [
   { value: "hash", label: "File hash" },
   { value: "email", label: "Email" },
   { value: "file", label: "File" },
+  { value: "account", label: "Account" },
+  { value: "host", label: "Host / asset" },
 ];
 
 const typeColor: Record<string, string> = {
@@ -20,12 +23,15 @@ const typeColor: Record<string, string> = {
   hash: "bg-chart-5/15 text-chart-5 border-chart-5/30",
   email: "bg-chart-2/15 text-chart-2 border-chart-2/30",
   file: "bg-chart-3/15 text-chart-3 border-chart-3/30",
+  account: "bg-accent-primary/15 text-accent-primary border-accent-primary/30",
+  host: "bg-status-warning/15 text-status-warning border-status-warning/30",
 };
 
+/** Entity risk scores are stored on a 0..1 scale (aligned with alert scores). */
 const riskColor = (score: number): string => {
-  if (score >= 75) return "bg-status-critical/15 text-status-critical border-status-critical/30";
-  if (score >= 50) return "bg-status-warning/15 text-status-warning border-status-warning/30";
-  if (score >= 25) return "bg-chart-4/15 text-chart-4 border-chart-4/30";
+  if (score >= 0.75) return "bg-status-critical/15 text-status-critical border-status-critical/30";
+  if (score >= 0.5) return "bg-status-warning/15 text-status-warning border-status-warning/30";
+  if (score >= 0.25) return "bg-chart-4/15 text-chart-4 border-chart-4/30";
   return "bg-status-success/15 text-status-success border-status-success/30";
 };
 
@@ -59,7 +65,7 @@ const EntitiesPage: React.FC = () => {
       setEntities(response.data);
       setTotal(response.total);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load entities");
+      setError(getApiError(err, "Failed to load entities"));
     } finally {
       setLoading(false);
     }
@@ -96,7 +102,7 @@ const EntitiesPage: React.FC = () => {
       const result = await EntityApi.fetchEntityPath(from, to);
       setPathResult(result);
     } catch (err: any) {
-      setPathError(err?.detail || "Failed to find path");
+      setPathError(getApiError(err, "Failed to find path"));
     } finally {
       setPathLoading(false);
     }
@@ -108,7 +114,7 @@ const EntitiesPage: React.FC = () => {
       const updated = await EntityApi.updateEntityRisk(entity.id, riskScore);
       setEntities((prev) => prev.map((e) => (e.id === entity.id ? updated : e)));
     } catch (err: any) {
-      setError(err?.detail || "Failed to update reputation");
+      setError(getApiError(err, "Failed to update reputation"));
     } finally {
       setAdjustingId(null);
     }
@@ -274,20 +280,20 @@ const EntitiesPage: React.FC = () => {
                           <div
                             className="h-full rounded-full"
                             style={{
-                              width: `${Math.min(entity.risk_score, 100)}%`,
+                              width: `${Math.min(entity.risk_score * 100, 100)}%`,
                               backgroundColor:
-                                entity.risk_score >= 75
+                                entity.risk_score >= 0.75
                                   ? "#e76f51"
-                                  : entity.risk_score >= 50
+                                  : entity.risk_score >= 0.5
                                   ? "#f4a261"
-                                  : entity.risk_score >= 25
+                                  : entity.risk_score >= 0.25
                                   ? "#e9c46a"
                                   : "#84a98c",
                             }}
                           />
                         </div>
                         <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${riskColor(entity.risk_score)}`}>
-                          {entity.risk_score.toFixed(1)}
+                          {entity.risk_score.toFixed(2)}
                         </span>
                       </div>
                     </td>
@@ -306,19 +312,19 @@ const EntitiesPage: React.FC = () => {
                       <input
                         type="number"
                         min={0}
-                        max={100}
-                        step={5}
+                        max={1}
+                        step={0.05}
                         defaultValue={entity.risk_score}
                         onChange={(e) => {
                           const value = Number(e.target.value);
-                          if (!Number.isNaN(value) && value >= 0 && value <= 100) {
+                          if (!Number.isNaN(value) && value >= 0 && value <= 1) {
                             handleRiskAdjust(entity, value);
                           }
                         }}
                         disabled={adjustingId === entity.id}
                         className="w-16 px-2 py-1.5 bg-app-bg border border-line-subtle rounded-lg text-xs font-mono text-content-primary focus:outline-none focus:border-accent-primary transition disabled:opacity-40"
                         aria-label={`Override risk score for ${entity.value}`}
-                        title="Set risk score (0-100)"
+                        title="Set risk score (0-1)"
                       />
                     </td>
                   </tr>

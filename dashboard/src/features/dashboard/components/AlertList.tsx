@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { fetchAlerts } from "../../../api/alertApi";
 import AlertDetailModal from "./AlertDetailModal";
 import { SeverityBadge, SkeletonTable, EmptyState } from "../../../components/ui";
@@ -10,8 +11,9 @@ interface AlertListProps {
 }
 
 const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, onAlertsFetched }) => {
+  const [searchParams] = useSearchParams();
   const [alerts, setAlerts] = useState<any[]>([]);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string>(() => searchParams.get("q") ?? "");
   const [riskFilter, setRiskFilter] = useState<string>("All");
   const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

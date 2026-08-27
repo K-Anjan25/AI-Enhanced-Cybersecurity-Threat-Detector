@@ -37,7 +37,7 @@ const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
     <div className="flex items-center space-x-2">
       <div className="w-3 h-3 bg-accent-primary rounded-full animate-ping" />
-      <span>Loading NOCTRA AI...</span>
+      <span>Loading AXIOM AI...</span>
     </div>
   </div>
 );
@@ -58,11 +58,16 @@ export default function App(): JSX.Element {
   ).map((role: string) => role.toUpperCase());
 
   const storedPermissions = localStorage.getItem("user_permissions");
+  const parsedStoredPermissions: string[] = (() => {
+    try {
+      return storedPermissions ? JSON.parse(storedPermissions) : [];
+    } catch {
+      return [];
+    }
+  })();
   const userPermissions: string[] = (user as any)?.permissions?.length
     ? (user as any).permissions
-    : storedPermissions
-    ? JSON.parse(storedPermissions)
-    : [];
+    : parsedStoredPermissions;
 
   return (
     <Router>

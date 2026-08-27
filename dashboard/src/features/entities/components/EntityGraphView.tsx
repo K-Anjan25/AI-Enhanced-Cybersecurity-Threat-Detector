@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import EntityApi from "../../../api/entityApi";
+import { getApiError } from "../../../utils/getApiError";
 import type { EntityGraphResponse, ThreatEntity } from "../../../types/entity";
 
 interface Props {
@@ -58,7 +59,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
       const data = await EntityApi.fetchEntityGraph(root.id, depth);
       setGraph(data);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load attack graph");
+      setError(getApiError(err, "Failed to load attack graph"));
     } finally {
       setLoading(false);
     }

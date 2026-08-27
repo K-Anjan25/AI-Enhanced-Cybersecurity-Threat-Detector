@@ -26,6 +26,7 @@ import {
 } from "../components/ui";
 import AnalystApi from "../api/analystApi";
 import type { AnalystCase, BlastNode, Decision, ChatMessage } from "../types/analyst";
+import { getApiError } from "../utils/getApiError";
 
 type DialogKind = "approve" | "decline" | "revert" | null;
 
@@ -69,7 +70,7 @@ const CasePage: React.FC = () => {
         },
       ]);
     } catch (err: any) {
-      setError(err?.status === 404 ? "That case doesn't exist." : err?.detail || "Failed to load the case");
+      setError(err?.response?.status === 404 ? "That case doesn't exist." : getApiError(err, "Failed to load the case"));
     } finally {
       setLoading(false);
     }
@@ -135,7 +136,7 @@ const CasePage: React.FC = () => {
       setData(updated);
       setDialog(null);
     } catch (err: any) {
-      setError(err?.detail || `Could not ${kind} this case`);
+      setError(getApiError(err, `Could not ${kind} this case`));
     } finally {
       setBusy(false);
     }

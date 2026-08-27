@@ -1,4 +1,4 @@
-export type EntityType = "ip" | "domain" | "hash" | "email" | "file";
+export type EntityType = "ip" | "domain" | "hash" | "email" | "file" | "account" | "host";
 
 export interface ThreatEntity {
   id: number;

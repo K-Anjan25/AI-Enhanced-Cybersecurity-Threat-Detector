@@ -15,6 +15,7 @@ import type {
   UpdateIncidentPayload,
 } from "../types/incident";
 import type { PaginatedResponse } from "../types/pagination";
+import { getApiError } from "../utils/getApiError";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["open", "triaging", "resolved", "closed"] as const;
@@ -51,7 +52,7 @@ const IncidentsPage: React.FC = () => {
       setIncidents(response.data);
       setTotal(response.total);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load incidents");
+      setError(getApiError(err, "Failed to load incidents"));
     } finally {
       setLoading(false);
     }
@@ -79,7 +80,7 @@ const IncidentsPage: React.FC = () => {
       await IncidentApi.updateIncident(incident.id, changes);
       await loadIncidents();
     } catch (err: any) {
-      setError(err?.detail || "Failed to update incident");
+      setError(getApiError(err, "Failed to update incident"));
     } finally {
       setUpdatingId(null);
     }

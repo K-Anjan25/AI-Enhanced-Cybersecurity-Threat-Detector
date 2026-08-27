@@ -18,6 +18,7 @@ import MlApi from "../api/mlApi";
 import type { BenchmarkReport, ExplainKind, ExplanationResponse } from "../types/ml";
 import type { OverviewStats, TopThreat, TrendPoint } from "../types/analytics";
 import { PageHeader, LoadingState, StatCard } from "../components/ui";
+import { getApiError } from "../utils/getApiError";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
@@ -69,7 +70,7 @@ const AIAnalyticsPage: React.FC = () => {
         setTrend(tr?.trend || []);
       })
       .catch((err: any) => {
-        if (!cancelled) setError(err?.detail || "Failed to load analytics data");
+        if (!cancelled) setError(getApiError(err, "Failed to load analytics data"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -101,11 +102,11 @@ const AIAnalyticsPage: React.FC = () => {
       const result = await MlApi.explain(explainKind, explainInput.trim());
       setExplanation(result);
     } catch (err: any) {
-      setExplainError(err?.detail || "Failed to compute explanation");
+      setExplainError(getApiError(err, "Failed to compute explanation"));
     } finally {
       setExplainLoading(false);
     }
-  };;
+  };
 
   const kpis = [
     { label: "Total Alerts", value: overview.total, tone: "default" as const },

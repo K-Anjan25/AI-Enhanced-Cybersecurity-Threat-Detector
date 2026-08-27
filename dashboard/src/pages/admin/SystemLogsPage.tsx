@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import AuditApi, { AuditLogParams, AuditLogResponse } from "../../api/auditApi";
 import { PageHeader, SkeletonTable, EmptyState } from "../../components/ui";
+import { getApiError } from "../../utils/getApiError";
 
 const PAGE_SIZE = 20;
 
@@ -32,7 +33,7 @@ const SystemLogs: React.FC = () => {
       setLogs((response.data || []) as AuditEntry[]);
       setTotal(response.total || 0);
     } catch (err: any) {
-      setError(err?.detail || "Failed to load audit logs");
+      setError(getApiError(err, "Failed to load audit logs"));
     } finally {
       setLoading(false);
     }

@@ -56,8 +56,11 @@ def clear_alerts(db: Session = Depends(get_db), current_user: User = Depends(req
 
 
 @router.get("/alerts/export")
-def export_alerts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Stream all security alerts as a downloadable CSV file."""
+def export_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("alerts:export")),
+):
+    """Stream all security alerts as a downloadable CSV file (requires alerts:export)."""
     alerts = db.query(SecurityAlert).order_by(SecurityAlert.created_at.desc()).all()
 
     buffer = io.StringIO()

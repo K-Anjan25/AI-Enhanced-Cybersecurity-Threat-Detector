@@ -1,14 +1,28 @@
-import React, { useEffect, useState } from "react";
-import { uploadLogs, fetchLogHistory } from "../api/alertApi";
+import React, { useEffect, useRef, useState } from "react";
+import { uploadLogs, fetchLogHistory, fetchUploadBatchStatus } from "../api/alertApi";
 import type { LogHistoryEntry, UploadLogsResponse } from "../types/alert";
 import { PageHeader, Card, SkeletonTable, EmptyState, Button } from "../components/ui";
+
+const SCAN_POLL_INTERVAL_MS = 1500;
+const SCAN_POLL_MAX_ATTEMPTS = 20;
 
 const LogHistoryPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadLogsResponse | null>(null);
   const [history, setHistory] = useState<LogHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const pollTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Clear any pending poll timer when the page unmounts.
+    return () => {
+      if (pollTimer.current !== null) {
+        window.clearTimeout(pollTimer.current);
+      }
+    };
+  }, []);
 
   const loadHistory = async () => {
     try {
@@ -34,6 +48,46 @@ const LogHistoryPage: React.FC = () => {
     setErrorMessage(null);
   };
 
+  /**
+   * The backend scans the batch asynchronously; poll /uploads/{batch_id} until
+   * it completes so the real threats-detected count is shown.
+   */
+  const pollBatchStatus = (batchId: number, attempt = 1) => {
+    pollTimer.current = window.setTimeout(async () => {
+      try {
+        const status = await fetchUploadBatchStatus(batchId);
+        if (status.batch.status === "completed") {
+          setUploadResult((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  threatsDetected: status.batch.threats_detected,
+                  totalLogsParsed: status.batch.total_logs,
+                }
+              : prev
+          );
+          setIsScanning(false);
+          await loadHistory();
+          return;
+        }
+        if (status.batch.status === "failed") {
+          setErrorMessage(
+            status.batch.message || "Background scan failed for the uploaded file."
+          );
+          setIsScanning(false);
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+      if (attempt < SCAN_POLL_MAX_ATTEMPTS) {
+        pollBatchStatus(batchId, attempt + 1);
+      } else {
+        setIsScanning(false);
+      }
+    }, SCAN_POLL_INTERVAL_MS);
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) {
       setErrorMessage("Please choose a file before uploading.");
@@ -46,10 +100,13 @@ const LogHistoryPage: React.FC = () => {
       const result = await uploadLogs(selectedFile);
       setUploadResult(result);
       await loadHistory();
+      setIsLoading(false);
+      // Scan runs in the background; follow it until the batch completes.
+      setIsScanning(true);
+      pollBatchStatus(result.batch_id);
     } catch (err) {
       console.error(err);
       setErrorMessage("Upload failed. Please check the file and try again.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -93,7 +150,10 @@ const LogHistoryPage: React.FC = () => {
             <p className="font-medium">{uploadResult.message}</p>
             <p>File: {uploadResult.filename}</p>
             <p>Scanned: {uploadResult.totalLogsParsed ?? 0}</p>
-            <p>Threats Detected: {uploadResult.threatsDetected ?? 0}</p>
+            <p>
+              Threats Detected:{" "}
+              {isScanning ? "scanning…" : (uploadResult.threatsDetected ?? 0)}
+            </p>
           </div>
         )}
       </Card>
@@ -138,7 +198,9 @@ const LogHistoryPage: React.FC = () => {
                     <td className="px-4 py-3 font-medium text-content-primary">{entry.filename}</td>
                     <td className="px-4 py-3">{entry.totalLogsParsed}</td>
                     <td className="px-4 py-3">{entry.threatsDetected}</td>
-                    <td className="px-4 py-3 text-content-secondary">{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-content-secondary">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "-"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

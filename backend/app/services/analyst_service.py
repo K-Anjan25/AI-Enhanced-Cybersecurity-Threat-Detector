@@ -88,10 +88,21 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
     blast = case.blast_radius or {}
     nodes = blast.get("nodes", [])
 
+    # Real MITRE mapping lives on the source alert (set at detection time),
+    # not in the analysis narrative.
+    mitre_technique_id = None
+    mitre_technique = None
+    if case.source_alert_id is not None:
+        alert_row = (
+            db.query(SecurityAlert).filter(SecurityAlert.id == case.source_alert_id).first()
+        )
+        mitre_technique_id = getattr(alert_row, "mitre_technique_id", None)
+        mitre_technique = getattr(alert_row, "mitre_technique", None)
+
     q_lower = question.lower()
 
     if "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
-        node_names = ", ".join([f"{n.get('type')}:{n.get('name')}" for n in nodes[:5]])
+        node_names = ", ".join([f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:5]])
         answer = (
             f"The blast radius contains {len(nodes)} identified entities: {node_names}. "
             f"The root entity is connected to key assets and accounts."
@@ -103,8 +114,10 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
             f"Reversible via: {proposed.get('undo', 'Re-enable account or IP access')}."
         )
     elif "mitre" in q_lower or "tactic" in q_lower or "technique" in q_lower:
+        technique_id = mitre_technique_id or "N/A"
+        technique_name = mitre_technique or "Unclassified"
         answer = (
-            f"This case maps to MITRE technique {analysis.get('headline', 'T1078')}. "
+            f"This case maps to MITRE ATT&CK technique {technique_id} ({technique_name}). "
             f"It represents an active threat vector requiring immediate containment."
         )
     else:
