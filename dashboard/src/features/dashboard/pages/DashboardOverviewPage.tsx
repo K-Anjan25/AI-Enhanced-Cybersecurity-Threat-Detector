@@ -23,6 +23,7 @@ import {
   StatusBadge,
   LoadingState,
   EmptyState,
+  Term,
 } from "../../../components/ui";
 import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
 import { getApiError } from "../../../utils/getApiError";
@@ -271,7 +272,7 @@ const DashboardOverviewPage: React.FC = () => {
                   <div className="flex items-center gap-3 shrink-0">
                     {alert.mitre_technique_id && (
                       <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-xs font-mono bg-app-subtle text-content-secondary border border-line-subtle">
-                        {alert.mitre_technique_id}
+                        <Term mono>{alert.mitre_technique_id}</Term>
                       </span>
                     )}
                     <SeverityBadge severity="CRITICAL" />

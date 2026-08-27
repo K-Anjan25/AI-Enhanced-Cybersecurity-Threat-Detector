@@ -123,6 +123,14 @@ export const TERMS = {
     plain: "Recorded automatically by a rule, without a human step — still reversible and audited.",
     formal: "SOAR action auto-recorded by rule evaluation in record-only mode.",
   },
+  recorded: {
+    plain: "Written to the action log — nothing was executed against your systems.",
+    formal: "SOAR action persisted in record-only mode with no external side effects.",
+  },
+  blacklist: {
+    plain: "On the block list — that address is denied at the source.",
+    formal: "Threat-intel blacklist membership; blocked addresses are rejected on ingestion.",
+  },
 } as const satisfies Record<string, TermEntry>;
 
 /** Lookup with fuzzy key fallback (case-insensitive, ignores trailing punctuation). */

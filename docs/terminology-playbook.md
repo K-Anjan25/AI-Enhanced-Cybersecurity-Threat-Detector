@@ -56,11 +56,13 @@ hover/focus away.
 
 | Screen | Hits | Dogfooded now |
 | --- | --- | --- |
-| SoarPage | 43 | next pass |
+| SoarPage | 43 | ✅ (SOAR, playbook ×4, record-only, action types, status labels) |
 | CasePage | 20 | ✅ (blast radius, MITRE, T1078, action type, reversible, confidence, record-only) |
-| ReputationPage | 19 | next pass |
+| ReputationPage | 19 | ✅ (reputation, blacklist) |
 | BriefPage | 15 | ✅ (needs your decision, auto-recorded) |
-| AlertDetailModal | 14 | next pass |
-| DashboardOverviewPage | 11 | next pass |
+| AlertDetailModal | 14 | ✅ (MITRE, technique ids, reputation) |
+| DashboardOverviewPage | 11 | ✅ (MITRE technique ids) |
 
 Component: `dashboard/src/components/ui/Term.tsx` — `<Term mono>REVOKE_CREDENTIALS</Term>`.
+Primitives widened to accept ReactNode so annotations can sit in page headers, empty
+states, badges and table cells: `PageHeader.title/description`, `EmptyState.description`.

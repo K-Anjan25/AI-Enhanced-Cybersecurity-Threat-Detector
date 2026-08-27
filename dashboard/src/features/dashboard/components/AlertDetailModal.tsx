@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AnalystApi from "../../../api/analystApi";
+import { Term } from "../../../components/ui";
 
 interface Props {
   alert: any;
@@ -129,7 +130,9 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
           </DetailRow>
 
           <div>
-            <h4 className="text-sm font-semibold text-content-primary mb-2">MITRE ATT&amp;CK</h4>
+            <h4 className="text-sm font-semibold text-content-primary mb-2">
+              <Term>MITRE</Term> ATT&amp;CK
+            </h4>
             {hasMitre ? (
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border bg-app-subtle text-content-primary border-line-subtle">
@@ -137,7 +140,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                 </span>
                 {alert.mitre_technique_id && (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono border bg-accent-primary/10 text-accent-primary border-accent-primary/30">
-                    {alert.mitre_technique_id}
+                    <Term mono>{alert.mitre_technique_id}</Term>
                   </span>
                 )}
                 {alert.mitre_technique && (
@@ -147,7 +150,9 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-content-tertiary">Unclassified — no MITRE mapping for this alert.</p>
+              <p className="text-xs text-content-tertiary">
+                Unclassified — no <Term>MITRE</Term> mapping for this alert.
+              </p>
             )}
           </div>
 
@@ -170,7 +175,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                 </div>
                 {typeof threatIntel.threat_score === "number" && (
                   <p className="text-xs text-content-tertiary">
-                    Reputation score: <span className="text-content-primary font-mono">{threatIntel.threat_score.toFixed(3)}</span>
+                    <Term>Reputation</Term> score: <span className="text-content-primary font-mono">{threatIntel.threat_score.toFixed(3)}</span>
                     {threatIntel.ip_address ? (
                       <span> for <span className="font-mono text-accent-primary">{String(threatIntel.ip_address)}</span></span>
                     ) : null}
