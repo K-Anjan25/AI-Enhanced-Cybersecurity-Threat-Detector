@@ -45,7 +45,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
         </span>
       </div>
 
-      <div className="w-80 max-w-[40%]">
+      <div className="w-80 max-w-[40%] hidden md:block">
         <div className="relative">
           <Search size={14} className="absolute inset-y-0 left-3 my-auto text-content-tertiary" aria-hidden />
           <input
@@ -54,10 +54,29 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-full bg-app-bg text-sm text-content-primary pl-9 pr-4 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition placeholder-content-tertiary"
+            className="w-full bg-app-bg text-sm text-content-primary pl-9 pr-14 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition placeholder-content-tertiary"
           />
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("noctra:command-menu"))}
+            aria-label="Open command menu"
+            title="Command menu (⌘K)"
+            className="absolute inset-y-0 right-2 my-auto h-6 px-1.5 rounded border border-line-subtle bg-app-subtle text-[10px] font-mono text-content-tertiary hover:text-content-primary transition cursor-pointer"
+          >
+            ⌘K
+          </button>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event("noctra:command-menu"))}
+        aria-label="Open command menu"
+        title="Command menu (⌘K)"
+        className="md:hidden w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer"
+      >
+        <Search size={15} aria-hidden />
+      </button>
 
       <div className="flex items-center gap-2">
         <div className="relative">

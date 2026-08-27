@@ -24,6 +24,7 @@ import {
 import { cn } from "../../components/ui";
 import BrandLogo from "../../components/BrandLogo";
 import PageTransition from "../../components/PageTransition";
+import CommandMenu from "../../components/CommandMenu";
 
 /**
  * NOCTRA navigation (spec §8). Four MAIN items mirror the analyst loop —
@@ -229,6 +230,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <Navbar onLogout={onLogout} />
+        <CommandMenu />
 
         <main key={location.pathname} className="p-6 flex-1 min-w-0 w-full overflow-y-auto">
           <PageTransition>{children || <Outlet />}</PageTransition>

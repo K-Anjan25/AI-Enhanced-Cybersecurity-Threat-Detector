@@ -696,6 +696,17 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
 
+### Addendum — Stage 3 start (⌘K command menu, 2026-08-27)
+
+- **Command menu** (`components/CommandMenu.tsx`): ⌘K/Ctrl+K app-wide (mounted
+  in the shell), or the ⌘K chip / mobile search button in the Navbar.
+  Keyboard-first (↑↓/↵/esc, combobox + listbox semantics,
+  `aria-activedescendant`) over three groups: Navigate (11 routes), Cases
+  (live decision-feed lookup — jump straight to any case), Actions (fire any
+  of the four scenario simulations; navigates to the created case). Rendered
+  on the night canvas — asking the analyst happens in the dark.
+- Verified: tsc + build clean; opens via hotkey and chip on the live preview.
+
 ### Addendum — Stage 2 progress (2026-08-27, later pass)
 
 - **Alerts→Case bridge** (directive §4 mapping "Alert → Case Evidence"):
