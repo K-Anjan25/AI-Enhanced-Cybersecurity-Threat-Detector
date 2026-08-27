@@ -235,3 +235,30 @@ Closes four flagged items from the parked backlog (evidence: live curl + tests).
 Tests: backend **121 passed / 2 skipped** (3 new), ml-service **13 passed**,
 `tsc --noEmit` clean. Still parked (next slices): telemetry endpoints
 review, FE uncalled-endpoint cleanup, manual AT audit.
+
+## 10. Hardening slice 2 + parked-queue closure (2026-08-27)
+
+- **Telemetry — VERIFIED, no change needed.** `POST /telemetry/client-error`
+  is `get_current_user`-gated and writes to the append-only audit log
+  (UPDATE/DELETE rejected). Covered by two existing tests
+  (`records_audit`, `requires_auth`); re-verified live: 401 unauthed,
+  `{"recorded":true}` authed.
+- **`main.py` lifespan — FIXED.** Deprecated `@app.on_event("startup")`
+  migrated to an `asynccontextmanager` lifespan (identical behavior:
+  additive migrations → create_all → default org; graceful no-op when DB
+  offline). Suite green; live restart shows identical startup sequence.
+- **FE uncalled-endpoint cleanup — RESOLVED (stale item).** The originally
+  flagged methods (alerts/export, alerts/clear, user/me, ml/analyze, bare
+  cases/{id}) no longer exist in the client. A full dead-export scan of
+  `src/api/*` found six currently-uncalled methods
+  (`updateRosterUser`, `saveScannedAlerts`, `fetchReport`,
+  `getAnalyticsOverview`, `getAuditLogs`, `fetchIncident` — each verified
+  zero references outside `api/`). **Kept deliberately**: they are typed
+  mirrors of real, tested backend endpoints (client surface, not dead
+  server code) and removal is barred by the no-delete standing rule.
+  Re-scan after any page migration.
+- Tests: backend **121 passed / 2 skipped**, ml-service **13 passed**,
+  `tsc --noEmit` clean.
+
+Remaining parked: manual AT (screen-reader) sign-off — requires a human
+with assistive technology; everything else from the backlog is closed.
