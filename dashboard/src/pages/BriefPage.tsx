@@ -176,7 +176,7 @@ const BriefPage: React.FC = () => {
         title="Analyst Inbox"
         description={
           brief
-            ? `${brief.pending_count} decision${brief.pending_count === 1 ? "" : "s"} waiting · ${brief.handled_today} handled today · watching ${brief.watching} asset${brief.watching === 1 ? "" : "s"}.`
+            ? `${brief.alerts_today} event${brief.alerts_today === 1 ? "" : "s"} investigated today · ${brief.auto_recorded_today} automated response${brief.auto_recorded_today === 1 ? "" : "s"} recorded · ${brief.handled_today} decision${brief.handled_today === 1 ? "" : "s"} by you · ${brief.pending_count} waiting.`
             : "What NOCTRA found while you were away."
         }
         actions={

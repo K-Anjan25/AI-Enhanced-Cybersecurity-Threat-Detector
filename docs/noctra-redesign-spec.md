@@ -717,6 +717,32 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
 
+### Addendum — Backend enrichment (2026-08-27, latest pass)
+
+Three new analyst capabilities, all composed from real rows only:
+
+- **Honest activity metrics** in `GET /analyst/brief`: `alerts_today`
+  (detections investigated) + `auto_recorded_today` (SOAR responses recorded
+  automatically by rules — decision-path records are excluded via their
+  `analyst-recommended` / `revert::*` rule names; NULL rule names count as
+  automation). Home's header now reads "N events investigated today · M
+  automated responses recorded · K decisions by you · 1 waiting."
+- **Server-side case record** `GET /analyst/cases/{id}/timeline`: entries
+  from the source alert (evidence), case open, recorded SOAR action
+  (record-only noted), decision (with actor username), report, and
+  ANALYST_* audit entries (incl. consulted questions). Chronologically
+  sorted; absent rows produce no entries. CasePage now renders this for
+  pending *and* decided cases (replaces the client-composed version).
+- **Derived notifications** `GET /analyst/notifications`: pending decisions
+  + outcomes from the last 24 h. No unread-state table by design — the
+  client tracks the last-seen timestamp. The Navbar bell is back, honestly:
+  real badge count, dropdown with per-item deep links, truthful empty state.
+- Tests: 4 new (brief metric discrimination incl. approve-not-auto, timeline
+  composition + ordering + decline-has-no-action, notifications derivation,
+  HTTP incl. 404). Suite: **118 passed / 2 skipped**. tsc + build clean.
+  Live-verified on the preview stack (case #3 timeline shows actor
+  attribution; notifications list 4 outcomes + 1 pending).
+
 ### Addendum — Stage 3: brand-style application + landing rebuild (2026-08-27)
 
 - **Brand style brief locked** (§9 table): Intelligence Infrastructure /

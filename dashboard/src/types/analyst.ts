@@ -73,7 +73,34 @@ export interface Brief {
   pending_count: number;
   handled_today: number;
   watching: number;
+  alerts_today: number;
+  auto_recorded_today: number;
   top_cases: AnalystCase[];
+}
+
+export interface TimelineEntry {
+  at: string;
+  kind: "evidence" | "opened" | "action_recorded" | "decision" | "report" | "chat" | string;
+  label: string;
+  detail?: string | null;
+}
+
+export interface TimelineResponse {
+  case_id: number;
+  entries: TimelineEntry[];
+}
+
+export interface NotificationItem {
+  id: string;
+  kind: "decision_pending" | "decision_recorded" | string;
+  case_id: number;
+  title: string;
+  detail?: string | null;
+  at: string;
+}
+
+export interface NotificationsResponse {
+  items: NotificationItem[];
 }
 
 export interface ReportResponse {

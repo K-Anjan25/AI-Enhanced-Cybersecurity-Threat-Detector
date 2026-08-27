@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
-import { Search, Settings, LogOut, ShieldCheck } from "lucide-react";
+import { Search, Settings, LogOut, ShieldCheck, Bell } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
+import AnalystApi from "../../api/analystApi";
+import type { NotificationItem } from "../../types/analyst";
+
+const SEEN_KEY = "noctra_notified_at";
 
 export interface NavbarProps {
   onLogout?: () => void;
@@ -12,12 +16,40 @@ export interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
+  const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
+  const [notes, setNotes] = useState<NotificationItem[]>([]);
+  const [seenAt, setSeenAt] = useState<string>(() => localStorage.getItem(SEEN_KEY) ?? "");
   const [search, setSearch] = useState<string>("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const username: string = localStorage.getItem("username") || "User";
   const userRole: string = (localStorage.getItem("user_role") || "user").toLowerCase();
+
+  // Derived notifications (pending decisions + recent outcomes) — polled,
+  // never fabricated. Unread = items newer than the last time the menu was
+  // opened (client-tracked; the API has no unread table by design).
+  const loadNotes = useCallback(() => {
+    AnalystApi.fetchNotifications()
+      .then((res) => setNotes(res.items ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadNotes();
+    const interval = setInterval(loadNotes, 60000);
+    return () => clearInterval(interval);
+  }, [loadNotes]);
+
+  const unreadCount = notes.filter((n) => !seenAt || n.at > seenAt).length;
+
+  const openNotes = () => {
+    setIsNotesOpen((v) => !v);
+    setIsProfileMenuOpen(false);
+    const now = new Date().toISOString();
+    localStorage.setItem(SEEN_KEY, now);
+    setSeenAt(now);
+  };
 
   const handleLogout = (): void => {
     setIsProfileMenuOpen(false);
@@ -82,7 +114,80 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
         <div className="relative">
           <button
             type="button"
-            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            onClick={openNotes}
+            aria-label={`Notifications${unreadCount ? ` — ${unreadCount} unread` : ""}`}
+            aria-haspopup="menu"
+            aria-expanded={isNotesOpen}
+            title="Notifications"
+            className="relative w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer"
+          >
+            <Bell size={16} aria-hidden />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-status-critical text-brand-ink text-[9px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotesOpen && (
+            <div
+              role="menu"
+              aria-label="Notifications"
+              className="absolute right-0 mt-2 w-80 bg-app-surface border border-line-subtle rounded-xl shadow-overlay py-2 z-50 animate-scale-in"
+            >
+              <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary">
+                Notifications
+              </p>
+              {notes.length === 0 ? (
+                <p className="px-4 py-4 text-xs text-content-tertiary">
+                  Nothing needs your attention — no pending decisions, no recent outcomes.
+                </p>
+              ) : (
+                <ul className="max-h-80 overflow-y-auto">
+                  {notes.map((n) => (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setIsNotesOpen(false);
+                          navigate(`/case/${n.case_id}`);
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-app-subtle transition cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              n.kind === "decision_pending" ? "bg-status-warning" : "bg-status-success"
+                            }`}
+                            aria-hidden
+                          />
+                          <span className="text-xs font-medium text-content-primary truncate">
+                            {n.title}
+                          </span>
+                          <span className="ml-auto text-[10px] font-mono text-content-tertiary shrink-0">
+                            {new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </span>
+                        <span className="block text-[11px] text-content-tertiary mt-0.5 pl-3.5">
+                          {n.detail} · case #{n.case_id}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setIsProfileMenuOpen(!isProfileMenuOpen);
+              setIsNotesOpen(false);
+            }}
             aria-expanded={isProfileMenuOpen}
             aria-haspopup="menu"
             className="w-9 h-9 rounded-full bg-accent-primary text-brand-ink font-bold flex items-center justify-center hover:bg-accent-secondary transition ring-2 ring-accent-primary/20 cursor-pointer"

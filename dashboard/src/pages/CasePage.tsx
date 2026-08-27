@@ -28,7 +28,7 @@ import {
 import AnalystApi from "../api/analystApi";
 import { fetchAlerts } from "../api/alertApi";
 import type { Alert } from "../types/alert";
-import type { AnalystCase, BlastNode, Decision, ChatMessage } from "../types/analyst";
+import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../types/analyst";
 import { getApiError } from "../utils/getApiError";
 
 type DialogKind = "approve" | "decline" | "revert" | null;
@@ -38,6 +38,16 @@ const DECISION_BADGE: Record<Decision, { tone: "success" | "warning" | "critical
   approved: { tone: "success", label: "Approved" },
   declined: { tone: "neutral", label: "Declined" },
   reverted: { tone: "neutral", label: "Reverted" },
+};
+
+/** Timeline entry dots — kind-colored, never meaning-critical (label carries it). */
+const TIMELINE_DOT: Record<string, string> = {
+  evidence: "text-accent-secondary",
+  opened: "text-accent-primary",
+  action_recorded: "text-status-success",
+  decision: "text-status-success",
+  report: "text-content-tertiary",
+  chat: "text-content-tertiary",
 };
 
 const CasePage: React.FC = () => {
@@ -58,6 +68,10 @@ const CasePage: React.FC = () => {
 
   // Evidence state — the raw source alert linked to this case (observed fact).
   const [evidence, setEvidence] = useState<Alert | null>(null);
+
+  // Server-side case record (timeline) — composed by the backend from real
+  // rows only; hidden if unavailable rather than fabricated client-side.
+  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
 
   const loadCase = useCallback(async () => {
     if (!id) return;
@@ -85,6 +99,26 @@ const CasePage: React.FC = () => {
   useEffect(() => {
     loadCase();
   }, [loadCase]);
+
+  // Case record timeline — refetch when the case identity or its decision
+  // state changes (approve/revert updates the entries).
+  useEffect(() => {
+    let alive = true;
+    if (!data?.id) {
+      setTimeline([]);
+      return;
+    }
+    AnalystApi.fetchTimeline(data.id)
+      .then((res) => {
+        if (alive) setTimeline(res.entries ?? []);
+      })
+      .catch(() => {
+        if (alive) setTimeline([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [data?.id, data?.decision, data?.decided_at]);
 
   // Resolve the linked source alert for the evidence panel (best-effort: the
   // alert list is the only read surface; missing rows are stated honestly).
@@ -462,7 +496,7 @@ const CasePage: React.FC = () => {
       </div>
 
       {/* Decision gate */}
-      <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
+      <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card space-y-4">
         {isPending ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="min-w-0 flex-1">
@@ -527,49 +561,37 @@ const CasePage: React.FC = () => {
                 {data.report}
               </pre>
             )}
+          </div>
+        )}
 
-            {/* Case record — timeline built only from real case fields. */}
-            <div className="pt-1 border-t border-line-subtle">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary mb-2 mt-3">
-                Case record
-              </p>
-              <ol className="space-y-1.5">
-                <li className="flex items-baseline gap-2 text-xs text-content-secondary">
-                  <span className="text-accent-secondary" aria-hidden>●</span>
-                  Case opened
-                  <span className="text-content-tertiary font-mono ml-auto">
-                    {data.created_at ? new Date(data.created_at).toLocaleString() : "—"}
+        {/* Case record — server-composed from real rows only (evidence, open,
+            decision, recorded action, report, audit). */}
+        {timeline.length > 0 && (
+          <div className="pt-1 border-t border-line-subtle">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary mb-2 mt-3">
+              Case record
+            </p>
+            <ol className="space-y-1.5">
+              {timeline.map((entry, i) => (
+                <li
+                  key={`${entry.kind}-${i}`}
+                  className="flex items-baseline gap-2 text-xs text-content-secondary"
+                >
+                  <span className={TIMELINE_DOT[entry.kind] ?? "text-content-tertiary"} aria-hidden>
+                    ●
+                  </span>
+                  <span className="min-w-0">
+                    {entry.label}
+                    {entry.detail ? (
+                      <span className="text-content-tertiary"> — {entry.detail}</span>
+                    ) : null}
+                  </span>
+                  <span className="text-content-tertiary font-mono ml-auto shrink-0">
+                    {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </li>
-                {data.source_alert_id && (
-                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
-                    <span className="text-content-tertiary" aria-hidden>●</span>
-                    Linked to alert <span className="font-mono">#{data.source_alert_id}</span>
-                  </li>
-                )}
-                {data.decision !== "pending" && (
-                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
-                    <span className={data.decision === "approved" ? "text-status-success" : "text-content-tertiary"} aria-hidden>●</span>
-                    Decision <span className="font-semibold capitalize">{data.decision}</span> recorded
-                    <span className="text-content-tertiary font-mono ml-auto">
-                      {data.decided_at ? new Date(data.decided_at).toLocaleString() : "—"}
-                    </span>
-                  </li>
-                )}
-                {data.soar_action_id && (
-                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
-                    <span className="text-status-success" aria-hidden>●</span>
-                    SOAR action recorded <span className="font-mono truncate max-w-[220px]" title={data.soar_action_id}>{data.soar_action_id}</span>
-                  </li>
-                )}
-                {data.report && (
-                  <li className="flex items-baseline gap-2 text-xs text-content-secondary">
-                    <span className="text-content-tertiary" aria-hidden>●</span>
-                    Report generated
-                  </li>
-                )}
-              </ol>
-            </div>
+              ))}
+            </ol>
           </div>
         )}
       </div>

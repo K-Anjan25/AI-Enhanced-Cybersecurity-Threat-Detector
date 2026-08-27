@@ -154,18 +154,22 @@ the FE are the raw API status value mappings, which are relabeled through
 
 ## 6. Missing features / honest gaps (not bugs)
 
-1. **Notifications** — no backend feature; UI control removed rather than
-   faked. Next: define notification events (decision recorded, case opened).
-2. **"Handled automatically" metric** — `/analyst/brief` has no such count;
-   Home copy sticks to real numbers. Next: backend counts auto-closed
-   detections per day.
+1. **Notifications** — ~~no backend feature~~ **SHIPPED (backend-enrichment
+   pass)**: `GET /analyst/notifications` derives pending decisions + last-24h
+   outcomes from real rows; the Navbar bell returns with a real unread count
+   (client-tracked last-seen) and deep links.
+2. **"Handled automatically" metric** — ~~not tracked~~ **SHIPPED**:
+   `/analyst/brief` now returns `alerts_today` + `auto_recorded_today`
+   (decision-path SOAR records excluded by rule-name discriminator).
 3. **401 auto-refresh** — ~~no axios interceptor~~ **FIXED (follow-up pass)**:
    `api/axios.ts` now single-flight-refreshes on 401, retries the original
    request once, and on failure clears session flags and returns the user to
    `/login`. Auth endpoints are exempt (bad-password 401s behave normally).
-4. **Case timeline endpoint** — FE composes the case record from real case
-   fields (opened/linked alert/decision/SOAR/report); a server-side timeline
-   with audit-log joins would enrich it (Stage 2).
+4. **Case timeline endpoint** — ~~composed client-side~~ **SHIPPED**:
+   `GET /analyst/cases/{id}/timeline` composes evidence/opened/action/
+   decision/report/chat entries server-side from real rows (incl. audit
+   trail with actor attribution); CasePage renders it for pending and
+   decided cases alike.
 5. **Connectors** — static status surface (documented in spec §37).
 6. **Live streaming** — none; polling only. The fake badge is gone.
 7. Responsive widths (§16) and screen-reader chart audit not executable in

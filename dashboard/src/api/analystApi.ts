@@ -1,5 +1,12 @@
 import { api } from "./axios";
-import type { AnalystCase, Brief, ReportResponse, Connector } from "../types/analyst";
+import type {
+  AnalystCase,
+  Brief,
+  ReportResponse,
+  Connector,
+  TimelineResponse,
+  NotificationsResponse,
+} from "../types/analyst";
 import type { PaginatedResponse } from "../types/pagination";
 
 export interface FeedParams {
@@ -67,6 +74,18 @@ export const fetchReport = async (id: number | string): Promise<ReportResponse> 
   return data;
 };
 
+/** Server-side case record: entries composed from real rows only. */
+export const fetchTimeline = async (id: number | string): Promise<TimelineResponse> => {
+  const { data } = await api.get<TimelineResponse>(`/analyst/cases/${id}/timeline`);
+  return data;
+};
+
+/** Derived notifications: pending decisions + outcomes from the last 24 h. */
+export const fetchNotifications = async (): Promise<NotificationsResponse> => {
+  const { data } = await api.get<NotificationsResponse>("/analyst/notifications");
+  return data;
+};
+
 export const AnalystApi = {
   fetchBrief,
   fetchFeed,
@@ -79,6 +98,8 @@ export const AnalystApi = {
   declineCase,
   revertCase,
   fetchReport,
+  fetchTimeline,
+  fetchNotifications,
 };
 
 export default AnalystApi;
