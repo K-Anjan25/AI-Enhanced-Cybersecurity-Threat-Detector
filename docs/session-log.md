@@ -356,3 +356,24 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   load); applied `bare` in Feed, AlertList, Incidents, AdminUsers.
 - **Verification** — `tsc --noEmit && vite build` clean (1.56s); dev server
   serves `/`, `/login`, `/register` 200.
+
+## Phase 24 — /analytics errors fixed + full preview stack running
+
+- **Frontend hardening (AIAnalyticsPage)** — eliminated every runtime crash
+  point: top-threats bar width no longer divides by zero (max-count scale,
+  `|| 0` guards), Recent Detections tolerates missing arrays + invalid dates
+  (`formatDate` helper), Explainability never calls `.map` on an undefined
+  `contributions` (ML proxy can return unexpected shapes), Benchmark tolerates
+  a missing `models` array, `model_type`/`method` render conditionally.
+- **Preview stack brought up** so /analytics shows real data, not errors:
+  - backend on SQLite `noctra_preview.db` (:8000, venv in backend/.venv)
+  - ml-service on :8001 (venv in ml-service/.venv) — /ml/benchmark and
+    /ml/explain/* now respond through the API
+  - new `backend/seed_preview.py` (idempotent): demo user `demo` /
+    `DemoPass123!` (ANALYST) + 41 alerts across 8 days (mixed severity/type/
+    MITRE) so KPIs, trend, severity donut, top threats, recent all render.
+  - verified end-to-end through the Vite proxy (:3000 → :8000): login →
+    overview (41 total / 4 critical / 10 high / 10 recent) → trends (7
+    points) → benchmark (models report "skipped — artifact missing", no
+    error) → explain/log (contributions + summary + method).
+- **Verification** — `tsc --noEmit && vite build` clean.

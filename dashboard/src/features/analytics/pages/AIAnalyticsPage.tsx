@@ -22,6 +22,12 @@ import { getApiError } from "../../../utils/getApiError";
 import { CHART_TOOLTIP_STYLE, SEVERITY_COLORS } from "../../../components/ui/chartTokens";
 import { Select } from "../../../components/ui/Select";
 
+const formatDate = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+};
+
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
   critical: 0,
@@ -217,21 +223,24 @@ const AIAnalyticsPage: React.FC = () => {
                 <p className="text-sm text-content-tertiary">No threat patterns detected yet.</p>
               ) : (
                 <div className="space-y-3">
-                  {threats.map((t, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
-                      <span className="w-5 text-xs font-mono text-content-tertiary">{idx + 1}</span>
-                      <div className="flex-1">
-                        <p className="text-sm text-content-primary truncate">{t.threat}</p>
-                        <div className="h-1.5 bg-app-subtle rounded-full mt-1 overflow-hidden">
-                          <div
-                            className="h-full bg-accent-primary rounded-full"
-                            style={{ width: `${Math.min(100, (t.count / threats[0].count) * 100)}%` }}
-                          />
+                  {(() => {
+                    const maxCount = Math.max(1, ...threats.map((t) => t.count || 0));
+                    return threats.map((t, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="w-5 text-xs font-mono text-content-tertiary">{idx + 1}</span>
+                        <div className="flex-1">
+                          <p className="text-sm text-content-primary truncate">{t.threat}</p>
+                          <div className="h-1.5 bg-app-subtle rounded-full mt-1 overflow-hidden">
+                            <div
+                              className="h-full bg-accent-primary rounded-full"
+                              style={{ width: `${Math.min(100, ((t.count || 0) / maxCount) * 100)}%` }}
+                            />
+                          </div>
                         </div>
+                        <span className="text-xs font-mono text-content-secondary">{t.count}</span>
                       </div>
-                      <span className="text-xs font-mono text-content-secondary">{t.count}</span>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               )}
             </div>
@@ -258,11 +267,11 @@ const AIAnalyticsPage: React.FC = () => {
 
           <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
             <h3 className="text-sm font-semibold text-content-primary mb-4">Recent Detections</h3>
-            {overview.recent.length === 0 ? (
+            {(overview.recent || []).length === 0 ? (
               <p className="text-sm text-content-tertiary">No recent alerts.</p>
             ) : (
               <div className="space-y-2">
-                {overview.recent.map((alert) => (
+                {(overview.recent || []).map((alert) => (
                   <div
                     key={alert.id}
                     className="flex items-center justify-between gap-4 px-4 py-2.5 rounded-lg bg-app-bg border border-line-subtle"
@@ -279,7 +288,7 @@ const AIAnalyticsPage: React.FC = () => {
                         {alert.severity}
                       </span>
                       <span className="text-xs text-content-tertiary whitespace-nowrap">
-                        {alert.created_at ? new Date(alert.created_at).toLocaleString() : "-"}
+                        {formatDate(alert.created_at)}
                       </span>
                     </div>
                   </div>
@@ -339,10 +348,10 @@ const AIAnalyticsPage: React.FC = () => {
                 <div className="space-y-2">
                   <p className="text-sm text-content-secondary">{explanation.summary}</p>
                   <div className="space-y-1.5">
-                    {explanation.contributions.length === 0 ? (
+                    {!explanation.contributions?.length ? (
                       <p className="text-xs text-content-tertiary">No strong signals found.</p>
                     ) : (
-                      explanation.contributions.map((c, idx) => (
+                      (explanation.contributions || []).map((c, idx) => (
                         <div
                           key={idx}
                           className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-app-bg border border-line-subtle"
@@ -366,7 +375,9 @@ const AIAnalyticsPage: React.FC = () => {
                       ))
                     )}
                   </div>
-                  <p className="text-[11px] text-content-tertiary pt-1">{explanation.method}</p>
+                  {explanation.method && (
+                    <p className="text-[11px] text-content-tertiary pt-1">{explanation.method}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -379,7 +390,7 @@ const AIAnalyticsPage: React.FC = () => {
                 <p className="text-xs text-content-tertiary">Loading benchmark…</p>
               ) : (
                 <div className="space-y-3">
-                  {benchmark.models.map((m) => (
+                  {(benchmark.models || []).map((m) => (
                     <div
                       key={m.model}
                       className="px-4 py-3 rounded-lg bg-app-bg border border-line-subtle"
@@ -398,7 +409,7 @@ const AIAnalyticsPage: React.FC = () => {
                           {m.status}
                         </span>
                       </div>
-                      <p className="text-xs text-content-tertiary mb-2">{m.model_type}</p>
+                      {m.model_type && <p className="text-xs text-content-tertiary mb-2">{m.model_type}</p>}
                       {m.metrics ? (
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(m.metrics).map(([k, v]) =>
