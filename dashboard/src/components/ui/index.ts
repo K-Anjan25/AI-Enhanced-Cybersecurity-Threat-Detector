@@ -8,6 +8,7 @@ export { EmptyState } from "./EmptyState";
 export { Modal } from "./Modal";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Select } from "./Select";
+export { NumberInput } from "./NumberInput";
 export { PageHeader } from "./PageHeader";
 export { BackButton } from "./BackButton";
 export { Breadcrumbs } from "./Breadcrumbs";

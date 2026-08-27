@@ -37,7 +37,7 @@ export default function ResetPassword() {
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-app-bg text-content-primary">
-        <div className="p-6 bg-app-surface rounded-xl shadow-sm border border-line-subtle text-content-secondary text-sm">
+        <div className="p-6 bg-app-surface rounded-2xl shadow-card border border-line-subtle text-content-secondary text-sm">
           Invalid or missing reset token link.
         </div>
       </div>
@@ -75,7 +75,7 @@ export default function ResetPassword() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent-primary hover:opacity-90 py-2.5 rounded-lg font-semibold text-brand-ink transition disabled:opacity-50 cursor-pointer text-sm"
+            className="w-full bg-brand-gradient hover:opacity-90 py-2.5 rounded-full font-semibold text-brand-ink transition disabled:opacity-50 cursor-pointer text-sm"
           >
             {loading ? "Updating..." : "Update Password"}
           </button>

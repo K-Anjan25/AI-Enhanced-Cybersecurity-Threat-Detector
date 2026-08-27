@@ -39,7 +39,7 @@ export default function ForgotPassword({ onClose }: ForgotPasswordProps): React.
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-app-surface border border-line-subtle w-full max-w-sm rounded-xl p-6 shadow-2xl space-y-4 text-content-primary">
+      <div className="bg-app-surface border border-line-subtle w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 text-content-primary">
         <div className="flex justify-between items-center border-b border-line-subtle pb-3">
           <h3 className="text-lg font-bold text-content-primary">Reset Password</h3>
           <button

@@ -136,7 +136,7 @@ const RulesPage: React.FC = () => {
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:opacity-90 transition shadow-md"
+            className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition shadow-float"
           >
             + New Rule
           </button>
@@ -161,7 +161,7 @@ const RulesPage: React.FC = () => {
               <button
                 type="button"
                 onClick={openCreate}
-                className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:opacity-90 transition"
+                className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition"
               >
                 Create rule
               </button>
@@ -250,7 +250,7 @@ const RulesPage: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent-primary text-brand-ink hover:opacity-90 transition disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold rounded-full bg-brand-gradient text-brand-ink hover:opacity-90 transition disabled:opacity-50"
             >
               {saving ? "Saving…" : editing ? "Save Changes" : "Create Rule"}
             </button>

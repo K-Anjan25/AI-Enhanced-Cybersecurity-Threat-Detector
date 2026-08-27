@@ -117,7 +117,7 @@ export default function Profile(): React.ReactElement {
       </div>
 
       {/* Profile Details Form */}
-      <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm space-y-6">
+      <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card space-y-6">
         <div className="flex items-center gap-4 border-b border-line-subtle pb-6">
           <div className="w-16 h-16 rounded-full bg-app-subtle border-2 border-accent-primary flex items-center justify-center overflow-hidden">
             {formik.values.profileImageURL ? (
@@ -159,7 +159,7 @@ export default function Profile(): React.ReactElement {
       </div>
 
       {/* Security Settings & Password Update */}
-      <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm space-y-4 max-w-lg">
+      <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card space-y-4 max-w-lg">
         <h2 className="text-lg font-semibold text-content-primary mb-2">Security Settings</h2>
         
         <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -170,7 +170,7 @@ export default function Profile(): React.ReactElement {
               value={passwords.currentPassword}
               onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
               required
-              className="w-full bg-app-bg text-sm text-content-primary px-4 py-2.5 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
+              className="w-full bg-app-bg text-sm text-content-primary px-3.5 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
               placeholder="••••••••"
             />
           </div>
@@ -182,7 +182,7 @@ export default function Profile(): React.ReactElement {
               value={passwords.newPassword}
               onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
               required
-              className="w-full bg-app-bg text-sm text-content-primary px-4 py-2.5 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
+              className="w-full bg-app-bg text-sm text-content-primary px-3.5 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
               placeholder="••••••••"
             />
           </div>
@@ -194,7 +194,7 @@ export default function Profile(): React.ReactElement {
               value={passwords.confirmPassword}
               onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
               required
-              className="w-full bg-app-bg text-sm text-content-primary px-4 py-2.5 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
+              className="w-full bg-app-bg text-sm text-content-primary px-3.5 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
               placeholder="••••••••"
             />
           </div>

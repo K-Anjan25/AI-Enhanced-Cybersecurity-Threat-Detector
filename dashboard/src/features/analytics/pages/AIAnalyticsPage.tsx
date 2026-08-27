@@ -19,6 +19,8 @@ import type { BenchmarkReport, ExplainKind, ExplanationResponse } from "../../..
 import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
 import { PageHeader, LoadingState, StatCard } from "../../../components/ui";
 import { getApiError } from "../../../utils/getApiError";
+import { CHART_TOOLTIP_STYLE, SEVERITY_COLORS } from "../../../components/ui/chartTokens";
+import { Select } from "../../../components/ui/Select";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
@@ -31,12 +33,6 @@ const EMPTY_OVERVIEW: OverviewStats = {
   recent: [],
 };
 
-const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "#e76f51",
-  HIGH: "#f4a261",
-  MEDIUM: "#e9c46a",
-  LOW: "#84a98c",
-};
 
 const AIAnalyticsPage: React.FC = () => {
   const [overview, setOverview] = useState<OverviewStats>(EMPTY_OVERVIEW);
@@ -147,33 +143,26 @@ const AIAnalyticsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+            <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
               <h3 className="text-sm font-semibold text-content-primary">Alert Trend (7 days)</h3>
               <div className="h-64 mt-4" role="img" aria-label="Line chart: alert trend over the last 7 days, total and by severity">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
-                    <CartesianGrid stroke="#23232f" strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "#14141f",
-                        border: "1px solid #2d2d3a",
-                        borderRadius: 8,
-                        color: "#f1f5f9",
-                      }}
-                    />
-                    <Line type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="critical" stroke="#e76f51" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="high" stroke="#f4a261" strokeWidth={2} dot={false} />
+                    <CartesianGrid stroke="rgb(var(--c-line-subtle))" strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                    <Line type="monotone" dataKey="total" stroke="#e5a54b" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="critical" stroke="#f26d6d" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="high" stroke="#f0824f" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+            <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
               <h3 className="text-sm font-semibold text-content-primary">Severity Distribution</h3>
-              <div className="h-64 mt-4" role="img" aria-label="Pie chart: share of alerts by severity">
+              <div className="h-56 mt-4" role="img" aria-label="Pie chart: share of alerts by severity">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -182,29 +171,36 @@ const AIAnalyticsPage: React.FC = () => {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={80}
-                      label={(entry: any) => `${entry.name}: ${entry.value}`}
+                      outerRadius={78}
+                      innerRadius={44}
+                      paddingAngle={2}
+                      labelLine={false}
                     >
                       {pieData.map((entry) => (
-                        <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "#71717a"} />
+                        <Cell key={entry.name} fill={SEVERITY_COLORS[entry.name] || "rgb(var(--c-content-tertiary))"} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "#14141f",
-                        border: "1px solid #2d2d3a",
-                        borderRadius: 8,
-                        color: "#f1f5f9",
-                      }}
-                    />
+                    <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-3">
+                {pieData.map((entry) => (
+                  <span key={entry.name} className="inline-flex items-center gap-1.5 text-xs text-content-secondary">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: SEVERITY_COLORS[entry.name] || "rgb(var(--c-content-tertiary))" }}
+                    />
+                    {entry.name.charAt(0) + entry.name.slice(1).toLowerCase()}
+                    <span className="font-mono text-content-tertiary">{entry.value}</span>
+                  </span>
+                ))}
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+            <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
               <h3 className="text-sm font-semibold text-content-primary mb-4">Top Threats</h3>
               {threats.length === 0 ? (
                 <p className="text-sm text-content-tertiary">No threat patterns detected yet.</p>
@@ -229,7 +225,7 @@ const AIAnalyticsPage: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+            <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
               <h3 className="text-sm font-semibold text-content-primary mb-4">Detections by Type</h3>
               {Object.keys(overview.by_type || {}).length === 0 ? (
                 <p className="text-sm text-content-tertiary">No detections recorded yet.</p>
@@ -237,18 +233,11 @@ const AIAnalyticsPage: React.FC = () => {
                 <div className="h-56" role="img" aria-label="Bar chart: detection counts by alert type">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={Object.entries(overview.by_type || {}).map(([name, value]) => ({ name, value }))}>
-                      <CartesianGrid stroke="#23232f" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "#14141f",
-                          border: "1px solid #2d2d3a",
-                          borderRadius: 8,
-                          color: "#f1f5f9",
-                        }}
-                      />
-                      <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <CartesianGrid stroke="rgb(var(--c-line-subtle))" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                      <Bar dataKey="value" fill="rgb(var(--c-accent-primary))" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -256,7 +245,7 @@ const AIAnalyticsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+          <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
             <h3 className="text-sm font-semibold text-content-primary mb-4">Recent Detections</h3>
             {overview.recent.length === 0 ? (
               <p className="text-sm text-content-tertiary">No recent alerts.</p>
@@ -289,22 +278,24 @@ const AIAnalyticsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+            <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
               <h3 className="text-sm font-semibold text-content-primary mb-4">Model Explainability</h3>
               <p className="text-xs text-content-tertiary mb-4">
                 Why did the model flag this? Paste a sample to see the contributing signals.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 mb-3">
-                <select
+                <Select
+                  inline
                   value={explainKind}
                   onChange={(e) => setExplainKind(e.target.value as ExplainKind)}
-                  className="bg-app-bg border border-line-subtle rounded-lg px-3 py-2 text-sm text-content-primary focus:outline-none focus:border-accent-primary cursor-pointer"
-                >
-                  <option value="log">Security log</option>
-                  <option value="email">Email</option>
-                  <option value="network">Network flow (port,bytes)</option>
-                  <option value="dns">DNS domain</option>
-                </select>
+                  className="flex-1 sm:flex-none sm:w-52"
+                  options={[
+                    { value: "log", label: "Security log" },
+                    { value: "email", label: "Email" },
+                    { value: "network", label: "Network flow (port,bytes)" },
+                    { value: "dns", label: "DNS domain" },
+                  ]}
+                />
                 <input
                   type="text"
                   value={explainInput}
@@ -317,13 +308,13 @@ const AIAnalyticsPage: React.FC = () => {
                       ? "e.g. update-account.tk"
                       : "Paste log / email text…"
                   }
-                  className="flex-1 px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+                  className="flex-1 px-3.5 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
                 />
                 <button
                   type="button"
                   onClick={handleExplain}
                   disabled={explainLoading}
-                  className="px-4 py-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-sm font-medium text-accent-primary transition disabled:opacity-40"
+                  className="px-4 py-2 rounded-full bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-sm font-medium text-accent-primary transition disabled:opacity-40"
                 >
                   {explainLoading ? "Explaining…" : "Explain"}
                 </button>
@@ -369,7 +360,7 @@ const AIAnalyticsPage: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+            <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
               <h3 className="text-sm font-semibold text-content-primary mb-4">Model Benchmark</h3>
               {benchmarkError ? (
                 <p className="text-xs text-content-tertiary">{benchmarkError}</p>

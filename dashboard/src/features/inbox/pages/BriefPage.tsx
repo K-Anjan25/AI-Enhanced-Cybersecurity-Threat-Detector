@@ -12,6 +12,7 @@ import {
   Inbox as InboxIcon,
 } from "lucide-react";
 import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge, Term } from "../../../components/ui";
+import { Select } from "../../../components/ui/Select";
 import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
 import AnalystApi from "../../../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
@@ -188,19 +189,21 @@ const BriefPage: React.FC = () => {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <select
+            <Select
+              inline
               value={selectedScenario}
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={simulating}
               aria-label="Scenario to simulate"
-              className="flex-1 sm:flex-none min-w-[190px] bg-app-subtle border border-line-subtle text-xs text-content-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-primary/60"
-            >
-              <option value="credential_leak">Credential Leak (T1078)</option>
-              <option value="phishing_outbreak">Phishing Outbreak (T1566)</option>
-              <option value="data_exfiltration">Data Exfiltration (T1048)</option>
-              <option value="compromised_api_key">Compromised API Key (T1098)</option>
-            </select>
-            <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2 rounded-lg">
+              className="flex-1 sm:flex-none sm:min-w-[190px] bg-app-subtle text-xs"
+              options={[
+                { value: "credential_leak", label: "Credential Leak (T1078)" },
+                { value: "phishing_outbreak", label: "Phishing Outbreak (T1566)" },
+                { value: "data_exfiltration", label: "Data Exfiltration (T1048)" },
+                { value: "compromised_api_key", label: "Compromised API Key (T1098)" },
+              ]}
+            />
+            <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2">
               <Sparkles size={14} className="mr-1.5" aria-hidden />
               {simulating ? "Simulating…" : "Simulate scenario"}
             </Button>
@@ -314,7 +317,7 @@ const BriefPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(`/case/${latestCase.id}`)}
-                  className="bg-accent-primary hover:opacity-90 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-lg transition"
+                  className="bg-brand-gradient hover:opacity-90 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-full transition"
                 >
                   Review case #{latestCase.id}
                 </button>
