@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import AdminApi from "../../api/adminApi";
 import { PageHeader, SkeletonTable, EmptyState, Badge, Card, StatusBadge } from "../../components/ui";
 import { ShieldCheck } from "lucide-react";
+import { getApiError } from "../../utils/getApiError";
 
 interface RoleRow {
   role: string;
@@ -33,7 +34,7 @@ const AccessRolesPage: React.FC = () => {
       const res = await AdminApi.fetchRolesMatrix();
       setRows(res.data);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to load access roles");
+      setError(getApiError(err, "Failed to load access roles"));
     } finally {
       setLoading(false);
     }

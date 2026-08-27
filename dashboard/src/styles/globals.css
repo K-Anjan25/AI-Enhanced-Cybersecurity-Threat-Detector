@@ -47,23 +47,23 @@
 }
 
 @layer components {
-  /* SOC scrollbars for data tables and log viewers. */
+  /* SOC scrollbars for data tables and log viewers (token-driven). */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0a0f; /* app-bg Obsidian */
+    background: theme("colors.app-void.DEFAULT");
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2d2d3a;
+    background: theme("colors.line-bright.DEFAULT");
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: theme("colors.line-bright.DEFAULT");
+    background: theme("colors.content-tertiary.DEFAULT");
   }
 
   /* Compact density: tightens app shell + card padding and row gaps. */

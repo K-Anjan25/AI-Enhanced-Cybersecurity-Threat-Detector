@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import AdminApi, { OrgInfo } from "../../api/adminApi";
 import { PageHeader, SkeletonTable, EmptyState, StatusBadge, Card } from "../../components/ui";
 import { Users, Building2 } from "lucide-react";
+import { getApiError } from "../../utils/getApiError";
 
 const TenantsPage: React.FC = () => {
   const [orgs, setOrgs] = useState<OrgInfo[]>([]);
@@ -15,7 +16,7 @@ const TenantsPage: React.FC = () => {
       const res = await AdminApi.fetchOrgs();
       setOrgs(res.data);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to load tenants");
+      setError(getApiError(err, "Failed to load tenants"));
     } finally {
       setLoading(false);
     }

@@ -47,8 +47,6 @@ ADDITIVE_MIGRATIONS = [
 
 def ensure_default_org(engine) -> None:
     """Seed a default organization so existing (single-tenant) rows have a home."""
-    from sqlalchemy import text
-
     with engine.begin() as conn:
         row = conn.execute(
             text("SELECT id FROM orgs WHERE slug = 'default' LIMIT 1")
@@ -80,4 +78,4 @@ def run_additive_migrations(engine) -> None:
             try:
                 conn.execute(text(statement))
             except Exception as exc:  # pragma: no cover - non-critical on startup
-                print(f"[WARN] Migration skipped ({statement}): {exc}")
+                _LOGGER.warning("Migration skipped (%s): %s", statement, exc)

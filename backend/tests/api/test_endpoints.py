@@ -98,6 +98,28 @@ def test_login_success_resets_failed_counter(client, db_session):
     assert user.failed_login_attempts == 0
 
 
+def test_self_registration_cannot_grant_admin(client, db_session):
+    """Self-registration is ABAC-restricted: privileged roles must be rejected.
+
+    ADMIN accounts are provisioned only through the admin-only /users endpoint.
+    """
+    resp = client.post(
+        "/api/v1/register",
+        json={"username": "escaler", "email": "esc@example.com", "password": "secret123", "role": "ADMIN"},
+    )
+    assert resp.status_code == 400
+    assert db_session.query(User).filter(User.username == "escaler").first() is None
+
+    # Non-privileged roles (any casing) still register fine.
+    resp = client.post(
+        "/api/v1/register",
+        json={"username": "tierone", "email": "tierone@example.com", "password": "secret123", "role": "analyst"},
+    )
+    assert resp.status_code == 201
+    user = db_session.query(User).filter(User.username == "tierone").first()
+    assert user.role == "ANALYST"
+
+
 def test_cookie_auth_flow(client, db_session):
     """With COOKIE_AUTH enabled, login sets httpOnly cookies and /me works
     without an Authorization header."""

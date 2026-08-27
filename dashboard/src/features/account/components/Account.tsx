@@ -8,6 +8,7 @@ import { UserApi } from "../../../api/userApi";
 import { setToken } from "../../../utils/token";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import { getApiError } from "../../../utils/getApiError";
 
 export default function Account(): React.ReactElement {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function Account(): React.ReactElement {
       navigate("/");
     },
     onError: (err: any) => {
-      showError(err?.response?.data?.message || "Failed to update password");
+      showError(getApiError(err, "Failed to update password"));
     },
   });
 

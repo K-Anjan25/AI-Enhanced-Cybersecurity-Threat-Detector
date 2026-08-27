@@ -17,6 +17,7 @@ import { USER_COLUMNS } from "../../../constants/tableColumns";
 import AdminApi, { OrgInfo, AdminRosterMember } from "../../../api/adminApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import { getApiError } from "../../../utils/getApiError";
 
 export interface NewUserPayload {
   username: string;
@@ -62,7 +63,7 @@ export default function AdminUsers(): React.ReactElement {
         formik.resetForm();
       },
       onError: (err: any) => {
-        showError(err?.response?.data?.detail || "Failed to create account");
+        showError(getApiError(err, "Failed to create account"));
       },
     }
   );
@@ -71,11 +72,11 @@ export default function AdminUsers(): React.ReactElement {
     async (id) => AdminApi.deleteRosterUser(Number(id)),
     {
       onSuccess: () => {
-        showSuccess("User account status updated");
+        showSuccess("User account deleted");
         queryClient.invalidateQueries(["adminUsers"]);
       },
       onError: (err: any) => {
-        showError(err?.response?.data?.detail || "Failed to update user");
+        showError(getApiError(err, "Failed to delete user"));
       },
     }
   );
@@ -205,10 +206,9 @@ export default function AdminUsers(): React.ReactElement {
             value={formik.values.role}
             onChange={(e: ChangeEvent<HTMLSelectElement>) => formik.handleChange(e)}
             options={[
-              { value: "ANALYST", label: "Tier 1 Analyst" },
-              { value: "SENIOR_ANALYST", label: "Tier 2 Analyst" },
-              { value: "ADMIN", label: "SOC Admin" },
-              { value: "AUDITOR", label: "Auditor" },
+              { value: "USER", label: "Observer (USER)" },
+              { value: "ANALYST", label: "Tier 1 Analyst (ANALYST)" },
+              { value: "ADMIN", label: "SOC Admin (ADMIN)" },
             ]}
           />
           <TextInput form={formik} name="password" label="Temporary Password" type="password" />
@@ -217,14 +217,16 @@ export default function AdminUsers(): React.ReactElement {
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="Deactivate analyst"
+        tone="danger"
+        title="Delete analyst"
         message={
           <>
-            Deactivate access for <strong className="text-content-primary">{deleteTarget?.username}</strong>? They
-            will no longer be able to sign in until re-enabled.
+            Permanently delete the account for{" "}
+            <strong className="text-content-primary">{deleteTarget?.username}</strong>? This removes the user and
+            their alert history links. Use Block instead to keep the account but revoke sign-in.
           </>
         }
-        confirmLabel="Deactivate"
+        confirmLabel="Delete"
         cancelLabel="Cancel"
         loading={deleteUserMutation.isLoading}
         onConfirm={confirmDelete}

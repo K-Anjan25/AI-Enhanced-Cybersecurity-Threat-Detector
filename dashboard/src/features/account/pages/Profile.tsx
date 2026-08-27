@@ -7,6 +7,7 @@ import { profileSchema, initialProfileValues } from "../../../validators/profile
 import userApi from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
+import { getApiError } from "../../../utils/getApiError";
 
 export interface UserProfile {
   email?: string;
@@ -24,23 +25,23 @@ export default function Profile(): React.ReactElement {
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  // Fetch profile via UserApi matching backend endpoint GET /user/profile
+  // Fetch profile via UserApi matching backend endpoint GET /user/profile.
+  // Note: callbacks must sit at the options top level — react-query v3 treats
+  // `meta` as opaque metadata and never invokes handlers placed there.
   const { isLoading } = useQuery({
     queryKey: ["userProfile"],
     queryFn: userApi.getProfile,
-    meta: {
-      onSuccess: (data: any) => {
-        if (data) {
-          formik.setValues({
-            email: data.email || "analyst@threatdetector.local",
-            Name: data.username || data.Name || localStorage.getItem("username") || "User",
-            profileImageURL: data.profileImageURL || "",
-          });
-        }
-      },
-      onError: (err: any) => {
-        showError(err?.response?.data?.message || "Failed to load profile details");
-      },
+    onSuccess: (data: any) => {
+      if (data) {
+        formik.setValues({
+          email: data.email || "analyst@threatdetector.local",
+          Name: data.username || data.Name || localStorage.getItem("username") || "User",
+          profileImageURL: data.profileImageURL || "",
+        });
+      }
+    },
+    onError: (err: any) => {
+      showError(getApiError(err, "Failed to load profile details"));
     },
   });
 
@@ -56,7 +57,7 @@ export default function Profile(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
     },
     onError: (err: any) => {
-      showError(err?.response?.data?.message || "Failed to update profile");
+      showError(getApiError(err, "Failed to update profile"));
     },
   });
 
@@ -92,7 +93,7 @@ export default function Profile(): React.ReactElement {
       showSuccess("Password updated successfully!");
       setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err: any) {
-      showError(err?.response?.data?.message || "Failed to update password.");
+      showError(getApiError(err, "Failed to update password."));
     } finally {
       setPasswordLoading(false);
     }

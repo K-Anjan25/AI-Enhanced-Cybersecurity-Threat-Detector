@@ -99,7 +99,7 @@ def predict_email(email) -> dict:
         blended = min(heuristic_score, 1.0)
 
     is_attack = blended >= ATTACK_THRESHOLD
-    if is_attack and "heuristic" not in [i for i in indicators]:
+    if is_attack and model is not None:
         indicators.append("matches learned phishing signature")
     indicators = list(dict.fromkeys(indicators))
 

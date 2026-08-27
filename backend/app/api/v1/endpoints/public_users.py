@@ -60,10 +60,20 @@ def create_user(
     username = payload.get("username")
     email = payload.get("email")
     password = payload.get("password")
-    role = payload.get("role", "USER")
+    role = (payload.get("role") or "USER").upper()
 
     if not username or not email or not password:
         raise HTTPException(status_code=400, detail="username, email and password are required")
+
+    # Roles outside the ABAC catalog silently fall back to USER permissions;
+    # reject them so the provisioned role is the role that is enforced.
+    from app.core.abac import ROLE_PERMISSIONS
+
+    if role not in ROLE_PERMISSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown role '{role}'; valid roles: {', '.join(sorted(ROLE_PERMISSIONS))}",
+        )
 
     existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
     if existing:

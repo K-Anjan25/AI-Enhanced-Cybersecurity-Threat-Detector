@@ -1,5 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "react-query";
+import AdminApi from "../../../api/adminApi";
+import RulesApi from "../../../api/rulesApi";
 
 export interface DashboardMetric {
   title: string;
@@ -9,11 +12,28 @@ export interface DashboardMetric {
 }
 
 export default function AdminDashboard(): React.ReactElement {
+  // Real platform metrics from the admin endpoints this role can already read.
+  const { data: orgs } = useQuery(["adminOrgs"], AdminApi.fetchOrgs, {
+    onError: () => undefined,
+  });
+  const { data: users = [] } = useQuery(
+    ["adminUsers", ""],
+    () => AdminApi.fetchRoster({}).catch(() => []),
+    { onError: () => undefined }
+  );
+  const { data: rules } = useQuery(
+    ["adminRules"],
+    () => RulesApi.fetchRules(1, 1).catch(() => null),
+    { onError: () => undefined }
+  );
+
+  const activeUsers = users.filter((u) => !u.is_blocked && u.is_active !== false).length;
+
   const metrics: DashboardMetric[] = [
-    { title: "Active SOC Analysts", value: "12", status: "Online", color: "text-status-success" },
+    { title: "Provisioned Users", value: String(users.length), status: `${activeUsers} active`, color: "text-status-success" },
+    { title: "Tenant Workspaces", value: String(orgs?.total ?? 0), status: orgs?.total ? "Isolated" : "Seeding", color: "text-accent-primary" },
+    { title: "Detection Rules", value: String(rules?.total ?? 0), status: "Signature + heuristic", color: "text-status-warning" },
     { title: "AI Detection Engine", value: "v2.0.0", status: "Operational", color: "text-status-success" },
-    { title: "Ingested Logs / Min", value: "14,250", status: "Normal Load", color: "text-accent-primary" },
-    { title: "Active System Rules", value: "84", status: "4 Updated Today", color: "text-status-warning" },
   ];
 
   const cardCls =

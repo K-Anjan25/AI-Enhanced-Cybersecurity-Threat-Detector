@@ -10,10 +10,15 @@ def test_severity_to_score_mapping():
 
 
 def test_score_to_severity_network():
-    assert score_to_severity(0.5, "network") == "LOW"
-    assert score_to_severity(-0.1, "network") == "MEDIUM"
-    assert score_to_severity(-0.3, "network") == "HIGH"
-    assert score_to_severity(-0.8, "network") == "CRITICAL"
+    """Network scores share the ml-service 0..1 contract (higher = worse).
+
+    The ml-service normalizes the IsolationForest decision score to 0..1
+    before returning it, so network severities use the same bands as log.
+    """
+    assert score_to_severity(0.95, "network") == "CRITICAL"
+    assert score_to_severity(0.8, "network") == "HIGH"
+    assert score_to_severity(0.5, "network") == "MEDIUM"
+    assert score_to_severity(0.1, "network") == "LOW"
 
 
 def test_score_to_severity_log():

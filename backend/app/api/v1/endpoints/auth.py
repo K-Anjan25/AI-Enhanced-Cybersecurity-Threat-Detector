@@ -100,6 +100,15 @@ def register(data: dict, db: Session = Depends(get_db)):
     if not username or not email or not password:
         raise HTTPException(status_code=400, detail="username, email and password are required")
 
+    # Self-registration is ABAC-restricted to non-privileged roles; ADMIN
+    # accounts are provisioned through the admin-only /users endpoint.
+    role = (data.get("role") or "user").upper()
+    if role not in ("USER", "ANALYST"):
+        raise HTTPException(
+            status_code=400,
+            detail="Self-registration is limited to USER or ANALYST roles",
+        )
+
     existing = db.query(User).filter(
         (User.username == username) | (User.email == email)
     ).first()
@@ -117,7 +126,7 @@ def register(data: dict, db: Session = Depends(get_db)):
         username=username,
         password=get_password_hash(password),
         email=email,
-        role=data.get("role", "user"),
+        role=role,
         org_id=default_org.id,
     )
     db.add(user)

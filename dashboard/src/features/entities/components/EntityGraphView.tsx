@@ -22,6 +22,8 @@ const typeColor: Record<string, string> = {
   hash: "#c9ada7",
   email: "#84a98c",
   file: "#e76f51",
+  account: "#2563eb",
+  host: "#7286d3",
 };
 
 const typeLabel: Record<string, string> = {
@@ -30,6 +32,8 @@ const typeLabel: Record<string, string> = {
   hash: "Hash",
   email: "Email",
   file: "File",
+  account: "Account",
+  host: "Host",
 };
 
 const typeFill: Record<string, string> = {
@@ -38,6 +42,8 @@ const typeFill: Record<string, string> = {
   hash: "rgba(201,173,167,0.15)",
   email: "rgba(132,169,140,0.15)",
   file: "rgba(231,111,81,0.15)",
+  account: "rgba(37,99,235,0.15)",
+  host: "rgba(114,134,211,0.15)",
 };
 
 interface Positioned {
@@ -123,7 +129,8 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
 
   const nodeRadius = (entity: ThreatEntity): number => {
     const base = 10;
-    const scale = Math.min(entity.risk_score / 100, 1) * 6;
+    // Entity risk scores are stored on a 0..1 scale (aligned with alert scores).
+    const scale = Math.min(entity.risk_score, 1) * 6;
     return Math.max(base, Math.min(base + scale, 18));
   };
 
@@ -181,7 +188,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
           <text y={-r - 6} textAnchor="middle" fontSize={9} fill={color} className="font-semibold uppercase tracking-wider">
             {isRoot ? `Root · ${typeLabel[entity.entity_type]}` : typeLabel[entity.entity_type]}
           </text>
-          <title>{`${typeLabel[entity.entity_type]}: ${entity.value}\nRisk: ${entity.risk_score.toFixed(1)}\nOccurrences: ${entity.occurrences}`}</title>
+          <title>{`${typeLabel[entity.entity_type]}: ${entity.value}\nRisk: ${entity.risk_score.toFixed(2)}\nOccurrences: ${entity.occurrences}`}</title>
         </g>
       );
     });

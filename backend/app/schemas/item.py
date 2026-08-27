@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class DetectionRuleBase(BaseModel):
@@ -24,11 +24,10 @@ class DetectionRuleUpdate(BaseModel):
 
 
 class DetectionRuleOut(DetectionRuleBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class IpReputationOut(BaseModel):
@@ -40,8 +39,7 @@ class IpReputationOut(BaseModel):
     notes: Optional[str] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EngineSettings(BaseModel):
@@ -66,5 +64,4 @@ class AuditLogOut(BaseModel):
     ip_address: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

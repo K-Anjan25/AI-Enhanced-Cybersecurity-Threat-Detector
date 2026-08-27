@@ -13,6 +13,7 @@ import TextInput from "../../components/common/TextInput";
 import { showSuccess } from "../../utils/showSuccess";
 import { showError } from "../../utils/showError";
 import { ShieldOff } from "lucide-react";
+import { getApiError } from "../../utils/getApiError";
 
 interface ReputationForm {
   ip_address: string;
@@ -55,7 +56,7 @@ const ReputationPage: React.FC = () => {
       const res = await ReputationApi.fetchReputation();
       setRows(res.data);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to load IP reputation");
+      setError(getApiError(err, "Failed to load IP reputation"));
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,7 @@ const ReputationPage: React.FC = () => {
       setModalOpen(false);
       load();
     } catch (err: any) {
-      showError(err?.response?.data?.detail || "Failed to save reputation entry");
+      showError(getApiError(err, "Failed to save reputation entry"));
     } finally {
       setSaving(false);
     }
@@ -107,7 +108,7 @@ const ReputationPage: React.FC = () => {
       }
       load();
     } catch (err: any) {
-      showError(err?.response?.data?.detail || "Failed to update block status");
+      showError(getApiError(err, "Failed to update block status"));
     } finally {
       setBlocking(null);
     }

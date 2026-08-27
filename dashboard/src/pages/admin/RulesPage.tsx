@@ -15,6 +15,7 @@ import TextInput from "../../components/common/TextInput";
 import { showSuccess } from "../../utils/showSuccess";
 import { showError } from "../../utils/showError";
 import { ShieldCheck } from "lucide-react";
+import { getApiError } from "../../utils/getApiError";
 
 interface RuleForm {
   name: string;
@@ -43,7 +44,7 @@ const RulesPage: React.FC = () => {
       const res = await RulesApi.fetchRules();
       setRules(res.data);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to load detection rules");
+      setError(getApiError(err, "Failed to load detection rules"));
     } finally {
       setLoading(false);
     }
@@ -93,7 +94,7 @@ const RulesPage: React.FC = () => {
       setModalOpen(false);
       load();
     } catch (err: any) {
-      showError(err?.response?.data?.detail || "Failed to save rule");
+      showError(getApiError(err, "Failed to save rule"));
     } finally {
       setSaving(false);
     }
@@ -105,7 +106,7 @@ const RulesPage: React.FC = () => {
       showSuccess(rule.is_active ? "Rule deactivated" : "Rule activated");
       load();
     } catch (err: any) {
-      showError(err?.response?.data?.detail || "Failed to toggle rule");
+      showError(getApiError(err, "Failed to toggle rule"));
     }
   };
 
@@ -118,7 +119,7 @@ const RulesPage: React.FC = () => {
       setDeleteTarget(null);
       load();
     } catch (err: any) {
-      showError(err?.response?.data?.detail || "Failed to delete rule");
+      showError(getApiError(err, "Failed to delete rule"));
     } finally {
       setDeleting(false);
     }
