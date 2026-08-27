@@ -75,7 +75,7 @@ const FeedPage: React.FC = () => {
 
       <Card padded={false} className="overflow-hidden">
         {loading ? (
-          <SkeletonTable rows={6} cols={4} />
+          <SkeletonTable rows={6} cols={4} bare />
         ) : cases.length === 0 ? (
           <EmptyState
             title="No cases yet"

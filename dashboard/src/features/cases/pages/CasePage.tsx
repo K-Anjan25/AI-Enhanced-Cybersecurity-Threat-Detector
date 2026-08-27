@@ -22,8 +22,8 @@ import {
   SeverityBadge,
   StatusBadge,
   ConfirmDialog,
-  LoadingState,
   EmptyState,
+  SkeletonChart,
   Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
@@ -210,7 +210,22 @@ const CasePage: React.FC = () => {
     return map;
   }, [data]);
 
-  if (loading) return <LoadingState label="Opening the case…" />;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">
+        <PageHeader
+          title="Case"
+          backTo="/feed"
+          crumbs={[{ label: "Decisions", to: "/feed" }, { label: "Case" }]}
+        />
+        <SkeletonChart className="h-56" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChart className="lg:col-span-2 h-72" />
+          <SkeletonChart className="h-72" />
+        </div>
+      </div>
+    );
+  }
 
   if (error && !data) {
     return (

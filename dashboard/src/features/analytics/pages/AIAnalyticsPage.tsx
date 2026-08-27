@@ -17,7 +17,7 @@ import AnalyticsApi from "../../../api/analyticsApi";
 import MlApi from "../../../api/mlApi";
 import type { BenchmarkReport, ExplainKind, ExplanationResponse } from "../../../types/ml";
 import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
-import { PageHeader, LoadingState, StatCard } from "../../../components/ui";
+import { PageHeader, SkeletonChart, SkeletonList, SkeletonStatCard, StatCard } from "../../../components/ui";
 import { getApiError } from "../../../utils/getApiError";
 import { CHART_TOOLTIP_STYLE, SEVERITY_COLORS } from "../../../components/ui/chartTokens";
 import { Select } from "../../../components/ui/Select";
@@ -133,7 +133,18 @@ const AIAnalyticsPage: React.FC = () => {
       )}
 
       {loading ? (
-        <LoadingState label="Loading analytics" />
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonStatCard key={i} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SkeletonChart className="h-80" />
+            <SkeletonChart className="h-80" />
+          </div>
+          <SkeletonList rows={4} />
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

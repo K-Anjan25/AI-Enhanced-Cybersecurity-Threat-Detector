@@ -215,7 +215,7 @@ legacy overview's honest name.
 | --- | --- |
 | Brand style | Intelligence Infrastructure |
 | Wordmark | Sora SemiBold, uppercase, slightly extended tracking; sparkle-A detail (exact logo spec, supersedes the interim neo-grotesk lockup) |
-| Logo style | Folded-ribbon "N" (blade/origami zigzag), diagonal violet gradient #6C5CE7→#9D7CFF, 4-point insight sparkle #B18CFF; divider lockup |
+| Logo style | Crescent moon (night watch), diagonal violet gradient #6C5CE7→#9D7CFF, 4-point insight sparkle #B18CFF at the upper tip; divider lockup |
 | Visual language | Editorial Enterprise |
 | Interface style | Operational Minimalism |
 | Motion style | Purposeful Intelligence (state-change only; reduced-motion honored) |
@@ -273,23 +273,24 @@ Do / don't:
 | Errors | "Couldn't reach NOCTRA. Retrying is safe." + real API detail |
 | Fallback AI | "Built-in reasoning" badge when `analysis.fallback` is true |
 
-## 12. Logo Concept — "The Insight Fold" (exact brand spec, 2026-08-27)
+## 12. Logo Concept — "The Night Crescent" (exact brand spec, 2026-08-27)
 
-A bold geometric **N** built as a folded ribbon — a blade/origami zigzag with
-faceted planes — carrying a 4-pointed **insight sparkle** at its top-right
-corner. Reads as: N = name, fold = structured intelligence, sparkle = the
-finding/insight. Supersedes the interim "Night Signal" arc-and-dot mark.
+A **crescent moon** — the night watch — carrying a 4-pointed **insight
+sparkle** at its upper tip. Reads as: moon = the analyst who never sleeps,
+crescent = watchful coverage, sparkle = the finding/insight. Confirmed by
+the direction-L design review (replaces the interim folded-ribbon "N").
 
-Construction (32-grid): one continuous ribbon path (left bar → diagonal →
-right bar), diagonal gradient `#6C5CE7` (top-left) → `#9D7CFF`
-(bottom-right); two flat facet overlays (white 10%/5%) along the fold line
-through the diagonal band — flat vector, no 3D, no bevel, no outer glow.
-Sparkle `#B18CFF` at the N's top-right corner.
+Construction (32-grid): full disc r=12 centred (16,16) with a bite disc
+r=9 centred (21,11) removed via mask — a smooth, exact crescent (no
+hand-drawn arcs). Diagonal gradient `#6C5CE7` (top-left) → `#9D7CFF`
+(bottom-right) across the disc; flat vector, no 3D, no bevel, no glow.
+Sparkle `#B18CFF` above the crescent's upper tip.
 
 ## 13. SVG Logo Specification
 
-- **Icon:** folded-ribbon N, gradient `#6C5CE7→#9D7CFF` diagonal, sparkle
-  `#B18CFF`. Legible at 16px; facet overlays may drop below 20px.
+- **Icon:** crescent moon (disc r=12 @ (16,16), bite r=9 @ (21,11) via mask),
+  gradient `#6C5CE7→#9D7CFF` diagonal, sparkle `#B18CFF` at the upper tip.
+  Legible at 16px; sparkle may drop below 20px.
 - **Wordmark:** "NOCTRA" — Sora SemiBold, uppercase, tracking +50…+80;
   white `#FFFFFF` on dark, near-black on light (adaptive token). The "A"
   carries a small `#B18CFF` sparkle at its apex.
@@ -298,11 +299,11 @@ Sparkle `#B18CFF` at the N's top-right corner.
   logotype exemption applies).
 - **Lockup:** [icon] [thin vertical divider] [wordmark over tagline];
   clear space = one sparkle height on all sides.
-- **Favicon/app icon:** rounded-square badge `#0B0E1A` (r=8) with the mark
-  at 85% scale — `public/favicon.svg`; sizes 512/192/64/32/16 via the same
-  SVG.
-- **Monochrome:** everything `currentColor` (facet overlays off) for loading
-  and empty states.
+- **Favicon/app icon:** rounded-square badge `#0B0E1A` (r=8) with the
+  crescent mark at 85% scale — `public/favicon.svg`; sizes 512/192/64/32/16
+  via the same SVG.
+- **Monochrome:** everything `currentColor` (sparkle on) for loading and
+  empty states.
 - Implementation: `components/BrandLogo.tsx` (single source; `collapsed`,
   `size`, `withWordmark`, `mono` props). Brand sheet:
   `docs/brand/noctra-logo-sheet.png`.

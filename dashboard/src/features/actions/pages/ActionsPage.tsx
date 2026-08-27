@@ -13,7 +13,7 @@ import {
   Card,
   Button,
   StatusBadge,
-  LoadingState,
+  SkeletonTable,
   EmptyState,
   Term,
 } from "../../../components/ui";
@@ -74,7 +74,18 @@ const ActionsPage: React.FC = () => {
     );
   });
 
-  if (loading) return <LoadingState label="Loading containment actions log…" />;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">
+        <PageHeader
+          title="Actions Log"
+          crumbs={[{ label: "Overview", to: "/" }, { label: "Actions" }]}
+          description="Every containment action NOCTRA has recorded for your review."
+        />
+        <SkeletonTable rows={7} cols={4} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">

@@ -21,7 +21,9 @@ import {
   CardHeader,
   SeverityBadge,
   StatusBadge,
-  LoadingState,
+  Skeleton,
+  SkeletonChart,
+  SkeletonStatCard,
   EmptyState,
   Term,
 } from "../../../components/ui";
@@ -91,7 +93,37 @@ const DashboardOverviewPage: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <LoadingState label="Loading SOC overview" />;
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="h-7 w-44" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <Skeleton className="h-3.5 w-80 max-w-full mt-2" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="h-9 w-32 rounded-full" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChart className="lg:col-span-2 h-80" />
+          <SkeletonChart className="h-80" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   const criticalAlerts = liveAlerts
