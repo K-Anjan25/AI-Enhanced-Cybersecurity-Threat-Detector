@@ -2,10 +2,8 @@ import React from "react";
 import { useCountUp, useInView } from "../../hooks";
 
 /**
- * TrustBar — the WooCommerce proof strip: real, verifiable numbers from this
- * repository (test suites, connectors, deployment modes) rendered with the
- * count-up hook. Nothing fabricated — this is the trust-signal pattern applied
- * to facts we can actually demonstrate.
+ * TrustBar — proof strip of real, verifiable numbers (test suites, connectors,
+ * run modes) in Apple style: quiet dividers, tabular mono numerals.
  */
 const STATS = [
   { value: 114, suffix: "", label: "Backend tests passing" },
@@ -18,19 +16,19 @@ const StatItem: React.FC<{ value: number; suffix: string; label: string }> = ({ 
   const [ref, inView] = useInView<HTMLDivElement>();
   const n = useCountUp(value, inView);
   return (
-    <div ref={ref} className="flex flex-col items-center text-center px-4 py-6">
-      <p className="text-display-lg font-bold font-mono text-content-primary tabular-nums">
+    <div ref={ref} className="flex flex-col items-center text-center px-4 py-8">
+      <p className="text-4xl font-semibold font-mono text-neutral-900 tabular-nums tracking-tight">
         {n}
         {suffix}
       </p>
-      <p className="mt-1.5 text-xs text-content-secondary max-w-[14rem]">{label}</p>
+      <p className="mt-2 text-xs text-neutral-500 max-w-[13rem]">{label}</p>
     </div>
   );
 };
 
 const TrustBar: React.FC = () => (
-  <section aria-label="Proof points" className="border-y border-line-subtle bg-app-surface">
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-2 lg:grid-cols-4 gap-y-6 divide-x divide-line-subtle">
+  <section aria-label="Proof points" className="bg-white border-y border-black/5">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-2 lg:grid-cols-4 divide-x divide-black/5">
       {STATS.map((s) => (
         <StatItem key={s.label} {...s} />
       ))}

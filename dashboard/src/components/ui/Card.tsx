@@ -18,10 +18,10 @@ export const Card: React.FC<CardProps> = ({
 }) => (
   <div
     className={cn(
-      "bg-app-surface border border-line-subtle rounded-xl shadow-card",
+      "bg-white border border-black/5 rounded-2xl shadow-card",
       padded && "p-5",
       interactive &&
-        "hover:bg-app-surface-raised hover:border-accent-primary/20 hover:shadow-raised transition-all cursor-pointer focus-visible:outline-none",
+        "hover:shadow-float hover:-translate-y-px hover:border-accent-primary/20 transition-all cursor-pointer focus-visible:outline-none",
       className
     )}
     {...props}
@@ -45,8 +45,8 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
 }) => (
   <div className={cn("flex items-start justify-between gap-3", className)}>
     <div>
-      <h3 className="text-sm font-semibold text-content-primary tracking-tight">{title}</h3>
-      {description && <p className="text-xs text-content-tertiary mt-0.5">{description}</p>}
+      <h3 className="text-sm font-semibold text-neutral-900 tracking-tight">{title}</h3>
+      {description && <p className="text-xs text-neutral-400 mt-0.5">{description}</p>}
     </div>
     {action}
   </div>
