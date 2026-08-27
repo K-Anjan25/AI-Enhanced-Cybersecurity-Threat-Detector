@@ -3,17 +3,26 @@ import { cn } from "./Button";
 
 /**
  * Accessible loading spinner with a text label for assistive tech.
+ * `light` renders a white ring — use inside gradient/primary buttons.
  */
-export const Spinner: React.FC<{ label?: string; className?: string }> = ({
-  label = "Loading",
-  className,
-}) => (
+export const Spinner: React.FC<{
+  label?: string;
+  className?: string;
+  variant?: "default" | "light";
+}> = ({ label = "Loading", className, variant = "default" }) => (
   <span
     role="status"
     aria-label={label}
     className={cn("inline-block", className)}
   >
-    <span className="block w-4 h-4 border-2 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
+    <span
+      className={cn(
+        "block w-4 h-4 border-2 rounded-full animate-spin",
+        variant === "light"
+          ? "border-app-bg/60 border-t-app-bg"
+          : "border-accent-primary/30 border-t-accent-primary"
+      )}
+    />
     <span className="sr-only">{label}…</span>
   </span>
 );

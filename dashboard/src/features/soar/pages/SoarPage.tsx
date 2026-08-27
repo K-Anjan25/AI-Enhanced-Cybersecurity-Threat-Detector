@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import SoarApi from "../../../api/soarApi";
 import RulesApi from "../../../api/rulesApi";
 import type { SoarAction, SoarPlaybook } from "../../../types/soar";
+import { NumberInput } from "../../../components/ui";
 import {
   PageHeader,
   Card,
@@ -261,7 +262,7 @@ const SoarPage: React.FC = () => {
             <button
               type="submit"
               disabled={evaluating || !evalMessage.trim()}
-              className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {evaluating ? "Testing…" : "Test rules"}
             </button>
@@ -283,20 +284,19 @@ const SoarPage: React.FC = () => {
               <label htmlFor="trigger-id" className="block text-sm font-medium text-content-secondary mb-1.5">
                 Alert ID
               </label>
-              <input
+              <NumberInput
                 id="trigger-id"
-                type="number"
                 min={1}
                 value={triggerId}
-                onChange={(e) => setTriggerId(e.target.value)}
+                onChange={(v) => setTriggerId(Number.isNaN(v) ? "" : String(v))}
                 placeholder="e.g. 42"
-                className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm font-mono text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary transition"
+                fieldClassName="font-mono"
               />
             </div>
             <button
               type="submit"
               disabled={triggering || !triggerId}
-              className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {triggering ? "Triggering…" : "Trigger & record"}
             </button>
@@ -352,7 +352,7 @@ const SoarPage: React.FC = () => {
             <button
               type="submit"
               disabled={pbSaving || !pbRuleId || !pbName.trim()}
-              className="mt-1.5 w-full px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="mt-1.5 w-full px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {pbSaving ? "Saving…" : "Add playbook"}
             </button>

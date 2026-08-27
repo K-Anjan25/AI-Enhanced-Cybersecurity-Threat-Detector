@@ -11,7 +11,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({ className }) => (
 );
 
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn("bg-app-surface border border-line-subtle rounded-xl p-5", className)}>
+  <div className={cn("bg-app-surface border border-line-subtle rounded-2xl p-5", className)}>
     <Skeleton className="h-3 w-24 mb-3" />
     <Skeleton className="h-8 w-16" />
   </div>
@@ -33,7 +33,7 @@ export const SkeletonTable: React.FC<{ rows?: number; cols?: number }> = ({
   rows = 6,
   cols = 4,
 }) => (
-  <div className="bg-app-surface border border-line-subtle rounded-xl shadow-card overflow-hidden">
+  <div className="bg-app-surface border border-line-subtle rounded-2xl shadow-card overflow-hidden">
     <div className="px-5 py-3.5 border-b border-line-subtle bg-app-subtle/50 flex gap-6">
       {Array.from({ length: cols }).map((_, i) => (
         <Skeleton key={i} className="h-3 w-20" />

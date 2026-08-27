@@ -27,6 +27,7 @@ import {
 } from "../../../components/ui";
 import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
 import { getApiError } from "../../../utils/getApiError";
+import { CHART_TOOLTIP_STYLE } from "../../../components/ui/chartTokens";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
@@ -38,14 +39,6 @@ const EMPTY_OVERVIEW: OverviewStats = {
   by_type: {},
   recent: [],
 };
-
-const TOOLTIP_STYLE = {
-  background: "#1e1e2b",
-  border: "1px solid #2d2d3a",
-  borderRadius: 10,
-  color: "#f1f5f9",
-  fontSize: 12,
-} as const;
 
 const DashboardOverviewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -167,7 +160,7 @@ const DashboardOverviewPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate("/incidents")}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90 transition shadow-md"
+            className="rounded-full bg-brand-gradient px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90 transition shadow-float"
           >
             New Incident
           </button>
@@ -198,16 +191,16 @@ const DashboardOverviewPage: React.FC = () => {
               <AreaChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#9d7cff" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#9d7cff" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#23232f" strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Area type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={2} fill="url(#gTotal)" />
-                <Line type="monotone" dataKey="critical" stroke="#e76f51" strokeWidth={2} dot={false} />
+                <CartesianGrid stroke="rgb(var(--c-line-subtle))" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} />
+                <YAxis tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} allowDecimals={false} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Area type="monotone" dataKey="total" stroke="#9d7cff" strokeWidth={2} fill="url(#gTotal)" />
+                <Line type="monotone" dataKey="critical" stroke="#f26d6d" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -294,8 +287,7 @@ const DashboardOverviewPage: React.FC = () => {
         ].map((q) => (
           <Link
             key={q.label}
-            to={q.path}
-            className="bg-app-surface border border-line-subtle rounded-xl p-5 shadow-card hover:bg-app-surface-raised hover:border-line-bright transition group"
+            to={q.path} className="bg-app-surface border border-line-subtle rounded-2xl p-5 shadow-card hover:bg-app-surface-raised hover:border-line-bright transition group"
           >
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-accent-primary/10 text-accent-primary font-bold text-xs mb-3 group-hover:bg-accent-primary/20 transition">
               {q.icon}

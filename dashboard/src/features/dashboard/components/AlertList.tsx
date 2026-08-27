@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { fetchAlerts } from "../../../api/alertApi";
 import AlertDetailModal from "./AlertDetailModal";
 import { SeverityBadge, SkeletonTable, EmptyState } from "../../../components/ui";
+import { Select } from "../../../components/ui/Select";
 
 interface AlertListProps {
   extraAlerts?: any[];
@@ -101,25 +102,27 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
             />
           </div>
 
-          <select
-            className="px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary transition cursor-pointer"
+          <Select
+            inline
+            className="min-w-[140px]"
             value={riskFilter}
             onChange={(e) => {
               setRiskFilter(e.target.value);
               setCurrentPage(1);
             }}
             aria-label="Filter by severity"
-          >
-            <option value="All">All Risks</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
+            options={[
+              { value: "All", label: "All Risks" },
+              { value: "Critical", label: "Critical" },
+              { value: "High", label: "High" },
+              { value: "Medium", label: "Medium" },
+              { value: "Low", label: "Low" },
+            ]}
+          />
         </div>
       </div>
 
-      <div className="bg-app-surface rounded-xl border border-line-subtle shadow-card overflow-hidden">
+      <div className="bg-app-surface rounded-2xl border border-line-subtle shadow-card overflow-hidden">
         {loading ? (
           <SkeletonTable rows={6} cols={3} />
         ) : currentPaginatedItems.length === 0 ? (

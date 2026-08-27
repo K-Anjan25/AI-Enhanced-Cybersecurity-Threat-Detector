@@ -3,6 +3,7 @@ import { useFormik } from "formik";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import TextInput from "../../../components/common/TextInput";
+import { Spinner } from "../../../components/ui";
 import { RootState } from "../../../store/store";
 import ForgotPassword from "../components/ForgotPassword";
 import loginForm from "../../../validators/loginValidator";
@@ -101,7 +102,7 @@ export default function Login(): React.ReactElement {
           >
             {form.isSubmitting || loading ? (
               <>
-                <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-app-bg border-t-transparent mr-2" />
+                <Spinner variant="light" className="mr-2" />
                 Signing In...
               </>
             ) : (

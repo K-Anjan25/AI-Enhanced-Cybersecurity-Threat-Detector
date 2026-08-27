@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import EntityApi from "../../../api/entityApi";
 import { getApiError } from "../../../utils/getApiError";
 import type { EntityGraphResponse, ThreatEntity } from "../../../types/entity";
+import { Select } from "../../../components/ui/Select";
 
 interface Props {
   root: ThreatEntity;
@@ -17,13 +18,13 @@ const RING_SPACING = 120;
 const MAX_DEPTH = 4;
 
 const typeColor: Record<string, string> = {
-  ip: "#f59e0b",
-  domain: "#e9c46a",
-  hash: "#c9ada7",
-  email: "#84a98c",
-  file: "#e76f51",
-  account: "#2563eb",
-  host: "#7286d3",
+  ip: "#e5a54b",
+  domain: "#e77a8b",
+  hash: "#7e87a3",
+  email: "#4fb8a8",
+  file: "#f26d6d",
+  account: "#8b7cf6",
+  host: "#9d7cff",
 };
 
 const typeLabel: Record<string, string> = {
@@ -146,7 +147,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
           y1={source.y}
           x2={target.x}
           y2={target.y}
-          stroke="#71717a"
+          stroke="rgb(var(--c-line-bright))"
           strokeWidth={1.25}
           strokeDasharray={edge.relation === "communicates" ? "0" : "4 4"}
           opacity={0.7}
@@ -204,7 +205,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-app-surface w-full max-w-4xl rounded-xl p-6 shadow-2xl border border-line-subtle max-h-[92vh] flex flex-col">
+      <div className="bg-app-surface w-full max-w-4xl rounded-2xl p-6 shadow-2xl border border-line-subtle max-h-[92vh] flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold text-content-primary truncate">Attack graph: {root.value}</h3>
@@ -216,18 +217,14 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
             <label htmlFor="graph-depth" className="text-xs font-medium text-content-secondary">
               Depth
             </label>
-            <select
+            <Select
+              inline
               id="graph-depth"
-              value={depth}
+              value={String(depth)}
               onChange={(e) => setDepth(Number(e.target.value))}
-              className="px-2.5 py-1.5 bg-app-bg border border-line-subtle rounded-lg text-xs text-content-primary focus:outline-none focus:border-accent-primary transition cursor-pointer"
-            >
-              {[1, 2, 3, 4].map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
+              className="w-auto px-2.5 py-1.5 rounded-lg text-xs"
+              options={[1, 2, 3, 4].map((d) => ({ value: String(d), label: String(d) }))}
+            />
             <button
               type="button"
               onClick={onClose}

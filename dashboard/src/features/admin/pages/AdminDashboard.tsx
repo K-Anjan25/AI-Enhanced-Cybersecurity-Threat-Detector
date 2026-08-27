@@ -38,7 +38,7 @@ export default function AdminDashboard(): React.ReactElement {
   ];
 
   const cardCls =
-    "bg-app-surface hover:bg-line-bright/40 border border-line-subtle p-6 rounded-xl shadow-sm transition flex flex-col justify-between group";
+    "bg-app-surface hover:bg-line-bright/40 border border-line-subtle p-6 rounded-2xl shadow-card transition flex flex-col justify-between group";
 
   return (
     <div className="space-y-8">
@@ -51,7 +51,7 @@ export default function AdminDashboard(): React.ReactElement {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((item, idx) => (
-          <div key={idx} className="bg-app-surface border border-line-subtle rounded-xl p-5 shadow-sm">
+          <div key={idx} className="bg-app-surface border border-line-subtle rounded-2xl p-5 shadow-card">
             <span className="text-xs font-medium uppercase tracking-wider text-content-tertiary">
               {item.title}
             </span>

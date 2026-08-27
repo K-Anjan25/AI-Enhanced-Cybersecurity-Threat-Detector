@@ -1,6 +1,7 @@
 import React from "react";
 import type { CreateIncidentPayload, Incident } from "../../../types/incident";
 import Button from "../../../components/ui/Button";
+import { Select } from "../../../components/ui/Select";
 import { getApiError } from "../../../utils/getApiError";
 
 interface Props {
@@ -42,7 +43,7 @@ const CreateIncidentModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-app-surface w-full max-w-lg rounded-xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
+      <div className="bg-app-surface w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-5">
           <h3 className="text-lg font-semibold text-content-primary">New incident</h3>
           <button
@@ -86,20 +87,18 @@ const CreateIncidentModal: React.FC<Props> = ({
           </div>
 
           <div>
-            <label htmlFor="incident-priority" className="block text-sm font-medium text-content-secondary mb-1.5">
-              Priority
-            </label>
-            <select
+            <Select
               id="incident-priority"
+              label="Priority"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-primary focus:outline-none focus:border-accent-primary transition cursor-pointer"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
+              options={[
+                { value: "low", label: "Low" },
+                { value: "medium", label: "Medium" },
+                { value: "high", label: "High" },
+                { value: "critical", label: "Critical" },
+              ]}
+            />
           </div>
 
           {error && (

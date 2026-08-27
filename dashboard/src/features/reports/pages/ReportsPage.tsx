@@ -104,8 +104,7 @@ const ReportsPage: React.FC = () => {
                 type="text"
                 placeholder="Search reports by case # or title..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-app-surface border border-line-subtle rounded-xl pl-10 pr-4 py-2.5 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary font-medium shadow-card"
+                onChange={(e) => setSearch(e.target.value)} className="w-full bg-app-surface border border-line-subtle rounded-2xl pl-10 pr-4 py-2.5 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary font-medium shadow-card"
               />
             </div>
 
@@ -163,7 +162,7 @@ const ReportsPage: React.FC = () => {
                       variant="primary"
                       size="sm"
                       onClick={() => handleDownload(selectedCase)}
-                      className="bg-accent-primary hover:bg-accent-secondary text-brand-ink font-bold"
+                      
                     >
                       <Download size={14} className="mr-1.5" />
                       Download Markdown

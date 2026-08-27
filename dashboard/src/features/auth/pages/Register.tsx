@@ -3,6 +3,7 @@ import { useFormik } from "formik";
 import { useMutation } from "react-query";
 import { useNavigate, Link } from "react-router-dom";
 import Button from "../../../components/ui/Button";
+import { Spinner } from "../../../components/ui";
 import TextInput from "../../../components/common/TextInput";
 import { registerSchema, initialRegisterValues } from "../../../validators/registerValidator";
 import { registerUser } from "../../../api/userApi";
@@ -65,7 +66,7 @@ export default function Register(): React.ReactElement {
             className="w-full mt-2"
           >
             {registerMutation.isLoading ? (
-              <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-app-bg border-t-transparent mr-2" />
+              <Spinner variant="light" className="mr-2" />
             ) : null}
             {registerMutation.isLoading ? "Creating Account..." : "Create Account"}
           </Button>

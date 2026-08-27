@@ -498,7 +498,7 @@ const CasePage: React.FC = () => {
             disabled={chatLoading}
             className="flex-1 bg-app-subtle border border-line-bright rounded-xl px-3 py-2 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
           />
-          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()} className="bg-accent-primary hover:bg-accent-secondary text-brand-ink">
+          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()}>
             <Send size={14} />
           </Button>
         </form>
@@ -521,7 +521,7 @@ const CasePage: React.FC = () => {
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
-              <Button variant="primary" onClick={() => setDialog("approve")} className="bg-accent-primary hover:bg-accent-secondary text-brand-ink font-bold">
+              <Button variant="primary" onClick={() => setDialog("approve")}>
                 <CheckCircle2 size={16} className="mr-1.5" aria-hidden />
                 Approve Action
               </Button>

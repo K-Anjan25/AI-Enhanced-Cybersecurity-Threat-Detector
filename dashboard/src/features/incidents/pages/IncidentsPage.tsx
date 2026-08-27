@@ -166,37 +166,35 @@ const IncidentsPage: React.FC = () => {
                           {updatingId === incident.id ? (
                             <span className="text-xs text-content-tertiary">Saving…</span>
                           ) : (
-                            <select
+                            <Select
+                              inline
                               value={incident.status}
                               onChange={(e) =>
                                 handleUpdate(incident, { status: e.target.value as Incident["status"] })
                               }
-                              className="px-2.5 py-1.5 rounded-md text-xs font-medium border bg-app-bg cursor-pointer focus:outline-none focus:border-accent-primary transition"
+                              className="w-auto px-2.5 py-1 rounded-md text-xs font-medium"
                               aria-label={`Status for ${incident.title}`}
-                            >
-                              {STATUSES.map((status) => (
-                                <option key={status} value={status}>
-                                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                                </option>
-                              ))}
-                            </select>
+                              options={STATUSES.map((status) => ({
+                                value: status,
+                                label: status.charAt(0).toUpperCase() + status.slice(1),
+                              }))}
+                            />
                           )}
                         </td>
                         <td className="px-5 py-3.5">
-                          <select
+                          <Select
+                            inline
                             value={incident.priority}
                             onChange={(e) =>
                               handleUpdate(incident, { priority: e.target.value as Incident["priority"] })
                             }
-                            className={`px-2.5 py-1.5 rounded-md text-xs font-medium border bg-app-bg cursor-pointer focus:outline-none focus:border-accent-primary transition ${priorityBadge[incident.priority] || priorityBadge.medium}`}
+                            className={`w-auto px-2.5 py-1 rounded-md text-xs font-medium ${priorityBadge[incident.priority] || priorityBadge.medium}`}
                             aria-label={`Priority for ${incident.title}`}
-                          >
-                            {PRIORITIES.map((priority) => (
-                              <option key={priority} value={priority}>
-                                {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                              </option>
-                            ))}
-                          </select>
+                            options={PRIORITIES.map((priority) => ({
+                              value: priority,
+                              label: priority.charAt(0).toUpperCase() + priority.slice(1),
+                            }))}
+                          />
                         </td>
                         <td className="px-5 py-3.5 text-xs text-content-tertiary whitespace-nowrap">
                           {incident.source_alert_id ? `#${incident.source_alert_id}` : "-"}

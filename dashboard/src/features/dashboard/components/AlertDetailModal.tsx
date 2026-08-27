@@ -80,7 +80,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-app-surface w-full max-w-2xl rounded-xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
+      <div className="bg-app-surface w-full max-w-2xl rounded-2xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-lg font-semibold text-content-primary">Alert Details</h3>
           <button
@@ -199,7 +199,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition"
+            className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition"
           >
             Close
           </button>

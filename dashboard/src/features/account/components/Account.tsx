@@ -3,6 +3,7 @@ import { useFormik } from "formik";
 import { useMutation } from "react-query";
 import { useNavigate } from "react-router-dom";
 import TextInput from "../../../components/common/TextInput";
+import { Spinner } from "../../../components/ui";
 import accountForm from "../../../validators/accountValidator";
 import { UserApi } from "../../../api/userApi";
 import { setToken } from "../../../utils/token";
@@ -39,7 +40,7 @@ export default function Account(): React.ReactElement {
   });
 
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-app-surface rounded-xl border border-line-subtle shadow-sm">
+    <div className="max-w-md mx-auto mt-8 p-6 bg-app-surface rounded-2xl border border-line-subtle shadow-card">
       <h2 className="text-xl font-bold text-content-primary mb-6 text-center">
         Change Password
       </h2>
@@ -73,10 +74,10 @@ export default function Account(): React.ReactElement {
         <button
           type="submit"
           disabled={updateMutation.isLoading}
-          className="w-full mt-2 py-2.5 px-4 bg-accent-primary hover:bg-accent-secondary disabled:bg-accent-secondary disabled:cursor-not-allowed text-brand-ink font-medium rounded-lg transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-secondary/60"
+          className="w-full mt-2 py-2.5 px-4 bg-brand-gradient hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-brand-ink font-medium rounded-full transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
         >
           {updateMutation.isLoading ? (
-            <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-app-bg border-t-transparent mr-2" />
+            <Spinner variant="light" className="mr-2" />
           ) : null}
           {updateMutation.isLoading ? "Updating..." : "Change Password"}
         </button>
