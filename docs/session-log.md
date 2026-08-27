@@ -458,3 +458,31 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   directed links (resolves_to / communicates / derives_from / attaches /
   authenticates) so the page has real data; verified summary (10/9, by_type
   across all 7), graph fetch at depth 3, and path finder (4→10 reachable, 3 hops).
+
+## Phase 27 — Full page-audit sweep (NaN/stale/unguarded-data) — remaining pages
+
+Line-by-line audit of the pages that hadn't been swept yet; same standard as
+the /analytics pass. Findings + fixes:
+
+- DashboardOverviewPage: top-threats bars divided by threats[0].count (NaN
+  width when the top threat count is 0) — now computed maxThreatCount, same
+  fix as AIAnalyticsPage.
+- ReportsPage: feed consumers elsewhere tolerate a bare array but this page
+  did res.data.filter(...) — a bare array response would crash it. Now uses
+  Array.isArray(res) ? res : res?.data ?? [] and guards c.title / String(c.id)
+  in the search filter.
+- AlertDetailModal: Number(alert.score).toFixed(3) rendered "NaN" when score
+  is a non-numeric value — guarded with Number.isFinite.
+- Navbar: notification time could render "Invalid Date" — nTime() helper
+  returns "—" for missing/invalid timestamps.
+- CasePage: chat confidence Math.round(msg.confidence * 100) when confidence
+  is null (now != null + Number()) and timeline time could render
+  "Invalid Date" (fmtTime helper).
+
+Clean passes (no changes): ThreatAlertsPage (thin wrapper), AlertList
+(severity/message guards + valid-page clamping), CreateIncidentModal,
+IncidentsPage, FeedPage (asRows), BriefPage (timeOf + blast chips guarded),
+LogHistoryPage, LandingPage + all landing components (static data), the
+earlier-audited admin/soar/analytics/entities pages.
+
+Verified: tsc --noEmit && vite build clean.

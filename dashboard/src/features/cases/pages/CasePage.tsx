@@ -51,6 +51,15 @@ const TIMELINE_DOT: Record<string, string> = {
   chat: "text-content-tertiary",
 };
 
+/** Clock text for timeline entries — never "Invalid Date". */
+const fmtTime = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
 const CasePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -490,8 +499,8 @@ const CasePage: React.FC = () => {
                 <p>{msg.text}</p>
                 <div className="mt-1 flex items-center justify-between text-[10px] text-content-tertiary font-mono">
                   <span>{msg.timestamp}</span>
-                  {msg.confidence !== undefined && (
-                    <span>Confidence: {Math.round(msg.confidence * 100)}%</span>
+                  {msg.confidence != null && (
+                    <span>Confidence: {Math.round(Number(msg.confidence) * 100)}%</span>
                   )}
                 </div>
               </div>
@@ -611,7 +620,7 @@ const CasePage: React.FC = () => {
                     ) : null}
                   </span>
                   <span className="text-content-tertiary font-mono ml-auto shrink-0">
-                    {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {fmtTime(entry.at)}
                   </span>
                 </li>
               ))}
