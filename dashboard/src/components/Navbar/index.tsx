@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
 import { Search, Settings, LogOut, ShieldCheck, Bell, Menu, Inbox, ArrowRight } from "lucide-react";
 import BrandLogo from "../BrandLogo";
-import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
+import { BRAND_TAGLINE } from "../../constants/brand";
 import AnalystApi from "../../api/analystApi";
 import type { NotificationItem } from "../../types/analyst";
 import { EVENTS, emit } from "../../lib/events";
@@ -130,7 +130,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
         </Link>
 
         <span className="hidden xl:inline text-[11px] font-mono text-content-tertiary truncate">
-          {BRAND_TAGLINE_SECONDARY}
+          {BRAND_TAGLINE}
         </span>
       </div>
 

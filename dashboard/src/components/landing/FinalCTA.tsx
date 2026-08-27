@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, FileText, GitBranch, ShieldCheck, ScrollText, Workflow } from "lucide-react";
 import { SectionLabel } from "../ui";
 import BrandLogo from "../BrandLogo";
-import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
+import { BRAND_TAGLINE } from "../../constants/brand";
 
 /**
  * FinalCTA — the closing conversion panel (WordPress landing pattern):
@@ -95,8 +95,7 @@ const FinalCTA: React.FC = () => (
         <div className="col-span-2 md:col-span-1">
           <BrandLogo size={26} />
           <p className="mt-3 text-xs text-content-tertiary leading-relaxed max-w-[16rem]">
-            {BRAND_TAGLINE_SECONDARY} — an autonomous security analyst for small teams. Calm,
-            precise, accountable.
+            {BRAND_TAGLINE} Calm, precise, accountable — the analyst a small team employs.
           </p>
         </div>
         {FOOTER_COLS.map((col) => (
@@ -133,7 +132,7 @@ const FinalCTA: React.FC = () => (
       <div className="border-t border-line-subtle">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-[11px] text-content-tertiary">
-            © {new Date().getFullYear()} NOCTRA — See less. Know more.
+            © {new Date().getFullYear()} NOCTRA
           </p>
           <p className="text-[11px] text-content-tertiary inline-flex items-center gap-1.5">
             <FileText size={11} aria-hidden /> Actions are recorded, never executed.

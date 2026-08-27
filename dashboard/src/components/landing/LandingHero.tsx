@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
 import { SectionLabel, TrustPill, cn } from "../ui";
+import { BRAND_HERO_LINE } from "../../constants/brand";
 
 /**
  * LandingHero — WordPress-grade marketing hero: statement → mechanism →
@@ -128,8 +129,8 @@ const LandingHero: React.FC = () => (
         </SectionLabel>
 
         <h1 className="mt-5 text-display-2xl font-bold font-display tracking-tight text-balance">
-          See less.{" "}
-          <span className="bg-brand-gradient bg-clip-text text-transparent">Know more.</span>
+          The analyst your team{" "}
+          <span className="bg-brand-gradient bg-clip-text text-transparent">doesn't have.</span>
         </h1>
 
         <p className="mt-6 text-base sm:text-lg text-content-secondary leading-relaxed max-w-xl">
