@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import get_password_hash as hash_password
-from app.models import Org, SecurityAlert, User
+from app.models import Entity, EntityLink, Org, SecurityAlert, User
 
 DEMO_USERNAME = "demo"
 DEMO_EMAIL = "demo@noctra.ai"
@@ -62,7 +62,9 @@ def main() -> None:
             db.add(org)
             db.flush()
 
-        # Demo user (idempotent)
+        # Demo users (idempotent): ANALYST for the day-to-day dashboard,
+        # ADMIN so the admin pages (roster edit, roles, engine settings…) can
+        # actually be exercised in the preview.
         user = db.query(User).filter(User.username == DEMO_USERNAME).first()
         if not user:
             user = User(
@@ -79,6 +81,82 @@ def main() -> None:
             db.flush()
             print(f"created user {DEMO_USERNAME}")
 
+        admin = db.query(User).filter(User.username == "admin").first()
+        if not admin:
+            admin = User(
+                username="admin",
+                email="admin@noctra.ai",
+                password=hash_password("AdminPass123!"),
+                org_id=org.id,
+                role="ADMIN",
+                clearance_level=4,
+                is_active=True,
+                department="Platform Administration",
+            )
+            db.add(admin)
+            db.flush()
+            print("created user admin")
+
+        # Persist users BEFORE the alerts early-return below, so a partial
+        # reseed (alerts already present) still creates new users.
+        db.commit()
+
+        # Deterministic entity graph so the Entities & Graph page (list,
+        # summary, path finder, node/edge graph) has data to explore.
+        rng = random.Random(7)  # deterministic seed
+        if db.query(Entity).count() == 0:
+            now = datetime.now(timezone.utc)
+            seed_entities = [
+                # (entity_type, value, risk_score, occurrences, meta)
+                ("ip", "203.0.113.42", 0.85, 14, {"asn": "AS64500", "geo": "unknown"}),
+                ("ip", "198.51.100.7", 0.72, 8, {"asn": "AS64501", "geo": "unknown"}),
+                ("ip", "10.0.4.12", 0.3, 5, {"scope": "internal"}),
+                ("domain", "evil-update.tk", 0.9, 11, {"tld": "tk"}),
+                ("domain", "update-account.tk", 0.66, 6, {"tld": "tk"}),
+                ("hash", "a4f9c2e7b1d34a5f8c6e0d9b2a7f4c8e", 0.78, 4, {"algorithm": "SHA256"}),
+                ("email", "hr@corp.local", 0.45, 3, {}),
+                ("file", "invoice_2026.exe", 0.82, 7, {"size_kb": 412}),
+                ("account", "svc_agent", 0.58, 5, {}),
+                ("host", "finance-ws-14", 0.5, 6, {"os": "Windows 11"}),
+            ]
+            created: dict[str, Entity] = {}
+            for etype, value, risk, occ, meta in seed_entities:
+                entity = Entity(
+                    org_id=org.id,
+                    entity_type=etype,
+                    value=value,
+                    risk_score=risk,
+                    occurrences=occ,
+                    meta=meta,
+                    first_seen=now - timedelta(days=8),
+                    last_seen=now - timedelta(hours=rng.randint(1, 40)),
+                )
+                db.add(entity)
+                db.flush()
+                created[value] = entity
+            seed_links = [
+                ("evil-update.tk", "203.0.113.42", "resolves_to"),
+                ("update-account.tk", "203.0.113.42", "resolves_to"),
+                ("203.0.113.42", "10.0.4.12", "communicates"),
+                ("10.0.4.12", "finance-ws-14", "communicates"),
+                ("invoice_2026.exe", "evil-update.tk", "derives_from"),
+                ("hr@corp.local", "invoice_2026.exe", "attaches"),
+                ("a4f9c2e7b1d34a5f8c6e0d9b2a7f4c8e", "invoice_2026.exe", "derives_from"),
+                ("svc_agent", "finance-ws-14", "authenticates"),
+                ("198.51.100.7", "evil-update.tk", "communicates"),
+            ]
+            for src, dst, rel in seed_links:
+                db.add(
+                    EntityLink(
+                        org_id=org.id,
+                        source_entity_id=created[src].id,
+                        target_entity_id=created[dst].id,
+                        relation=rel,
+                    )
+                )
+            db.commit()
+            print(f"seeded {len(seed_entities)} entities and {len(seed_links)} links")
+
         # Alerts only if the table is empty (idempotent-ish per run)
         existing = db.query(SecurityAlert).count()
         if existing > 0:
@@ -86,7 +164,6 @@ def main() -> None:
             return
 
         now = datetime.now(timezone.utc)
-        rng = random.Random(7)  # deterministic seed
         created = 0
         for day_offset in range(7, -1, -1):
             day = now - timedelta(days=day_offset)
