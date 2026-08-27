@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import ReputationApi, { IpReputationEntry } from "../../api/reputationApi";
+import ReputationApi, { IpReputationEntry } from "../../../api/reputationApi";
 import {
   PageHeader,
   SkeletonTable,
@@ -8,12 +8,12 @@ import {
   Modal,
   StatusBadge,
   Select,
-} from "../../components/ui";
-import TextInput from "../../components/common/TextInput";
-import { showSuccess } from "../../utils/showSuccess";
-import { showError } from "../../utils/showError";
+} from "../../../components/ui";
+import TextInput from "../../../components/common/TextInput";
+import { showSuccess } from "../../../utils/showSuccess";
+import { showError } from "../../../utils/showError";
 import { ShieldOff } from "lucide-react";
-import { getApiError } from "../../utils/getApiError";
+import { getApiError } from "../../../utils/getApiError";
 
 interface ReputationForm {
   ip_address: string;

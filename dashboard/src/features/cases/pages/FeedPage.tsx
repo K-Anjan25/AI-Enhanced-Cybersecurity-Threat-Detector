@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader, Card, Button, SeverityBadge, StatusBadge, SkeletonTable, EmptyState } from "../components/ui";
-import AnalystApi from "../api/analystApi";
-import type { AnalystCase, Decision } from "../types/analyst";
-import type { PaginatedResponse } from "../types/pagination";
-import { getApiError } from "../utils/getApiError";
+import { PageHeader, Card, Button, SeverityBadge, StatusBadge, SkeletonTable, EmptyState } from "../../../components/ui";
+import AnalystApi from "../../../api/analystApi";
+import type { AnalystCase, Decision } from "../../../types/analyst";
+import type { PaginatedResponse } from "../../../types/pagination";
+import { getApiError } from "../../../utils/getApiError";
 
 const PAGE_SIZE = 10;
 

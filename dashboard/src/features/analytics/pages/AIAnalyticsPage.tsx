@@ -13,12 +13,12 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import AnalyticsApi from "../api/analyticsApi";
-import MlApi from "../api/mlApi";
-import type { BenchmarkReport, ExplainKind, ExplanationResponse } from "../types/ml";
-import type { OverviewStats, TopThreat, TrendPoint } from "../types/analytics";
-import { PageHeader, LoadingState, StatCard } from "../components/ui";
-import { getApiError } from "../utils/getApiError";
+import AnalyticsApi from "../../../api/analyticsApi";
+import MlApi from "../../../api/mlApi";
+import type { BenchmarkReport, ExplainKind, ExplanationResponse } from "../../../types/ml";
+import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
+import { PageHeader, LoadingState, StatCard } from "../../../components/ui";
+import { getApiError } from "../../../utils/getApiError";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,

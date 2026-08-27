@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import EngineApi from "../../api/engineApi";
-import type { EngineSettings } from "../../types/engine";
-import { BackButton } from "../../components/ui";
+import EngineApi from "../../../api/engineApi";
+import type { EngineSettings } from "../../../types/engine";
+import { BackButton } from "../../../components/ui";
 
 const DEFAULT_SETTINGS: EngineSettings = {
   detectionSensitivity: "MEDIUM",

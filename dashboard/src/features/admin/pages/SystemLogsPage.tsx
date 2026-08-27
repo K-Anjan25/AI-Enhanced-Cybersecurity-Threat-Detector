@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import AuditApi, { AuditLogParams, AuditLogResponse } from "../../api/auditApi";
-import { PageHeader, SkeletonTable, EmptyState } from "../../components/ui";
-import { getApiError } from "../../utils/getApiError";
+import AuditApi, { AuditLogParams, AuditLogResponse } from "../../../api/auditApi";
+import { PageHeader, SkeletonTable, EmptyState } from "../../../components/ui";
+import { getApiError } from "../../../utils/getApiError";
 
 const PAGE_SIZE = 20;
 

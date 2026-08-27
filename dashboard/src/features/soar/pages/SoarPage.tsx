@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import SoarApi from "../api/soarApi";
-import RulesApi from "../api/rulesApi";
-import type { SoarAction, SoarPlaybook } from "../types/soar";
+import SoarApi from "../../../api/soarApi";
+import RulesApi from "../../../api/rulesApi";
+import type { SoarAction, SoarPlaybook } from "../../../types/soar";
 import {
   PageHeader,
   Card,
   Select,
   SkeletonTable,
   EmptyState,
-} from "../components/ui";
-import { getApiError } from "../utils/getApiError";
+} from "../../../components/ui";
+import { getApiError } from "../../../utils/getApiError";
 
 const PAGE_SIZE = 10;
 

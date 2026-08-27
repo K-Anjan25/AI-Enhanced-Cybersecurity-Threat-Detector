@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import RulesApi, { DetectionRule } from "../../api/rulesApi";
+import RulesApi, { DetectionRule } from "../../../api/rulesApi";
 import {
   PageHeader,
   SkeletonTable,
@@ -10,12 +10,12 @@ import {
   SeverityBadge,
   Select,
   StatusBadge,
-} from "../../components/ui";
-import TextInput from "../../components/common/TextInput";
-import { showSuccess } from "../../utils/showSuccess";
-import { showError } from "../../utils/showError";
+} from "../../../components/ui";
+import TextInput from "../../../components/common/TextInput";
+import { showSuccess } from "../../../utils/showSuccess";
+import { showError } from "../../../utils/showError";
 import { ShieldCheck } from "lucide-react";
-import { getApiError } from "../../utils/getApiError";
+import { getApiError } from "../../../utils/getApiError";
 
 interface RuleForm {
   name: string;

@@ -562,29 +562,40 @@ they don't reimplement.
 
 ## 25. Frontend Folder Architecture
 
-Target (incremental; nothing breaks mid-move):
+**Status: `pages/` → `features/` migration SHIPPED (2026-08-27)** — `src/pages/`
+no longer exists; all 19 pages live in `features/<domain>/pages/` following the
+convention already set by `auth`/`account`/`admin`:
 
-```
-src/
-  app/            App.tsx, routes/ (route table + guards)
-  shared/         ui/ layouts/ charts/ hooks/ utils/
-  features/
-    auth/ account/            (move from features/auth, features/account — already there)
-    inbox/   pages/HomePage            (was pages/BriefPage)
-    cases/   pages/{CasesPage,CasePage} components/ hooks/
-    actions/ reports/
-    investigate/ alerts/ entities/ analytics/ cockpit/
-    automate/ soar/ rules/
-    system/  audit/ reputation/ engine/ admin/
-  services/       api clients (from src/api)
-  store/ theme/ (tokens.ts mirrors tailwind) constants/
-```
+| Was (`src/pages/`) | Now (`src/features/…/pages/`) |
+| --- | --- |
+| BriefPage | `inbox/` |
+| FeedPage, CasePage | `cases/` |
+| ActionsPage | `actions/` |
+| ReportsPage | `reports/` |
+| ThreatAlertsPage | `alerts/` |
+| EntitiesPage | `entities/` |
+| AIAnalyticsPage | `analytics/` |
+| DashboardOverviewPage | `dashboard/` |
+| SoarPage | `soar/` |
+| IncidentsPage | `incidents/` |
+| LogHistoryPage | `system/` |
+| LandingPage | `landing/` |
+| admin/{AccessRoles,EngineSettings,Reputation,Rules,SystemLogs,Tenants}Page | `admin/` (joins AdminDashboard/AdminUsers) |
 
-Stays: `api/*` clients (moved to `services/` late), `components/ui` →
-`shared/ui`, Redux auth slice. Deprecated: `pages/BriefPage.tsx` name (→
-`features/inbox/pages/HomePage`), `constants/tableColumns` THREAT_ALERT
-columns (unused). Added: feature folders above, `hooks/` (useBrief, useCase,
-useDecision), CommandMenu. No duplicate clients or state stores.
+As-built deviations from the original sketch (deliberate, documented):
+- Kept the established `dashboard/` domain rather than `cockpit/` (its
+  components already live there); `system/` for log history; filenames kept
+  (`BriefPage` not `HomePage`) to preserve component identity and QA
+  traceability.
+- The wider sketch (`app/`, `shared/`, `services/`, `store/`) is **not**
+  adopted — a whole-tree import rewrite with zero user value and real
+  regression risk (violates the no-uncontrolled-rewrite rule). Revisit only
+  with explicit direction.
+
+Stays: `api/*` clients, `components/ui`, Redux auth slice, `hooks/`
+(useBrief, useCase, useDecision), CommandMenu. Verified move: `git mv`
+(history preserved), single-importer surface (App.tsx), `../`-runs collapsed
+to `../../../`, tsc + vite build clean, preview serving.
 
 ## 26. API Integration Matrix (feature → client → endpoint → backend → UI state)
 

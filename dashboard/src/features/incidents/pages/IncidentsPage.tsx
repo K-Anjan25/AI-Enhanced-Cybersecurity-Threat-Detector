@@ -1,21 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
-import Button from "../components/ui/Button";
-import IncidentApi from "../api/incidentApi";
-import CreateIncidentModal from "../features/incidents/components/CreateIncidentModal";
+import Button from "../../../components/ui/Button";
+import IncidentApi from "../../../api/incidentApi";
+import CreateIncidentModal from "../../../features/incidents/components/CreateIncidentModal";
 import {
   PageHeader,
   Card,
   Select,
   SkeletonTable,
   EmptyState,
-} from "../components/ui";
+} from "../../../components/ui";
 import type {
   CreateIncidentPayload,
   Incident,
   UpdateIncidentPayload,
-} from "../types/incident";
-import type { PaginatedResponse } from "../types/pagination";
-import { getApiError } from "../utils/getApiError";
+} from "../../../types/incident";
+import type { PaginatedResponse } from "../../../types/pagination";
+import { getApiError } from "../../../utils/getApiError";
 
 const PAGE_SIZE = 10;
 const STATUSES = ["open", "triaging", "resolved", "closed"] as const;

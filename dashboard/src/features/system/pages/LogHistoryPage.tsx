@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { uploadLogs, fetchLogHistory, fetchUploadBatchStatus } from "../api/alertApi";
-import type { LogHistoryEntry, UploadLogsResponse } from "../types/alert";
-import { PageHeader, Card, SkeletonTable, EmptyState, Button } from "../components/ui";
+import { uploadLogs, fetchLogHistory, fetchUploadBatchStatus } from "../../../api/alertApi";
+import type { LogHistoryEntry, UploadLogsResponse } from "../../../types/alert";
+import { PageHeader, Card, SkeletonTable, EmptyState, Button } from "../../../components/ui";
 
 const SCAN_POLL_INTERVAL_MS = 1500;
 const SCAN_POLL_MAX_ATTEMPTS = 20;

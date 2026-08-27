@@ -1,8 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import BrandLogo from "../components/BrandLogo";
-import { BRAND_TAGLINE, BRAND_NAME } from "../constants/brand";
+import BrandLogo from "../../../components/BrandLogo";
+import { BRAND_TAGLINE, BRAND_NAME } from "../../../constants/brand";
 
 /**
  * Landing — Intelligence Infrastructure.

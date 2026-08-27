@@ -15,11 +15,11 @@ import {
   StatusBadge,
   LoadingState,
   EmptyState,
-} from "../components/ui";
-import AnalystApi from "../api/analystApi";
-import { getApiError } from "../utils/getApiError";
-import { showError } from "../utils/showError";
-import type { AnalystCase } from "../types/analyst";
+} from "../../../components/ui";
+import AnalystApi from "../../../api/analystApi";
+import { getApiError } from "../../../utils/getApiError";
+import { showError } from "../../../utils/showError";
+import type { AnalystCase } from "../../../types/analyst";
 
 const ActionsPage: React.FC = () => {
   const [cases, setCases] = useState<AnalystCase[]>([]);

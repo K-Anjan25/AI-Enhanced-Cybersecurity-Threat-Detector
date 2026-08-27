@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import AdminApi from "../../api/adminApi";
-import { PageHeader, SkeletonTable, EmptyState, Badge, Card, StatusBadge } from "../../components/ui";
+import AdminApi from "../../../api/adminApi";
+import { PageHeader, SkeletonTable, EmptyState, Badge, Card, StatusBadge } from "../../../components/ui";
 import { ShieldCheck } from "lucide-react";
-import { getApiError } from "../../utils/getApiError";
+import { getApiError } from "../../../utils/getApiError";
 
 interface RoleRow {
   role: string;

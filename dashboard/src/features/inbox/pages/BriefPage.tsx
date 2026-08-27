@@ -11,11 +11,11 @@ import {
   Moon,
   Inbox as InboxIcon,
 } from "lucide-react";
-import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge } from "../components/ui";
-import OnboardingChecklist, { type OnboardingStep } from "../components/OnboardingChecklist";
-import AnalystApi from "../api/analystApi";
-import type { Brief, Connector, AnalystCase } from "../types/analyst";
-import { getApiError } from "../utils/getApiError";
+import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge } from "../../../components/ui";
+import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
+import AnalystApi from "../../../api/analystApi";
+import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
+import { getApiError } from "../../../utils/getApiError";
 
 /**
  * Home — the Analyst Inbox (spec §7, §21).

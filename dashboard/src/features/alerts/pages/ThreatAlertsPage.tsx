@@ -1,6 +1,6 @@
 import React from "react";
-import AlertList from "../features/dashboard/components/AlertList";
-import { PageHeader } from "../components/ui";
+import AlertList from "../../../features/dashboard/components/AlertList";
+import { PageHeader } from "../../../components/ui";
 
 const ThreatAlertsPage: React.FC = () => {
   return (

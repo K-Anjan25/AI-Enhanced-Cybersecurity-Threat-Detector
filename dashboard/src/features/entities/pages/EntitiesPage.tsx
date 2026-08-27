@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import EntityApi, { type EntityGraphSummary, type EntityPathResult } from "../api/entityApi";
-import EntityGraphView from "../features/entities/components/EntityGraphView";
-import { PageHeader, Select, StatCard } from "../components/ui";
-import type { EntityType, ThreatEntity } from "../types/entity";
-import { getApiError } from "../utils/getApiError";
+import EntityApi, { type EntityGraphSummary, type EntityPathResult } from "../../../api/entityApi";
+import EntityGraphView from "../../../features/entities/components/EntityGraphView";
+import { PageHeader, Select, StatCard } from "../../../components/ui";
+import type { EntityType, ThreatEntity } from "../../../types/entity";
+import { getApiError } from "../../../utils/getApiError";
 
 const PAGE_SIZE = 12;
 const ENTITY_TYPES: Array<{ value: EntityType | ""; label: string }> = [

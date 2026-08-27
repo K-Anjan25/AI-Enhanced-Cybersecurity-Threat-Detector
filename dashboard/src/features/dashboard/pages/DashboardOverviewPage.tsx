@@ -11,10 +11,10 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import AnalyticsApi from "../api/analyticsApi";
-import { fetchAlerts } from "../api/alertApi";
-import { fetchSoarActions } from "../api/soarApi";
-import { fetchIncidents } from "../api/incidentApi";
+import AnalyticsApi from "../../../api/analyticsApi";
+import { fetchAlerts } from "../../../api/alertApi";
+import { fetchSoarActions } from "../../../api/soarApi";
+import { fetchIncidents } from "../../../api/incidentApi";
 import {
   StatCard,
   Card,
@@ -23,9 +23,9 @@ import {
   StatusBadge,
   LoadingState,
   EmptyState,
-} from "../components/ui";
-import type { OverviewStats, TopThreat, TrendPoint } from "../types/analytics";
-import { getApiError } from "../utils/getApiError";
+} from "../../../components/ui";
+import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
+import { getApiError } from "../../../utils/getApiError";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,

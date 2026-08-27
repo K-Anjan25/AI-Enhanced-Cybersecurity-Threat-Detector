@@ -14,10 +14,10 @@ import {
   StatusBadge,
   LoadingState,
   EmptyState,
-} from "../components/ui";
-import AnalystApi from "../api/analystApi";
-import type { AnalystCase } from "../types/analyst";
-import { getApiError } from "../utils/getApiError";
+} from "../../../components/ui";
+import AnalystApi from "../../../api/analystApi";
+import type { AnalystCase } from "../../../types/analyst";
+import { getApiError } from "../../../utils/getApiError";
 
 const ReportsPage: React.FC = () => {
   const [cases, setCases] = useState<AnalystCase[]>([]);

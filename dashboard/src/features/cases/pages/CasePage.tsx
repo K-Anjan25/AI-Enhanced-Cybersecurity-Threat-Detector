@@ -24,12 +24,12 @@ import {
   ConfirmDialog,
   LoadingState,
   EmptyState,
-} from "../components/ui";
-import AnalystApi from "../api/analystApi";
-import { fetchAlerts } from "../api/alertApi";
-import type { Alert } from "../types/alert";
-import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../types/analyst";
-import { getApiError } from "../utils/getApiError";
+} from "../../../components/ui";
+import AnalystApi from "../../../api/analystApi";
+import { fetchAlerts } from "../../../api/alertApi";
+import type { Alert } from "../../../types/alert";
+import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../../../types/analyst";
+import { getApiError } from "../../../utils/getApiError";
 
 type DialogKind = "approve" | "decline" | "revert" | null;
 

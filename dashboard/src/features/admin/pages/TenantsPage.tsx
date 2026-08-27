@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
-import AdminApi, { OrgInfo } from "../../api/adminApi";
-import { PageHeader, SkeletonTable, EmptyState, StatusBadge, Card } from "../../components/ui";
+import AdminApi, { OrgInfo } from "../../../api/adminApi";
+import { PageHeader, SkeletonTable, EmptyState, StatusBadge, Card } from "../../../components/ui";
 import { Users, Building2 } from "lucide-react";
-import { getApiError } from "../../utils/getApiError";
+import { getApiError } from "../../../utils/getApiError";
 
 const TenantsPage: React.FC = () => {
   const [orgs, setOrgs] = useState<OrgInfo[]>([]);
