@@ -21,6 +21,8 @@ const DashboardOverviewPage = React.lazy(() => import("./pages/DashboardOverview
 const BriefPage = React.lazy(() => import("./pages/BriefPage"));
 const FeedPage = React.lazy(() => import("./pages/FeedPage"));
 const CasePage = React.lazy(() => import("./pages/CasePage"));
+const ActionsPage = React.lazy(() => import("./pages/ActionsPage"));
+const ReportsPage = React.lazy(() => import("./pages/ReportsPage"));
 const AdminDashboard = React.lazy(() => import("./features/admin/pages/AdminDashboard"));
 const AdminUsers = React.lazy(() => import("./features/admin/pages/AdminUsers"));
 const AdminEngineSettings = React.lazy(() => import("./pages/admin/EngineSettingsPage"));
@@ -35,7 +37,7 @@ const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
     <div className="flex items-center space-x-2">
       <div className="w-3 h-3 bg-accent-primary rounded-full animate-ping" />
-      <span>Loading Threat AI Telemetry...</span>
+      <span>Loading NOCTRA AI...</span>
     </div>
   </div>
 );
@@ -87,6 +89,8 @@ export default function App(): JSX.Element {
               <Route index element={<BriefPage />} />
               <Route path="feed" element={<FeedPage />} />
               <Route path="case/:id" element={<CasePage />} />
+              <Route path="actions" element={<ActionsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
               <Route path="dashboard" element={<DashboardOverviewPage />} />
               <Route path="alerts" element={<ThreatAlertsPage />} />
               <Route path="logs" element={<LogHistoryPage />} />
