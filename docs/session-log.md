@@ -256,3 +256,54 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - Rebranding and single-frontend cleanup complete: `dashboard/` is the single source of truth for AXIOM AI.
 - Full test suite passing across backend (113 passed), ml-service (13 passed), and dashboard build (1.10s).
 
+
+## Phase 21 — Commercial-Grade Frontend Redesign (WordPress/WooCommerce research)
+
+- **Research** — web-researched how the best WordPress and WooCommerce implementations
+  are built: block-theme `theme.json` design tokens (declarative settings → CSS variables,
+  style variations, fluid typography), the hooks system (actions `do_action` / filters
+  `apply_filters` with priority + namespacing), and the storefront conversion playbook
+  (sticky header + single primary CTA, mini-cart slide-out drawer with live count pill,
+  product-grid card discipline, trust signals, distraction-free checkout, honest empty
+  states). Also researched enterprise SaaS typography rules (Major Second 1.125 scale,
+  sans UI + mono data pairing, ≥4.5:1 contrast) and security-SaaS dashboard patterns.
+  Findings + WP→NOCTRA mapping documented in
+  [`docs/frontend-commercial-redesign.md`](frontend-commercial-redesign.md).
+- **Token system (WP `theme.json` analog)** — extended `constants/brand.ts` (single source
+  of truth): `BRAND_GRADIENT` (exact logo violet `#6C5CE7→#9D7CFF`), `BRAND_TYPE_SCALE`
+  (fluid clamp() display + ui scales), `BRAND_RADII`, `BRAND_SHADOWS` (added float/hero),
+  `BRAND_BREAKPOINTS`, `BRAND_Z_INDEX`, `BRAND_TRUST_POINTS` (real, verifiable claims).
+  `tailwind.config.js` gained `backgroundImage.brand-gradient*`, `text-display-2xl…sm`
+  fluid scale, `shadow-float/hero`. `styles/globals.css` gained scrollbar-none + smooth
+  anchor scrolling.
+- **Hooks library (WP hooks analog)** — new `dashboard/src/hooks/`: `useScrollDirection`
+  (sticky-header hide-on-scroll), `useMediaQuery`/`useIsDesktop`/`useIsMobile`,
+  `useCountUp` (reduced-motion safe), `useInView` (IntersectionObserver reveal),
+  `useNoctraEvent`, `useHotkey` (mod+k/escape), `useLocalStorage`; barrel export.
+  New `lib/events.ts` — namespaced, priority-ordered action/filter bus mirroring
+  `do_action`/`apply_filters` (`EVENTS.COMMAND_MENU`, `OPEN_PENDING_DRAWER`, …).
+- **Components (block-pattern analog)** — `components/ui/` added `SectionLabel` (overline
+  eyebrow) + `TrustPill` (trust-signal chip). New `components/landing/`: `LandingNav`
+  (sticky, hide-on-scroll, gradient CTA), `LandingHero` (product preview built in CSS —
+  a real NOCTRA case card, labeled illustrative; no stock art), `TrustBar` (real test
+  numbers 114/13 + connectors + run modes with count-up), `FeatureGrid` (6 real features,
+  each linked to its live route), `HowItWorks` (8-step analyst loop), `FinalCTA` (gradient
+  band + multi-column footer). New `components/storefront/PendingDecisionsDrawer.tsx` —
+  the WooCommerce mini-cart pattern: slide-out drawer of pending cases, severity dots,
+  time-ago, "Review & decide" CTA, honest empty state, event-bus refresh, body scroll
+  lock, Escape close.
+- **Shell upgrade** — `Navbar` gained the mini-cart trigger: a "Review decisions"
+  gradient button with live pending-count pill (icon-only + count on mobile) that opens
+  the drawer via the event bus; count stays in sync through `EVENTS.PENDING_CHANGED`
+  (also emitted by the drawer after fetch). `DashboardLayout` mounts the drawer once.
+- **Landing rewrite** — `LandingPage.tsx` completely rebuilt as the WordPress-grade
+  marketing flow: nav → hero → trust bar → features → how-it-works → final CTA →
+  footer. Every number is real (test suites, connectors, run modes); no fabricated
+  metrics, no fake testimonials; one gradient (the exact brand violet) used only on
+  primary actions and the hero accent.
+- **Verification** — `tsc --noEmit && vite build` clean (~1.4s). Live preview: Vite on
+  port 3000 (proxies `/api` → FastAPI on 8000, SQLite `noctra_preview.db`); demo user
+  `demo` / `DemoPass123!` with one simulated CRITICAL case in the pending drawer.
+- **Wireframes** — 4 new concept boards in `docs/ui-concepts/new/` (landing hero,
+  inbox + drawer, case workspace, mobile); 8 web references archived in
+  `docs/ui-concepts/reference/`.
