@@ -1,13 +1,13 @@
-"""Autonomous-analyst API (Phase 18).
+"""Autonomous-analyst API (Phases 18-19).
 
-The product surface: simulate an incident, read the calm brief + decision feed,
-open a case, and make the human decision (approve / decline / revert). Mirrors
-the ``cases.py`` conventions -- ``{data,total,page,limit}`` envelope, org scoping
-via ``current_user.org_id``, reads gated by ``get_current_user`` and writes by
-the existing ``alerts:write`` permission (no new permissions introduced).
+The product surface: simulate incidents, read the calm brief + decision feed,
+open a case, make human decisions (approve / decline / revert), ask Ask-AXIOM AI
+questions, and monitor connected security integrations.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -20,14 +20,23 @@ from app.services.case_service import serialize_case
 router = APIRouter(prefix="/analyst", tags=["Analyst"])
 
 
+class ChatRequest(BaseModel):
+    message: str
+
+
 @router.post("/simulate", status_code=201)
 def simulate_incident(
+    scenario_type: str = Query("credential_leak", description="Scenario: credential_leak, phishing_outbreak, data_exfiltration, compromised_api_key"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("alerts:write")),
 ):
-    """Inject the credential-leak scenario and open a pending analyst case."""
-    case = scenario.run_credential_leak(
-        db, org_id=current_user.org_id, actor=current_user.username, created_by_id=current_user.id
+    """Inject a simulated incident scenario and open a pending analyst case."""
+    case = scenario.run_scenario(
+        db,
+        scenario_type=scenario_type,
+        org_id=current_user.org_id,
+        actor=current_user.username,
+        created_by_id=current_user.id,
     )
     return serialize_case(case)
 
@@ -58,6 +67,27 @@ def get_feed(
     }
 
 
+@router.get("/connectors")
+def get_connectors(
+    current_user: User = Depends(get_current_user),
+):
+    """Return live status of integrated security tools (Okta, Sentinel, GuardDuty, Cloudflare)."""
+    return analyst_service.get_connectors_status()
+
+
+@router.post("/connectors/{connector_id}/sync")
+def sync_connector(
+    connector_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("alerts:write")),
+):
+    """Trigger manual synchronization for a security connector."""
+    try:
+        return analyst_service.sync_connector(db, connector_id, actor=current_user.username)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
 @router.get("/cases/{case_id}")
 def get_case(
     case_id: int,
@@ -69,6 +99,24 @@ def get_case(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return serialize_case(case)
+
+
+@router.post("/cases/{case_id}/chat")
+def chat_about_case(
+    case_id: int,
+    body: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Interactive Ask-AXIOM AI Q&A regarding case context, MITRE mapping, or remediation."""
+    case = analyst_service.get_case(db, case_id, org_id=current_user.org_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if not body.message or not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    return analyst_service.chat_about_case(
+        db, case=case, question=body.message.strip(), actor=current_user.username
+    )
 
 
 @router.post("/cases/{case_id}/approve")

@@ -1,5 +1,5 @@
 import { api } from "./axios";
-import type { AnalystCase, Brief, ReportResponse } from "../types/analyst";
+import type { AnalystCase, Brief, ReportResponse, Connector } from "../types/analyst";
 import type { PaginatedResponse } from "../types/pagination";
 
 export interface FeedParams {
@@ -26,9 +26,24 @@ export const fetchCase = async (id: number | string): Promise<AnalystCase> => {
   return data;
 };
 
-/** Inject the credential-leak scenario; returns the newly opened case. */
-export const simulate = async (): Promise<AnalystCase> => {
-  const { data } = await api.post<AnalystCase>("/analyst/simulate");
+/** Inject a simulated scenario (default credential_leak). */
+export const simulate = async (scenarioType: string = "credential_leak"): Promise<AnalystCase> => {
+  const { data } = await api.post<AnalystCase>(`/analyst/simulate?scenario_type=${encodeURIComponent(scenarioType)}`);
+  return data;
+};
+
+export const chatAboutCase = async (id: number | string, message: string): Promise<{ answer: string; confidence: number }> => {
+  const { data } = await api.post<{ answer: string; confidence: number }>(`/analyst/cases/${id}/chat`, { message });
+  return data;
+};
+
+export const fetchConnectors = async (): Promise<Connector[]> => {
+  const { data } = await api.get<Connector[]>("/analyst/connectors");
+  return data;
+};
+
+export const syncConnector = async (connectorId: string): Promise<{ status: string; message: string }> => {
+  const { data } = await api.post<{ status: string; message: string }>(`/analyst/connectors/${connectorId}/sync`);
   return data;
 };
 
@@ -57,6 +72,9 @@ export const AnalystApi = {
   fetchFeed,
   fetchCase,
   simulate,
+  chatAboutCase,
+  fetchConnectors,
+  syncConnector,
   approveCase,
   declineCase,
   revertCase,
