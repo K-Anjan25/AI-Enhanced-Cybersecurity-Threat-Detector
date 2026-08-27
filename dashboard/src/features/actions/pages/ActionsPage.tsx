@@ -15,6 +15,7 @@ import {
   StatusBadge,
   LoadingState,
   EmptyState,
+  Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
 import { getApiError } from "../../../utils/getApiError";
@@ -80,7 +81,13 @@ const ActionsPage: React.FC = () => {
       <PageHeader
         title="Actions Log"
         crumbs={[{ label: "Overview", to: "/" }, { label: "Actions" }]}
-        description="Every decision you authorize is recorded here with a full audit reference and a one-click compensating reversal. NOCTRA records actions — it never executes them against your systems; your team stays in control."
+        description={
+          <>
+            Every <Term>decision</Term> you authorize is <Term>recorded</Term> here with a full
+            audit reference and a one-click compensating reversal. NOCTRA records actions — it
+            never executes them against your systems; your team stays in control.
+          </>
+        }
       />
 
       {error && (
@@ -106,7 +113,9 @@ const ActionsPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2 text-xs text-content-secondary font-medium shrink-0">
           <Lock size={14} className="text-status-success" />
-          <span>Record-only SOAR · every action reversible</span>
+          <span>
+            <Term>Record-only</Term> <Term>SOAR</Term> · every action <Term>reversible</Term>
+          </span>
         </div>
       </div>
 
@@ -119,7 +128,7 @@ const ActionsPage: React.FC = () => {
               description={
                 search
                   ? "No actions match your filter criteria."
-                  : "No actions have been recorded yet. Approve a recommended action on a case and it will appear here."
+                  : "No actions have been <Term>recorded</Term> yet. Approve a recommended action on a case and it will appear here."
               }
             />
           </div>
@@ -131,7 +140,7 @@ const ActionsPage: React.FC = () => {
                   <th scope="col" className="px-5 py-3.5">Case & Title</th>
                   <th scope="col" className="px-5 py-3.5">Action Type</th>
                   <th scope="col" className="px-5 py-3.5">Target Asset</th>
-                  <th scope="col" className="px-5 py-3.5">SOAR ID</th>
+                  <th scope="col" className="px-5 py-3.5"><Term>SOAR</Term> ID</th>
                   <th scope="col" className="px-5 py-3.5">Status</th>
                   <th scope="col" className="px-5 py-3.5 text-right">Reversibility</th>
                 </tr>
@@ -157,7 +166,7 @@ const ActionsPage: React.FC = () => {
                         </Link>
                       </td>
                       <td className="px-5 py-4 font-mono font-bold text-accent-primary">
-                        {action?.action_type || "ALERT_OPERATOR"}
+                        <Term mono>{action?.action_type || "ALERT_OPERATOR"}</Term>
                       </td>
                       <td className="px-5 py-4 font-mono text-content-secondary">
                         {action?.target || "System"}

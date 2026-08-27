@@ -62,6 +62,13 @@ hover/focus away.
 | BriefPage | 15 | ✅ (needs your decision, auto-recorded) |
 | AlertDetailModal | 14 | ✅ (MITRE, technique ids, reputation) |
 | DashboardOverviewPage | 11 | ✅ (MITRE technique ids) |
+| ActionsPage | 5 | ✅ (decision, recorded, record-only SOAR, reversible, SOAR ID, action types) |
+| FeedPage | 2 | ✅ (blast radius, decision) |
+| EntitiesPage | 2 | ✅ (entity ×2) |
+| AdminDashboard | 2 | ✅ (confidence, detection) |
+
+CommandMenu hints are already plain English ("Recorded actions log", "Automation records")
+so they stay unannotated — the gloss would be redundant.
 
 Component: `dashboard/src/components/ui/Term.tsx` — `<Term mono>REVOKE_CREDENTIALS</Term>`.
 Primitives widened to accept ReactNode so annotations can sit in page headers, empty
