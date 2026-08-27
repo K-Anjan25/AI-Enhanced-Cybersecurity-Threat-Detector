@@ -39,6 +39,9 @@ export default function AdminUsers(): React.ReactElement {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [orgFilter, setOrgFilter] = useState<string>("");
+  const [editTarget, setEditTarget] = useState<AdminRosterMember | null>(null);
+  const [editRole, setEditRole] = useState("USER");
+  const [editActive, setEditActive] = useState(true);
 
   const { data: orgs = { data: [] as OrgInfo[] } } = useQuery<{ data: OrgInfo[] }>(["adminOrgs"], AdminApi.fetchOrgs, {
     onError: () => showError("Failed to load tenants"),
@@ -81,6 +84,24 @@ export default function AdminUsers(): React.ReactElement {
     }
   );
 
+  const updateUserMutation = useMutation<
+    Record<string, any>,
+    Error,
+    { id: number; role: string; is_active: boolean }
+  >(
+    ({ id, role, is_active }) => AdminApi.updateRosterUser(id, { role, is_active }),
+    {
+      onSuccess: () => {
+        showSuccess("User account updated");
+        queryClient.invalidateQueries(["adminUsers"]);
+        setEditTarget(null);
+      },
+      onError: (err: any) => {
+        showError(getApiError(err, "Failed to update user"));
+      },
+    }
+  );
+
   const formik = useFormik<NewUserPayload>({
     initialValues: {
       username: "",
@@ -103,6 +124,21 @@ export default function AdminUsers(): React.ReactElement {
     if (!deleteTarget) return;
     deleteUserMutation.mutate(deleteTarget.id!);
     setDeleteTarget(null);
+  };
+
+  const openEdit = (user: AdminRosterMember): void => {
+    setEditTarget(user);
+    setEditRole(user.role || "USER");
+    setEditActive(user.is_active !== false);
+  };
+
+  const confirmEdit = (): void => {
+    if (!editTarget) return;
+    updateUserMutation.mutate({
+      id: editTarget.id,
+      role: editRole,
+      is_active: editActive,
+    });
   };
 
   return (
@@ -143,9 +179,9 @@ export default function AdminUsers(): React.ReactElement {
         </p>
       </div>
 
-      <div className="bg-app-surface border border-line-subtle rounded-xl shadow-card overflow-hidden">
+      <div className="bg-app-surface border border-line-subtle rounded-2xl shadow-card overflow-hidden">
         {isLoading ? (
-          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 2} />
+          <SkeletonTable rows={5} cols={USER_COLUMNS.length + 2} bare />
         ) : (
           <TableWithAction
             columns={[
@@ -157,7 +193,7 @@ export default function AdminUsers(): React.ReactElement {
               status: u.is_blocked ? "Blocked" : u.is_active ? "Active" : "Inactive",
             }))}
             loading={isLoading}
-            onEdit={() => undefined}
+            onEdit={(row) => openEdit(row as AdminRosterMember)}
             onDelete={(row) => handleDelete(row as User)}
           />
         )}
@@ -213,6 +249,76 @@ export default function AdminUsers(): React.ReactElement {
           />
           <TextInput form={formik} name="password" label="Temporary Password" type="password" />
         </form>
+      </Modal>
+
+      <Modal
+        open={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        title="Edit Analyst"
+        description={`Update access for ${editTarget?.username ?? ""}. Role and active state are persisted; the account is never touched.`}
+        footer={
+          <>
+            <Button type="button" variant="ghost" size="md" onClick={() => setEditTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              disabled={updateUserMutation.isLoading}
+              onClick={confirmEdit}
+            >
+              {updateUserMutation.isLoading ? "Saving…" : "Save Changes"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-content-secondary mb-1">Username</label>
+              <input
+                type="text"
+                value={editTarget?.username ?? ""}
+                readOnly
+                className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-tertiary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-content-secondary mb-1">Email</label>
+              <input
+                type="text"
+                value={editTarget?.email ?? ""}
+                readOnly
+                className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-tertiary"
+              />
+            </div>
+          </div>
+          <Select
+            id="edit-role"
+            label="Access Role"
+            value={editRole}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setEditRole(e.target.value)}
+            options={[
+              { value: "USER", label: "Observer (USER)" },
+              { value: "ANALYST", label: "Tier 1 Analyst (ANALYST)" },
+              { value: "ADMIN", label: "SOC Admin (ADMIN)" },
+            ]}
+          />
+          <label className="flex items-center justify-between cursor-pointer pt-1">
+            <span className="text-sm text-content-primary">Account active</span>
+            <input
+              type="checkbox"
+              checked={editActive}
+              onChange={(e) => setEditActive(e.target.checked)}
+              className="w-4 h-4 rounded border-line-subtle bg-app-bg text-accent-primary focus:ring-0"
+            />
+          </label>
+          <p className="text-xs text-content-tertiary">
+            Changing the role updates the ABAC clearance and permissions immediately. To block sign-in
+            entirely, delete the account or set active off.
+          </p>
+        </div>
       </Modal>
 
       <ConfirmDialog

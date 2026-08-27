@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import logging
 import sys
 import time
@@ -13,6 +15,12 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.migrations import run_additive_migrations, ensure_default_org
 from app.api.v1.router import api_router
+
+# Uploaded assets (profile images, ingest artifacts) live under backend/uploads
+# and are served from the /uploads static mount below. Created eagerly so the
+# mount can bind at import time (the lifespan handler also re-ensures it).
+UPLOAD_ROOT = Path(__file__).resolve().parents[1] / "uploads"
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
 # --- Structured logging -----------------------------------------------------
 _LOGGER = logging.getLogger("app")
@@ -37,6 +45,7 @@ async def lifespan(app: FastAPI):
         run_additive_migrations(engine)
         Base.metadata.create_all(bind=engine)
         ensure_default_org(engine)
+        UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
         _LOGGER.info("Database tables verified/created successfully!")
     except Exception as exc:  # pragma: no cover - DB may be offline during tests/dev
         _LOGGER.warning("Could not create database tables: %s", exc)
@@ -103,3 +112,9 @@ def readiness_probe():
             content={"status": "not_ready", "reason": f"database unreachable: {exc}"},
         )
     return {"status": "ready"}
+
+
+# Serve uploaded files (profile images, ingest artifacts) as static assets.
+# Registered last so API routes take precedence. Directory is created in the
+# lifespan handler on startup.
+app.mount("/uploads", StaticFiles(directory=UPLOAD_ROOT), name="uploads")

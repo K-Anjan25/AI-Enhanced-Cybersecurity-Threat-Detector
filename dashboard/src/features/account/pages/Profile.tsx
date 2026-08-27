@@ -1,13 +1,17 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useFormik } from "formik";
 import { useQuery, useMutation, useQueryClient } from "react-query";
+import { Camera } from "lucide-react";
 import Button from "../../../components/ui/Button";
+import { Spinner } from "../../../components/ui";
 import TextInput from "../../../components/common/TextInput";
 import { profileSchema, initialProfileValues } from "../../../validators/profileValidator";
 import userApi from "../../../api/userApi";
 import { showSuccess } from "../../../utils/showSuccess";
 import { showError } from "../../../utils/showError";
 import { getApiError } from "../../../utils/getApiError";
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB — must match the backend limit
 
 export interface UserProfile {
   email?: string;
@@ -24,6 +28,45 @@ export default function Profile(): React.ReactElement {
     confirmPassword: "",
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showError("Please choose an image file (PNG, JPEG, WEBP or GIF).");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      showError("Profile images must be 5 MB or smaller.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const res = await userApi.uploadProfileImage(file);
+      formik.setFieldValue("profileImageURL", res.profileImageURL);
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      showSuccess("Profile image updated");
+    } catch (err: any) {
+      showError(getApiError(err, "Failed to upload image"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await userApi.updateProfile({ username: formik.values.Name, profileImageURL: "" });
+      formik.setFieldValue("profileImageURL", "");
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      showSuccess("Profile image removed");
+    } catch (err: any) {
+      showError(getApiError(err, "Failed to remove image"));
+    }
+  };
 
   // Fetch profile via UserApi matching backend endpoint GET /user/profile.
   // Note: callbacks must sit at the options top level — react-query v3 treats
@@ -117,33 +160,78 @@ export default function Profile(): React.ReactElement {
       </div>
 
       {/* Profile Details Form */}
-      <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm space-y-6">
+      <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card space-y-6">
         <div className="flex items-center gap-4 border-b border-line-subtle pb-6">
-          <div className="w-16 h-16 rounded-full bg-app-subtle border-2 border-accent-primary flex items-center justify-center overflow-hidden">
-            {formik.values.profileImageURL ? (
-              <img
-                src={formik.values.profileImageURL}
-                alt="Profile Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-xl font-bold text-content-primary">
-                {formik.values.Name ? formik.values.Name[0] : "A"}
-              </span>
-            )}
+          <div className="relative shrink-0">
+            <div className="relative w-16 h-16 rounded-full bg-app-subtle border-2 border-accent-primary flex items-center justify-center overflow-hidden">
+              {formik.values.profileImageURL ? (
+                <img
+                  src={formik.values.profileImageURL}
+                  alt="Profile Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-xl font-bold text-content-primary">
+                  {formik.values.Name ? formik.values.Name[0] : "A"}
+                </span>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <Spinner variant="light" />
+                </div>
+              )}
+            </div>
+            <label
+              htmlFor="avatar-upload"
+              title="Upload profile image"
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-brand-gradient text-brand-ink border-2 border-app-surface flex items-center justify-center cursor-pointer hover:opacity-90 transition"
+            >
+              <Camera size={12} aria-hidden />
+            </label>
+            <input
+              ref={avatarInputRef}
+              id="avatar-upload"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="sr-only"
+              onChange={handleAvatarFile}
+            />
           </div>
-          <div>
-            <h3 className="text-base font-semibold text-content-primary">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-content-primary truncate">
               {formik.values.Name}
             </h3>
-            <span className="text-xs text-content-secondary block">{formik.values.email}</span>
+            <span className="text-xs text-content-secondary block truncate">{formik.values.email}</span>
+            <div className="flex items-center gap-3 mt-1.5">
+              <label
+                htmlFor="avatar-upload"
+                className="text-xs font-medium text-accent-primary hover:underline cursor-pointer"
+              >
+                {uploading ? "Uploading…" : "Change photo"}
+              </label>
+              {formik.values.profileImageURL && !uploading && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="text-xs text-content-tertiary hover:text-status-critical transition"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         <form onSubmit={formik.handleSubmit} className="space-y-4">
           <TextInput form={formik} name="Name" label="Name" />
-          <TextInput form={formik} name="email" label="Email Address" type="email" />
+          <TextInput form={formik} name="email" label="Email Address" type="email" readOnly />
+          <p className="-mt-2 text-xs text-content-tertiary">
+            Email is managed by your SOC administrator and cannot be changed here.
+          </p>
           <TextInput form={formik} name="profileImageURL" label="Profile Avatar URL" />
+          <p className="-mt-2 text-xs text-content-tertiary">
+            …or paste a public image URL (PNG / JPEG / WebP / GIF).
+          </p>
 
           <div className="flex justify-end pt-4">
             <Button
@@ -159,7 +247,7 @@ export default function Profile(): React.ReactElement {
       </div>
 
       {/* Security Settings & Password Update */}
-      <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm space-y-4 max-w-lg">
+      <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card space-y-4 max-w-lg">
         <h2 className="text-lg font-semibold text-content-primary mb-2">Security Settings</h2>
         
         <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -170,7 +258,7 @@ export default function Profile(): React.ReactElement {
               value={passwords.currentPassword}
               onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
               required
-              className="w-full bg-app-bg text-sm text-content-primary px-4 py-2.5 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
+              className="w-full bg-app-bg text-sm text-content-primary px-3.5 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
               placeholder="••••••••"
             />
           </div>
@@ -182,7 +270,7 @@ export default function Profile(): React.ReactElement {
               value={passwords.newPassword}
               onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
               required
-              className="w-full bg-app-bg text-sm text-content-primary px-4 py-2.5 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
+              className="w-full bg-app-bg text-sm text-content-primary px-3.5 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
               placeholder="••••••••"
             />
           </div>
@@ -194,7 +282,7 @@ export default function Profile(): React.ReactElement {
               value={passwords.confirmPassword}
               onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
               required
-              className="w-full bg-app-bg text-sm text-content-primary px-4 py-2.5 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
+              className="w-full bg-app-bg text-sm text-content-primary px-3.5 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition"
               placeholder="••••••••"
             />
           </div>

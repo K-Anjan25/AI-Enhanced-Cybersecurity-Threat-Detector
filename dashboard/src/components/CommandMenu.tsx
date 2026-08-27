@@ -187,7 +187,7 @@ const CommandMenu: React.FC = () => {
         role="dialog"
         aria-modal="true"
         aria-label={`${BRAND_NAME} command menu`}
-        className="night w-full max-w-xl bg-app-surface rounded-2xl border border-line-bright shadow-overlay overflow-hidden animate-scale-in"
+        className="w-full max-w-xl bg-app-surface rounded-3xl border border-line-subtle shadow-overlay overflow-hidden animate-scale-in"
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-line-subtle">
           <Search size={15} className="text-content-tertiary shrink-0" aria-hidden />
@@ -247,8 +247,8 @@ const CommandMenu: React.FC = () => {
                     e.preventDefault();
                     item.run();
                   }}
-                  className={`mx-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer transition ${
-                    isActive ? "bg-accent-primary/15 text-content-primary" : "text-content-secondary"
+                  className={`mx-2 flex items-center gap-3 rounded-xl px-3 py-2 text-sm cursor-pointer transition ${
+                    isActive ? "bg-brand-gradient-soft text-content-primary" : "text-content-secondary"
                   } ${running === item.id.replace("sim-", "") ? "opacity-50 pointer-events-none" : ""}`}
                 >
                   <Icon size={14} className={isActive ? "text-accent-secondary" : "text-content-tertiary"} aria-hidden />

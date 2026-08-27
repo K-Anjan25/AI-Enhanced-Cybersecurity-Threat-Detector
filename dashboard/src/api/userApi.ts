@@ -40,6 +40,15 @@ export const updatePassword = async (payload: UpdatePasswordPayload): Promise<{ 
   return data;
 };
 
+export const uploadProfileImage = async (file: File): Promise<{ message: string; profileImageURL: string }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post("/user/profile/image", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
 // Unified Export Object
 export const UserApi = {
   requestPasswordReset,
@@ -48,6 +57,7 @@ export const UserApi = {
   getProfile,
   updateProfile,
   updatePassword,
+  uploadProfileImage,
 };
 
 export default UserApi;

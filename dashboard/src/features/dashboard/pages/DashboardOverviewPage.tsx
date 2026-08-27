@@ -21,11 +21,15 @@ import {
   CardHeader,
   SeverityBadge,
   StatusBadge,
-  LoadingState,
+  Skeleton,
+  SkeletonChart,
+  SkeletonStatCard,
   EmptyState,
+  Term,
 } from "../../../components/ui";
 import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
 import { getApiError } from "../../../utils/getApiError";
+import { CHART_TOOLTIP_STYLE } from "../../../components/ui/chartTokens";
 
 const EMPTY_OVERVIEW: OverviewStats = {
   total: 0,
@@ -37,14 +41,6 @@ const EMPTY_OVERVIEW: OverviewStats = {
   by_type: {},
   recent: [],
 };
-
-const TOOLTIP_STYLE = {
-  background: "#1e1e2b",
-  border: "1px solid #2d2d3a",
-  borderRadius: 10,
-  color: "#f1f5f9",
-  fontSize: 12,
-} as const;
 
 const DashboardOverviewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -97,8 +93,41 @@ const DashboardOverviewPage: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <LoadingState label="Loading SOC overview" />;
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="h-7 w-44" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <Skeleton className="h-3.5 w-80 max-w-full mt-2" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="h-9 w-32 rounded-full" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChart className="lg:col-span-2 h-80" />
+          <SkeletonChart className="h-80" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
   }
+
+  const maxThreatCount =
+    threats.reduce((m, t) => Math.max(m, t.count || 0), 0) || 1;
 
   const criticalAlerts = liveAlerts
     .filter((a) => String(a.severity || a.risk || "").toUpperCase() === "CRITICAL")
@@ -166,7 +195,7 @@ const DashboardOverviewPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate("/incidents")}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90 transition shadow-md"
+            className="rounded-full bg-brand-gradient px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90 transition shadow-float"
           >
             New Incident
           </button>
@@ -197,16 +226,16 @@ const DashboardOverviewPage: React.FC = () => {
               <AreaChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#9d7cff" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#9d7cff" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#23232f" strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#71717a", fontSize: 11 }} allowDecimals={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Area type="monotone" dataKey="total" stroke="#f59e0b" strokeWidth={2} fill="url(#gTotal)" />
-                <Line type="monotone" dataKey="critical" stroke="#e76f51" strokeWidth={2} dot={false} />
+                <CartesianGrid stroke="rgb(var(--c-line-subtle))" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} />
+                <YAxis tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} allowDecimals={false} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                <Area type="monotone" dataKey="total" stroke="#9d7cff" strokeWidth={2} fill="url(#gTotal)" />
+                <Line type="monotone" dataKey="critical" stroke="#f26d6d" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -219,7 +248,7 @@ const DashboardOverviewPage: React.FC = () => {
               <EmptyState title="No threat patterns yet" description="Threats will appear as detections are analyzed." />
             ) : (
               threats.slice(0, 6).map((t, idx) => {
-                const pct = threats[0]?.count ? Math.round((t.count / threats[0].count) * 100) : 0;
+                const pct = Math.round(((t.count || 0) / maxThreatCount) * 100);
                 return (
                   <div key={idx} className="flex items-center gap-3">
                     <span className="w-5 text-xs font-mono text-content-tertiary">{idx + 1}</span>
@@ -271,7 +300,7 @@ const DashboardOverviewPage: React.FC = () => {
                   <div className="flex items-center gap-3 shrink-0">
                     {alert.mitre_technique_id && (
                       <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-xs font-mono bg-app-subtle text-content-secondary border border-line-subtle">
-                        {alert.mitre_technique_id}
+                        <Term mono>{alert.mitre_technique_id}</Term>
                       </span>
                     )}
                     <SeverityBadge severity="CRITICAL" />
@@ -293,8 +322,7 @@ const DashboardOverviewPage: React.FC = () => {
         ].map((q) => (
           <Link
             key={q.label}
-            to={q.path}
-            className="bg-app-surface border border-line-subtle rounded-xl p-5 shadow-card hover:bg-app-surface-raised hover:border-line-bright transition group"
+            to={q.path} className="bg-app-surface border border-line-subtle rounded-2xl p-5 shadow-card hover:bg-app-surface-raised hover:border-line-bright transition group"
           >
             <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-accent-primary/10 text-accent-primary font-bold text-xs mb-3 group-hover:bg-accent-primary/20 transition">
               {q.icon}

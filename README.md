@@ -2,11 +2,12 @@
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
 
-> **NOCTRA** — *Your autonomous security analyst.* (See less. Know more.)
+> **NOCTRA** — *Your autonomous security analyst.*
 > You employ an analyst; you don't operate a dashboard.
 >
 > **Brand System & Specification**:
 > - Current redesign spec (IA, Night Shift tokens, product model): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
+> - Commercial-grade frontend redesign (WordPress/WooCommerce research, token + hook + component system, landing, mini-cart drawer): [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
 > - Historical: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) (superseded)
 
 An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.
@@ -135,7 +136,7 @@ npm run build
 ## Brand Specification & Artifacts
 
 - **Brand Name**: `NOCTRA`
-- **Tagline**: *"Your autonomous security analyst."* (secondary: *"See less. Know more."*)
+- **Tagline**: *"Your autonomous security analyst."*
 - **What it is**: NOCTRA watches your telemetry, explains incidents in plain English, maps the blast radius, and drafts reversible actions — you approve, it records and reports.
 - **Typography**: Sora / Inter / JetBrains Mono
 - **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)

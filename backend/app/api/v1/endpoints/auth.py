@@ -22,6 +22,37 @@ router = APIRouter()
 login_limiter = RateLimiter(limit=settings.LOGIN_RATE_LIMIT_PER_MINUTE, window_seconds=60)
 
 
+def _set_auth_cookie(response: Response, key: str, value: str, max_age: int) -> None:
+    """Set an auth cookie with the configured attributes.
+
+    SameSite="none" implies Secure (browsers reject None without Secure) and
+    pairs with Partitioned (CHIPS) so the cookie survives cross-site iframe
+    embedding (the Arena live preview). Partitioned only applies with None.
+    Starlette rejects `partitioned=True` on Python < 3.14, so when partitioning
+    is enabled the Set-Cookie header is emitted manually (Chrome 114+ / Edge /
+    Firefox parse the `Partitioned` attribute).
+    """
+    samesite = settings.COOKIE_SAMESITE
+    secure = settings.COOKIE_SECURE or samesite == "none"
+    if settings.COOKIE_PARTITIONED and samesite == "none":
+        parts = [f"{key}={value}", f"Max-Age={max_age}", "Path=/", "HttpOnly"]
+        if secure:
+            parts.append("Secure")
+        parts.append("SameSite=None")
+        parts.append("Partitioned")
+        response.headers.append("Set-Cookie", "; ".join(parts))
+        return
+    response.set_cookie(
+        key=key,
+        value=value,
+        httponly=True,
+        secure=secure,
+        samesite=samesite,
+        max_age=max_age,
+        path="/",
+    )
+
+
 @router.get("/me")
 def read_users_me(current_user: User = Depends(get_current_user)):
     """Returns basic info about the currently authenticated user (root path)."""
@@ -77,15 +108,7 @@ def refresh_token(
 
     access_token = create_access_token(subject=user.username)
     if settings.COOKIE_AUTH and response is not None:
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=settings.COOKIE_SECURE,
-            samesite="strict",
-            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            path="/",
-        )
+        _set_auth_cookie(response, "access_token", access_token, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -179,24 +202,8 @@ def login(
         db.commit()
 
     if settings.COOKIE_AUTH:
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=settings.COOKIE_SECURE,
-            samesite="strict",
-            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            path="/",
-        )
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=settings.COOKIE_SECURE,
-            samesite="strict",
-            max_age=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60,
-            path="/",
-        )
+        _set_auth_cookie(response, "access_token", access_token, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+        _set_auth_cookie(response, "refresh_token", refresh_token, settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60)
 
     return {
         "access_token": access_token,

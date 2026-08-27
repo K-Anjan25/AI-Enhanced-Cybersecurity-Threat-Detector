@@ -22,8 +22,9 @@ import {
   SeverityBadge,
   StatusBadge,
   ConfirmDialog,
-  LoadingState,
   EmptyState,
+  SkeletonChart,
+  Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
 import { fetchAlerts } from "../../../api/alertApi";
@@ -48,6 +49,15 @@ const TIMELINE_DOT: Record<string, string> = {
   decision: "text-status-success",
   report: "text-content-tertiary",
   chat: "text-content-tertiary",
+};
+
+/** Clock text for timeline entries — never "Invalid Date". */
+const fmtTime = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
 const CasePage: React.FC = () => {
@@ -209,7 +219,22 @@ const CasePage: React.FC = () => {
     return map;
   }, [data]);
 
-  if (loading) return <LoadingState label="Opening the case…" />;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">
+        <PageHeader
+          title="Case"
+          backTo="/feed"
+          crumbs={[{ label: "Decisions", to: "/feed" }, { label: "Case" }]}
+        />
+        <SkeletonChart className="h-56" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChart className="lg:col-span-2 h-72" />
+          <SkeletonChart className="h-72" />
+        </div>
+      </div>
+    );
+  }
 
   if (error && !data) {
     return (
@@ -310,9 +335,11 @@ const CasePage: React.FC = () => {
                   <p className="text-xs font-mono text-content-primary mt-0.5">{evidence.source_ip || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">MITRE</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">
+                    <Term>MITRE</Term>
+                  </p>
                   <p className="text-xs font-mono text-content-primary mt-0.5">
-                    {evidence.mitre_technique_id || "—"}
+                    <Term mono>{evidence.mitre_technique_id || "—"}</Term>
                   </p>
                 </div>
               </div>
@@ -333,7 +360,9 @@ const CasePage: React.FC = () => {
       <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
         <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
           <GitBranch size={16} className="text-accent-secondary" aria-hidden />
-          <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Blast Radius Affected Assets</h2>
+          <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
+            <Term>Blast radius</Term> — affected assets
+          </h2>
           <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-app-subtle/80 text-content-secondary border border-line-bright">
             Observed
           </span>
@@ -396,7 +425,7 @@ const CasePage: React.FC = () => {
                   </span>
                 </h2>
                 <p className="mt-1 text-lg font-bold text-content-primary font-display">
-                  <span className="font-mono text-accent-primary">{action.action_type}</span>
+                  <Term mono>{action.action_type}</Term>
                 </p>
                 <p className="text-sm text-content-secondary mt-0.5">
                   Target: <span className="font-mono text-content-primary font-bold">{action.target}</span>
@@ -406,10 +435,10 @@ const CasePage: React.FC = () => {
                 <p className="text-sm text-content-secondary leading-relaxed">{action.rationale}</p>
               )}
               {action.undo && (
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-status-success/10 border border-status-success/30">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-status-success/10 border border-status-success/30">
                   <Undo2 size={15} className="text-status-success mt-0.5 shrink-0" aria-hidden />
                   <p className="text-xs text-content-secondary">
-                    <span className="font-bold text-status-success">Reversible.</span> {action.undo}
+                    <span className="font-bold text-status-success"><Term>Reversible</Term>.</span> {action.undo}
                   </p>
                 </div>
               )}
@@ -420,7 +449,11 @@ const CasePage: React.FC = () => {
                     ? "NOCTRA built-in reasoning engine"
                     : `Reasoned by ${analysis?.model ?? "Claude"}`}
                 </span>
-                {confidencePct !== null && <span>· {confidencePct}% confidence</span>}
+                {confidencePct !== null && (
+                  <span>
+                    · <Term>confidence</Term> {confidencePct}%
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -466,8 +499,8 @@ const CasePage: React.FC = () => {
                 <p>{msg.text}</p>
                 <div className="mt-1 flex items-center justify-between text-[10px] text-content-tertiary font-mono">
                   <span>{msg.timestamp}</span>
-                  {msg.confidence !== undefined && (
-                    <span>Confidence: {Math.round(msg.confidence * 100)}%</span>
+                  {msg.confidence != null && (
+                    <span>Confidence: {Math.round(Number(msg.confidence) * 100)}%</span>
                   )}
                 </div>
               </div>
@@ -489,7 +522,7 @@ const CasePage: React.FC = () => {
             disabled={chatLoading}
             className="flex-1 bg-app-subtle border border-line-bright rounded-xl px-3 py-2 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
           />
-          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()} className="bg-accent-primary hover:bg-accent-secondary text-brand-ink">
+          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()}>
             <Send size={14} />
           </Button>
         </form>
@@ -512,7 +545,7 @@ const CasePage: React.FC = () => {
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
-              <Button variant="primary" onClick={() => setDialog("approve")} className="bg-accent-primary hover:bg-accent-secondary text-brand-ink font-bold">
+              <Button variant="primary" onClick={() => setDialog("approve")}>
                 <CheckCircle2 size={16} className="mr-1.5" aria-hidden />
                 Approve Action
               </Button>
@@ -587,7 +620,7 @@ const CasePage: React.FC = () => {
                     ) : null}
                   </span>
                   <span className="text-content-tertiary font-mono ml-auto shrink-0">
-                    {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {fmtTime(entry.at)}
                   </span>
                 </li>
               ))}
@@ -603,7 +636,8 @@ const CasePage: React.FC = () => {
         message={
           <>
             NOCTRA will record <span className="font-mono font-bold">{action?.action_type}</span> on{" "}
-            <span className="font-mono font-bold">{action?.target}</span> and generate a report. This is reversible.
+            <span className="font-mono font-bold">{action?.target}</span> and generate a report. This is{" "}
+            <Term>reversible</Term> — it is <Term>record-only</Term>.
           </>
         }
         confirmLabel="Approve"

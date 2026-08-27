@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 type Props = {
   collapsed?: boolean;
@@ -10,16 +10,14 @@ type Props = {
 };
 
 /**
- * NOCTRA mark — exact brand specification (2026-08-27).
+ * NOCTRA mark — crescent moon brand mark (2026-08-27, per design review).
  *
- * Icon: a bold geometric "N" built as a folded ribbon (blade/origami zigzag)
- * with faceted overlays, in a diagonal purple gradient #6C5CE7 → #9D7CFF
- * (top-left dark → bottom-right light). A 4-pointed sparkle (#B18CFF) —
- * insight — sits at the N's top-right corner.
+ * Icon: a crescent moon (night watch) in a diagonal violet gradient
+ * #6C5CE7 → #9D7CFF (top-left dark → bottom-right light). A 4-pointed
+ * sparkle (#B18CFF) — insight — sits at the crescent's upper tip.
  * Wordmark: "NOCTRA" in Sora SemiBold, uppercase, slightly extended
  * tracking; the "A" carries a sparkle at its apex. Tagline beneath in Inter
  * Medium, wide tracking, #9D7CFF. Lockup: [icon] [divider] [wordmark+tagline].
- * Clear space: one star-icon height on all sides.
  */
 const BrandLogo: React.FC<Props> = ({
   collapsed = false,
@@ -28,8 +26,11 @@ const BrandLogo: React.FC<Props> = ({
   mono = false,
   className,
 }) => {
-  const gradId = `noctra-n-${mono ? "mono" : "color"}`;
+  const uid = useId().replace(/[:]/g, "");
+  const gradId = `noctra-moon-${uid}-${mono ? "mono" : "color"}`;
+  const maskId = `noctra-moon-${uid}-cut`;
   const fillMain = mono ? "currentColor" : `url(#${gradId})`;
+  const sparkleFill = mono ? "currentColor" : "#B18CFF";
 
   const icon = (
     <svg
@@ -46,29 +47,20 @@ const BrandLogo: React.FC<Props> = ({
           <stop offset="0" stopColor={mono ? "currentColor" : "#6C5CE7"} />
           <stop offset="1" stopColor={mono ? "currentColor" : "#9D7CFF"} />
         </linearGradient>
+        <mask id={maskId}>
+          <rect width="32" height="32" fill="white" />
+          {/* Bite cut — removes the upper-right disc to form the crescent. */}
+          <circle cx="21" cy="11" r="9" fill="black" />
+        </mask>
       </defs>
 
-      {/* Folded-ribbon N: left bar → diagonal → right bar, one continuous path. */}
+      {/* Crescent moon — full disc in the brand gradient, bite cut via mask. */}
+      <circle cx="16" cy="16" r="12" fill={fillMain} mask={`url(#${maskId})`} />
+      {/* Insight sparkle at the crescent's upper tip. */}
       <path
-        d="M7 26 V6 H13.5 L21.5 16.8 V6 H28 V26 H21.5 L13.5 15.2 V26 Z"
-        fill={fillMain}
-      />
-      {/* Facets — a fold line through the diagonal band (subtle, flat vector). */}
-      <path
-        d="M13.5 6 L21.5 16.8 L21.5 21.4 L13.5 10.6 Z"
-        fill={mono ? "none" : "#FFFFFF"}
-        fillOpacity={mono ? 0 : 0.10}
-      />
-      <path
-        d="M13.5 15.2 L21.5 26 L21.5 21.4 L13.5 10.6 Z"
-        fill={mono ? "none" : "#FFFFFF"}
-        fillOpacity={mono ? 0 : 0.05}
-      />
-      {/* Insight sparkle at the N's top-right corner. */}
-      <path
-        d="M28 1.2 C28.5 3.5 30.5 5.5 32.8 6 C30.5 6.5 28.5 8.5 28 10.8 C27.5 8.5 25.5 6.5 23.2 6 C25.5 5.5 27.5 3.5 28 1.2 Z"
-        transform="translate(-1.2 0) scale(0.94)"
-        fill={mono ? "currentColor" : "#B18CFF"}
+        d="M6 0 C6.6 2.9 9.1 5.4 12 6 C9.1 6.6 6.6 9.1 6 12 C5.4 9.1 2.9 6.6 0 6 C2.9 5.4 5.4 2.9 6 0 Z"
+        transform="translate(23.8 1.4) scale(0.42)"
+        fill={sparkleFill}
       />
     </svg>
   );

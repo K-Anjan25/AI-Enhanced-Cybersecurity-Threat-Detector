@@ -16,6 +16,7 @@ import {
   Ban,
   BarChart3,
   Settings2,
+  ChevronsLeft,
   Rows3,
   ClipboardList,
   UploadCloud,
@@ -25,6 +26,7 @@ import { cn } from "../../components/ui";
 import BrandLogo from "../../components/BrandLogo";
 import PageTransition from "../../components/PageTransition";
 import CommandMenu from "../../components/CommandMenu";
+import PendingDecisionsDrawer from "../../components/storefront/PendingDecisionsDrawer";
 
 /**
  * NOCTRA navigation (spec §8). Four MAIN items mirror the analyst loop —
@@ -149,10 +151,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         key={item.name}
         to={item.path}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-semibold transition ${
           active
-            ? "bg-accent-primary/15 text-accent-secondary border border-accent-primary/30"
-            : "text-content-secondary hover:bg-app-surface-raised hover:text-content-primary border border-transparent"
+            ? "bg-brand-gradient text-brand-ink shadow-float"
+            : "text-content-secondary hover:bg-app-subtle hover:text-content-primary"
         }`}
       >
         <Icon size={17} className="shrink-0" aria-hidden />
@@ -187,7 +189,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
       <aside
         className={cn(
-          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden shadow-card",
+          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden",
           // Mobile: overlay drawer (open only). Desktop: static column.
           "fixed inset-y-0 left-0 z-40 lg:static",
           mobileNavOpen ? "flex w-64" : "hidden lg:flex",
@@ -195,20 +197,35 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         )}
       >
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle shrink-0">
-            <Link to="/" className="flex items-center min-w-0 hover:opacity-90 transition">
-              <BrandLogo collapsed={!isSidebarOpen} size={isSidebarOpen ? 28 : 26} />
+          <div
+            className={cn(
+              "h-16 flex items-center border-b border-line-subtle shrink-0 transition-all duration-300",
+              mobileNavOpen || isSidebarOpen ? "justify-between px-4" : "justify-center px-2"
+            )}
+          >
+            <Link to="/" className="flex items-center min-w-0 hover:opacity-80 transition">
+              <BrandLogo
+                collapsed={!isSidebarOpen && !mobileNavOpen}
+                size={isSidebarOpen || mobileNavOpen ? 28 : 22}
+              />
             </Link>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
               className={cn(
-                "p-1.5 rounded-lg bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary transition text-xs font-bold cursor-pointer shrink-0 border border-line-subtle",
-                isSidebarOpen ? "" : "mx-auto"
+                "group p-1.5 rounded-full bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary active:scale-90 transition-all duration-200 cursor-pointer shrink-0 border border-line-subtle"
               )}
               title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
               type="button"
             >
-              {isSidebarOpen ? "«" : "»"}
+              <ChevronsLeft
+                size={15}
+                aria-hidden
+                className={cn(
+                  "transition-transform duration-300 ease-out",
+                  !isSidebarOpen && "rotate-180"
+                )}
+              />
             </button>
           </div>
 
@@ -261,7 +278,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         </div>
 
         <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0 bg-app-subtle/50">
-          <div className="w-9 h-9 rounded-xl bg-accent-primary text-brand-ink flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="w-9 h-9 rounded-full bg-brand-gradient text-brand-ink flex items-center justify-center font-bold text-sm shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
           {isSidebarOpen && (
@@ -275,7 +292,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             onClick={toggleDensity}
             title={density === "comfortable" ? "Switch to compact density" : "Switch to comfortable density"}
             aria-pressed={density === "compact"}
-            className="p-1.5 rounded-lg text-content-tertiary hover:bg-app-surface-raised hover:text-content-secondary transition cursor-pointer"
+            className="p-1.5 rounded-full text-content-tertiary hover:bg-app-subtle hover:text-content-secondary transition cursor-pointer"
           >
             <Rows3 size={15} aria-hidden />
           </button>
@@ -285,12 +302,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <Navbar onLogout={onLogout} onOpenNav={() => setMobileNavOpen(true)} />
         <CommandMenu />
+        <PendingDecisionsDrawer />
 
         <main
           key={location.pathname}
           id="main-content"
           tabIndex={-1}
-          className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none"
+          className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none bg-app-bg"
         >
           <PageTransition>{children || <Outlet />}</PageTransition>
         </main>

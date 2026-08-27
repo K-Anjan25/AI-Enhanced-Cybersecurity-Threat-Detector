@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import EngineApi from "../../../api/engineApi";
 import type { EngineSettings } from "../../../types/engine";
-import { BackButton } from "../../../components/ui";
+import { BackButton, NumberInput } from "../../../components/ui";
 
 const DEFAULT_SETTINGS: EngineSettings = {
   detectionSensitivity: "MEDIUM",
@@ -58,7 +58,7 @@ const EngineSettingsPage: React.FC = () => {
     }
   };
 
-  const cardCls = "bg-app-surface border border-line-subtle rounded-xl p-5 shadow-sm";
+  const cardCls = "bg-app-surface border border-line-subtle rounded-2xl p-5 shadow-card";
 
   return (
     <div className="space-y-6">
@@ -84,7 +84,7 @@ const EngineSettingsPage: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="p-6 bg-app-surface border border-line-subtle rounded-xl text-sm text-content-tertiary">
+        <div className="p-6 bg-app-surface border border-line-subtle rounded-2xl text-sm text-content-tertiary">
           Loading engine settings...
         </div>
       ) : (
@@ -95,19 +95,19 @@ const EngineSettingsPage: React.FC = () => {
               <p className="text-xs text-content-tertiary mt-1 mb-3">
                 Higher sensitivity flags more events as suspicious, increasing false positives.
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-1 p-1 rounded-full bg-app-subtle border border-line-subtle w-fit">
                 {(["LOW", "MEDIUM", "HIGH"] as const).map((level) => (
                   <button
                     key={level}
                     type="button"
                     onClick={() => update({ detectionSensitivity: level })}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold border transition ${
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
                       settings.detectionSensitivity === level
-                        ? "bg-accent-primary/10 border-accent-primary text-accent-primary"
-                        : "bg-app-bg border-line-subtle text-content-secondary hover:bg-app-subtle"
+                        ? "bg-brand-gradient text-brand-ink shadow-float"
+                        : "text-content-secondary hover:text-content-primary"
                     }`}
                   >
-                    {level}
+                    {level.charAt(0) + level.slice(1).toLowerCase()}
                   </button>
                 ))}
               </div>
@@ -120,14 +120,12 @@ const EngineSettingsPage: React.FC = () => {
               <p className="text-xs text-content-tertiary mt-1 mb-3">
                 Maximum parallel scan workers the engine may spawn.
               </p>
-              <input
+              <NumberInput
                 id="maxScans"
-                type="number"
                 min={1}
                 max={100}
                 value={settings.maxConcurrentScans}
-                onChange={(e) => update({ maxConcurrentScans: Number(e.target.value) })}
-                className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+                onChange={(v) => update({ maxConcurrentScans: Number.isNaN(v) ? 1 : v })}
               />
             </div>
 
@@ -138,14 +136,12 @@ const EngineSettingsPage: React.FC = () => {
               <p className="text-xs text-content-tertiary mt-1 mb-3">
                 How long processed log history is retained before purging.
               </p>
-              <input
+              <NumberInput
                 id="retention"
-                type="number"
                 min={1}
                 max={3650}
                 value={settings.logRetentionDays}
-                onChange={(e) => update({ logRetentionDays: Number(e.target.value) })}
-                className="w-full bg-app-bg border border-line-subtle rounded-lg px-3.5 py-2 text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+                onChange={(v) => update({ logRetentionDays: Number.isNaN(v) ? 1 : v })}
               />
             </div>
 
@@ -182,7 +178,7 @@ const EngineSettingsPage: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2.5 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:bg-accent-secondary transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save Settings"}
             </button>

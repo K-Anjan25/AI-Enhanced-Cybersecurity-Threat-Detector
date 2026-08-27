@@ -256,3 +256,233 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - Rebranding and single-frontend cleanup complete: `dashboard/` is the single source of truth for AXIOM AI.
 - Full test suite passing across backend (113 passed), ml-service (13 passed), and dashboard build (1.10s).
 
+
+## Phase 21 — Commercial-Grade Frontend Redesign (WordPress/WooCommerce research)
+
+- **Research** — web-researched how the best WordPress and WooCommerce implementations
+  are built: block-theme `theme.json` design tokens (declarative settings → CSS variables,
+  style variations, fluid typography), the hooks system (actions `do_action` / filters
+  `apply_filters` with priority + namespacing), and the storefront conversion playbook
+  (sticky header + single primary CTA, mini-cart slide-out drawer with live count pill,
+  product-grid card discipline, trust signals, distraction-free checkout, honest empty
+  states). Also researched enterprise SaaS typography rules (Major Second 1.125 scale,
+  sans UI + mono data pairing, ≥4.5:1 contrast) and security-SaaS dashboard patterns.
+  Findings + WP→NOCTRA mapping documented in
+  [`docs/frontend-commercial-redesign.md`](frontend-commercial-redesign.md).
+- **Token system (WP `theme.json` analog)** — extended `constants/brand.ts` (single source
+  of truth): `BRAND_GRADIENT` (exact logo violet `#6C5CE7→#9D7CFF`), `BRAND_TYPE_SCALE`
+  (fluid clamp() display + ui scales), `BRAND_RADII`, `BRAND_SHADOWS` (added float/hero),
+  `BRAND_BREAKPOINTS`, `BRAND_Z_INDEX`, `BRAND_TRUST_POINTS` (real, verifiable claims).
+  `tailwind.config.js` gained `backgroundImage.brand-gradient*`, `text-display-2xl…sm`
+  fluid scale, `shadow-float/hero`. `styles/globals.css` gained scrollbar-none + smooth
+  anchor scrolling.
+- **Hooks library (WP hooks analog)** — new `dashboard/src/hooks/`: `useScrollDirection`
+  (sticky-header hide-on-scroll), `useMediaQuery`/`useIsDesktop`/`useIsMobile`,
+  `useCountUp` (reduced-motion safe), `useInView` (IntersectionObserver reveal),
+  `useNoctraEvent`, `useHotkey` (mod+k/escape), `useLocalStorage`; barrel export.
+  New `lib/events.ts` — namespaced, priority-ordered action/filter bus mirroring
+  `do_action`/`apply_filters` (`EVENTS.COMMAND_MENU`, `OPEN_PENDING_DRAWER`, …).
+- **Components (block-pattern analog)** — `components/ui/` added `SectionLabel` (overline
+  eyebrow) + `TrustPill` (trust-signal chip). New `components/landing/`: `LandingNav`
+  (sticky, hide-on-scroll, gradient CTA), `LandingHero` (product preview built in CSS —
+  a real NOCTRA case card, labeled illustrative; no stock art), `TrustBar` (real test
+  numbers 114/13 + connectors + run modes with count-up), `FeatureGrid` (6 real features,
+  each linked to its live route), `HowItWorks` (8-step analyst loop), `FinalCTA` (gradient
+  band + multi-column footer). New `components/storefront/PendingDecisionsDrawer.tsx` —
+  the WooCommerce mini-cart pattern: slide-out drawer of pending cases, severity dots,
+  time-ago, "Review & decide" CTA, honest empty state, event-bus refresh, body scroll
+  lock, Escape close.
+- **Shell upgrade** — `Navbar` gained the mini-cart trigger: a "Review decisions"
+  gradient button with live pending-count pill (icon-only + count on mobile) that opens
+  the drawer via the event bus; count stays in sync through `EVENTS.PENDING_CHANGED`
+  (also emitted by the drawer after fetch). `DashboardLayout` mounts the drawer once.
+- **Landing rewrite** — `LandingPage.tsx` completely rebuilt as the WordPress-grade
+  marketing flow: nav → hero → trust bar → features → how-it-works → final CTA →
+  footer. Every number is real (test suites, connectors, run modes); no fabricated
+  metrics, no fake testimonials; one gradient (the exact brand violet) used only on
+  primary actions and the hero accent.
+- **Verification** — `tsc --noEmit && vite build` clean (~1.4s). Live preview: Vite on
+  port 3000 (proxies `/api` → FastAPI on 8000, SQLite `noctra_preview.db`); demo user
+  `demo` / `DemoPass123!` with one simulated CRITICAL case in the pending drawer.
+- **Wireframes** — 4 new concept boards in `docs/ui-concepts/new/` (landing hero,
+  inbox + drawer, case workspace, mobile); 8 web references archived in
+  `docs/ui-concepts/reference/`.
+
+## Phase 22 — Light/Dark Mode Toggle + L rollout to every remaining file
+
+- **Theme system** — `theme/ThemeProvider.tsx`: whole-app light/dark. Persists
+  `td_theme` in localStorage, falls back to OS `prefers-color-scheme`, listens for
+  OS changes until an explicit choice. `html.dark` flips every semantic token in
+  `globals.css` (same ink family as the night canvas); body background synced so
+  overscroll never flashes. `components/ThemeToggle.tsx` (sun/moon pill) mounted in
+  the Navbar and the landing nav.
+- **Token sweep** — converted every remaining hard-coded light class to semantic
+  tokens so dark mode flips the whole app: Card, PageHeader, Button (secondary/ghost),
+  Modal, Toast, CommandMenu, Term tooltip, Navbar, DashboardLayout sidebar, Pending
+  Decisions Drawer, all landing components (nav/hero/trust/features/how-it-works/
+  footer), Login/Register. Grep audit: 0 hard-coded `bg-white`/`text-neutral-*/`
+  `border-black/*` left outside intentional night panels.
+- **Night canvas framing** — the dark product card on the landing now carries the
+  caption "The night canvas — NOCTRA's dark workspace", making the light/dark
+  duality explicit (owner direction: the dark card is fine as long as it represents
+  light/dark mode). `.night` analyst panels stay dark in both themes by design.
+- **Verification** — `tsc --noEmit && vite build` clean (~1.5s); all new modules
+  serve 200 in the live preview.
+
+## Phase 23 — Crescent-moon brand mark, L auth pages, skeleton layout repair
+
+- **Brand mark → crescent moon** — owner confirmed the mark in the direction-L
+  design is a **crescented moon**, not the interim folded-ribbon N. Rewrote
+  `components/BrandLogo.tsx`: full disc r=12 @ (16,16) with a bite disc r=9 @
+  (21,11) removed via mask (exact crescent, no hand-drawn arcs), diagonal
+  `#6C5CE7→#9D7CFF` gradient, `#B18CFF` sparkle at the upper tip; wordmark +
+  sparkle-A + tagline unchanged; `useId` so multiple instances never collide.
+  Favicon `public/favicon.svg` and the brand spec (`docs/noctra-redesign-spec.md`
+  §12–13) updated to the crescent.
+- **Auth pages completed in the new design** — new `features/auth/components/
+  AuthLayout.tsx`: split screen (brand panel with crescent mark, mono overline,
+  display headline with gradient phrase, three product truths; form card on the
+  light canvas) + ThemeToggle top-right. Login and Register rebuilt on it;
+  ResetPassword rebuilt as a matching card (crescent mark, gradient pill,
+  invalid-token state with back-to-sign-in); ForgotPassword modal aligned
+  (rounded-3xl, crescent mark, "Night desk access" overline, accessible close).
+  Login card carries the demo workspace hint.
+- **Skeleton layout repair** — skeletons were replacing whole pages (spinner
+  where a header+cards should be) or double-carding. Added `SkeletonStatCard`,
+  `SkeletonChart`, `SkeletonList`; `SkeletonTable` now echoes real column
+  widths, supports a checkbox column, and a `bare` mode for use inside a Card
+  (no nested chrome). Wired layout-matched skeletons into DashboardOverview,
+  AIAnalytics, Brief, Actions, Reports, Case pages (headers stay visible during
+  load); applied `bare` in Feed, AlertList, Incidents, AdminUsers.
+- **Verification** — `tsc --noEmit && vite build` clean (1.56s); dev server
+  serves `/`, `/login`, `/register` 200.
+
+## Phase 24 — /analytics errors fixed + full preview stack running
+
+- **Frontend hardening (AIAnalyticsPage)** — eliminated every runtime crash
+  point: top-threats bar width no longer divides by zero (max-count scale,
+  `|| 0` guards), Recent Detections tolerates missing arrays + invalid dates
+  (`formatDate` helper), Explainability never calls `.map` on an undefined
+  `contributions` (ML proxy can return unexpected shapes), Benchmark tolerates
+  a missing `models` array, `model_type`/`method` render conditionally.
+- **Preview stack brought up** so /analytics shows real data, not errors:
+  - backend on SQLite `noctra_preview.db` (:8000, venv in backend/.venv)
+  - ml-service on :8001 (venv in ml-service/.venv) — /ml/benchmark and
+    /ml/explain/* now respond through the API
+  - new `backend/seed_preview.py` (idempotent): demo user `demo` /
+    `DemoPass123!` (ANALYST) + 41 alerts across 8 days (mixed severity/type/
+    MITRE) so KPIs, trend, severity donut, top threats, recent all render.
+  - verified end-to-end through the Vite proxy (:3000 → :8000): login →
+    overview (41 total / 4 critical / 10 high / 10 recent) → trends (7
+    points) → benchmark (models report "skipped — artifact missing", no
+    error) → explain/log (contributions + summary + method).
+- **Verification** — `tsc --noEmit && vite build` clean.
+
+## Phase 25 — Profile image upload + interactive/detailed/responsive analytics charts
+
+**Profile image upload** (`backend` + `dashboard`):
+- New `POST /api/v1/user/profile/image` (multipart) in `backend/app/api/v1/endpoints/users.py`:
+  validates content-type (PNG/JPEG/WEBP/GIF) + size (≤5 MB), stores under
+  `backend/uploads/avatars/` with uuid names, deletes the previous avatar file,
+  persists `user.profile_image`, returns `{message, profileImageURL}`.
+- `backend/app/main.py` mounts `StaticFiles` at `/uploads` (dir created eagerly
+  so the mount binds at import; lifespan re-ensures it). Vite dev proxy and
+  `dashboard/nginx.conf` both forward `/uploads/` → backend so avatars load in
+  the preview and in prod. `backend/uploads/` added to `.gitignore`.
+- Profile page: avatar preview with camera badge → hidden file input
+  (client-side type/size validation), upload progress overlay (Spinner light),
+  "Change photo" / "Remove" controls, keep existing "paste URL" field as an
+  alternative; `userApi.uploadProfileImage()` posts FormData with
+  `Content-Type: multipart/form-data` (avoids axios's JSON default).
+- Verified end-to-end via curl: upload 200 → static served on :8000 AND
+  through the :3000 proxy (200 image/png) → profile persisted → re-upload
+  removes the old file (404 on previous URL) → text/plain rejected 400.
+
+**Analytics charts — interactive, detailed, responsive** (`AIAnalyticsPage.tsx`):
+- Alert Trend: 7/14/30/90-day range segmented control (backend `?days=` 1..90
+  already supported), clickable series legend toggling Total/Critical/High/
+  Medium/Low lines, rich themed tooltip with per-series dots + values, cursor
+  line + active dots, summary strip (total / avg per day / peak day), dots
+  shown for ≤14-day ranges, loading overlay while switching ranges.
+- Severity donut: hover-active slices (Sector outerRadius pop via activeShape),
+  center total count, themed tooltip with % of total, legend shows count + %,
+  radius is percentage-based so it scales with container (mobile via useIsMobile).
+- Detections-by-type bars: themed tooltip, hover cursor fill, value labels on
+  top of bars, maxBarSize so bars don't over-bloat on mobile.
+- All chart cards now carry an explanatory subtitle; `CHART_TOOLTIP_STYLE`
+  import dropped (custom tooltips theme through CSS vars instead).
+- Verified: trends?days=7 and days=90 both 200 through the :3000 proxy;
+  `tsc --noEmit && vite build` clean.
+
+## Phase 26 — Login loop root cause (cookie context) + Entities graph upgrade + admin edit users
+
+**Login "shows logged in, returns to login" — root cause + fix:**
+- Sandbox reset wiped the gitignored `.env` (and venvs/node_modules/DB); the
+  backend default `COOKIE_AUTH=false` meant login returned 200 + tokens in the
+  body but NO Set-Cookie → every protected call 401 → /refresh 401 →
+  axios interceptor clears the session → bounce to /login.
+- Recreated `backend/.env` (COOKIE_AUTH=true, real JWT secrets) and re-added
+  `backend/.env.example` (tracked) documenting the requirement (pushed f198622).
+- Browser still failed after that because the Arena live preview embeds the
+  app in a cross-site iframe: `SameSite=strict` cookies are not sent by the
+  browser in that context → same loop. Fix: cookie flags now configurable
+  (`COOKIE_SAMESITE`, `COOKIE_PARTITIONED` in config.py); preview .env uses
+  `SameSite=None; Secure; Partitioned` (CHIPS) via a manual Set-Cookie header
+  (Starlette rejects `partitioned=True` on Python < 3.14 — raw header emitted
+  in `_set_auth_cookie`, Chrome 114+/Edge/Firefox parse `Partitioned`).
+- Verified via :3000 proxy: login → Set-Cookie `HttpOnly; Secure; SameSite=None;
+  Partitioned` ×2 → /user/me 200 → /refresh 200 → /analytics/overview 200.
+
+**Admin can now edit users:**
+- `AdminUsers.tsx` had `onEdit={() => undefined}` (TableWithAction edit button
+  did nothing). Wired to a real edit modal: role (USER/ANALYST/ADMIN) +
+  account-active toggle, read-only username/email context, `PATCH /users/:id`
+  via `AdminApi.updateRosterUser` (backend supports role + is_active; audits
+  USER_UPDATED). Verified: admin PATCH → 200 + persisted; non-admin → 403.
+- Seeder now also creates an ADMIN demo user `admin` / `AdminPass123!`
+  (idempotent; fixed a bug where the early-return on existing alerts skipped
+  the final db.commit so new users never persisted).
+
+**Entities & Graph upgraded (same treatment as /analytics):**
+- `EntityGraphView.tsx` rewritten: scroll-to-zoom (zoom-to-cursor), drag-to-pan
+  (pointer capture + move-suppressed clicks), zoom +/-/reset buttons with %
+  readout, hover highlighting (non-connected nodes/edges dim), floating rich
+  tooltip (type, value, risk, occurrences, degree), click-to-select + details
+  panel (risk bar, last seen, connections list with relation + risk, Pivot
+  button), double-click to pivot, header stats (nodes/edges/depth), full 7-type
+  legend + relation legend (solid vs dashed), responsive layout (details panel
+  stacks below graph on mobile), Escape to close, risk_score occurrences
+  guarded with Number()/?? fallbacks.
+- `EntitiesPage.tsx`: guarded risk_score rendering in the table (NaN-safe).
+- Seeder now seeds 10 entities (ip/domain/hash/email/file/account/host) + 9
+  directed links (resolves_to / communicates / derives_from / attaches /
+  authenticates) so the page has real data; verified summary (10/9, by_type
+  across all 7), graph fetch at depth 3, and path finder (4→10 reachable, 3 hops).
+
+## Phase 27 — Full page-audit sweep (NaN/stale/unguarded-data) — remaining pages
+
+Line-by-line audit of the pages that hadn't been swept yet; same standard as
+the /analytics pass. Findings + fixes:
+
+- DashboardOverviewPage: top-threats bars divided by threats[0].count (NaN
+  width when the top threat count is 0) — now computed maxThreatCount, same
+  fix as AIAnalyticsPage.
+- ReportsPage: feed consumers elsewhere tolerate a bare array but this page
+  did res.data.filter(...) — a bare array response would crash it. Now uses
+  Array.isArray(res) ? res : res?.data ?? [] and guards c.title / String(c.id)
+  in the search filter.
+- AlertDetailModal: Number(alert.score).toFixed(3) rendered "NaN" when score
+  is a non-numeric value — guarded with Number.isFinite.
+- Navbar: notification time could render "Invalid Date" — nTime() helper
+  returns "—" for missing/invalid timestamps.
+- CasePage: chat confidence Math.round(msg.confidence * 100) when confidence
+  is null (now != null + Number()) and timeline time could render
+  "Invalid Date" (fmtTime helper).
+
+Clean passes (no changes): ThreatAlertsPage (thin wrapper), AlertList
+(severity/message guards + valid-page clamping), CreateIncidentModal,
+IncidentsPage, FeedPage (asRows), BriefPage (timeOf + blast chips guarded),
+LogHistoryPage, LandingPage + all landing components (static data), the
+earlier-audited admin/soar/analytics/entities pages.
+
+Verified: tsc --noEmit && vite build clean.

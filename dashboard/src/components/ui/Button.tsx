@@ -13,15 +13,15 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-accent-primary text-brand-ink hover:opacity-90 border border-transparent",
-        secondary: "bg-app-subtle text-content-primary hover:bg-line-bright border border-line-subtle",
+          "bg-brand-gradient text-brand-ink hover:opacity-90 border border-transparent shadow-float",
+        secondary: "bg-app-surface text-content-primary hover:bg-app-surface-raised border border-line-subtle",
         danger: "bg-status-critical/15 text-status-critical hover:bg-status-critical/25 border border-status-critical/30",
         ghost: "text-content-secondary hover:bg-app-subtle hover:text-content-primary",
       },
       size: {
-        sm: "px-2.5 py-1 text-xs rounded-md",
-        md: "px-4 py-2 text-sm rounded-lg",
-        lg: "px-5 py-2.5 text-base rounded-xl",
+        sm: "px-2.5 py-1 text-xs rounded-full",
+        md: "px-4 py-2 text-sm rounded-full",
+        lg: "px-5 py-2.5 text-base rounded-full",
       },
     },
     defaultVariants: {

@@ -11,7 +11,8 @@ import {
   Moon,
   Inbox as InboxIcon,
 } from "lucide-react";
-import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge } from "../../../components/ui";
+import { Button, PageHeader, SeverityBadge, SkeletonCard, SkeletonChart, StatusBadge, Term } from "../../../components/ui";
+import { Select } from "../../../components/ui/Select";
 import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
 import AnalystApi from "../../../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
@@ -168,7 +169,26 @@ const BriefPage: React.FC = () => {
       label: `${n.entity_type}: ${n.value}`,
     })) ?? [];
 
-  if (loading) return <LoadingState label="Preparing your brief…" />;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader
+          title="Analyst Inbox"
+          description="What NOCTRA found while you were away."
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <SkeletonChart className="h-64" />
+            <SkeletonChart className="h-56" />
+          </div>
+          <div className="space-y-6">
+            <SkeletonCard className="h-40" />
+            <SkeletonCard className="h-40" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -176,24 +196,33 @@ const BriefPage: React.FC = () => {
         title="Analyst Inbox"
         description={
           brief
-            ? `${brief.alerts_today} event${brief.alerts_today === 1 ? "" : "s"} investigated today · ${brief.auto_recorded_today} automated response${brief.auto_recorded_today === 1 ? "" : "s"} recorded · ${brief.handled_today} decision${brief.handled_today === 1 ? "" : "s"} by you · ${brief.pending_count} waiting.`
+            ? (
+                <>
+                  {brief.alerts_today} event{brief.alerts_today === 1 ? "" : "s"} investigated today ·{" "}
+                  {brief.auto_recorded_today} <Term>auto-recorded</Term> response
+                  {brief.auto_recorded_today === 1 ? "" : "s"} · {brief.handled_today} decision
+                  {brief.handled_today === 1 ? "" : "s"} by you · {brief.pending_count} waiting.
+                </>
+              )
             : "What NOCTRA found while you were away."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <select
+            <Select
+              inline
               value={selectedScenario}
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={simulating}
               aria-label="Scenario to simulate"
-              className="flex-1 sm:flex-none min-w-[190px] bg-app-subtle border border-line-subtle text-xs text-content-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-primary/60"
-            >
-              <option value="credential_leak">Credential Leak (T1078)</option>
-              <option value="phishing_outbreak">Phishing Outbreak (T1566)</option>
-              <option value="data_exfiltration">Data Exfiltration (T1048)</option>
-              <option value="compromised_api_key">Compromised API Key (T1098)</option>
-            </select>
-            <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2 rounded-lg">
+              className="flex-1 sm:flex-none sm:min-w-[190px] bg-app-subtle text-xs"
+              options={[
+                { value: "credential_leak", label: "Credential Leak (T1078)" },
+                { value: "phishing_outbreak", label: "Phishing Outbreak (T1566)" },
+                { value: "data_exfiltration", label: "Data Exfiltration (T1048)" },
+                { value: "compromised_api_key", label: "Compromised API Key (T1098)" },
+              ]}
+            />
+            <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2">
               <Sparkles size={14} className="mr-1.5" aria-hidden />
               {simulating ? "Simulating…" : "Simulate scenario"}
             </Button>
@@ -220,7 +249,7 @@ const BriefPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-bold tracking-wider text-content-tertiary uppercase">
-                    Needs your decision
+                    <Term>Needs your decision</Term>
                   </span>
                   <SeverityBadge severity={latestCase.priority} />
                 </div>
@@ -307,7 +336,7 @@ const BriefPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(`/case/${latestCase.id}`)}
-                  className="bg-accent-primary hover:opacity-90 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-lg transition"
+                  className="bg-brand-gradient hover:opacity-90 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-full transition"
                 >
                   Review case #{latestCase.id}
                 </button>

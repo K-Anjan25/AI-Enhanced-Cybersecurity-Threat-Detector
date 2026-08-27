@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent } from "react";
+import Select from "../../ui/Select";
 
 export interface Column<T = any> {
   id: string;
@@ -62,7 +63,7 @@ export default function TableWithAction<T extends TableRowData = TableRowData>({
   const isSelected = (id: string | number): boolean => selected.indexOf(id) !== -1;
 
   return (
-    <div className="w-full max-w-[1200px] mt-4 bg-app-surface text-content-primary rounded-xl border border-line-subtle overflow-hidden shadow-sm">
+    <div className="w-full max-w-[1200px] mt-4 bg-app-surface text-content-primary rounded-2xl border border-line-subtle overflow-hidden shadow-card">
       {selected.length > 0 && (
         <div className="bg-accent-primary/10 border-b border-accent-primary/30 px-4 py-2 flex justify-between items-center text-sm font-medium">
           <span>{selected.length} row(s) selected</span>
@@ -178,19 +179,15 @@ export default function TableWithAction<T extends TableRowData = TableRowData>({
       <div className="flex items-center justify-between p-3 border-t border-line-subtle text-xs text-content-secondary">
         <div className="flex items-center gap-2">
           <span>Rows per page:</span>
-          <select
-            value={itemsPerPage}
+          <Select
+            inline
+            value={String(itemsPerPage)}
             onChange={(e: ChangeEvent<HTMLSelectElement>) =>
               handleChangeItemsPerPage?.(Number(e.target.value))
             }
-            className="bg-app-bg border border-line-subtle text-content-primary rounded-lg px-2 py-1 outline-none"
-          >
-            {[5, 10, 25].map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+            className="w-auto px-2.5 py-1 rounded-lg text-xs"
+            options={[5, 10, 25].map((opt) => ({ value: String(opt), label: String(opt) }))}
+          />
         </div>
         <span>Total: {totalSize}</span>
       </div>

@@ -3,8 +3,10 @@ import { useFormik } from "formik";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import TextInput from "../../../components/common/TextInput";
+import { Spinner } from "../../../components/ui";
 import { RootState } from "../../../store/store";
 import ForgotPassword from "../components/ForgotPassword";
+import AuthLayout from "../components/AuthLayout";
 import loginForm from "../../../validators/loginValidator";
 import showSuccess from "../../../utils/showSuccess";
 import { login } from "../../../store/userActions";
@@ -51,69 +53,93 @@ export default function Login(): React.ReactElement {
   });
 
   return (
-    <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-app-surface border border-line-subtle rounded-2xl shadow-2xl p-8 space-y-6">
-        <div className="flex flex-col items-center gap-3">
-          <BrandLogo size={36} />
-          <div className="text-center space-y-1">
-            <h2 className="text-2xl font-bold text-content-primary tracking-tight">Welcome back</h2>
-            <p className="text-xs tracking-[0.14em] text-content-tertiary uppercase">{BRAND_TAGLINE}</p>
-          </div>
+    <AuthLayout
+      headline={
+        <>
+          Welcome back to the{" "}
+          <span className="bg-brand-gradient bg-clip-text text-transparent">
+            night shift.
+          </span>
+        </>
+      }
+      subhead="Sign in to review pending detections, decide cases, and keep the noise out of your mornings."
+    >
+      <div className="w-full max-w-md mx-auto">
+        {/* Mobile brand header */}
+        <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
+          <BrandLogo size={40} withWordmark={false} />
+          <p className="text-[11px] font-mono uppercase tracking-[0.22em] text-accent-primary font-medium">
+            {BRAND_TAGLINE}
+          </p>
         </div>
 
-        {loginError && (
-          <div className="bg-status-critical/10 border border-status-critical/30 text-status-critical text-xs p-3 rounded-lg text-center">
-            {loginError}
+        <div className="bg-app-surface border border-line-subtle rounded-3xl shadow-card p-8 space-y-6">
+          <div className="space-y-1.5">
+            <h2 className="text-2xl font-bold text-content-primary tracking-tight">
+              Sign in
+            </h2>
+            <p className="text-sm text-content-tertiary">
+              Your workspace is waiting.
+            </p>
           </div>
-        )}
 
-        <form onSubmit={form.handleSubmit} className="space-y-4">
-          <TextInput
-            form={form}
-            name="identifier"
-            label="Email or Username"
-            type="text"
-            placeholder="Enter your email or username"
-          />
+          {loginError && (
+            <div className="bg-status-critical/10 border border-status-critical/30 text-status-critical text-xs p-3 rounded-lg text-center">
+              {loginError}
+            </div>
+          )}
 
-          <TextInput
-            form={form}
-            name="password"
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-          />
+          <form onSubmit={form.handleSubmit} className="space-y-4">
+            <TextInput
+              form={form}
+              name="identifier"
+              label="Email or Username"
+              type="text"
+              placeholder="Enter your email or username"
+            />
 
-          <div className="flex justify-end">
+            <TextInput
+              form={form}
+              name="password"
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+            />
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsForgetPasswordOpen(true)}
+                className="text-xs text-accent-primary hover:text-accent-secondary hover:underline transition cursor-pointer"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setIsForgetPasswordOpen(true)}
-              className="text-xs text-accent-primary hover:text-accent-secondary hover:underline transition"
+              type="submit"
+              disabled={form.isSubmitting || loading}
+              className="w-full py-3 bg-brand-gradient hover:opacity-90 disabled:opacity-60 text-brand-ink rounded-full text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 shadow-float cursor-pointer"
             >
-              Forgot Password?
+              {form.isSubmitting || loading ? (
+                <>
+                  <Spinner variant="light" className="mr-2" />
+                  Signing In...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </button>
-          </div>
+          </form>
+        </div>
 
-          <button
-            type="submit"
-            disabled={form.isSubmitting || loading}
-            className="w-full py-2.5 bg-accent-primary hover:opacity-90 disabled:opacity-60 text-brand-ink rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
-          >
-            {form.isSubmitting || loading ? (
-              <>
-                <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-app-bg border-t-transparent mr-2" />
-                Signing In...
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </button>
-        </form>
-
-        <div className="text-center pt-2 border-t border-line-subtle">
+        <div className="text-center mt-6">
           <p className="text-xs text-content-secondary">
             Need analyst credentials?{" "}
-            <Link to="/register" className="text-accent-primary hover:underline font-medium">
+            <Link
+              to="/register"
+              className="text-accent-primary hover:underline font-medium"
+            >
               Register here
             </Link>
           </p>
@@ -123,6 +149,6 @@ export default function Login(): React.ReactElement {
       {isForgetPasswordOpen && (
         <ForgotPassword onClose={() => setIsForgetPasswordOpen(false)} />
       )}
-    </div>
+    </AuthLayout>
   );
 }
