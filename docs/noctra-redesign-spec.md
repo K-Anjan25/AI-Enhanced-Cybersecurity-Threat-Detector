@@ -214,12 +214,12 @@ legacy overview's honest name.
 | Attribute | Value |
 | --- | --- |
 | Brand style | Intelligence Infrastructure |
-| Wordmark | Precision Neo-Grotesk (Inter, semibold, wide uppercase tracking) |
-| Logo style | Abstract Intelligence Mark ("Night Signal" — N releasing a signal arc + dot) |
+| Wordmark | Sora SemiBold, uppercase, slightly extended tracking; sparkle-A detail (exact logo spec, supersedes the interim neo-grotesk lockup) |
+| Logo style | Folded-ribbon "N" (blade/origami zigzag), diagonal violet gradient #6C5CE7→#9D7CFF, 4-point insight sparkle #B18CFF; divider lockup |
 | Visual language | Editorial Enterprise |
 | Interface style | Operational Minimalism |
 | Motion style | Purposeful Intelligence (state-change only; reduced-motion honored) |
-| Color style | Lumen Enterprise (periwinkle accent on ink/paper duality) |
+| Color style | NOCTRA violet gradient family (#6C5CE7 → #9D7CFF → #C9C4FF) |
 
 **Avoid list (hard):** cyberpunk · neon · gaming · hacker · sci-fi · generic
 AI purple · generic shield logos · generic lock logos · generic brain logos.
@@ -273,33 +273,39 @@ Do / don't:
 | Errors | "Couldn't reach NOCTRA. Retrying is safe." + real API detail |
 | Fallback AI | "Built-in reasoning" badge when `analysis.fallback` is true |
 
-## 12. Logo Concept — "The Night Signal"
+## 12. Logo Concept — "The Insight Fold" (exact brand spec, 2026-08-27)
 
-An **N** whose diagonal stroke releases into a rising signal arc with a single
-dot — the analyst transmitting a finding into the night. Ownable, geometric,
-legible at 16px, free of shield/eye/hex clichés.
+A bold geometric **N** built as a folded ribbon — a blade/origami zigzag with
+faceted planes — carrying a 4-pointed **insight sparkle** at its top-right
+corner. Reads as: N = name, fold = structured intelligence, sparkle = the
+finding/insight. Supersedes the interim "Night Signal" arc-and-dot mark.
 
-Construction (32-grid): two vertical bars (x=7 and x=21, y=6→26) joined by a
-diagonal that leaves the left bar at the top, crosses to the right bar, then
-continues as an arc sweeping past it, terminating in a dot at (26.5, 8).
-Reads as: N = name, arc = transmission/autonomous action, dot = the finding.
+Construction (32-grid): one continuous ribbon path (left bar → diagonal →
+right bar), diagonal gradient `#6C5CE7` (top-left) → `#9D7CFF`
+(bottom-right); two flat facet overlays (white 10%/5%) along the fold line
+through the diagonal band — flat vector, no 3D, no bevel, no outer glow.
+Sparkle `#B18CFF` at the N's top-right corner.
 
 ## 13. SVG Logo Specification
 
-- **Primary:** mark in periwinkle `#A8A2FF` on transparent + wordmark
-  "NOCTRA" (Sora SemiBold, tracking 0.18em, sentence caps) with sub-line
-  "AUTONOMOUS ANALYST" (9px, tracking 0.28em, muted).
-- **Compact mark:** bars+arc+dot only, 1:1. Works at 16/24/32px.
-- **Favicon:** `public/favicon.svg` — ink `#0C0E14` rounded square (r=8),
-  violet mark centered at 60% scale.
-- **Monochrome:** all strokes `currentColor` (one path set) — used in loading
+- **Icon:** folded-ribbon N, gradient `#6C5CE7→#9D7CFF` diagonal, sparkle
+  `#B18CFF`. Legible at 16px; facet overlays may drop below 20px.
+- **Wordmark:** "NOCTRA" — Sora SemiBold, uppercase, tracking +50…+80;
+  white `#FFFFFF` on dark, near-black on light (adaptive token). The "A"
+  carries a small `#B18CFF` sparkle at its apex.
+- **Tagline:** "YOUR AUTONOMOUS SECURITY ANALYST" — Inter Medium, uppercase,
+  tracking +180, `#9D7CFF`, beneath the wordmark (logotype color; WCAG
+  logotype exemption applies).
+- **Lockup:** [icon] [thin vertical divider] [wordmark over tagline];
+  clear space = one sparkle height on all sides.
+- **Favicon/app icon:** rounded-square badge `#0B0E1A` (r=8) with the mark
+  at 85% scale — `public/favicon.svg`; sizes 512/192/64/32/16 via the same
+  SVG.
+- **Monochrome:** everything `currentColor` (facet overlays off) for loading
   and empty states.
-- **Dark background:** violet mark (default). **Light background:** ink mark
-  `#17181C` with violet dot only.
-- **Clear space:** 0.5× mark height on all sides; min sizes 16px (mark),
-  88px (lockup).
 - Implementation: `components/BrandLogo.tsx` (single source; `collapsed`,
-  `size`, `withWordmark`, `mono` props).
+  `size`, `withWordmark`, `mono` props). Brand sheet:
+  `docs/brand/noctra-logo-sheet.png`.
 
 ## 14. Iconography System
 
@@ -341,6 +347,15 @@ is exactly where SentinelOne/Wiz live, and the original Phase-14 NOCTRA violet
 
 Verdict: **stay in the violet family, but own its light end — periwinkle
 `#A8A2FF`.** Rationale: (1) perceptually distinct at a glance from deep
+
+> **Superseded (exact brand spec, 2026-08-27):** the user's final logo
+> specification locks the brand to the violet gradient `#6C5CE7 → #9D7CFF`
+> with sparkle `#B18CFF` ("do not change the purple gradient to another
+> hue"). This supersedes the periwinkle position above by explicit
+> direction; the mid-violet proximity risk noted here was accepted.
+> App tokens reconciled to the same family (see §16); all AA pairs
+> re-verified — `#9D7CFF` on ink 6.2:1, `#6C5CE7` on white 4.86:1 /
+> paper 4.53:1, ink text on lavender fills 5.54:1, white on badge 4.86:1.
 saturated "AI purple" (reads moonlight-on-ink, matching the night story);
 (2) unclaimed in security branding; (3) strongest contrast of the family on
 ink — 8.5:1 on `app-bg`, 11.8:1 for `#C9C4FF` (WCAG AA/AAA), vs 5.8:1 for
@@ -367,8 +382,8 @@ Roles (Tailwind token → hex):
 | `app-surface-raised` | `#1A1D26` | hover/raised |
 | `app-subtle` | `#1B1E28` | table headers, input fills |
 | `app-navy` (legacy name) | `#10131C` | the "night canvas" editorial panels (Brief lead card, blast radius, reports) |
-| `accent-primary` | `#A8A2FF` | periwinkle — brand, primary buttons, links (see §15 audit) |
-| `accent-secondary` | `#C9C4FF` | hover / bright accents on dark |
+| `accent-primary` | `#9D7CFF` | lavender (gradient end) — brand, primary buttons, links |
+| `accent-secondary` | `#6C5CE7` day / `#C9C4FF` night | deep violet accent text on light; bright lavender on ink |
 | `status-success` | `#4CC38A` | approved, healthy |
 | `status-warning` | `#E5A54B` | awaiting decision, high severity |
 | `status-critical` | `#F26D6D` | critical severity, destructive |
@@ -716,6 +731,23 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
   say NOCTRA.
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
+
+### Addendum — Exact brand spec implementation (2026-08-27, latest pass)
+
+- **Logo system replaced per the user's exact specification** (§12–13
+  rewritten): folded-ribbon "N" with diagonal gradient `#6C5CE7→#9D7CFF`,
+  faceted overlays, 4-point `#B18CFF` insight sparkle; Sora SemiBold
+  wordmark with sparkle-A; "YOUR AUTONOMOUS SECURITY ANALYST" tagline in
+  `#9D7CFF`; divider lockup; `#0B0E1A` badge favicon. Supersedes both the
+  "Night Signal" mark and the interim neo-grotesk wordmark lockup.
+- **Tokens reconciled to the same family**: accent-primary `#9D7CFF`,
+  light-scope accent text `#6C5CE7`, night hover `#C9C4FF`, brand ink
+  unchanged; ambient wash + `brand.ts` constants updated; zero periwinkle
+  remains (grep + built CSS verified).
+- **Contrast re-verified (all AA+)**: 6.2 / 4.86 / 4.53 / 5.54 / 4.86 —
+  see §15 supersession note.
+- **Brand sheet generated**: `docs/brand/noctra-logo-sheet.png`.
+- tsc + vite build clean; favicon serving the badge mark; preview live.
 
 ### Addendum — Backend enrichment (2026-08-27, latest pass)
 

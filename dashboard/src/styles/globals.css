@@ -22,8 +22,8 @@
   --c-content-tertiary: 103 112 127;
   --c-line-subtle: 229 229 225;
   --c-line-bright: 214 214 208;
-  --c-accent-primary: 168 162 255; /* periwinkle — fills, marks */
-  --c-accent-secondary: 91 79 216; /* deep periwinkle — accent text/links on light */
+  --c-accent-primary: 157 124 255; /* lavender #9D7CFF — fills, marks */
+  --c-accent-secondary: 108 92 231; /* deep violet #6C5CE7 — accent text/links on light */
   --c-status-success: 35 122 87;
   --c-status-warning: 156 98 12;
   --c-status-critical: 199 53 74;
@@ -44,8 +44,8 @@
   --c-content-tertiary: 122 128 147;
   --c-line-subtle: 35 39 53;
   --c-line-bright: 50 56 80;
-  --c-accent-primary: 168 162 255;
-  --c-accent-secondary: 201 196 255; /* bright periwinkle on ink */
+  --c-accent-primary: 157 124 255;
+  --c-accent-secondary: 201 196 255; /* bright lavender on ink */
   --c-status-success: 76 195 138;
   --c-status-warning: 229 165 75;
   --c-status-critical: 242 109 109;

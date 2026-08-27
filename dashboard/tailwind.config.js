@@ -39,10 +39,10 @@ module.exports = {
           subtle: "#1B1E28",
         },
 
-        // ── Brand accent (periwinkle family — see spec §15 audit) ─────────
+        // ── Brand accent (NOCTRA violet gradient family — exact brand spec) ─
         brand: {
-          DEFAULT: "#A8A2FF",
-          ink: "#191B22", // text on accent fills (7.6:1 on periwinkle)
+          DEFAULT: "#9D7CFF", // gradient end / lavender
+          ink: "#191B22", // text on accent fills (5.5:1 on lavender)
         },
         "accent-primary": "rgb(var(--c-accent-primary) / <alpha-value>)",
         "accent-secondary": "rgb(var(--c-accent-secondary) / <alpha-value>)",

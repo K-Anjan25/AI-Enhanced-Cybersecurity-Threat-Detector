@@ -22,8 +22,11 @@ export const BRAND_PALETTE = {
   bgInk: "#0c0e14",
   surface: "#14161d",
   canvas: "#10131c", // editorial canvas panels (NOCTRA's voice)
-  accentPrimary: "#a8a2ff", // PRIMARY — brand + primary action (periwinkle)
+  accentPrimary: "#9d7cff", // PRIMARY — brand + primary action (lavender, gradient end)
   accentSecondary: "#c9c4ff", // hover / bright accents on dark
+  accentDeep: "#6c5ce7", // gradient start — accent text/links on light surfaces
+  accentStar: "#b18cff", // insight sparkle
+  badgeInk: "#0b0e1a", // app-icon badge background
   success: "#4cc38a",
   warning: "#e5a54b",
   critical: "#f26d6d",
