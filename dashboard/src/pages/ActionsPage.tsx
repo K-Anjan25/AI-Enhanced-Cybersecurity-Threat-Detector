@@ -77,45 +77,48 @@ const ActionsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">
       <PageHeader
-        title="Containment Actions & Reversibility Log"
+        title="Actions Log"
         crumbs={[{ label: "Overview", to: "/" }, { label: "Actions" }]}
-        description="All executed threat containment actions are recorded with complete audit references and 1-click reversal controls."
+        description="Every decision you authorize is recorded here with a full audit reference and a one-click compensating reversal. NOCTRA records actions — it never executes them against your systems; your team stays in control."
       />
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600 font-medium">
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical font-medium"
+        >
           {error}
         </div>
       )}
 
       {/* Filter / Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-line-subtle shadow-card">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-app-surface p-4 rounded-2xl border border-line-subtle shadow-card">
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-tertiary" />
           <input
             type="text"
-            placeholder="Filter by action type, target, or incident title..."
+            placeholder="Filter by action type, target, or case title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
+            className="w-full bg-app-subtle border border-line-subtle rounded-xl pl-10 pr-4 py-2 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary font-medium"
           />
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium shrink-0">
-          <Lock size={14} className="text-emerald-600" />
-          <span>Record-only SOAR • 100% Reversible</span>
+        <div className="flex items-center gap-2 text-xs text-content-secondary font-medium shrink-0">
+          <Lock size={14} className="text-status-success" />
+          <span>Record-only SOAR · every action reversible</span>
         </div>
       </div>
 
       {/* Actions Table Card */}
-      <Card padded={false} className="overflow-hidden border-line-subtle shadow-card bg-white">
+      <Card padded={false} className="overflow-hidden border-line-subtle shadow-card bg-app-surface">
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
             <EmptyState
-              title="No containment actions found"
+              title="No recorded actions"
               description={
                 search
                   ? "No actions match your filter criteria."
-                  : "AXIOM AI has not executed any containment actions yet."
+                  : "No actions have been recorded yet. Approve a recommended action on a case and it will appear here."
               }
             />
           </div>
@@ -123,7 +126,7 @@ const ActionsPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-slate-400 uppercase font-bold tracking-wider">
+                <tr className="border-b border-line-subtle bg-app-subtle/80 text-content-tertiary uppercase font-bold tracking-wider">
                   <th className="px-5 py-3.5">Case & Title</th>
                   <th className="px-5 py-3.5">Action Type</th>
                   <th className="px-5 py-3.5">Target Asset</th>
@@ -132,39 +135,39 @@ const ActionsPage: React.FC = () => {
                   <th className="px-5 py-3.5 text-right">Reversibility</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-line-subtle text-content-secondary">
                 {filtered.map((c) => {
                   const action = c.proposed_action;
                   const isApproved = c.decision === "approved";
                   const isReverted = c.decision === "reverted";
 
                   return (
-                    <tr key={c.id} className="hover:bg-slate-50/60 transition">
-                      <td className="px-5 py-4 font-semibold text-slate-900">
+                    <tr key={c.id} className="hover:bg-app-surface-raised/60 transition">
+                      <td className="px-5 py-4 font-semibold text-content-primary">
                         <Link
                           to={`/case/${c.id}`}
-                          className="hover:text-blue-600 flex items-center gap-1.5"
+                          className="hover:text-accent-primary flex items-center gap-1.5"
                         >
                           <span>Case #{c.id}</span>
-                          <span className="font-normal text-slate-500 truncate max-w-[200px]">
+                          <span className="font-normal text-content-tertiary truncate max-w-[200px]">
                             — {c.title}
                           </span>
-                          <ExternalLink size={12} className="text-slate-400 shrink-0" />
+                          <ExternalLink size={12} className="text-content-tertiary shrink-0" />
                         </Link>
                       </td>
-                      <td className="px-5 py-4 font-mono font-bold text-blue-600">
+                      <td className="px-5 py-4 font-mono font-bold text-accent-primary">
                         {action?.action_type || "ALERT_OPERATOR"}
                       </td>
-                      <td className="px-5 py-4 font-mono text-slate-800">
+                      <td className="px-5 py-4 font-mono text-content-secondary">
                         {action?.target || "System"}
                       </td>
-                      <td className="px-5 py-4 font-mono text-slate-400">
+                      <td className="px-5 py-4 font-mono text-content-tertiary">
                         {c.soar_action_id || `act_${c.id}`}
                       </td>
                       <td className="px-5 py-4">
                         <StatusBadge
                           tone={isApproved ? "success" : "neutral"}
-                          label={isApproved ? "Executed" : "Reverted"}
+                          label={isApproved ? "Recorded" : "Reverted"}
                         />
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -174,15 +177,15 @@ const ActionsPage: React.FC = () => {
                             size="sm"
                             disabled={revertingId === c.id}
                             onClick={() => handleRevert(c.id)}
-                            className="text-xs text-red-600 hover:bg-red-50 hover:border-red-200"
+                            className="text-xs text-status-critical hover:bg-status-critical/10 hover:border-status-critical/30"
                           >
                             <RotateCcw size={13} className="mr-1" />
-                            {revertingId === c.id ? "Reverting..." : "Revert Action"}
+                            {revertingId === c.id ? "Reverting..." : "Revert"}
                           </Button>
                         ) : isReverted ? (
-                          <span className="text-xs text-slate-400 font-medium inline-flex items-center gap-1">
-                            <CheckCircle2 size={13} className="text-emerald-500" />
-                            Reversed
+                          <span className="text-xs text-content-tertiary font-medium inline-flex items-center gap-1">
+                            <CheckCircle2 size={13} className="text-status-success" />
+                            Reverted
                           </span>
                         ) : null}
                       </td>

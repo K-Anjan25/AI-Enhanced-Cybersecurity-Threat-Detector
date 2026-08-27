@@ -122,7 +122,7 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
         )
     else:
         answer = (
-            f"Based on AXIOM AI's analysis of case #{case.id}: {case.title}. "
+            f"Based on NOCTRA's analysis of case #{case.id}: {case.title}. "
             f"What happened: {case.description or analysis.get('what_happened')}. "
             f"Confidence score is {analysis.get('confidence', 0.9) * 100:.0f}%. "
             f"Status is {case.status} with decision '{case.decision}'."

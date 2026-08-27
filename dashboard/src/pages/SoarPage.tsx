@@ -22,10 +22,23 @@ const statusBadge: Record<string, string> = {
 };
 
 const severityBadge: Record<string, string> = {
-  low: "bg-status-success/15 text-status-success border-status-success/30",
-  medium: "bg-chart-4/15 text-chart-4 border-chart-4/30",
-  high: "bg-status-warning/15 text-status-warning border-status-warning/30",
-  critical: "bg-status-critical/15 text-status-critical border-status-critical/30",
+  low: "bg-severity-low/15 text-severity-low border-severity-low/30",
+  medium: "bg-severity-medium/15 text-severity-medium border-severity-medium/30",
+  high: "bg-severity-high/15 text-severity-high border-severity-high/30",
+  critical: "bg-severity-critical/15 text-severity-critical border-severity-critical/30",
+};
+
+/**
+ * SOAR is record-only: the API's "executed" status means the action was
+ * recorded (and optionally published to the actions topic) — no external
+ * system was touched. The label must say what actually happened.
+ */
+const statusLabel: Record<string, string> = {
+  pending: "Pending",
+  executing: "Recording",
+  executed: "Recorded",
+  failed: "Failed",
+  skipped: "Skipped",
 };
 
 const PLAYBOOK_ACTIONS = [
@@ -181,11 +194,11 @@ const SoarPage: React.FC = () => {
       const result = await SoarApi.triggerForAlert(alertId);
       setTriggerResult(
         result.count === 0
-          ? `Alert #${alertId}: no actions executed. Check that it matches active rules.`
-          : `Alert #${alertId}: ${result.count} action(s) executed (${result.executed
+          ? `Alert #${alertId}: no actions matched. Check that it matches active rules.`
+          : `Alert #${alertId}: ${result.count} action(s) recorded (${result.executed
               .map((a) => (a as any).action_type)
               .filter(Boolean)
-              .join(", ")}).`
+              .join(", ")}). Nothing was executed against external systems.`
       );
       setPage(1);
       await loadActions();
@@ -203,14 +216,14 @@ const SoarPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="SOAR Automation"
-        description="Review automated response actions and test rule matching before they run."
+        description="See every action the rules engine has recorded, and test rule matching safely — records only, never live execution."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <h2 className="text-lg font-semibold text-content-primary tracking-tight">Dry-run evaluator</h2>
           <p className="text-xs text-content-tertiary mt-0.5 mb-4">
-            Test a log line against active rules without executing any action.
+            Test a log line against active rules — nothing is recorded and nothing runs.
           </p>
           <form onSubmit={handleEvaluate} className="space-y-3">
             <Select
@@ -279,7 +292,7 @@ const SoarPage: React.FC = () => {
               disabled={triggering || !triggerId}
               className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {triggering ? "Triggering…" : "Execute actions"}
+              {triggering ? "Triggering…" : "Trigger & record"}
             </button>
           </form>
           {triggerResult && (
@@ -413,8 +426,8 @@ const SoarPage: React.FC = () => {
       <Card padded={false} className="overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line-subtle">
           <div>
-            <h2 className="text-lg font-semibold text-content-primary tracking-tight">Executed actions</h2>
-            <p className="text-xs text-content-tertiary mt-0.5">Automation audit trail for this organization.</p>
+            <h2 className="text-lg font-semibold text-content-primary tracking-tight">Recorded actions</h2>
+            <p className="text-xs text-content-tertiary mt-0.5">Automation audit trail for this organization. Records only — no external systems were touched.</p>
           </div>
           <button
             type="button"
@@ -459,7 +472,7 @@ const SoarPage: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${statusBadge[action.status] || statusBadge.skipped}`}>
-                        {action.status}
+                        {statusLabel[action.status] || action.status}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-xs text-content-tertiary">

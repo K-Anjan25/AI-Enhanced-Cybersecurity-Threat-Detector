@@ -2,22 +2,55 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
-  AlertTriangle,
   Server,
   User as UserIcon,
   Globe,
   AppWindow,
-  CheckCircle2,
-  Bell,
-  Activity,
   ShieldCheck,
   RefreshCw,
-  ChevronRight,
+  Moon,
+  Inbox as InboxIcon,
 } from "lucide-react";
-import { Button, LoadingState } from "../components/ui";
+import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge } from "../components/ui";
 import AnalystApi from "../api/analystApi";
-import type { Brief, Connector } from "../types/analyst";
+import type { Brief, Connector, AnalystCase } from "../types/analyst";
 import { getApiError } from "../utils/getApiError";
+
+/**
+ * Home — the Analyst Inbox (spec §7, §21).
+ * Every number on this screen comes from the real /analyst/brief response.
+ * Nothing is fabricated: no fake posture score, no placeholder alerts. When
+ * nothing is pending we say so plainly and show how to see the loop end-to-end.
+ */
+
+const timeOf = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const NODE_ICON: Record<string, typeof Server> = {
+  host: Server,
+  account: UserIcon,
+  ip: Globe,
+  domain: Globe,
+  email: UserIcon,
+  file: AppWindow,
+  hash: AppWindow,
+};
+
+const connectorTone = (status: Connector["status"]): "success" | "warning" | "critical" => {
+  switch (status) {
+    case "connected":
+      return "success";
+    case "syncing":
+      return "warning";
+    default:
+      return "critical";
+  }
+};
 
 const BriefPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,7 +73,7 @@ const BriefPage: React.FC = () => {
       setBrief(briefData);
       setConnectors(connData);
     } catch (err: any) {
-      setError(getApiError(err, "Failed to load brief data"));
+      setError(getApiError(err, "Failed to load your brief"));
     } finally {
       setLoading(false);
     }
@@ -57,7 +90,7 @@ const BriefPage: React.FC = () => {
       const created = await AnalystApi.simulate(selectedScenario);
       navigate(`/case/${created.id}`);
     } catch (err: any) {
-      setError(getApiError(err, "Could not simulate an incident"));
+      setError(getApiError(err, "Could not simulate a scenario"));
       setSimulating(false);
     }
   };
@@ -76,255 +109,248 @@ const BriefPage: React.FC = () => {
     }
   };
 
-  const pendingCases = brief?.top_cases ?? [];
+  const pendingCases: AnalystCase[] = brief?.top_cases ?? [];
   const latestCase = pendingCases[0];
-
-  // Blast-radius chips: derived from the real latest case when available,
-  // falling back to illustrative placeholders when nothing is pending yet.
-  const NODE_ICON: Record<string, typeof Server> = {
-    host: Server,
-    account: UserIcon,
-    ip: Globe,
-    domain: Globe,
-    email: UserIcon,
-    file: AppWindow,
-    hash: AppWindow,
-  };
+  const analysis = latestCase?.analysis ?? null;
   const blastChips =
     latestCase?.blast_radius?.nodes?.slice(0, 4).map((n) => ({
       icon: NODE_ICON[n.entity_type] ?? AppWindow,
       label: `${n.entity_type}: ${n.value}`,
-    })) ??
-    (latestCase
-      ? []
-      : [
-          { icon: Server, label: "Server: Auth-Srv-01" },
-          { icon: UserIcon, label: "User: sysadmin" },
-          { icon: Globe, label: "IP: 10.0.1.50" },
-          { icon: AppWindow, label: "Application: Portal" },
-        ]);
+    })) ?? [];
 
-  if (loading) return <LoadingState label="Loading your brief…" />;
+  if (loading) return <LoadingState label="Preparing your brief…" />;
 
   return (
-    <div className="space-y-6 animate-fade-in bg-app-bg min-h-screen -m-6 p-6 sm:p-8">
-      {/* Simulation Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-line-subtle shadow-card">
-        <div>
-          <h1 className="text-xl font-bold font-display text-content-primary">
-            Dashboard
-          </h1>
-          <p className="text-xs text-content-secondary mt-0.5">
-            Real-time security posture and automated AI incident analysis.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedScenario}
-            onChange={(e) => setSelectedScenario(e.target.value)}
-            disabled={simulating}
-            className="bg-slate-100 border border-slate-200 text-xs text-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="credential_leak">Credential Leak (T1078)</option>
-            <option value="phishing_outbreak">Phishing Outbreak (T1566)</option>
-            <option value="data_exfiltration">Data Exfiltration (T1048)</option>
-            <option value="compromised_api_key">Compromised API Key (T1098)</option>
-          </select>
-          <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2 rounded-lg">
-            <Sparkles size={14} className="mr-1.5" aria-hidden />
-            {simulating ? "Simulating…" : "Simulate Incident"}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Analyst Inbox"
+        description={
+          brief
+            ? `${brief.pending_count} decision${brief.pending_count === 1 ? "" : "s"} waiting · ${brief.handled_today} handled today · watching ${brief.watching} asset${brief.watching === 1 ? "" : "s"}.`
+            : "What NOCTRA found while you were away."
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedScenario}
+              onChange={(e) => setSelectedScenario(e.target.value)}
+              disabled={simulating}
+              aria-label="Scenario to simulate"
+              className="bg-app-subtle border border-line-subtle text-xs text-content-primary rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-primary/60"
+            >
+              <option value="credential_leak">Credential Leak (T1078)</option>
+              <option value="phishing_outbreak">Phishing Outbreak (T1566)</option>
+              <option value="data_exfiltration">Data Exfiltration (T1048)</option>
+              <option value="compromised_api_key">Compromised API Key (T1098)</option>
+            </select>
+            <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2 rounded-lg">
+              <Sparkles size={14} className="mr-1.5" aria-hidden />
+              {simulating ? "Simulating…" : "Simulate scenario"}
+            </Button>
+          </div>
+        }
+      />
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600 font-medium">
+        <div
+          role="alert"
+          className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical font-medium"
+        >
           {error}
         </div>
       )}
 
-      {/* Main 3-Column Bento Layout (Exact layout from screenshot) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Column 1: Security Posture Score (White Card with Royal Blue Ring) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-line-subtle p-6 shadow-card flex flex-col items-center justify-between min-h-[340px]">
-          <h2 className="text-base font-bold text-slate-900 self-start">
-            Security Posture Score
-          </h2>
-
-          <div className="relative my-4 flex items-center justify-center w-48 h-48">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-              <path
-                className="text-slate-100"
-                strokeWidth="3.5"
-                stroke="currentColor"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path
-                className="text-blue-600"
-                strokeDasharray="96, 100"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                stroke="currentColor"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-            </svg>
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-4xl font-extrabold text-slate-900 font-display">
-                96<span className="text-slate-400 text-2xl font-semibold">/100</span>
-              </span>
-            </div>
-          </div>
-
-          <p className="text-sm font-medium text-slate-500">
-            Overall Health: <span className="text-slate-800 font-semibold">Good</span>
-          </p>
-        </div>
-
-        {/* Column 2: Center Dark Navy Card (Latest Incident) */}
-        <div className="lg:col-span-5 bg-[#0e1320] text-white rounded-2xl p-6 shadow-navy flex flex-col justify-between min-h-[340px]">
-          <div>
-            <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              LATEST INCIDENT
-            </span>
-
-            <div className="flex items-center gap-2 mt-3 mb-3">
-              <AlertTriangle size={18} className="text-slate-200" />
-              <h2 className="text-base font-bold text-white font-display">
-                {latestCase?.analysis?.headline || latestCase?.title || "Anomaly Detected (High Priority)"}
-              </h2>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed font-normal mb-5">
-              {latestCase?.analysis?.what_happened ||
-                latestCase?.description ||
-                "Potential automated brute-force attack blocked on primary authentication server. No credentials compromised; suspicious activity originated from a known threat IP (185.122.34.8) at 14:32 UTC."}
-            </p>
-
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold text-slate-300">
-                Affected Assets (Blast Radius):
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {blastChips.length > 0 ? (
-                  blastChips.map((chip) => (
-                    <span
-                      key={chip.label}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-slate-800/80 text-slate-200 border border-slate-700"
-                    >
-                      <chip.icon size={12} className="text-slate-400" /> {chip.label}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-xs text-slate-400 font-mono">
-                    No affected assets mapped for this incident.
+        {/* Lead card — the one thing that needs a decision, on the night canvas. */}
+        <div className="lg:col-span-7 bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy border border-line-subtle flex flex-col justify-between min-h-[320px]">
+          {latestCase ? (
+            <>
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold tracking-wider text-content-tertiary uppercase">
+                    Needs your decision
                   </span>
-                )}
-              </div>
-            </div>
-          </div>
+                  <SeverityBadge severity={latestCase.priority} />
+                </div>
 
-          <div className="mt-6 flex justify-end">
-            <button
-              type="button"
-              onClick={() => navigate(latestCase ? `/case/${latestCase.id}` : "/feed")}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors shadow-cobalt"
-            >
-              Remediate Incident
-            </button>
-          </div>
+                <h2 className="text-lg font-bold font-display text-content-primary mt-3 mb-2 leading-snug">
+                  {analysis?.headline || latestCase.title}
+                </h2>
+
+                <p className="text-xs text-content-secondary leading-relaxed mb-2">
+                  {analysis?.what_happened || latestCase.description || "Summary unavailable for this case."}
+                </p>
+
+                <p className="text-[11px] text-content-tertiary font-mono">
+                  {analysis
+                    ? analysis.fallback
+                      ? "Rule-based analysis (model unavailable) · confidence n/a"
+                      : `${analysis.model} · confidence ${Math.round((analysis.confidence ?? 0) * 100)}%`
+                    : "No analysis recorded yet"}
+                </p>
+
+                <div className="space-y-2 mt-4">
+                  <p className="text-[11px] font-semibold text-content-secondary">
+                    Observed blast radius
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {blastChips.length > 0 ? (
+                      blastChips.map((chip) => (
+                        <span
+                          key={chip.label}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-app-subtle/80 text-content-secondary border border-line-bright"
+                        >
+                          <chip.icon size={12} className="text-content-tertiary" /> {chip.label}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-content-tertiary font-mono">
+                        No affected assets mapped for this case.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/case/${latestCase.id}`)}
+                  className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors shadow-lumen"
+                >
+                  Review case #{latestCase.id}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-start justify-center h-full gap-3 py-6">
+              <Moon size={22} className="text-accent-glow" aria-hidden />
+              <h2 className="text-lg font-bold font-display text-content-primary">
+                Nothing needs you right now.
+              </h2>
+              <p className="text-xs text-content-secondary leading-relaxed max-w-md">
+                {brief
+                  ? `NOCTRA is watching ${brief.watching} asset${brief.watching === 1 ? "" : "s"} and has handled ${brief.handled_today} event${brief.handled_today === 1 ? "" : "s"} today. When something deserves attention, it lands here with a recommended, reversible action.`
+                  : "When something deserves attention, it lands here with a recommended, reversible action."}
+              </p>
+              <p className="text-[11px] text-content-tertiary">
+                New here? Simulate a scenario (top right) to watch the full loop end-to-end.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Column 3: Right Dark Navy Cards (Recent Alerts & Platform Status) */}
-        <div className="lg:col-span-3 flex flex-col gap-4 min-h-[340px]">
-          
-          {/* Recent Alerts Card */}
-          <div className="bg-[#0e1320] text-white rounded-2xl p-5 shadow-navy flex-1 flex flex-col justify-between">
-            <div>
-              <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-                RECENT ALERTS
+        {/* Queue — every pending decision, straight from the brief. */}
+        <div className="lg:col-span-5 flex flex-col gap-4 min-h-[320px]">
+          <div className="bg-app-surface rounded-2xl border border-line-subtle p-5 shadow-card flex-1 flex flex-col">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold tracking-wider text-content-tertiary uppercase">
+                Awaiting decision
               </span>
-              <div className="mt-3 space-y-3">
-                <div className="flex items-center justify-between text-xs py-1 border-b border-slate-800">
-                  <span className="text-slate-200 font-medium">SQL Injection Attempt</span>
-                  <span className="text-slate-400 font-mono text-[11px]">14:15</span>
-                </div>
-                <div className="flex items-center justify-between text-xs py-1 border-b border-slate-800">
-                  <span className="text-slate-200 font-medium">Suspicious API Activity</span>
-                  <span className="text-slate-400 font-mono text-[11px]">13:58</span>
-                </div>
-                <div className="flex items-center justify-between text-xs py-1">
-                  <span className="text-slate-200 font-medium">Network Scan</span>
-                  <span className="text-slate-400 font-mono text-[11px]">13:30</span>
-                </div>
-              </div>
+              <InboxIcon size={14} className="text-content-tertiary" aria-hidden />
             </div>
+            {pendingCases.length > 0 ? (
+              <ul className="mt-3 divide-y divide-line-subtle">
+                {pendingCases.slice(0, 6).map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/case/${c.id}`)}
+                      className="w-full flex items-center justify-between gap-3 text-left py-2.5 group"
+                    >
+                      <span className="text-xs font-medium text-content-secondary group-hover:text-content-primary transition truncate">
+                        {c.analysis?.headline || c.title}
+                      </span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <SeverityBadge severity={c.priority} />
+                        <span className="text-content-tertiary font-mono text-[11px]">
+                          {timeOf(c.created_at)}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-xs text-content-tertiary">
+                The queue is empty — no cases are waiting on a decision.
+              </p>
+            )}
           </div>
 
-          {/* Platform Status Card */}
-          <div className="bg-[#0e1320] text-white rounded-2xl p-5 shadow-navy">
-            <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              PLATFORM STATUS
-            </span>
-            <div className="mt-3 flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-semibold text-slate-200">
-                All Systems Operational
-              </span>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-app-surface rounded-2xl border border-line-subtle p-5 shadow-card">
+              <p className="text-[11px] font-bold tracking-wider text-content-tertiary uppercase">
+                Handled today
+              </p>
+              <p className="mt-2 text-3xl font-extrabold font-display text-content-primary">
+                {brief?.handled_today ?? 0}
+              </p>
+              <p className="text-[11px] text-content-tertiary mt-1">decisions closed</p>
+            </div>
+            <div className="bg-app-surface rounded-2xl border border-line-subtle p-5 shadow-card">
+              <p className="text-[11px] font-bold tracking-wider text-content-tertiary uppercase">
+                Watching
+              </p>
+              <p className="mt-2 text-3xl font-extrabold font-display text-content-primary">
+                {brief?.watching ?? 0}
+              </p>
+              <p className="text-[11px] text-content-tertiary mt-1">assets under observation</p>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* Security Tooling Connectors Section */}
-      <div className="bg-white rounded-2xl border border-line-subtle p-6 shadow-card">
+      {/* Integrated tooling — statuses exactly as reported by the backend. */}
+      <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-display">
-              <ShieldCheck size={16} className="text-blue-600" /> Integrated Security Tooling
+            <h2 className="text-sm font-bold text-content-primary flex items-center gap-2 font-display">
+              <ShieldCheck size={16} className="text-accent-primary" /> Integrated security tooling
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live telemetry feeding automated decision engine.
+            <p className="text-xs text-content-tertiary mt-0.5">
+              Telemetry sources feeding NOCTRA's analysis.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {connectors.map((conn) => (
-            <div
-              key={conn.id}
-              className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-800 truncate">
-                    {conn.name}
-                  </span>
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full">
-                    {conn.status}
-                  </span>
+        {connectors.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {connectors.map((conn) => (
+              <div
+                key={conn.id}
+                className="p-4 rounded-xl bg-app-subtle border border-line-subtle flex flex-col justify-between space-y-3"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <span className="text-xs font-bold text-content-primary truncate">
+                      {conn.name}
+                    </span>
+                    <StatusBadge tone={connectorTone(conn.status)} label={conn.status} />
+                  </div>
+                  <p className="text-[11px] text-content-tertiary">{conn.category}</p>
                 </div>
-                <p className="text-[11px] text-slate-500">{conn.category}</p>
-              </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-600 border-t border-slate-200 pt-2">
-                <span>{conn.assets_monitored} assets</span>
-                <button
-                  type="button"
-                  onClick={() => handleSyncConnector(conn.id)}
-                  disabled={syncingId === conn.id}
-                  className="flex items-center gap-1 text-blue-600 font-semibold hover:underline text-[11px]"
-                >
-                  <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
-                  {conn.last_sync}
-                </button>
+                <div className="flex items-center justify-between text-[11px] text-content-secondary border-t border-line-subtle pt-2">
+                  <span>{conn.assets_monitored} assets</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSyncConnector(conn.id)}
+                    disabled={syncingId === conn.id}
+                    className="flex items-center gap-1 text-accent-primary font-semibold hover:underline text-[11px]"
+                  >
+                    <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
+                    {conn.last_sync}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-content-tertiary">
+            No connector telemetry configured for this environment.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 Covers:
     - Multi-scenario simulation (credential leak, phishing outbreak, data exfiltration, compromised API key)
-    - Ask-AXIOM AI interactive case chat
+    - NOCTRA interactive case chat
     - Security connectors status & manual sync
     - API surface & transitions (simulate -> pending -> approve/decline/revert -> report).
 """
@@ -168,7 +168,7 @@ def test_analyst_http_flow_including_chat_and_connectors(client, auth_headers):
     case_id = case["id"]
     assert case["kind"] == "analyst"
 
-    # 2. Ask-AXIOM AI Chat
+    # 2. NOCTRA chat
     chat_resp = client.post(
         f"/api/v1/analyst/cases/{case_id}/chat",
         json={"message": "What is the recommended action for this phishing alert?"},

@@ -60,12 +60,12 @@ const CasePage: React.FC = () => {
     try {
       const c = await AnalystApi.fetchCase(id);
       setData(c);
-      // Seed initial welcome message from AXIOM AI
+      // Seed initial welcome message from the NOCTRA analyst.
       setChatMessages([
         {
           id: "welcome",
           sender: "axiom",
-          text: `Hello! I am AXIOM AI analyst. Ask me anything about Case #${c.id} (${c.title}).`,
+          text: `Hello! I am your NOCTRA analyst. Ask me anything about Case #${c.id} (${c.title}).`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -98,14 +98,14 @@ const CasePage: React.FC = () => {
 
     try {
       const res = await AnalystApi.chatAboutCase(id, userText);
-      const axiomMsg: ChatMessage = {
+      const analystMsg: ChatMessage = {
         id: `n-${Date.now()}`,
         sender: "axiom",
         text: res.answer,
         confidence: res.confidence,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      setChatMessages((prev) => [...prev, axiomMsg]);
+      setChatMessages((prev) => [...prev, analystMsg]);
     } catch (err: any) {
       setChatMessages((prev) => [
         ...prev,
@@ -186,38 +186,41 @@ const CasePage: React.FC = () => {
       />
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600 font-medium">
+        <div
+          role="alert"
+          className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical font-medium"
+        >
           {error}
         </div>
       )}
 
       {/* Explanation — plain English, calm prose. */}
-      <div className="bg-white rounded-2xl border border-line-subtle p-6 shadow-card space-y-4">
+      <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card space-y-4">
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-1">
             What happened
           </h2>
-          <p className="text-slate-800 leading-relaxed font-medium">{analysis?.what_happened || data.description}</p>
+          <p className="text-content-primary leading-relaxed font-medium">{analysis?.what_happened || data.description}</p>
         </div>
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-1">
             Why it matters
           </h2>
-          <p className="text-slate-600 leading-relaxed">{analysis?.why_it_matters}</p>
+          <p className="text-content-secondary leading-relaxed">{analysis?.why_it_matters}</p>
         </div>
       </div>
 
-      {/* Blast radius */}
-      <div className="bg-[#0e1320] text-white rounded-2xl border border-slate-800 overflow-hidden shadow-navy">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-2">
-          <GitBranch size={16} className="text-blue-400" aria-hidden />
-          <h2 className="text-sm font-bold text-white font-display tracking-tight">Blast Radius Affected Assets</h2>
-          <span className="text-xs text-slate-400 ml-auto font-mono">
+      {/* Blast radius — night canvas. */}
+      <div className="bg-app-navy text-content-primary rounded-2xl border border-line-bright overflow-hidden shadow-navy">
+        <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
+          <GitBranch size={16} className="text-accent-glow" aria-hidden />
+          <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Blast Radius Affected Assets</h2>
+          <span className="text-xs text-content-tertiary ml-auto font-mono">
             {data.blast_radius?.nodes?.length ?? 0} assets touched
           </span>
         </div>
         {analysis?.blast_radius_summary && (
-          <p className="px-5 pt-4 text-sm text-slate-300 leading-relaxed">{analysis.blast_radius_summary}</p>
+          <p className="px-5 pt-4 text-sm text-content-secondary leading-relaxed">{analysis.blast_radius_summary}</p>
         )}
         <ul className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {(data.blast_radius?.nodes ?? []).map((n) => {
@@ -225,16 +228,16 @@ const CasePage: React.FC = () => {
             return (
               <li
                 key={n.id}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900/80"
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-line-bright bg-app-void/80"
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-app-subtle text-content-secondary border border-line-bright shrink-0">
                   {n.entity_type}
                 </span>
-                <span className="text-xs text-slate-200 font-mono truncate" title={n.value}>
+                <span className="text-xs text-content-secondary font-mono truncate" title={n.value}>
                   {n.value}
                 </span>
                 {isRoot && (
-                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-blue-400 shrink-0">
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-accent-glow shrink-0">
                     origin
                   </span>
                 )}
@@ -245,9 +248,9 @@ const CasePage: React.FC = () => {
         {(data.blast_radius?.links?.length ?? 0) > 0 && (
           <div className="px-5 pb-5 space-y-1.5">
             {data.blast_radius!.links.map((l, i) => (
-              <p key={i} className="text-xs text-slate-400 font-mono">
+              <p key={i} className="text-xs text-content-tertiary font-mono">
                 {nodeById.get(l.source)?.value ?? l.source}
-                <span className="text-blue-400"> —{l.relation}→ </span>
+                <span className="text-accent-glow"> —{l.relation}→ </span>
                 {nodeById.get(l.target)?.value ?? l.target}
               </p>
             ))}
@@ -257,39 +260,39 @@ const CasePage: React.FC = () => {
 
       {/* Recommended action */}
       {action && (
-        <div className="bg-white rounded-2xl border border-blue-200 p-6 shadow-card">
+        <div className="bg-app-surface rounded-2xl border border-accent-primary/30 p-6 shadow-card">
           <div className="flex items-start gap-3">
-            <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <span className="w-10 h-10 rounded-xl bg-accent-primary/15 text-accent-primary flex items-center justify-center shrink-0">
               <ShieldAlert size={20} aria-hidden />
             </span>
             <div className="min-w-0 flex-1 space-y-3">
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary">
                   Recommended Action
                 </h2>
-                <p className="mt-1 text-lg font-bold text-slate-900 font-display">
-                  <span className="font-mono text-blue-600">{action.action_type}</span>
+                <p className="mt-1 text-lg font-bold text-content-primary font-display">
+                  <span className="font-mono text-accent-primary">{action.action_type}</span>
                 </p>
-                <p className="text-sm text-slate-600 mt-0.5">
-                  Target: <span className="font-mono text-slate-900 font-bold">{action.target}</span>
+                <p className="text-sm text-content-secondary mt-0.5">
+                  Target: <span className="font-mono text-content-primary font-bold">{action.target}</span>
                 </p>
               </div>
               {action.rationale && (
-                <p className="text-sm text-slate-600 leading-relaxed">{action.rationale}</p>
+                <p className="text-sm text-content-secondary leading-relaxed">{action.rationale}</p>
               )}
               {action.undo && (
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                  <Undo2 size={15} className="text-emerald-600 mt-0.5 shrink-0" aria-hidden />
-                  <p className="text-xs text-slate-700">
-                    <span className="font-bold text-emerald-700">Reversible.</span> {action.undo}
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-status-success/10 border border-status-success/30">
+                  <Undo2 size={15} className="text-status-success mt-0.5 shrink-0" aria-hidden />
+                  <p className="text-xs text-content-secondary">
+                    <span className="font-bold text-status-success">Reversible.</span> {action.undo}
                   </p>
                 </div>
               )}
-              <div className="flex items-center gap-3 text-xs text-slate-500 pt-1">
+              <div className="flex items-center gap-3 text-xs text-content-tertiary pt-1">
                 <span className="inline-flex items-center gap-1 font-medium">
-                  <Sparkles size={12} className="text-blue-600" aria-hidden />
+                  <Sparkles size={12} className="text-accent-primary" aria-hidden />
                   {analysis?.fallback
-                    ? "AXIOM AI built-in reasoning engine"
+                    ? "NOCTRA built-in reasoning engine"
                     : `Reasoned by ${analysis?.model ?? "Claude"}`}
                 </span>
                 {confidencePct !== null && <span>· {confidencePct}% confidence</span>}
@@ -299,15 +302,15 @@ const CasePage: React.FC = () => {
         </div>
       )}
 
-      {/* Ask-AXIOM AI Interactive Analyst Chat */}
-      <div className="bg-[#0e1320] text-white rounded-2xl border border-slate-800 overflow-hidden shadow-navy">
-        <div className="px-5 py-3.5 border-b border-slate-800 flex items-center gap-2 bg-slate-900/60">
-          <MessageSquare size={16} className="text-blue-400" />
-          <h2 className="text-sm font-bold text-white font-display tracking-tight">
-            Ask AXIOM AI Analyst
+      {/* Ask NOCTRA — interactive analyst chat (night canvas) */}
+      <div className="bg-app-navy text-content-primary rounded-2xl border border-line-bright overflow-hidden shadow-navy">
+        <div className="px-5 py-3.5 border-b border-line-bright flex items-center gap-2 bg-app-void/60">
+          <MessageSquare size={16} className="text-accent-glow" />
+          <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
+            Ask NOCTRA
           </h2>
-          <span className="text-xs text-slate-400 ml-auto font-mono">
-            Interactive Q&A
+          <span className="text-xs text-content-tertiary ml-auto font-mono">
+            Interactive Q&amp;A
           </span>
         </div>
 
@@ -322,8 +325,8 @@ const CasePage: React.FC = () => {
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
                   msg.sender === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-800 text-blue-400 border border-slate-700"
+                    ? "bg-accent-primary text-app-bg"
+                    : "bg-app-subtle text-accent-glow border border-line-bright"
                 }`}
               >
                 {msg.sender === "user" ? <User size={14} /> : <Bot size={14} />}
@@ -331,12 +334,12 @@ const CasePage: React.FC = () => {
               <div
                 className={`max-w-[80%] p-3 rounded-xl text-xs leading-relaxed ${
                   msg.sender === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-900 border border-slate-800 text-slate-200"
+                    ? "bg-accent-primary text-app-bg"
+                    : "bg-app-void border border-line-bright text-content-secondary"
                 }`}
               >
                 <p>{msg.text}</p>
-                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                <div className="mt-1 flex items-center justify-between text-[10px] text-content-tertiary font-mono">
                   <span>{msg.timestamp}</span>
                   {msg.confidence !== undefined && (
                     <span>Confidence: {Math.round(msg.confidence * 100)}%</span>
@@ -346,34 +349,34 @@ const CasePage: React.FC = () => {
             </div>
           ))}
           {chatLoading && (
-            <div className="flex items-center gap-2 text-xs text-slate-400 animate-pulse">
-              <Bot size={14} className="text-blue-400" /> AXIOM AI is reasoning…
+            <div className="flex items-center gap-2 text-xs text-content-tertiary animate-pulse">
+              <Bot size={14} className="text-accent-glow" /> NOCTRA is reasoning…
             </div>
           )}
         </div>
 
-        <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-800 flex gap-2 bg-slate-950">
+        <form onSubmit={handleSendMessage} className="p-3 border-t border-line-bright flex gap-2 bg-app-void">
           <input
             type="text"
             placeholder="Ask about blast radius, threat actor, or remediation details..."
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             disabled={chatLoading}
-            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="flex-1 bg-app-subtle border border-line-bright rounded-xl px-3 py-2 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
           />
-          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()} className="bg-accent-primary hover:bg-accent-secondary text-app-bg">
             <Send size={14} />
           </Button>
         </form>
       </div>
 
       {/* Decision gate */}
-      <div className="bg-white rounded-2xl border border-line-subtle p-6 shadow-card">
+      <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
         {isPending ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-slate-900">This one's your call.</p>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-sm font-bold text-content-primary">This one's your call.</p>
+              <p className="text-xs text-content-tertiary mt-0.5">
                 Approving records the action and generates a report. You can reverse it afterwards.
               </p>
             </div>
@@ -381,7 +384,7 @@ const CasePage: React.FC = () => {
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
-              <Button variant="primary" onClick={() => setDialog("approve")} className="bg-blue-600 hover:bg-blue-700 text-white font-bold">
+              <Button variant="primary" onClick={() => setDialog("approve")} className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-bold">
                 <CheckCircle2 size={16} className="mr-1.5" aria-hidden />
                 Approve Action
               </Button>
@@ -392,14 +395,14 @@ const CasePage: React.FC = () => {
             <div className="flex items-start gap-3">
               <span
                 className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  isApproved ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-600"
+                  isApproved ? "bg-status-success/15 text-status-success" : "bg-app-subtle text-content-secondary"
                 }`}
               >
                 {isApproved ? <CheckCircle2 size={18} aria-hidden /> : data.decision === "reverted" ? <RotateCcw size={18} aria-hidden /> : <XCircle size={18} aria-hidden />}
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900 capitalize">{data.decision}</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-bold text-content-primary capitalize">{data.decision}</p>
+                <p className="text-xs text-content-tertiary mt-0.5">
                   {data.decided_at ? new Date(data.decided_at).toLocaleString() : "Recorded"}
                   {data.soar_action_id && (
                     <>
@@ -426,7 +429,7 @@ const CasePage: React.FC = () => {
             </div>
 
             {showReport && data.report && (
-              <pre className="p-4 rounded-xl bg-slate-900 text-slate-200 border border-slate-800 text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+              <pre className="p-4 rounded-xl bg-app-void text-content-secondary border border-line-bright text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
                 {data.report}
               </pre>
             )}
@@ -440,7 +443,7 @@ const CasePage: React.FC = () => {
         title="Approve this action?"
         message={
           <>
-            AXIOM AI will record <span className="font-mono font-bold">{action?.action_type}</span> on{" "}
+            NOCTRA will record <span className="font-mono font-bold">{action?.action_type}</span> on{" "}
             <span className="font-mono font-bold">{action?.target}</span> and generate a report. This is reversible.
           </>
         }
@@ -465,7 +468,7 @@ const CasePage: React.FC = () => {
         title="Reverse this action?"
         message={
           <>
-            AXIOM AI records a compensating action{action?.undo ? <> — {action.undo}</> : null} and marks the case reverted.
+            NOCTRA records a compensating action{action?.undo ? <> — {action.undo}</> : null} and marks the case reverted.
           </>
         }
         confirmLabel="Reverse"

@@ -37,7 +37,7 @@ const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
     <div className="flex items-center space-x-2">
       <div className="w-3 h-3 bg-accent-primary rounded-full animate-ping" />
-      <span>Loading AXIOM AI...</span>
+      <span>Loading NOCTRA...</span>
     </div>
   </div>
 );

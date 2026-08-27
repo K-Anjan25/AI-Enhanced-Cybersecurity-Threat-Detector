@@ -13,7 +13,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-gradient-to-r from-accent-primary to-brand-sage text-white hover:opacity-90 shadow-accent-glow border border-white/10",
+          "bg-gradient-to-r from-accent-primary to-accent-secondary text-app-bg hover:opacity-90 shadow-accent-glow border border-white/10",
         secondary: "bg-app-subtle text-content-primary hover:bg-line-bright border border-line-subtle",
         danger: "bg-status-critical/15 text-red-300 hover:bg-status-critical/25 border border-status-critical/30",
         ghost: "text-content-secondary hover:bg-app-subtle hover:text-content-primary",

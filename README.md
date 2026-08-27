@@ -1,15 +1,15 @@
-# AXIOM AI — Autonomous Cybersecurity Threat Detector
+# NOCTRA — Autonomous Cybersecurity Threat Detector
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
 
-> **AXIOM AI** — *Self-evident threat reasoning. Instant containment.*
-> The autonomous AI security analyst for growing companies.
+> **NOCTRA** — *Your autonomous security analyst.* (See less. Know more.)
+> You employ an analyst; you don't operate a dashboard.
 >
 > **Brand System & Specification**:
-> - Formal Brand Document: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md)
-> - Visual Poster Artifact: [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png)
+> - Current redesign spec (IA, Night Shift tokens, product model): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
+> - Historical: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) (superseded)
 
-An end-to-end cybersecurity threat detection and containment platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and one-click reversible remediation actions.
+An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.
 
 The project supports both **local (REST)** and **streaming (Kafka)** execution modes.
 
@@ -31,7 +31,7 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 
 - Security telemetry and events are ingested via REST or Kafka connectors (Okta, CrowdStrike, GuardDuty, Cloudflare WAF).
 - The backend leverages ML models and Anthropic LLM reasoning to evaluate incidents and map connected blast radius assets.
-- The AXIOM AI React dashboard visualizes SOC incident briefs, blast-radius graph nodes, Ask-AXIOM interactive copilot chat, SOAR playbooks, and decision audit logs.
+- The NOCTRA React dashboard visualizes SOC incident briefs, blast-radius graph nodes, the interactive analyst chat, SOAR playbooks, and decision audit logs.
 
 ## Tech Stack
 
@@ -73,7 +73,7 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 │   │   ├── components/          # BrandLogo, UI components, Bento Layout
 │   │   ├── api/                 # Axios API clients
 │   │   ├── store/               # Redux Toolkit
-│   │   └── constants/           # Brand tokens (AXIOM AI)
+│   │   └── constants/           # Brand tokens (NOCTRA)
 ├── docs/                    # Brand specifications, requirements, architecture
 └── README.md
 ```
@@ -87,7 +87,7 @@ cd docker
 docker compose up -d
 ```
 
-- **AXIOM AI Dashboard**: `http://localhost:3000`
+- **NOCTRA Dashboard**: `http://localhost:3000`
 - **FastAPI Backend**: `http://localhost:8000`
 - **ML Microservice**: `http://localhost:8001`
 - **PostgreSQL**: `localhost:5431`
@@ -106,7 +106,7 @@ cd backend
 python -m uvicorn app.main:app --port 8000
 ```
 
-#### AXIOM AI Dashboard
+#### NOCTRA Dashboard
 ```bash
 cd dashboard
 npm run dev
@@ -134,7 +134,8 @@ npm run build
 
 ## Brand Specification & Artifacts
 
-- **Brand Name**: `AXIOM AI`
-- **Tagline**: *"Self-evident threat reasoning. Instant containment."*
-- **Design Specifications**: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md)
-- **Visual Brand Identity Poster**: [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png)
+- **Brand Name**: `NOCTRA`
+- **Tagline**: *"Your autonomous security analyst."* (secondary: *"See less. Know more."*)
+- **Design language**: "Night Shift" — dark-first, Lumen violet `#8B7CF6`, Sora / Inter / JetBrains Mono
+- **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
+- **Historical (superseded)**: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) · [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png)

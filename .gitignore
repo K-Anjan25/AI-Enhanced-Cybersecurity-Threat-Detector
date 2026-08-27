@@ -57,6 +57,7 @@ ui-design/
 # Stray runtime DBs (dev leftovers, not part of the codebase)
 backend/threatai_verify.db
 backend/e2e.db
+backend/smoke.db
 
 # ======================
 # OS

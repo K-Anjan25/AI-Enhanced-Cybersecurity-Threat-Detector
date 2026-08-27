@@ -1,7 +1,7 @@
 """Autonomous-analyst API (Phases 18-19).
 
 The product surface: simulate incidents, read the calm brief + decision feed,
-open a case, make human decisions (approve / decline / revert), ask Ask-AXIOM AI
+open a case, make human decisions (approve / decline / revert), ask NOCTRA
 questions, and monitor connected security integrations.
 """
 
@@ -108,7 +108,7 @@ def chat_about_case(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Interactive Ask-AXIOM AI Q&A regarding case context, MITRE mapping, or remediation."""
+    """Interactive NOCTRA Q&A regarding case context, MITRE mapping, or remediation."""
     case = analyst_service.get_case(db, case_id, org_id=current_user.org_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")

@@ -1,3 +1,10 @@
+/**
+ * NOCTRA — "Night Shift" design tokens (dark-first).
+ * Source of truth for the redesign spec (docs/noctra-redesign-spec.md §16–18).
+ * Tokens are semantic (role-named): components must reference these, not raw
+ * slate/blue literals. `app-navy` keeps its legacy name and now means the
+ * "night canvas" editorial layer (#10131C).
+ */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
@@ -9,93 +16,96 @@ module.exports = {
         mono: ['"JetBrains Mono Variable"', "JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
-        "app-bg": {
-          DEFAULT: "#f4f6fa",
-        },
+        // ── Night Shift surfaces (dark-first) ─────────────────────────────
         "app-void": {
-          DEFAULT: "#e2e8f0",
+          DEFAULT: "#08090D", // deepest layer: scroll wells, code surfaces
+        },
+        "app-bg": {
+          DEFAULT: "#0C0E14", // page background
         },
         "app-surface": {
-          DEFAULT: "#ffffff",
-          raised: "#f8fafc",
+          DEFAULT: "#14161D", // cards, tables
+          raised: "#1A1D26", // hover / raised cards / popovers
         },
         "app-subtle": {
-          DEFAULT: "#eef2f7",
+          DEFAULT: "#1B1E28", // table headers, input fills, muted chips
         },
         "app-navy": {
-          DEFAULT: "#0e1320",
-          raised: "#141b2d",
-          subtle: "#1c253c",
+          // Legacy token name kept — the "night canvas" editorial panels.
+          DEFAULT: "#10131C",
+          raised: "#14161D",
+          subtle: "#1B1E28",
         },
+
+        // ── Lumen (brand violet family) ───────────────────────────────────
         brand: {
-          DEFAULT: "#2563eb",
-          cobalt: "#2563eb",
-          navy: "#0e1320",
-          emerald: "#10b981",
-          amber: "#f59e0b",
-          critical: "#ef4444",
-        },
-        "content-primary": {
-          DEFAULT: "#0f172a",
-        },
-        "content-secondary": {
-          DEFAULT: "#475569",
-        },
-        "content-tertiary": {
-          DEFAULT: "#94a3b8",
+          DEFAULT: "#8B7CF6",
+          lumen: "#8B7CF6",
+          glow: "#C9C4FF",
+          ink: "#0C0E14",
         },
         "accent-primary": {
-          DEFAULT: "#2563eb",
+          DEFAULT: "#8B7CF6", // Lumen violet — brand, primary buttons, links
         },
         "accent-secondary": {
-          DEFAULT: "#3b82f6",
+          DEFAULT: "#A8A2FF", // hover / bright violet
         },
         "accent-glow": {
-          DEFAULT: "#60a5fa",
+          DEFAULT: "#C9C4FF", // text-on-dark violet accent
         },
-        // Categorical chart palette (matches the hex colors used by the
-        // analytics charts in AIAnalyticsPage/DashboardOverviewPage).
-        "chart-1": {
-          DEFAULT: "#e76f51",
+
+        // ── Content ───────────────────────────────────────────────────────
+        "content-primary": {
+          DEFAULT: "#ECEEF4",
         },
-        "chart-2": {
-          DEFAULT: "#84a98c",
+        "content-secondary": {
+          DEFAULT: "#A6ACBF",
         },
-        "chart-3": {
-          DEFAULT: "#f4a261",
+        "content-tertiary": {
+          DEFAULT: "#6E7487",
         },
-        "chart-4": {
-          DEFAULT: "#e9c46a",
-        },
-        "chart-5": {
-          DEFAULT: "#7286d3",
-        },
+
+        // ── Lines ─────────────────────────────────────────────────────────
         "line-subtle": {
-          DEFAULT: "#e2e8f0",
+          DEFAULT: "#232735",
         },
         "line-bright": {
-          DEFAULT: "#cbd5e1",
+          DEFAULT: "#323850",
         },
-        "line-navy": {
-          DEFAULT: "#1e293b",
-        },
+
+        // ── Status ────────────────────────────────────────────────────────
         "status-success": {
-          DEFAULT: "#10b981",
+          DEFAULT: "#4CC38A", // approved, healthy
         },
         "status-warning": {
-          DEFAULT: "#f59e0b",
+          DEFAULT: "#E5A54B", // awaiting decision, high severity
         },
         "status-critical": {
-          DEFAULT: "#ef4444",
+          DEFAULT: "#F26D6D", // critical severity, destructive
         },
+
+        // ── Severity ramp (dot + text label, never color alone) ──────────
+        severity: {
+          low: "#52B788",
+          medium: "#E5A54B",
+          high: "#F0824F",
+          critical: "#F26D6D",
+        },
+
+        // Dataviz categorical palette (= BRAND_DATAVIZ in constants/brand.ts).
+        "chart-1": { DEFAULT: "#8B7CF6" },
+        "chart-2": { DEFAULT: "#4FB8A8" },
+        "chart-3": { DEFAULT: "#E5A54B" },
+        "chart-4": { DEFAULT: "#E77A8B" },
+        "chart-5": { DEFAULT: "#7E87A3" },
       },
       boxShadow: {
-        card: "0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.03)",
-        navy: "0 4px 20px rgba(14, 19, 32, 0.15), 0 2px 6px rgba(14, 19, 32, 0.1)",
-        cobalt: "0 0 20px rgba(37, 99, 235, 0.3)",
-        "accent-glow": "0 0 24px rgba(37, 99, 235, 0.35)",
-        overlay: "0 12px 32px rgba(15, 23, 42, 0.18)",
-        raised: "0 8px 24px rgba(15, 23, 42, 0.14)",
+        card: "0 1px 2px rgba(4, 6, 12, 0.4), 0 4px 16px rgba(4, 6, 12, 0.28)",
+        navy: "0 8px 32px rgba(4, 6, 12, 0.55)",
+        lumen: "0 0 24px rgba(139, 124, 246, 0.28)",
+        "accent-glow": "0 0 24px rgba(139, 124, 246, 0.35)",
+        overlay: "0 16px 48px rgba(4, 6, 12, 0.6)",
+        raised: "0 8px 24px rgba(4, 6, 12, 0.45)",
       },
       borderRadius: {
         xxs: "4px",

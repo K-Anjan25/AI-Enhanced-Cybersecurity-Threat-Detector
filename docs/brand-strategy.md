@@ -1,9 +1,14 @@
 # Brand & UI/UX Strategy — NOCTRA
 
-> **⚠ Superseded (Phase 20):** the product now ships as **AXIOM AI** — see the
-> current brand specification in [`brand-identity-axiom.md`](brand-identity-axiom.md)
-> and `dashboard/src/constants/brand.ts`. This document is retained as the
-> historical Phase 1–3 naming decision record.
+> **✅ Current (NOCTRA redesign):** the product ships as **NOCTRA** — the name
+> this Phase 1–3 document originally chose, now realized as the full "Night
+> Shift" identity. See the live specification in
+> [`noctra-redesign-spec.md`](noctra-redesign-spec.md) and
+> `dashboard/src/constants/brand.ts`.
+>
+> **⚠ Historical interlude (Phase 20):** the product briefly shipped as
+> **AXIOM AI** — see [`brand-identity-axiom.md`](brand-identity-axiom.md).
+> That identity is superseded and retained only as a decision record.
 
 Condensed deliverable for **Phase 1–3** of the rebrand. Full commit diff carries the implementation; this doc is the decision record.
 
