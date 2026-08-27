@@ -413,3 +413,48 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   import dropped (custom tooltips theme through CSS vars instead).
 - Verified: trends?days=7 and days=90 both 200 through the :3000 proxy;
   `tsc --noEmit && vite build` clean.
+
+## Phase 26 — Login loop root cause (cookie context) + Entities graph upgrade + admin edit users
+
+**Login "shows logged in, returns to login" — root cause + fix:**
+- Sandbox reset wiped the gitignored `.env` (and venvs/node_modules/DB); the
+  backend default `COOKIE_AUTH=false` meant login returned 200 + tokens in the
+  body but NO Set-Cookie → every protected call 401 → /refresh 401 →
+  axios interceptor clears the session → bounce to /login.
+- Recreated `backend/.env` (COOKIE_AUTH=true, real JWT secrets) and re-added
+  `backend/.env.example` (tracked) documenting the requirement (pushed f198622).
+- Browser still failed after that because the Arena live preview embeds the
+  app in a cross-site iframe: `SameSite=strict` cookies are not sent by the
+  browser in that context → same loop. Fix: cookie flags now configurable
+  (`COOKIE_SAMESITE`, `COOKIE_PARTITIONED` in config.py); preview .env uses
+  `SameSite=None; Secure; Partitioned` (CHIPS) via a manual Set-Cookie header
+  (Starlette rejects `partitioned=True` on Python < 3.14 — raw header emitted
+  in `_set_auth_cookie`, Chrome 114+/Edge/Firefox parse `Partitioned`).
+- Verified via :3000 proxy: login → Set-Cookie `HttpOnly; Secure; SameSite=None;
+  Partitioned` ×2 → /user/me 200 → /refresh 200 → /analytics/overview 200.
+
+**Admin can now edit users:**
+- `AdminUsers.tsx` had `onEdit={() => undefined}` (TableWithAction edit button
+  did nothing). Wired to a real edit modal: role (USER/ANALYST/ADMIN) +
+  account-active toggle, read-only username/email context, `PATCH /users/:id`
+  via `AdminApi.updateRosterUser` (backend supports role + is_active; audits
+  USER_UPDATED). Verified: admin PATCH → 200 + persisted; non-admin → 403.
+- Seeder now also creates an ADMIN demo user `admin` / `AdminPass123!`
+  (idempotent; fixed a bug where the early-return on existing alerts skipped
+  the final db.commit so new users never persisted).
+
+**Entities & Graph upgraded (same treatment as /analytics):**
+- `EntityGraphView.tsx` rewritten: scroll-to-zoom (zoom-to-cursor), drag-to-pan
+  (pointer capture + move-suppressed clicks), zoom +/-/reset buttons with %
+  readout, hover highlighting (non-connected nodes/edges dim), floating rich
+  tooltip (type, value, risk, occurrences, degree), click-to-select + details
+  panel (risk bar, last seen, connections list with relation + risk, Pivot
+  button), double-click to pivot, header stats (nodes/edges/depth), full 7-type
+  legend + relation legend (solid vs dashed), responsive layout (details panel
+  stacks below graph on mobile), Escape to close, risk_score occurrences
+  guarded with Number()/?? fallbacks.
+- `EntitiesPage.tsx`: guarded risk_score rendering in the table (NaN-safe).
+- Seeder now seeds 10 entities (ip/domain/hash/email/file/account/host) + 9
+  directed links (resolves_to / communicates / derives_from / attaches /
+  authenticates) so the page has real data; verified summary (10/9, by_type
+  across all 7), graph fetch at depth 3, and path finder (4→10 reachable, 3 hops).

@@ -283,24 +283,24 @@ const EntitiesPage: React.FC = () => {
                           <div
                             className="h-full rounded-full"
                             style={{
-                              width: `${Math.min(entity.risk_score * 100, 100)}%`,
+                              width: `${Math.min((Number(entity.risk_score) || 0) * 100, 100)}%`,
                               backgroundColor:
-                                entity.risk_score >= 0.75
+                                (entity.risk_score || 0) >= 0.75
                                   ? "#f26d6d"
-                                  : entity.risk_score >= 0.5
+                                  : (entity.risk_score || 0) >= 0.5
                                   ? "#f0824f"
-                                  : entity.risk_score >= 0.25
+                                  : (entity.risk_score || 0) >= 0.25
                                   ? "#e5a54b"
                                   : "#52b788",
                             }}
                           />
                         </div>
-                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${riskColor(entity.risk_score)}`}>
-                          {entity.risk_score.toFixed(2)}
+                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${riskColor(entity.risk_score || 0)}`}>
+                          {(Number(entity.risk_score) || 0).toFixed(2)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary">{entity.occurrences}</td>
+                    <td className="px-5 py-3.5 text-content-secondary">{entity.occurrences ?? 0}</td>
                     <td className="px-5 py-3.5 text-xs text-content-tertiary whitespace-nowrap">
                       {entity.last_seen ? new Date(entity.last_seen).toLocaleString() : "-"}
                     </td>
