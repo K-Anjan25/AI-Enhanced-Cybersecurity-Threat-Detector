@@ -7,8 +7,6 @@ import {
   Workflow,
   Share2,
   ScrollText,
-  ChartColumn,
-  Settings,
   ShieldCheck,
   LayoutDashboard,
   Sparkles,
@@ -18,6 +16,9 @@ import {
   ListChecks,
   Ban,
   Rows3,
+  Settings,
+  ChevronDown,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -32,25 +33,27 @@ interface NavItem {
   matchPrefix?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { name: "Brief", path: "/", icon: Sparkles },
-  { name: "Feed", path: "/feed", icon: Inbox },
-  { name: "Overview", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Threat Alerts", path: "/alerts", icon: TriangleAlert },
-  { name: "Incidents", path: "/incidents", icon: FolderKanban },
-  { name: "Entity Graph", path: "/entities", icon: Share2 },
+const PRIMARY_NAV_ITEMS: NavItem[] = [
+  { name: "Inbox & Brief", path: "/", icon: Sparkles },
+  { name: "Cases Queue", path: "/feed", icon: Inbox },
+  { name: "Actions Log", path: "/actions", icon: ShieldCheck },
+  { name: "Incident Reports", path: "/reports", icon: ScrollText },
+];
+
+const ADVANCED_NAV_ITEMS: NavItem[] = [
+  { name: "Threat Graph", path: "/entities", icon: Share2 },
+  { name: "Alert Telemetry", path: "/alerts", icon: TriangleAlert },
   { name: "SOAR Automation", path: "/soar", icon: Workflow },
-  { name: "AI Analytics", path: "/analytics", icon: ChartColumn },
-  { name: "Log History", path: "/logs", icon: ScrollText },
+  { name: "SOC Cockpit", path: "/dashboard", icon: LayoutDashboard },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
-  { name: "Admin Console", path: "/admin", icon: ShieldCheck, matchPrefix: true },
-  { name: "User Management", path: "/admin/users", icon: Settings },
+  { name: "Admin Overview", path: "/admin", icon: Settings, matchPrefix: true },
+  { name: "User Management", path: "/admin/users", icon: KeyRound },
   { name: "Tenants", path: "/admin/tenants", icon: Building2 },
-  { name: "Access Roles", path: "/admin/roles", icon: KeyRound },
   { name: "Detection Rules", path: "/admin/rules", icon: ListChecks },
   { name: "IP Reputation", path: "/admin/reputation", icon: Ban },
+  { name: "System Audit Logs", path: "/admin/system-logs", icon: ScrollText },
 ];
 
 type Density = "comfortable" | "compact";
@@ -62,6 +65,7 @@ export interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
   const [density, setDensity] = useState<Density>(() => {
     const saved = localStorage.getItem("td_density");
     return saved === "compact" ? "compact" : "comfortable";
@@ -103,13 +107,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         key={item.name}
         to={item.path}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition ${
+        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
           active
-            ? "bg-accent-primary/10 text-accent-primary border border-accent-primary/30"
-            : "text-content-secondary hover:bg-app-subtle hover:text-content-primary border border-transparent"
+            ? "bg-blue-50 text-blue-600 border border-blue-200 shadow-sm"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent"
         }`}
       >
-        <Icon size={18} className="shrink-0" aria-hidden />
+        <Icon size={17} className="shrink-0" aria-hidden />
         {isSidebarOpen && <span className="truncate">{item.name}</span>}
         {!isSidebarOpen && <span className="sr-only">{item.name}</span>}
       </Link>
@@ -118,24 +122,24 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
   return (
     <div
-      className="h-screen w-screen bg-app-bg text-content-primary flex overflow-hidden"
+      className="h-screen w-screen bg-app-bg text-content-primary flex overflow-hidden font-sans"
       data-density={density}
     >
       <aside
         className={cn(
-          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex flex-col justify-between shrink-0 z-30 overflow-hidden",
+          "bg-white border-r border-line-subtle transition-all duration-300 flex flex-col justify-between shrink-0 z-30 overflow-hidden shadow-card",
           isSidebarOpen ? "w-64" : "w-[68px]"
         )}
       >
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="h-16 flex items-center justify-between px-3 border-b border-line-subtle shrink-0">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle shrink-0">
             <Link to="/" className="flex items-center min-w-0 hover:opacity-90 transition">
               <BrandLogo collapsed={!isSidebarOpen} size={isSidebarOpen ? 28 : 26} />
             </Link>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className={cn(
-                "p-2 rounded-lg bg-app-subtle hover:bg-line-bright text-content-secondary transition text-xs font-semibold cursor-pointer shrink-0",
+                "p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition text-xs font-bold cursor-pointer shrink-0 border border-slate-200",
                 isSidebarOpen ? "" : "mx-auto"
               )}
               title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
@@ -145,14 +149,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             </button>
           </div>
 
-          {/* Scrollable nav: overflow-y-auto keeps the footer pinned when the
-              item list exceeds the viewport height. */}
-          <nav className="p-3 space-y-1.5 mt-2 flex-1 overflow-y-auto min-h-0">
-            {NAV_ITEMS.map(renderItem)}
+          <nav className="p-3 space-y-1 mt-2 flex-1 overflow-y-auto min-h-0">
+            <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400", !isSidebarOpen && "text-center")}>
+              {isSidebarOpen ? "Analyst Workspace" : "·"}
+            </p>
+            {PRIMARY_NAV_ITEMS.map(renderItem)}
+
+            {/* Advanced / Deep-Dive Accordion */}
+            <div className="pt-3 mt-3 border-t border-slate-100 space-y-1">
+              {isSidebarOpen ? (
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <span>Advanced Tools</span>
+                  {showAdvanced ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </button>
+              ) : (
+                <p className="text-center text-[10px] font-bold uppercase text-slate-400 pb-1">·</p>
+              )}
+              {(showAdvanced || !isSidebarOpen) && ADVANCED_NAV_ITEMS.map(renderItem)}
+            </div>
 
             {adminVisible && (
-              <div className="pt-3 mt-3 border-t border-line-subtle space-y-1.5">
-                <p className={cn("px-3.5 pb-1 text-xs font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
+              <div className="pt-3 mt-3 border-t border-slate-100 space-y-1">
+                <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400", !isSidebarOpen && "text-center")}>
                   {isSidebarOpen ? "Administration" : "·"}
                 </p>
                 {ADMIN_ITEMS.map(renderItem)}
@@ -161,14 +182,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
           </nav>
         </div>
 
-        <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0">
-          <div className="w-9 h-9 rounded-full bg-accent-primary text-app-bg flex items-center justify-center font-bold shrink-0">
+        <div className="p-4 border-t border-slate-100 flex items-center gap-3 shrink-0 bg-slate-50/50">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
             {username.charAt(0).toUpperCase()}
           </div>
           {isSidebarOpen && (
             <div className="overflow-hidden flex-1 min-w-0">
-              <p className="text-sm font-semibold text-content-primary truncate">{username}</p>
-              <p className="text-xs text-accent-primary capitalize">{userRole}</p>
+              <p className="text-xs font-bold text-slate-900 truncate">{username}</p>
+              <p className="text-[10px] font-medium text-blue-600 capitalize">{userRole}</p>
             </div>
           )}
           <button
@@ -176,9 +197,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             onClick={toggleDensity}
             title={density === "comfortable" ? "Switch to compact density" : "Switch to comfortable density"}
             aria-pressed={density === "compact"}
-            className="p-2 rounded-lg text-content-secondary hover:bg-app-subtle hover:text-content-primary transition cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition cursor-pointer"
           >
-            <Rows3 size={16} aria-hidden />
+            <Rows3 size={15} aria-hidden />
           </button>
         </div>
       </aside>
