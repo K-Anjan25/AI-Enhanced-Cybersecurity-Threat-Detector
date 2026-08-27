@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,9 +14,6 @@ from app.core.database import Base, engine
 from app.core.migrations import run_additive_migrations, ensure_default_org
 from app.api.v1.router import api_router
 
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
-
-
 # --- Structured logging -----------------------------------------------------
 _LOGGER = logging.getLogger("app")
 if not _LOGGER.handlers:
@@ -25,6 +24,26 @@ if not _LOGGER.handlers:
     ))
     _LOGGER.addHandler(handler)
 _LOGGER.setLevel(settings.LOG_LEVEL or "INFO")
+
+
+# --- Application lifespan ---------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: verify/create DB schema (additive migrations + tables +
+    default org). Shutdown: nothing to release yet — engine pooling is
+    managed by SQLAlchemy and torn down at process exit."""
+    try:
+        run_additive_migrations(engine)
+        Base.metadata.create_all(bind=engine)
+        ensure_default_org(engine)
+        _LOGGER.info("Database tables verified/created successfully!")
+    except Exception as exc:  # pragma: no cover - DB may be offline during tests/dev
+        _LOGGER.warning("Could not create database tables: %s", exc)
+    yield
+
+
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
 
 
 # --- Request-ID + access-log middleware ------------------------------------
@@ -56,17 +75,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup_event():
-    try:
-        run_additive_migrations(engine)
-        Base.metadata.create_all(bind=engine)
-        ensure_default_org(engine)
-        _LOGGER.info("Database tables verified/created successfully!")
-    except Exception as exc:  # pragma: no cover - DB may be offline during tests/dev
-        _LOGGER.warning("Could not create database tables: %s", exc)
 
 
 app.include_router(api_router, prefix="/api/v1")
