@@ -76,7 +76,7 @@ const ToastCard: React.FC<{ toast: Toast; onDismiss: () => void }> = ({ toast, o
   <button
     type="button"
     onClick={onDismiss}
-    className={`animate-slide-in-right text-left bg-app-surface-raised border px-4 py-3 rounded-xl shadow-raised text-sm font-medium cursor-pointer hover:brightness-110 transition ${TONE_STYLES[toast.tone]}`}
+    className={`animate-slide-in-right text-left bg-white border px-4 py-3 rounded-2xl shadow-float text-sm font-medium cursor-pointer hover:brightness-105 transition ${TONE_STYLES[toast.tone]}`}
   >
     {toast.message}
   </button>

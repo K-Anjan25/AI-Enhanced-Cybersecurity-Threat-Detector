@@ -187,7 +187,7 @@ const CommandMenu: React.FC = () => {
         role="dialog"
         aria-modal="true"
         aria-label={`${BRAND_NAME} command menu`}
-        className="night w-full max-w-xl bg-app-surface rounded-2xl border border-line-bright shadow-overlay overflow-hidden animate-scale-in"
+        className="w-full max-w-xl bg-white rounded-3xl border border-black/10 shadow-overlay overflow-hidden animate-scale-in"
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-line-subtle">
           <Search size={15} className="text-content-tertiary shrink-0" aria-hidden />
@@ -247,14 +247,14 @@ const CommandMenu: React.FC = () => {
                     e.preventDefault();
                     item.run();
                   }}
-                  className={`mx-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer transition ${
-                    isActive ? "bg-accent-primary/15 text-content-primary" : "text-content-secondary"
+                  className={`mx-2 flex items-center gap-3 rounded-xl px-3 py-2 text-sm cursor-pointer transition ${
+                    isActive ? "bg-brand-gradient-soft text-neutral-900" : "text-neutral-600"
                   } ${running === item.id.replace("sim-", "") ? "opacity-50 pointer-events-none" : ""}`}
                 >
-                  <Icon size={14} className={isActive ? "text-accent-secondary" : "text-content-tertiary"} aria-hidden />
+                  <Icon size={14} className={isActive ? "text-accent-secondary" : "text-neutral-400"} aria-hidden />
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.hint && (
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-content-tertiary">{item.hint}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400">{item.hint}</span>
                   )}
                 </li>
               </React.Fragment>
