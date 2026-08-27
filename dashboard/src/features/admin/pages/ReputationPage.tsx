@@ -233,7 +233,7 @@ const ReputationPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 text-sm rounded-lg text-content-secondary hover:bg-app-subtle transition"
+              className="px-4 py-2 text-sm rounded-full text-content-secondary hover:bg-app-subtle transition"
             >
               Cancel
             </button>

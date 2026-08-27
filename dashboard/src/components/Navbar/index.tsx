@@ -116,10 +116,10 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
         </button>
 
         <Link to="/" className="flex items-center hover:opacity-80 transition min-w-0" aria-label="NOCTRA home">
-          <span className="hidden sm:flex">
+          <span className="hidden lg:inline-flex">
             <BrandLogo size={26} />
           </span>
-          <span className="sm:hidden flex">
+          <span className="lg:hidden inline-flex">
             <BrandLogo size={26} withWordmark={false} />
           </span>
         </Link>

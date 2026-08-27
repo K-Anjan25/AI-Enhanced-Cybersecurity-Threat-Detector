@@ -28,7 +28,7 @@ const StatItem: React.FC<{ value: number; suffix: string; label: string }> = ({ 
 
 const TrustBar: React.FC = () => (
   <section aria-label="Proof points" className="bg-app-surface border-y border-line-subtle">
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-2 lg:grid-cols-4 divide-x divide-line-subtle">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line-subtle">
       {STATS.map((s) => (
         <StatItem key={s.label} {...s} />
       ))}
