@@ -162,7 +162,7 @@ const BriefPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Lead card — the one thing that needs a decision, on the night canvas. */}
-        <div className="lg:col-span-7 bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy border border-line-subtle flex flex-col justify-between min-h-[320px]">
+        <div className="night lg:col-span-7 bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy flex flex-col justify-between min-h-[320px]">
           {latestCase ? (
             <>
               <div>
@@ -180,6 +180,45 @@ const BriefPage: React.FC = () => {
                 <p className="text-xs text-content-secondary leading-relaxed mb-2">
                   {analysis?.what_happened || latestCase.description || "Summary unavailable for this case."}
                 </p>
+
+                {analysis?.why_it_matters && (
+                  <div className="mb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary mb-0.5">
+                      Why it matters
+                    </p>
+                    <p className="text-xs text-content-secondary leading-relaxed">{analysis.why_it_matters}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Affected</p>
+                    <p className="text-sm font-bold text-content-primary font-mono mt-0.5">
+                      {latestCase.blast_radius?.nodes?.length ?? 0} systems
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Confidence</p>
+                    <p className="text-sm font-bold text-content-primary font-mono mt-0.5">
+                      {analysis && !analysis.fallback ? `${Math.round((analysis.confidence ?? 0) * 100)}%` : "n/a"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Recommends</p>
+                    <p
+                      className="text-sm font-bold text-accent-secondary font-mono mt-0.5 truncate"
+                      title={latestCase.proposed_action?.action_type}
+                    >
+                      {latestCase.proposed_action?.action_type ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Reversible</p>
+                    <p className="text-sm font-bold text-content-primary font-mono mt-0.5">
+                      {latestCase.proposed_action?.undo ? "Yes" : "Ask"}
+                    </p>
+                  </div>
+                </div>
 
                 <p className="text-[11px] text-content-tertiary font-mono">
                   {analysis
@@ -216,7 +255,7 @@ const BriefPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(`/case/${latestCase.id}`)}
-                  className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors"
+                  className="bg-accent-primary hover:opacity-90 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-lg transition"
                 >
                   Review case #{latestCase.id}
                 </button>

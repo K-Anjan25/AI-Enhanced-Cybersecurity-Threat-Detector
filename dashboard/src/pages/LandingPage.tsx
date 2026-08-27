@@ -18,7 +18,7 @@ const LandingPage: React.FC = () => (
           </Link>
           <Link
             to="/register"
-            className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-semibold hover:bg-accent-secondary transition"
+            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:bg-accent-secondary transition"
           >
             Start free
           </Link>
@@ -49,7 +49,7 @@ const LandingPage: React.FC = () => (
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/register"
-                className="px-6 py-3 rounded-xl bg-accent-primary text-app-bg font-bold hover:bg-accent-secondary transition"
+                className="px-6 py-3 rounded-xl bg-accent-primary text-brand-ink font-bold hover:bg-accent-secondary transition"
               >
                 Start with {BRAND_NAME}
               </Link>
@@ -64,7 +64,7 @@ const LandingPage: React.FC = () => (
           </div>
 
           {/* Night canvas — what the analyst does, at a glance. */}
-          <div className="bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy border border-line-bright">
+          <div className="night bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy border border-app-void">
             <div className="grid grid-cols-2 gap-4">
               {[
                 { icon: Eye, label: "Multi-Source Sense", desc: "Identity / endpoint / cloud logs" },

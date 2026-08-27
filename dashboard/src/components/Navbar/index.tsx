@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
-import { Search, Bell, Settings, LogOut, ShieldCheck } from "lucide-react";
+import { Search, Settings, LogOut, ShieldCheck } from "lucide-react";
 import BrandLogo from "../BrandLogo";
+import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
 
 export interface NavbarProps {
   onLogout?: () => void;
@@ -39,9 +40,8 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
           <BrandLogo size={26} />
         </Link>
 
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-status-success/10 text-status-success border border-status-success/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse"></span>
-          LIVE STREAM
+        <span className="hidden sm:inline text-[11px] font-mono text-content-tertiary">
+          {BRAND_TAGLINE_SECONDARY}
         </span>
       </div>
 
@@ -60,23 +60,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Notifications"
-          title="Notifications"
-          className="relative w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer"
-        >
-          <Bell size={16} aria-hidden />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-status-critical" />
-        </button>
-
         <div className="relative">
           <button
             type="button"
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
             aria-expanded={isProfileMenuOpen}
             aria-haspopup="menu"
-            className="w-9 h-9 rounded-full bg-accent-primary text-app-bg font-bold flex items-center justify-center hover:bg-accent-secondary transition ring-2 ring-accent-primary/20 cursor-pointer"
+            className="w-9 h-9 rounded-full bg-accent-primary text-brand-ink font-bold flex items-center justify-center hover:bg-accent-secondary transition ring-2 ring-accent-primary/20 cursor-pointer"
           >
             {username.charAt(0).toUpperCase()}
           </button>
@@ -87,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
               className="absolute right-0 mt-2 w-56 bg-app-surface border border-line-subtle rounded-xl shadow-overlay py-2 z-50 animate-scale-in"
             >
               <div className="px-4 py-2.5 border-b border-line-subtle flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-accent-primary text-app-bg flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-8 h-8 rounded-full bg-accent-primary text-brand-ink flex items-center justify-center font-bold text-xs shrink-0">
                   {username.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">

@@ -145,7 +145,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-app-bg text-sm font-medium hover:opacity-90 transition"
+            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition"
           >
             Close
           </button>

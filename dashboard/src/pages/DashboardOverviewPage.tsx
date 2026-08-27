@@ -166,7 +166,7 @@ const DashboardOverviewPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate("/incidents")}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-app-bg hover:opacity-90 transition shadow-md"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90 transition shadow-md"
           >
             New Incident
           </button>

@@ -17,6 +17,8 @@ import {
   BarChart3,
   Settings2,
   Rows3,
+  ClipboardList,
+  UploadCloud,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -48,6 +50,8 @@ const INVESTIGATE_NAV_ITEMS: NavItem[] = [
   { name: "Entities & Graph", path: "/entities", icon: Share2 },
   { name: "Analytics", path: "/analytics", icon: BarChart3 },
   { name: "SOC Cockpit", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Manual Incidents", path: "/incidents", icon: ClipboardList },
+  { name: "Log Uploads", path: "/logs", icon: UploadCloud },
 ];
 
 const AUTOMATE_NAV_ITEMS: NavItem[] = [
@@ -202,7 +206,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         </div>
 
         <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0 bg-app-subtle/50">
-          <div className="w-9 h-9 rounded-xl bg-accent-primary text-app-bg flex items-center justify-center font-bold text-sm shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-accent-primary text-brand-ink flex items-center justify-center font-bold text-sm shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
           {isSidebarOpen && (

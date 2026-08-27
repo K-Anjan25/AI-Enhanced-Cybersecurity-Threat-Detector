@@ -194,27 +194,38 @@ const CasePage: React.FC = () => {
         </div>
       )}
 
-      {/* Explanation — plain English, calm prose. */}
+      {/* NOCTRA's assessment — inferred, never presented as confirmed fact. */}
       <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card space-y-4">
-        <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-1">
-            What happened
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary">
+            NOCTRA&rsquo;s assessment
           </h2>
+          <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-app-subtle text-content-secondary border border-line-subtle">
+            Inferred — not confirmed fact
+          </span>
+        </div>
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-1">
+            What happened
+          </h3>
           <p className="text-content-primary leading-relaxed font-medium">{analysis?.what_happened || data.description}</p>
         </div>
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-1">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-content-tertiary mb-1">
             Why it matters
-          </h2>
+          </h3>
           <p className="text-content-secondary leading-relaxed">{analysis?.why_it_matters}</p>
         </div>
       </div>
 
-      {/* Blast radius — night canvas. */}
-      <div className="bg-app-navy text-content-primary rounded-2xl border border-line-bright overflow-hidden shadow-navy">
+      {/* Blast radius — night canvas. Observed evidence, not inference. */}
+      <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
         <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
           <GitBranch size={16} className="text-accent-secondary" aria-hidden />
           <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Blast Radius Affected Assets</h2>
+          <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-app-subtle/80 text-content-secondary border border-line-bright">
+            Observed
+          </span>
           <span className="text-xs text-content-tertiary ml-auto font-mono">
             {data.blast_radius?.nodes?.length ?? 0} assets touched
           </span>
@@ -267,8 +278,11 @@ const CasePage: React.FC = () => {
             </span>
             <div className="min-w-0 flex-1 space-y-3">
               <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary">
-                  Recommended Action
+                <h2 className="text-xs font-bold uppercase tracking-wider text-content-tertiary flex items-center gap-2">
+                  NOCTRA recommends
+                  <span className="text-[10px] font-mono normal-case tracking-wider px-2 py-0.5 rounded bg-app-subtle text-content-secondary border border-line-subtle">
+                    Recommendation
+                  </span>
                 </h2>
                 <p className="mt-1 text-lg font-bold text-content-primary font-display">
                   <span className="font-mono text-accent-primary">{action.action_type}</span>
@@ -303,7 +317,7 @@ const CasePage: React.FC = () => {
       )}
 
       {/* Ask NOCTRA — interactive analyst chat (night canvas) */}
-      <div className="bg-app-navy text-content-primary rounded-2xl border border-line-bright overflow-hidden shadow-navy">
+      <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
         <div className="px-5 py-3.5 border-b border-line-bright flex items-center gap-2 bg-app-void/60">
           <MessageSquare size={16} className="text-accent-secondary" />
           <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
@@ -325,7 +339,7 @@ const CasePage: React.FC = () => {
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 ${
                   msg.sender === "user"
-                    ? "bg-accent-primary text-app-bg"
+                    ? "bg-accent-primary text-brand-ink"
                     : "bg-app-subtle text-accent-secondary border border-line-bright"
                 }`}
               >
@@ -334,7 +348,7 @@ const CasePage: React.FC = () => {
               <div
                 className={`max-w-[80%] p-3 rounded-xl text-xs leading-relaxed ${
                   msg.sender === "user"
-                    ? "bg-accent-primary text-app-bg"
+                    ? "bg-accent-primary text-brand-ink"
                     : "bg-app-void border border-line-bright text-content-secondary"
                 }`}
               >
@@ -364,7 +378,7 @@ const CasePage: React.FC = () => {
             disabled={chatLoading}
             className="flex-1 bg-app-subtle border border-line-bright rounded-xl px-3 py-2 text-xs text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
           />
-          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()} className="bg-accent-primary hover:bg-accent-secondary text-app-bg">
+          <Button type="submit" variant="primary" size="sm" disabled={chatLoading || !chatInput.trim()} className="bg-accent-primary hover:bg-accent-secondary text-brand-ink">
             <Send size={14} />
           </Button>
         </form>
@@ -387,7 +401,7 @@ const CasePage: React.FC = () => {
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
-              <Button variant="primary" onClick={() => setDialog("approve")} className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-bold">
+              <Button variant="primary" onClick={() => setDialog("approve")} className="bg-accent-primary hover:bg-accent-secondary text-brand-ink font-bold">
                 <CheckCircle2 size={16} className="mr-1.5" aria-hidden />
                 Approve Action
               </Button>
@@ -432,7 +446,7 @@ const CasePage: React.FC = () => {
             </div>
 
             {showReport && data.report && (
-              <pre className="p-4 rounded-xl bg-app-void text-content-secondary border border-line-bright text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+              <pre className="night p-4 rounded-xl bg-app-void text-content-secondary border border-app-navy text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
                 {data.report}
               </pre>
             )}

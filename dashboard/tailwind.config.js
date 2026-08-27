@@ -1,9 +1,14 @@
 /**
- * NOCTRA design tokens (dark-first).
- * Source of truth for the redesign spec (docs/noctra-redesign-spec.md §16–18).
- * Tokens are semantic (role-named): components must reference these, not raw
- * slate/blue literals. `app-navy` keeps its legacy name for the editorial
- * canvas layer (#10131C).
+ * NOCTRA design tokens — DUALITY (spec docs/noctra-redesign-spec.md §16–18).
+ *
+ * Scope-flipped tokens (CSS variables, defined in globals.css):
+ *   day workspace = :root defaults; night canvas = `.night` scope on the
+ *   panels where the analyst speaks (AI briefs, reasoning, evidence, blast
+ *   radius, reports). Components use semantic names only.
+ *
+ * Fixed tokens (same in both scopes): the ink canvas family (`app-void`,
+ * `app-navy`) used inside night panels, `brand-ink` (text on accent fills),
+ * and the categorical dataviz palette.
  */
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -16,77 +21,50 @@ module.exports = {
         mono: ['"JetBrains Mono Variable"', "JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
-        // ── Surfaces (dark-first) ─────────────────────────────
-        "app-void": {
-          DEFAULT: "#08090D", // deepest layer: scroll wells, code surfaces
-        },
-        "app-bg": {
-          DEFAULT: "#0C0E14", // page background
-        },
+        // ── Scope-flipped surfaces ────────────────────────────────────────
+        "app-bg": "rgb(var(--c-app-bg) / <alpha-value>)",
         "app-surface": {
-          DEFAULT: "#14161D", // cards, tables
-          raised: "#1A1D26", // hover / raised cards / popovers
+          DEFAULT: "rgb(var(--c-app-surface) / <alpha-value>)",
+          raised: "rgb(var(--c-app-surface-raised) / <alpha-value>)",
         },
-        "app-subtle": {
-          DEFAULT: "#1B1E28", // table headers, input fills, muted chips
+        "app-subtle": "rgb(var(--c-app-subtle) / <alpha-value>)",
+
+        // ── Fixed ink canvas (night panels) ───────────────────────────────
+        "app-void": {
+          DEFAULT: "#08090D", // deepest layer: code, wells
         },
         "app-navy": {
-          // Legacy token name kept — the "night canvas" editorial panels.
-          DEFAULT: "#10131C",
+          DEFAULT: "#10131C", // editorial canvas panels
           raised: "#14161D",
           subtle: "#1B1E28",
         },
 
-        // ── Brand accent (periwinkle family) ────────────────────────────────
-        // Evidence-based choice (spec §15): the light end of the violet family
-        // is unclaimed in security branding and has the strongest contrast.
+        // ── Brand accent (periwinkle family — see spec §15 audit) ─────────
         brand: {
           DEFAULT: "#A8A2FF",
-          ink: "#0C0E14",
+          ink: "#191B22", // text on accent fills (7.6:1 on periwinkle)
         },
-        "accent-primary": {
-          DEFAULT: "#A8A2FF", // brand, primary buttons, links
-        },
-        "accent-secondary": {
-          DEFAULT: "#C9C4FF", // hover / bright accents on dark
-        },
+        "accent-primary": "rgb(var(--c-accent-primary) / <alpha-value>)",
+        "accent-secondary": "rgb(var(--c-accent-secondary) / <alpha-value>)",
 
-        // ── Content ───────────────────────────────────────────────────────
-        "content-primary": {
-          DEFAULT: "#ECEEF4",
-        },
-        "content-secondary": {
-          DEFAULT: "#A6ACBF",
-        },
-        "content-tertiary": {
-          DEFAULT: "#6E7487",
-        },
+        // ── Scope-flipped content ─────────────────────────────────────────
+        "content-primary": "rgb(var(--c-content-primary) / <alpha-value>)",
+        "content-secondary": "rgb(var(--c-content-secondary) / <alpha-value>)",
+        "content-tertiary": "rgb(var(--c-content-tertiary) / <alpha-value>)",
 
-        // ── Lines ─────────────────────────────────────────────────────────
-        "line-subtle": {
-          DEFAULT: "#232735",
-        },
-        "line-bright": {
-          DEFAULT: "#323850",
-        },
+        // ── Scope-flipped lines ───────────────────────────────────────────
+        "line-subtle": "rgb(var(--c-line-subtle) / <alpha-value>)",
+        "line-bright": "rgb(var(--c-line-bright) / <alpha-value>)",
 
-        // ── Status ────────────────────────────────────────────────────────
-        "status-success": {
-          DEFAULT: "#4CC38A", // approved, healthy
-        },
-        "status-warning": {
-          DEFAULT: "#E5A54B", // awaiting decision, high severity
-        },
-        "status-critical": {
-          DEFAULT: "#F26D6D", // critical severity, destructive
-        },
-
-        // ── Severity ramp (dot + text label, never color alone) ──────────
+        // ── Scope-flipped status / severity (never color alone) ───────────
+        "status-success": "rgb(var(--c-status-success) / <alpha-value>)",
+        "status-warning": "rgb(var(--c-status-warning) / <alpha-value>)",
+        "status-critical": "rgb(var(--c-status-critical) / <alpha-value>)",
         severity: {
-          low: "#52B788",
-          medium: "#E5A54B",
-          high: "#F0824F",
-          critical: "#F26D6D",
+          low: "rgb(var(--c-severity-low) / <alpha-value>)",
+          medium: "rgb(var(--c-severity-medium) / <alpha-value>)",
+          high: "rgb(var(--c-severity-high) / <alpha-value>)",
+          critical: "rgb(var(--c-severity-critical) / <alpha-value>)",
         },
 
         // Dataviz categorical palette (= BRAND_DATAVIZ in constants/brand.ts).
@@ -97,10 +75,10 @@ module.exports = {
         "chart-5": { DEFAULT: "#7E87A3" },
       },
       boxShadow: {
-        card: "0 1px 2px rgba(4, 6, 12, 0.4), 0 4px 16px rgba(4, 6, 12, 0.28)",
-        navy: "0 8px 32px rgba(4, 6, 12, 0.55)",
-        overlay: "0 16px 48px rgba(4, 6, 12, 0.6)",
-        raised: "0 8px 24px rgba(4, 6, 12, 0.45)",
+        card: "0 1px 2px rgba(15, 16, 22, 0.05), 0 3px 10px rgba(15, 16, 22, 0.04)",
+        navy: "0 8px 32px rgba(8, 9, 13, 0.35)",
+        overlay: "0 16px 48px rgba(15, 16, 22, 0.18)",
+        raised: "0 8px 24px rgba(15, 16, 22, 0.12)",
       },
       borderRadius: {
         xxs: "4px",

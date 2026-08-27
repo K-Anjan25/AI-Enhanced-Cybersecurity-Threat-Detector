@@ -162,7 +162,7 @@ const ReportsPage: React.FC = () => {
                       variant="primary"
                       size="sm"
                       onClick={() => handleDownload(selectedCase)}
-                      className="bg-accent-primary hover:bg-accent-secondary text-app-bg font-bold"
+                      className="bg-accent-primary hover:bg-accent-secondary text-brand-ink font-bold"
                     >
                       <Download size={14} className="mr-1.5" />
                       Download Markdown
@@ -177,7 +177,7 @@ const ReportsPage: React.FC = () => {
                   </span>
                 </div>
 
-                <pre className="p-5 rounded-2xl bg-app-navy text-content-secondary border border-line-bright text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto shadow-navy">
+                <pre className="night p-5 rounded-2xl bg-app-navy text-content-secondary border border-app-void text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto shadow-navy">
                   {selectedCase.report}
                 </pre>
               </Card>

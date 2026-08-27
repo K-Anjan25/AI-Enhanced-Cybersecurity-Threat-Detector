@@ -329,7 +329,15 @@ ink — 8.5:1 on `app-bg`, 11.8:1 for `#C9C4FF` (WCAG AA/AAA), vs 5.8:1 for
 `#8B7CF6`; (4) no severity-collision. The deeper `#8B7CF6` is demoted to the
 first categorical dataviz color, where it earns its keep.
 
-## 16. Final Color System (dark-first)
+## 16. Final Color System (DUALITY: day workspace + night canvas)
+
+Structural dual scopes, not a toggle. Day workspace (`:root`): paper
+`#F7F7F5`, white surfaces, ink text — lists, tables, settings, admin.
+Night canvas (`.night` scope): ink surfaces — AI briefs, reasoning, evidence,
+blast radius, reports. Semantic Tailwind tokens resolve to CSS custom
+properties so both scopes share one component vocabulary; status/severity
+text variants flip with the scope (see `docs/noctra-qa-report.md` §3 for the
+full computed-contrast table; all text pairs ≥ AA).
 
 Roles (Tailwind token → hex):
 
@@ -688,7 +696,16 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
 
-### Addendum — Stage 1.1 (accent audit + copy purge, 2026-08-27)
+### Addendum — Stage 1.2 (DUALITY, QA pass, 2026-08-27)
+
+- Implemented DUALITY per directive §5: day workspace + night canvas as
+  structural CSS-variable scopes (see QA report §2 and spec §16).
+- Full-route frontend QA audit completed; 7 bug classes found and fixed
+  (fake LIVE badge, dead notification button, two orphaned routes, missing
+  Observed/Inferred labels, Home §12 structure, button contrast defects,
+  theme-flip accent-text hazard) — `docs/noctra-qa-report.md`.
+- Phase-18 loop re-verified live incl. decline and revert paths.
+- Backend 114/2, ml 13, tsc + build clean after all changes.
 
 - Accent audited against the category (§15 Round 2): mid-violet
   `#8B7CF6` sits in SentinelOne/Wiz territory → **primary accent shifted to
