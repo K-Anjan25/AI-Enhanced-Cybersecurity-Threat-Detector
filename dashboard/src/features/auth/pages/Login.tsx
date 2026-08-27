@@ -131,14 +131,6 @@ export default function Login(): React.ReactElement {
               )}
             </button>
           </form>
-
-          <div className="bg-app-subtle border border-line-subtle rounded-lg px-4 py-3">
-            <p className="text-[11px] font-mono text-content-tertiary leading-relaxed">
-              Demo workspace —{" "}
-              <span className="text-content-secondary">demo@noctra.ai</span> /{" "}
-              <span className="text-content-secondary">DemoPass123!</span>
-            </p>
-          </div>
         </div>
 
         <div className="text-center mt-6">
