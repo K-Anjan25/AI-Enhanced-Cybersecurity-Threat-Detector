@@ -307,3 +307,24 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
 - **Wireframes** — 4 new concept boards in `docs/ui-concepts/new/` (landing hero,
   inbox + drawer, case workspace, mobile); 8 web references archived in
   `docs/ui-concepts/reference/`.
+
+## Phase 22 — Light/Dark Mode Toggle + L rollout to every remaining file
+
+- **Theme system** — `theme/ThemeProvider.tsx`: whole-app light/dark. Persists
+  `td_theme` in localStorage, falls back to OS `prefers-color-scheme`, listens for
+  OS changes until an explicit choice. `html.dark` flips every semantic token in
+  `globals.css` (same ink family as the night canvas); body background synced so
+  overscroll never flashes. `components/ThemeToggle.tsx` (sun/moon pill) mounted in
+  the Navbar and the landing nav.
+- **Token sweep** — converted every remaining hard-coded light class to semantic
+  tokens so dark mode flips the whole app: Card, PageHeader, Button (secondary/ghost),
+  Modal, Toast, CommandMenu, Term tooltip, Navbar, DashboardLayout sidebar, Pending
+  Decisions Drawer, all landing components (nav/hero/trust/features/how-it-works/
+  footer), Login/Register. Grep audit: 0 hard-coded `bg-white`/`text-neutral-*/`
+  `border-black/*` left outside intentional night panels.
+- **Night canvas framing** — the dark product card on the landing now carries the
+  caption "The night canvas — NOCTRA's dark workspace", making the light/dark
+  duality explicit (owner direction: the dark card is fine as long as it represents
+  light/dark mode). `.night` analyst panels stay dark in both themes by design.
+- **Verification** — `tsc --noEmit && vite build` clean (~1.5s); all new modules
+  serve 200 in the live preview.

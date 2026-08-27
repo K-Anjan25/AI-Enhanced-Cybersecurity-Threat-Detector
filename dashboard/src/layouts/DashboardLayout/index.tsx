@@ -153,7 +153,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         className={`flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-semibold transition ${
           active
             ? "bg-brand-gradient text-brand-ink shadow-float"
-            : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+            : "text-content-secondary hover:bg-app-subtle hover:text-content-primary"
         }`}
       >
         <Icon size={17} className="shrink-0" aria-hidden />
@@ -188,7 +188,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
       <aside
         className={cn(
-          "bg-white border-r border-black/5 transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden",
+          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden",
           // Mobile: overlay drawer (open only). Desktop: static column.
           "fixed inset-y-0 left-0 z-40 lg:static",
           mobileNavOpen ? "flex w-64" : "hidden lg:flex",
@@ -196,14 +196,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         )}
       >
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="h-16 flex items-center justify-between px-4 border-b border-black/5 shrink-0">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle shrink-0">
             <Link to="/" className="flex items-center min-w-0 hover:opacity-80 transition">
               <BrandLogo collapsed={!isSidebarOpen} size={isSidebarOpen ? 28 : 26} />
             </Link>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className={cn(
-                "p-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900 transition text-xs font-bold cursor-pointer shrink-0 border border-black/5",
+                "p-1.5 rounded-full bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary transition text-xs font-bold cursor-pointer shrink-0 border border-line-subtle",
                 isSidebarOpen ? "" : "mx-auto"
               )}
               title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
@@ -218,13 +218,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             <button
               type="button"
               onClick={() => setMobileNavOpen(false)}
-              className="lg:hidden w-full flex items-center justify-end px-3.5 pb-1 text-neutral-400 hover:text-neutral-900 transition text-xs font-bold cursor-pointer"
+              className="lg:hidden w-full flex items-center justify-end px-3.5 pb-1 text-content-tertiary hover:text-content-primary transition text-xs font-bold cursor-pointer"
             >
               Close ×
             </button>
             <p
               className={cn(
-                "px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400",
+                "px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary",
                 !isSidebarOpen && "text-center"
               )}
             >
@@ -232,15 +232,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             </p>
             {MAIN_NAV_ITEMS.map(renderItem)}
 
-            <div className="pt-3 mt-3 border-t border-black/5 space-y-1">
-              <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400", !isSidebarOpen && "text-center")}>
+            <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
+              <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
                 {sectionLabel("Investigate")}
               </p>
               {INVESTIGATE_NAV_ITEMS.map(renderItem)}
             </div>
 
-            <div className="pt-3 mt-3 border-t border-black/5 space-y-1">
-              <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400", !isSidebarOpen && "text-center")}>
+            <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
+              <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
                 {sectionLabel("Automate")}
               </p>
               {adminVisible ? (
@@ -251,8 +251,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             </div>
 
             {adminVisible && (
-              <div className="pt-3 mt-3 border-t border-black/5 space-y-1">
-                <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400", !isSidebarOpen && "text-center")}>
+              <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
+                <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
                   {sectionLabel("System")}
                 </p>
                 {SYSTEM_NAV_ITEMS.map(renderItem)}
@@ -261,14 +261,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
           </nav>
         </div>
 
-        <div className="p-4 border-t border-black/5 flex items-center gap-3 shrink-0 bg-neutral-50/50">
+        <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0 bg-app-subtle/50">
           <div className="w-9 h-9 rounded-full bg-brand-gradient text-brand-ink flex items-center justify-center font-bold text-sm shrink-0">
             {username.charAt(0).toUpperCase()}
           </div>
           {isSidebarOpen && (
             <div className="overflow-hidden flex-1 min-w-0">
-              <p className="text-xs font-bold text-neutral-900 truncate">{username}</p>
-              <p className="text-[10px] font-medium text-violet-600 capitalize">{userRole}</p>
+              <p className="text-xs font-bold text-content-primary truncate">{username}</p>
+              <p className="text-[10px] font-medium text-accent-secondary capitalize">{userRole}</p>
             </div>
           )}
           <button
@@ -276,7 +276,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             onClick={toggleDensity}
             title={density === "comfortable" ? "Switch to compact density" : "Switch to comfortable density"}
             aria-pressed={density === "compact"}
-            className="p-1.5 rounded-full text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition cursor-pointer"
+            className="p-1.5 rounded-full text-content-tertiary hover:bg-app-subtle hover:text-content-secondary transition cursor-pointer"
           >
             <Rows3 size={15} aria-hidden />
           </button>
@@ -292,7 +292,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
           key={location.pathname}
           id="main-content"
           tabIndex={-1}
-          className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none bg-[#F5F5F7]"
+          className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none bg-app-bg"
         >
           <PageTransition>{children || <Outlet />}</PageTransition>
         </main>

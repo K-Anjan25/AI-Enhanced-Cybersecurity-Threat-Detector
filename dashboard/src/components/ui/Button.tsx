@@ -14,9 +14,9 @@ export const buttonVariants = cva(
       variant: {
         primary:
           "bg-brand-gradient text-brand-ink hover:opacity-90 border border-transparent shadow-float",
-        secondary: "bg-white text-neutral-700 hover:bg-neutral-50 border border-black/10",
+        secondary: "bg-app-surface text-content-primary hover:bg-app-surface-raised border border-line-subtle",
         danger: "bg-status-critical/15 text-status-critical hover:bg-status-critical/25 border border-status-critical/30",
-        ghost: "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900",
+        ghost: "text-content-secondary hover:bg-app-subtle hover:text-content-primary",
       },
       size: {
         sm: "px-2.5 py-1 text-xs rounded-full",

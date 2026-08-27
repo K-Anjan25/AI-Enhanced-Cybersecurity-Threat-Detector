@@ -95,11 +95,11 @@ const FEATURES = [
 const FeatureGrid: React.FC = () => (
   <section id="product" className="scroll-mt-24 max-w-5xl mx-auto px-4 sm:px-6 py-24 sm:py-28">
     <div className="max-w-2xl mx-auto text-center">
-      <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-neutral-500">The product</p>
-      <h2 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-[-0.02em] text-neutral-900 text-balance">
+      <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-content-tertiary">The product</p>
+      <h2 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-[-0.02em] text-content-primary text-balance">
         An analyst, not another dashboard
       </h2>
-      <p className="mt-4 text-base text-neutral-500 leading-relaxed">
+      <p className="mt-4 text-base text-content-secondary leading-relaxed">
         NOCTRA is the employee your security team doesn't have. It works through the night,
         brings you one case at a time, and writes everything down.
       </p>
@@ -111,16 +111,16 @@ const FeatureGrid: React.FC = () => (
         return (
           <article
             key={f.title}
-            className="group rounded-[1.75rem] border border-black/5 bg-white p-7 shadow-card hover:shadow-float hover:-translate-y-0.5 transition"
+            className="group rounded-[1.75rem] border border-line-subtle bg-app-surface p-7 shadow-card hover:shadow-float hover:-translate-y-0.5 transition"
           >
             <div className="w-11 h-11 rounded-2xl bg-brand-gradient-soft border border-accent-primary/20 flex items-center justify-center">
               <Icon size={19} className="text-accent-secondary" aria-hidden />
             </div>
-            <h3 className="mt-5 text-lg font-semibold tracking-tight text-neutral-900">{f.title}</h3>
-            <p className="mt-2 text-sm text-neutral-500 leading-relaxed">{f.body}</p>
+            <h3 className="mt-5 text-lg font-semibold tracking-tight text-content-primary">{f.title}</h3>
+            <p className="mt-2 text-sm text-content-secondary leading-relaxed">{f.body}</p>
             <Link
               to={f.to}
-              className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-violet-600 hover:text-violet-700 transition"
+              className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-accent-secondary hover:text-accent-primary transition"
             >
               {f.cta}
               <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />

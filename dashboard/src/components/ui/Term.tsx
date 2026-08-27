@@ -75,7 +75,7 @@ export function Term({ term, plain, formal, mono = false, inert = false, childre
         <span
           id="term-tooltip"
           role="tooltip"
-          className="fixed z-[60] mt-1 w-72 max-w-[85vw] rounded-2xl border border-line-subtle bg-white shadow-float p-3.5 text-left animate-scale-in"
+          className="fixed z-[60] mt-1 w-72 max-w-[85vw] rounded-2xl border border-line-subtle bg-app-surface shadow-float p-3.5 text-left animate-scale-in"
           style={{
             left: Math.min(
               Math.max((ref.current?.getBoundingClientRect().left ?? 0) - 8, 8),

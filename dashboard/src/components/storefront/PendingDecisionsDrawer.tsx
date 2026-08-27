@@ -106,20 +106,20 @@ const PendingDecisionsDrawer: React.FC = () => {
         aria-label="Pending decisions"
         tabIndex={-1}
         className={cn(
-          "fixed inset-y-0 right-0 z-50 w-full sm:w-[26rem] bg-white border-l border-black/5 shadow-overlay flex flex-col outline-none transition-transform duration-300 ease-out",
+          "fixed inset-y-0 right-0 z-50 w-full sm:w-[26rem] bg-app-surface border-l border-line-subtle shadow-overlay flex flex-col outline-none transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 h-16 border-b border-black/5 shrink-0">
+        <div className="flex items-center gap-3 px-5 h-16 border-b border-line-subtle shrink-0">
           <div className="w-8 h-8 rounded-full bg-brand-gradient-soft border border-accent-primary/20 flex items-center justify-center">
             <Inbox size={15} className="text-accent-secondary" aria-hidden />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-bold font-display tracking-tight text-neutral-900">
+            <h2 className="text-sm font-bold font-display tracking-tight text-content-primary">
               Pending decisions
             </h2>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-[11px] text-content-tertiary">
               {loading ? "Reading the brief…" : `${pending.length} case${pending.length === 1 ? "" : "s"} waiting on you`}
             </p>
           </div>
@@ -127,23 +127,23 @@ const PendingDecisionsDrawer: React.FC = () => {
             type="button"
             onClick={close}
             aria-label="Close pending decisions"
-            className="ml-auto w-9 h-9 rounded-full bg-neutral-100 border border-black/5 text-neutral-500 hover:text-neutral-900 transition flex items-center justify-center cursor-pointer"
+            className="ml-auto w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer"
           >
             <X size={16} aria-hidden />
           </button>
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2 bg-[#F5F5F7]">
+        <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2 bg-app-bg">
           {!loading && pending.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-6">
-              <div className="w-12 h-12 rounded-2xl bg-white border border-black/5 flex items-center justify-center">
-                <Inbox size={20} className="text-neutral-400" aria-hidden />
+              <div className="w-12 h-12 rounded-2xl bg-app-surface border border-line-subtle flex items-center justify-center">
+                <Inbox size={20} className="text-content-tertiary" aria-hidden />
               </div>
-              <p className="mt-4 text-sm font-semibold text-neutral-900">
+              <p className="mt-4 text-sm font-semibold text-content-primary">
                 Nothing needs you right now.
               </p>
-              <p className="mt-1 text-xs text-neutral-400 leading-relaxed max-w-[16rem]">
+              <p className="mt-1 text-xs text-content-tertiary leading-relaxed max-w-[16rem]">
                 NOCTRA is still watching. Cases appear here the moment they need a human decision.
               </p>
             </div>
@@ -154,19 +154,19 @@ const PendingDecisionsDrawer: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => goCase(c.id)}
-                    className="w-full text-left rounded-2xl border border-black/5 bg-white p-4 shadow-card hover:shadow-float hover:-translate-y-px transition group cursor-pointer"
+                    className="w-full text-left rounded-2xl border border-line-subtle bg-app-surface p-4 shadow-card hover:shadow-float hover:-translate-y-px transition group cursor-pointer"
                   >
                     <span className="flex items-center gap-2">
                       <SeverityBadge severity={c.priority} />
-                      <span className="ml-auto text-[10px] font-mono text-neutral-400 shrink-0">
+                      <span className="ml-auto text-[10px] font-mono text-content-tertiary shrink-0">
                         {timeAgo(c.created_at)}
                       </span>
                     </span>
-                    <span className="mt-2 block text-sm font-semibold text-neutral-900 leading-snug group-hover:text-violet-600 transition">
+                    <span className="mt-2 block text-sm font-semibold text-content-primary leading-snug group-hover:text-accent-secondary transition">
                       {c.title}
                     </span>
                     {c.proposed_action && (
-                      <span className="mt-1.5 block text-[11px] font-mono text-violet-600">
+                      <span className="mt-1.5 block text-[11px] font-mono text-accent-secondary">
                         {c.proposed_action.action_type} → {c.proposed_action.target}
                       </span>
                     )}
@@ -178,7 +178,7 @@ const PendingDecisionsDrawer: React.FC = () => {
         </div>
 
         {/* Footer — the "checkout" CTA */}
-        <div className="p-4 border-t border-black/5 shrink-0 bg-white">
+        <div className="p-4 border-t border-line-subtle shrink-0 bg-app-surface">
           <button
             type="button"
             onClick={() => {
@@ -189,7 +189,7 @@ const PendingDecisionsDrawer: React.FC = () => {
           >
             Review & decide <ArrowRight size={15} aria-hidden />
           </button>
-          <p className="mt-2.5 text-center text-[11px] text-neutral-400">
+          <p className="mt-2.5 text-center text-[11px] text-content-tertiary">
             Approving records an action — it never executes it.
           </p>
         </div>
