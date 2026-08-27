@@ -184,3 +184,24 @@ the FE are the raw API status value mappings, which are relabeled through
 - Backend pytest: **114 passed / 2 skipped**. ml-service: **13 passed**.
 - Live: login → Home (§12 lead card) → case review (trust labels) →
   approve/decline/revert all exercised today on cases #3–#5.
+
+## 8. Stage 4 close-out + folder migration (2026-08-27)
+
+- **Stage 4 responsive/a11y — SHIPPED** in two slices (supersedes §6 item on
+  the queued chart audit): mobile off-canvas drawer w/ backdrop + Escape +
+  route-change close; topbar hamburger + responsive lockup; skip-to-content
+  link + `main` landmark target; nav/dialog/menus labelled (`role=dialog`,
+  `aria-modal`, Escape/outside-click); all four Recharts wrappers
+  `role="img"` + descriptive labels; per-route document titles; `scope="col"`
+  on all 12 table surfaces; admin tables verified scrollable at 480px.
+  Note: screen-reader *runtime* audit still requires a real AT browser —
+  labels/semantics are in place; marking the automated-verification scope
+  complete, not claiming manual NVDA/VoiceOver sign-off.
+- **`pages/` → `features/` migration — SHIPPED** (`3fdeeb3`): 19 pages moved
+  via `git mv`, single-importer surface (App.tsx), zero stale references.
+  Pure move, no behavior change.
+- **Verification matrix (this pass)**: backend pytest **118 passed / 2
+  skipped** · ml-service **13 passed** · `tsc --noEmit` clean ·
+  `vite build` clean · dashboard :3000 → 200 · API :8000 → 200.
+- Brand spec (§9/§12–13) implemented exactly; contrast table re-verified
+  (§15 supersession note).
