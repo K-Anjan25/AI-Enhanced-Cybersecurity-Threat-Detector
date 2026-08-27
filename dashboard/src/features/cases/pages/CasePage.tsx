@@ -24,6 +24,7 @@ import {
   ConfirmDialog,
   LoadingState,
   EmptyState,
+  Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
 import { fetchAlerts } from "../../../api/alertApi";
@@ -310,9 +311,11 @@ const CasePage: React.FC = () => {
                   <p className="text-xs font-mono text-content-primary mt-0.5">{evidence.source_ip || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">MITRE</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">
+                    <Term>MITRE</Term>
+                  </p>
                   <p className="text-xs font-mono text-content-primary mt-0.5">
-                    {evidence.mitre_technique_id || "—"}
+                    <Term mono>{evidence.mitre_technique_id || "—"}</Term>
                   </p>
                 </div>
               </div>
@@ -333,7 +336,9 @@ const CasePage: React.FC = () => {
       <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
         <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
           <GitBranch size={16} className="text-accent-secondary" aria-hidden />
-          <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Blast Radius Affected Assets</h2>
+          <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
+            <Term>Blast radius</Term> — affected assets
+          </h2>
           <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-app-subtle/80 text-content-secondary border border-line-bright">
             Observed
           </span>
@@ -396,7 +401,7 @@ const CasePage: React.FC = () => {
                   </span>
                 </h2>
                 <p className="mt-1 text-lg font-bold text-content-primary font-display">
-                  <span className="font-mono text-accent-primary">{action.action_type}</span>
+                  <Term mono>{action.action_type}</Term>
                 </p>
                 <p className="text-sm text-content-secondary mt-0.5">
                   Target: <span className="font-mono text-content-primary font-bold">{action.target}</span>
@@ -406,10 +411,10 @@ const CasePage: React.FC = () => {
                 <p className="text-sm text-content-secondary leading-relaxed">{action.rationale}</p>
               )}
               {action.undo && (
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-status-success/10 border border-status-success/30">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-status-success/10 border border-status-success/30">
                   <Undo2 size={15} className="text-status-success mt-0.5 shrink-0" aria-hidden />
                   <p className="text-xs text-content-secondary">
-                    <span className="font-bold text-status-success">Reversible.</span> {action.undo}
+                    <span className="font-bold text-status-success"><Term>Reversible</Term>.</span> {action.undo}
                   </p>
                 </div>
               )}
@@ -420,7 +425,11 @@ const CasePage: React.FC = () => {
                     ? "NOCTRA built-in reasoning engine"
                     : `Reasoned by ${analysis?.model ?? "Claude"}`}
                 </span>
-                {confidencePct !== null && <span>· {confidencePct}% confidence</span>}
+                {confidencePct !== null && (
+                  <span>
+                    · <Term>confidence</Term> {confidencePct}%
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -603,7 +612,8 @@ const CasePage: React.FC = () => {
         message={
           <>
             NOCTRA will record <span className="font-mono font-bold">{action?.action_type}</span> on{" "}
-            <span className="font-mono font-bold">{action?.target}</span> and generate a report. This is reversible.
+            <span className="font-mono font-bold">{action?.target}</span> and generate a report. This is{" "}
+            <Term>reversible</Term> — it is <Term>record-only</Term>.
           </>
         }
         confirmLabel="Approve"

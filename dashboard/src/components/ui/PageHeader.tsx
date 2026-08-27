@@ -4,7 +4,7 @@ import { Breadcrumbs, Crumb } from "./Breadcrumbs";
 
 export interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   actions?: React.ReactNode;
   badge?: React.ReactNode;
   /** Route/count to navigate back to when the page is a deep view. */
@@ -30,11 +30,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, acti
         </div>
       )}
       <div className="flex items-center gap-2.5">
-        <span className="hidden sm:block w-1 h-6 rounded-full bg-accent-primary shrink-0" aria-hidden />
-        <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">{title}</h1>
+        <h1 className="text-2xl sm:text-[1.7rem] font-bold font-display text-neutral-900 tracking-tight">{title}</h1>
         {badge}
       </div>
-      {description && <p className="text-sm text-content-secondary mt-1 max-w-3xl">{description}</p>}
+      {description && <p className="text-sm text-neutral-500 mt-1 max-w-3xl">{description}</p>}
     </div>
     {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
   </div>

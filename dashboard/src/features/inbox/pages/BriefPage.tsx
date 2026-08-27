@@ -11,7 +11,7 @@ import {
   Moon,
   Inbox as InboxIcon,
 } from "lucide-react";
-import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge } from "../../../components/ui";
+import { Button, LoadingState, PageHeader, SeverityBadge, StatusBadge, Term } from "../../../components/ui";
 import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
 import AnalystApi from "../../../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
@@ -176,7 +176,14 @@ const BriefPage: React.FC = () => {
         title="Analyst Inbox"
         description={
           brief
-            ? `${brief.alerts_today} event${brief.alerts_today === 1 ? "" : "s"} investigated today · ${brief.auto_recorded_today} automated response${brief.auto_recorded_today === 1 ? "" : "s"} recorded · ${brief.handled_today} decision${brief.handled_today === 1 ? "" : "s"} by you · ${brief.pending_count} waiting.`
+            ? (
+                <>
+                  {brief.alerts_today} event{brief.alerts_today === 1 ? "" : "s"} investigated today ·{" "}
+                  {brief.auto_recorded_today} <Term>auto-recorded</Term> response
+                  {brief.auto_recorded_today === 1 ? "" : "s"} · {brief.handled_today} decision
+                  {brief.handled_today === 1 ? "" : "s"} by you · {brief.pending_count} waiting.
+                </>
+              )
             : "What NOCTRA found while you were away."
         }
         actions={
@@ -220,7 +227,7 @@ const BriefPage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-bold tracking-wider text-content-tertiary uppercase">
-                    Needs your decision
+                    <Term>Needs your decision</Term>
                   </span>
                   <SeverityBadge severity={latestCase.priority} />
                 </div>

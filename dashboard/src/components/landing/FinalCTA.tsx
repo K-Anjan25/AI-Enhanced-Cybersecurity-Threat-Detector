@@ -1,14 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, FileText, GitBranch, ShieldCheck, ScrollText, Workflow } from "lucide-react";
-import { SectionLabel } from "../ui";
 import BrandLogo from "../BrandLogo";
 import { BRAND_TAGLINE } from "../../constants/brand";
 
 /**
- * FinalCTA — the closing conversion panel (WordPress landing pattern):
- * a brand-gradient band with one clear next step, over a quiet footer with
- * real links (product routes + repository docs).
+ * FinalCTA — Apple-style dark closing band: centered statement on navy,
+ * one gradient CTA, quiet multi-column footer with real links.
  */
 
 const FOOTER_COLS = [
@@ -43,15 +41,17 @@ const FOOTER_COLS = [
 
 const FinalCTA: React.FC = () => (
   <>
-    <section id="why" className="scroll-mt-24 max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
-      <div className="relative overflow-hidden rounded-3xl night bg-app-navy border border-app-void shadow-hero px-6 py-14 sm:px-12 text-center">
+    <section id="why" className="scroll-mt-24 max-w-5xl mx-auto px-4 sm:px-6 py-24 sm:py-28">
+      <div className="relative overflow-hidden rounded-[2.5rem] night bg-app-navy border border-app-void shadow-hero px-6 py-16 sm:px-16 text-center">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-64 w-[40rem] max-w-full rounded-full bg-brand-gradient-soft blur-3xl"
+          className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-64 w-[38rem] max-w-full rounded-full bg-brand-gradient-soft blur-3xl"
         />
         <div className="relative">
-          <SectionLabel className="justify-center">Employ your analyst</SectionLabel>
-          <h2 className="mt-4 text-display-xl font-bold font-display tracking-tight text-balance max-w-2xl mx-auto">
+          <p className="text-[11px] font-mono uppercase tracking-[0.3em] text-content-tertiary">
+            Employ your analyst
+          </p>
+          <h2 className="mt-4 text-4xl sm:text-5xl font-semibold tracking-[-0.02em] text-white text-balance max-w-2xl mx-auto">
             The night shift is covered. The decisions are yours.
           </h2>
           <p className="mt-4 text-base text-content-secondary leading-relaxed max-w-xl mx-auto">
@@ -61,13 +61,13 @@ const FinalCTA: React.FC = () => (
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/register"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-gradient text-brand-ink font-semibold hover:opacity-90 transition shadow-float"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-brand-gradient text-brand-ink font-semibold hover:opacity-90 transition shadow-float"
             >
-              Start free <ArrowRight size={16} aria-hidden />
+              Start free <ArrowRight size={15} aria-hidden />
             </Link>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-app-subtle border border-line-subtle text-content-primary font-semibold hover:bg-app-surface-raised transition"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-neutral-900 font-semibold hover:bg-neutral-50 transition shadow-card"
             >
               Open console
             </Link>
@@ -90,19 +90,17 @@ const FinalCTA: React.FC = () => (
       </div>
     </section>
 
-    <footer className="border-t border-line-subtle bg-app-surface">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-10">
+    <footer className="bg-white border-t border-black/5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-10">
         <div className="col-span-2 md:col-span-1">
-          <BrandLogo size={26} />
-          <p className="mt-3 text-xs text-content-tertiary leading-relaxed max-w-[16rem]">
+          <BrandLogo size={24} />
+          <p className="mt-3 text-xs text-neutral-500 leading-relaxed max-w-[16rem]">
             {BRAND_TAGLINE} Calm, precise, accountable — the analyst a small team employs.
           </p>
         </div>
         {FOOTER_COLS.map((col) => (
           <nav key={col.title} aria-label={col.title}>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">
-              {col.title}
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">{col.title}</p>
             <ul className="mt-3 space-y-2">
               {col.links.map((l) => (
                 <li key={l.label}>
@@ -111,15 +109,12 @@ const FinalCTA: React.FC = () => (
                       href={l.to}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-content-secondary hover:text-accent-primary transition"
+                      className="text-xs text-neutral-600 hover:text-violet-600 transition"
                     >
                       {l.label}
                     </a>
                   ) : (
-                    <Link
-                      to={l.to}
-                      className="text-xs text-content-secondary hover:text-accent-primary transition"
-                    >
+                    <Link to={l.to} className="text-xs text-neutral-600 hover:text-violet-600 transition">
                       {l.label}
                     </Link>
                   )}
@@ -129,12 +124,10 @@ const FinalCTA: React.FC = () => (
           </nav>
         ))}
       </div>
-      <div className="border-t border-line-subtle">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-[11px] text-content-tertiary">
-            © {new Date().getFullYear()} NOCTRA
-          </p>
-          <p className="text-[11px] text-content-tertiary inline-flex items-center gap-1.5">
+      <div className="border-t border-black/5">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-[11px] text-neutral-400">© {new Date().getFullYear()} NOCTRA</p>
+          <p className="text-[11px] text-neutral-400 inline-flex items-center gap-1.5">
             <FileText size={11} aria-hidden /> Actions are recorded, never executed.
           </p>
         </div>
