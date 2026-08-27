@@ -16,6 +16,7 @@ import {
   Ban,
   BarChart3,
   Settings2,
+  ChevronsLeft,
   Rows3,
   ClipboardList,
   UploadCloud,
@@ -196,20 +197,35 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         )}
       >
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div className="h-16 flex items-center justify-between px-4 border-b border-line-subtle shrink-0">
+          <div
+            className={cn(
+              "h-16 flex items-center border-b border-line-subtle shrink-0 transition-all duration-300",
+              mobileNavOpen || isSidebarOpen ? "justify-between px-4" : "justify-center px-2"
+            )}
+          >
             <Link to="/" className="flex items-center min-w-0 hover:opacity-80 transition">
-              <BrandLogo collapsed={!isSidebarOpen} size={isSidebarOpen ? 28 : 26} />
+              <BrandLogo
+                collapsed={!isSidebarOpen && !mobileNavOpen}
+                size={isSidebarOpen || mobileNavOpen ? 28 : 22}
+              />
             </Link>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
               className={cn(
-                "p-1.5 rounded-full bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary transition text-xs font-bold cursor-pointer shrink-0 border border-line-subtle",
-                isSidebarOpen ? "" : "mx-auto"
+                "group p-1.5 rounded-full bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary active:scale-90 transition-all duration-200 cursor-pointer shrink-0 border border-line-subtle"
               )}
               title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
               type="button"
             >
-              {isSidebarOpen ? "«" : "»"}
+              <ChevronsLeft
+                size={15}
+                aria-hidden
+                className={cn(
+                  "transition-transform duration-300 ease-out",
+                  !isSidebarOpen && "rotate-180"
+                )}
+              />
             </button>
           </div>
 
