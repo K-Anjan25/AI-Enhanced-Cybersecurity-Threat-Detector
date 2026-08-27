@@ -10,81 +10,62 @@ module.exports = {
       },
       colors: {
         "app-bg": {
-          DEFAULT: "#0a0a0f",
+          DEFAULT: "#f4f6fa",
         },
         "app-void": {
-          DEFAULT: "#050508",
+          DEFAULT: "#e2e8f0",
         },
         "app-surface": {
-          DEFAULT: "#14141f",
+          DEFAULT: "#ffffff",
         },
-        "app-surface-raised": {
-          DEFAULT: "#1e1e2b",
-        },
-        "app-subtle": {
-          DEFAULT: "#23232f",
+        "app-navy": {
+          DEFAULT: "#0e1320",
+          raised: "#141b2d",
+          subtle: "#1c253c",
         },
         brand: {
-          DEFAULT: "#f59e0b",
-          sage: "#84a98c",
-          clay: "#c9ada7",
-          muted: "#1a1a1f",
+          DEFAULT: "#2563eb",
+          cobalt: "#2563eb",
+          navy: "#0e1320",
+          emerald: "#10b981",
+          amber: "#f59e0b",
+          critical: "#ef4444",
         },
         "content-primary": {
-          DEFAULT: "#f1f5f9",
+          DEFAULT: "#0f172a",
         },
         "content-secondary": {
-          DEFAULT: "#a1a1aa",
+          DEFAULT: "#475569",
         },
         "content-tertiary": {
-          DEFAULT: "#71717a",
+          DEFAULT: "#94a3b8",
         },
         "accent-primary": {
-          DEFAULT: "#f59e0b",
+          DEFAULT: "#2563eb",
         },
         "accent-secondary": {
-          DEFAULT: "#84a98c",
-        },
-        "accent-glow": {
-          DEFAULT: "#fde68a",
+          DEFAULT: "#3b82f6",
         },
         "line-subtle": {
-          DEFAULT: "#23232f",
+          DEFAULT: "#e2e8f0",
         },
-        "line-bright": {
-          DEFAULT: "#2d2d3a",
+        "line-navy": {
+          DEFAULT: "#1e293b",
         },
         "status-success": {
-          DEFAULT: "#84a98c",
+          DEFAULT: "#10b981",
         },
         "status-warning": {
-          DEFAULT: "#f4a261",
-        },
-        "status-critical": {
-          DEFAULT: "#e76f51",
-        },
-        "chart-1": {
           DEFAULT: "#f59e0b",
         },
-        "chart-2": {
-          DEFAULT: "#84a98c",
-        },
-        "chart-3": {
-          DEFAULT: "#e76f51",
-        },
-        "chart-4": {
-          DEFAULT: "#e9c46a",
-        },
-        "chart-5": {
-          DEFAULT: "#c9ada7",
+        "status-critical": {
+          DEFAULT: "#ef4444",
         },
       },
       boxShadow: {
-        "accent-glow": "0 0 24px rgba(245, 158, 11, 0.35)",
-        "sage-glow": "0 0 20px rgba(132, 169, 140, 0.35)",
-        card: "0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.18)",
-        raised: "0 6px 20px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25)",
-        overlay: "0 12px 40px rgba(0, 0, 0, 0.5)",
+        card: "0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.03)",
+        navy: "0 4px 20px rgba(14, 19, 32, 0.15), 0 2px 6px rgba(14, 19, 32, 0.1)",
+        cobalt: "0 0 20px rgba(37, 99, 235, 0.3)",
       },
       borderRadius: {
         xxs: "4px",
@@ -92,7 +73,6 @@ module.exports = {
       fontSize: {
         xxs: ["0.6875rem", "1rem"],
       },
-      // Predefined spacing/radius scale keeps every component consistent.
       keyframes: {
         "fade-in": {
           "0%": { opacity: "0", transform: "translateY(2px)" },
@@ -102,20 +82,10 @@ module.exports = {
           "0%": { opacity: "0", transform: "translateY(6px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "scale-in": {
-          "0%": { opacity: "0", transform: "scale(0.97)" },
-          "100%": { opacity: "1", transform: "scale(1)" },
-        },
-        "slide-in-right": {
-          "0%": { opacity: "0", transform: "translateX(16px)" },
-          "100%": { opacity: "1", transform: "translateX(0)" },
-        },
       },
       animation: {
         "fade-in": "fade-in 160ms ease-out",
         "fade-up": "fade-up 240ms ease-out",
-        "scale-in": "scale-in 140ms ease-out",
-        "slide-in-right": "slide-in-right 200ms ease-out",
       },
     },
   },

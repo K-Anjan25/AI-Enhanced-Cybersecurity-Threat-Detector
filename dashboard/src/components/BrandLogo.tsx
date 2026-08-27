@@ -9,10 +9,8 @@ type Props = {
 };
 
 /**
- * NOCTRA mark — geometric owl-eye / radar sweep.
- * - Diamond outer (shield) + inner offset eye with sweep negative space.
- * - Works at 16px favicon through to 48px sidebar.
- * - No external assets; pure SVG for crisp scaling.
+ * AXIOM AI Logo Mark — Geometric Axiom Proposition + Security Shield.
+ * Pure SVG, highly scalable from favicon to high-res headers.
  */
 const BrandLogo: React.FC<Props> = ({
   collapsed = false,
@@ -31,35 +29,47 @@ const BrandLogo: React.FC<Props> = ({
         aria-hidden
         className="shrink-0"
       >
-        {/* outer shield/diamond — Obsidian Ember amber */}
+        {/* Outer Axiom Delta Shield - Cobalt Blue */}
         <path
-          d="M16 2 L28 10 V22 L16 30 L4 22 V10 Z"
-          stroke="#f59e0b"
-          strokeWidth="1.6"
-          fill="rgba(245,158,11,0.08)"
+          d="M16 3 L28 11 V21 L16 29 L4 21 V11 Z"
+          stroke="#2563eb"
+          strokeWidth="1.8"
+          fill="rgba(37, 99, 235, 0.08)"
         />
-        {/* inner eye — offset double arc */}
+        {/* Stylized Interlocking Axiom A / Delta */}
         <path
-          d="M11 16 C11 11.8 13.4 9.2 16 9.2 C18.6 9.2 21 11.8 21 16 C21 20.2 18.6 22.8 16 22.8 C13.4 22.8 11 20.2 11 16Z"
-          stroke="#f59e0b"
+          d="M16 7 L23 21 H9 Z"
+          stroke="#2563eb"
           strokeWidth="1.5"
           fill="none"
         />
-        {/* radar sweep negative */}
-        <path d="M16 16 L16 9.2 A6.8 6.8 0 0 1 21 16 Z" fill="#f59e0b" opacity={0.9} />
-        {/* pupil */}
-        <circle cx={16} cy={16} r={2.1} fill="#0a0a0f" stroke="#f59e0b" strokeWidth={1.2} />
-        {/* sage depth accent */}
-        <circle cx={16} cy={16} r={6.8} stroke="#84a98c" strokeWidth={0.9} opacity={0.45} strokeDasharray="2 3" />
+        <path
+          d="M11.5 17 H20.5"
+          stroke="#2563eb"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        {/* Central Intelligence Node Dot */}
+        <circle cx="16" cy="14" r="2.2" fill="#2563eb" />
+        {/* Outer Node Orbit Ring */}
+        <circle
+          cx="16"
+          cy="16"
+          r="10"
+          stroke="#3b82f6"
+          strokeWidth="0.8"
+          strokeDasharray="2 2"
+          opacity={0.6}
+        />
       </svg>
 
       {withWordmark && !collapsed && (
         <span className="flex flex-col leading-none">
-          <span className="text-[15px] font-bold font-display tracking-[0.14em] text-content-primary">
+          <span className="text-[15px] font-extrabold font-display tracking-[0.12em] text-slate-900">
             {BRAND_NAME}
           </span>
-          <span className="text-[10px] font-medium tracking-[0.18em] text-content-tertiary -mt-0.5">
-            THREAT OPS
+          <span className="text-[9px] font-bold tracking-[0.2em] text-blue-600 uppercase mt-0.5">
+            AUTONOMOUS ANALYST
           </span>
         </span>
       )}

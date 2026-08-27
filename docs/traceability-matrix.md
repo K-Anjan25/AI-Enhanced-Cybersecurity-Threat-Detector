@@ -1,4 +1,4 @@
-﻿# Requirements Traceability Matrix
+# Requirements Traceability Matrix
 
 Maps every **Functional Requirement (FR)** and **Non-Functional Requirement (NFR)**
 to its implementation (module/endpoint), the tests that verify it, and any
@@ -131,7 +131,7 @@ Legend for verification: **UT** = unit/service test, **IT** = integration/API te
   Surfaced on calm Brief / Feed / Case screens (`/analyst/*` API). Reuses the
   `cases` table via additive nullable columns, so the legacy Incidents / SOAR /
   Entity Graph pages are untouched. Next: real connectors (Okta/EDR/firewall),
-  Ask-NOCTRA chat, and more scenarios.
+  Ask-AXIOM AI chat, and more scenarios.
 - **ML explainability + benchmark** — `/explain/{log,email,network,dns}`
   (coefficient/keyword/centroid/rule evidence, dependency-free) and
   `GET /benchmark` / `/benchmark/latest` (holdout evaluation of deployed

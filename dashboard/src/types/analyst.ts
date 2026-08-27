@@ -1,4 +1,4 @@
-// Types for the autonomous-analyst product surface (Phase 18).
+// Types for the autonomous-analyst product surface (Phases 18-19).
 
 export interface RecommendedAction {
   action_type: string;
@@ -79,4 +79,22 @@ export interface Brief {
 export interface ReportResponse {
   case_id: number;
   report: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: "user" | "noctra" | "axiom";
+  text: string;
+  timestamp: string;
+  confidence?: number;
+}
+
+export interface Connector {
+  id: string;
+  name: string;
+  category: string;
+  status: "connected" | "syncing" | "error";
+  last_sync: string;
+  assets_monitored: number;
+  latency_ms: number;
 }

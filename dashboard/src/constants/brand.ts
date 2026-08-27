@@ -1,24 +1,27 @@
 /**
- * Brand constants — single source of truth for the product identity.
- * NOCTRA kept per decision: serious, 6-char, 2-syllable, hard invented + nocturnal totem, abstract to grow.
+ * AXIOM AI Brand Constants — Single Source of Truth.
+ * Self-evident threat reasoning, instant blast-radius containment.
  */
-export const BRAND_NAME = "NOCTRA" as const;
-export const BRAND_WORDMARK = "NOCTRA" as const;
-export const BRAND_TAGLINE = "Silent. Precise. Always watching." as const;
+export const BRAND_NAME = "AXIOM AI" as const;
+export const BRAND_WORDMARK = "AXIOM AI" as const;
+export const BRAND_TAGLINE = "Self-evident threat reasoning. Instant containment." as const;
 export const BRAND_POSITIONING =
-  "The AI analyst that never blinks — detects across logs, email and network, explains every verdict, and orchestrates response." as const;
-export const BRAND_DOMAIN_HINT = "noctra.ai" as const;
+  "The autonomous AI security analyst for growing companies — turns chaotic log telemetry into plain-English story briefs and one-click reversible remediation actions." as const;
+export const BRAND_DOMAIN_HINT = "axiom.ai" as const;
 
-/* Palette mirrors tailwind.config.js Obsidian Ember tokens for JS usage (charts, canvas). */
-export const BRAND_PALETTE = {
-  amber: "#f59e0b",
-  sage: "#84a98c",
-  void: "#0a0a0f",
-  clay: "#c9ada7",
-  success: "#84a98c",
-  warning: "#f4a261",
-  critical: "#e76f51",
+export const BRAND_TYPOGRAPHY = {
+  display: "Sora",
+  sans: "Inter",
+  mono: "JetBrains Mono",
 } as const;
 
-/* Serious 5-6 char, 2-syllable, abstract shortlist — hard invented + animal totem */
-export const BRAND_SHORTLIST = ["NOCTRA", "KESTRA", "ORVEX", "STRYX", "KORVA"] as const;
+export const BRAND_PALETTE = {
+  bgLight: "#f4f6fa",
+  navyDark: "#0e1320",
+  cobalt: "#2563eb",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  critical: "#ef4444",
+  contentPrimary: "#0f172a",
+  contentSecondary: "#475569",
+} as const;

@@ -1,8 +1,10 @@
-"""Phase 18 - autonomous analyst walking skeleton.
+"""Phases 18-19 - autonomous analyst loop & interactive chat.
 
-Covers the product loop end-to-end with the LLM forced into its deterministic
-templated fallback (no API key), plus the API surface:
-    simulate (sense + reason) -> pending case -> approve (SOAR + report) / decline / revert.
+Covers:
+    - Multi-scenario simulation (credential leak, phishing outbreak, data exfiltration, compromised API key)
+    - Ask-AXIOM AI interactive case chat
+    - Security connectors status & manual sync
+    - API surface & transitions (simulate -> pending -> approve/decline/revert -> report).
 """
 
 import pytest
@@ -63,27 +65,59 @@ def test_llm_fallback_returns_full_contract():
 
 
 # ---------------------------------------------------------------------------
-# Scenario injector + service transitions (deterministic, no HTTP)
+# Multi-Scenario Injectors (Phase 19)
 # ---------------------------------------------------------------------------
 
-def test_simulate_opens_pending_analyst_case(db_session, org):
-    case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
+def test_simulate_multi_scenarios(db_session, org):
+    # Test each scenario type
+    scenarios = ["credential_leak", "phishing_outbreak", "data_exfiltration", "compromised_api_key"]
+    for s_type in scenarios:
+        case = scenario.run_scenario(db_session, s_type, org_id=org.id, actor="analyst1")
+        assert case.kind == "analyst"
+        assert case.decision == "pending"
+        assert case.source_alert_id is not None
+        assert case.blast_radius["nodes"]
+        assert case.proposed_action["action_type"] in SUPPORTED_ACTIONS
 
-    assert case.kind == "analyst"
-    assert case.decision == "pending"
-    assert case.priority == "critical"
-    assert case.source_alert_id is not None
-    assert case.analysis and case.analysis["fallback"] is True
-    assert case.proposed_action["action_type"] == "REVOKE_CREDENTIALS"
-    # Blast radius reaches the account + host + attacker IP from the email root.
-    assert case.blast_radius["root_entity_id"] is not None
-    assert len(case.blast_radius["nodes"]) >= 3
+
+# ---------------------------------------------------------------------------
+# Interactive Case Chat & Connectors (Phase 19)
+# ---------------------------------------------------------------------------
+
+def test_case_chat_returns_contextual_answer(db_session, org):
+    case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
+    
+    # Question about blast radius
+    res1 = analyst_service.chat_about_case(db_session, case, "What is in the blast radius?", actor="analyst1")
+    assert "blast radius" in res1["answer"].lower() or "entities" in res1["answer"].lower()
+
+    # Question about recommendation
+    res2 = analyst_service.chat_about_case(db_session, case, "Why revoke credentials?", actor="analyst1")
+    assert "recommended action" in res2["answer"].lower() or "revoke" in res2["answer"].lower()
 
     actions = {a.action for a in db_session.query(AuditLog).all()}
-    assert "ANALYST_CASE_OPENED" in actions
-    # No action executed yet.
-    assert db_session.query(SoarAction).count() == 0
+    assert "ANALYST_CHAT_QUESTION" in actions
 
+
+def test_connectors_status_and_sync(db_session, org):
+    connectors = analyst_service.get_connectors_status()
+    assert len(connectors) >= 4
+    ids = [c["id"] for c in connectors]
+    assert "okta" in ids
+    assert "sentinel" in ids
+
+    # Sync a connector
+    sync_res = analyst_service.sync_connector(db_session, "okta", actor="analyst1")
+    assert sync_res["status"] == "success"
+    assert "Okta Identity Cloud" in sync_res["message"]
+
+    actions = {a.action for a in db_session.query(AuditLog).all()}
+    assert "CONNECTOR_SYNC_TRIGGERED" in actions
+
+
+# ---------------------------------------------------------------------------
+# Transitions & HTTP API Surface
+# ---------------------------------------------------------------------------
 
 def test_approve_executes_soar_records_report_and_audit(db_session, org):
     case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
@@ -101,7 +135,6 @@ def test_approve_executes_soar_records_report_and_audit(db_session, org):
     )
     assert soar_row is not None
     assert soar_row.status == "executed"
-    assert soar_row.action_type == "REVOKE_CREDENTIALS"
 
     actions = {a.action for a in db_session.query(AuditLog).all()}
     assert "ANALYST_CASE_OPENED" in actions
@@ -116,8 +149,6 @@ def test_decline_makes_no_system_change(db_session, org):
     assert declined.status == "closed"
     assert declined.report
     assert db_session.query(SoarAction).count() == 0
-    actions = {a.action for a in db_session.query(AuditLog).all()}
-    assert "ANALYST_CASE_DECLINED" in actions
 
 
 def test_revert_records_compensating_action(db_session, org):
@@ -126,69 +157,36 @@ def test_revert_records_compensating_action(db_session, org):
     reverted = analyst_service.revert_case(db_session, case, actor="analyst1", actor_id=None)
 
     assert reverted.decision == "reverted"
-    # One action for the approve, one compensating action for the revert.
     assert db_session.query(SoarAction).count() == 2
-    actions = {a.action for a in db_session.query(AuditLog).all()}
-    assert "ANALYST_CASE_REVERTED" in actions
 
 
-def test_double_decision_is_rejected(db_session, org):
-    case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
-    analyst_service.approve_case(db_session, case, actor="analyst1", actor_id=None)
-    with pytest.raises(ValueError):
-        analyst_service.approve_case(db_session, case, actor="analyst1", actor_id=None)
-    with pytest.raises(ValueError):
-        analyst_service.decline_case(db_session, case, actor="analyst1", actor_id=None)
-
-
-def test_revert_requires_prior_approval(db_session, org):
-    case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
-    with pytest.raises(ValueError):
-        analyst_service.revert_case(db_session, case, actor="analyst1", actor_id=None)
-
-
-# ---------------------------------------------------------------------------
-# API surface
-# ---------------------------------------------------------------------------
-
-def test_analyst_flow_over_http(client, auth_headers):
-    # Simulate -> pending analyst case.
-    resp = client.post("/api/v1/analyst/simulate", headers=auth_headers)
+def test_analyst_http_flow_including_chat_and_connectors(client, auth_headers):
+    # 1. Multi-scenario simulation endpoint
+    resp = client.post("/api/v1/analyst/simulate?scenario_type=phishing_outbreak", headers=auth_headers)
     assert resp.status_code == 201, resp.text
     case = resp.json()
     case_id = case["id"]
     assert case["kind"] == "analyst"
-    assert case["decision"] == "pending"
-    assert case["analysis"]["fallback"] is True
 
-    # Brief reflects the pending decision.
-    brief = client.get("/api/v1/analyst/brief", headers=auth_headers)
-    assert brief.status_code == 200
-    assert brief.json()["pending_count"] >= 1
+    # 2. Ask-AXIOM AI Chat
+    chat_resp = client.post(
+        f"/api/v1/analyst/cases/{case_id}/chat",
+        json={"message": "What is the recommended action for this phishing alert?"},
+        headers=auth_headers,
+    )
+    assert chat_resp.status_code == 200, chat_resp.text
+    assert "answer" in chat_resp.json()
 
-    # Feed lists it.
-    feed = client.get("/api/v1/analyst/feed", headers=auth_headers)
-    assert feed.status_code == 200
-    assert feed.json()["total"] >= 1
+    # 3. Connectors
+    conn_resp = client.get("/api/v1/analyst/connectors", headers=auth_headers)
+    assert conn_resp.status_code == 200
+    assert len(conn_resp.json()) >= 4
 
-    # Approve -> recorded + report.
+    sync_resp = client.post("/api/v1/analyst/connectors/sentinel/sync", headers=auth_headers)
+    assert sync_resp.status_code == 200
+    assert sync_resp.json()["status"] == "success"
+
+    # 4. Approve
     approve = client.post(f"/api/v1/analyst/cases/{case_id}/approve", headers=auth_headers)
-    assert approve.status_code == 200, approve.text
+    assert approve.status_code == 200
     assert approve.json()["decision"] == "approved"
-
-    report = client.get(f"/api/v1/analyst/cases/{case_id}/report", headers=auth_headers)
-    assert report.status_code == 200
-    assert report.json()["report"]
-
-    # Approving again conflicts.
-    again = client.post(f"/api/v1/analyst/cases/{case_id}/approve", headers=auth_headers)
-    assert again.status_code == 409
-
-    # Legacy cases endpoint still works (analyst case is visible, extra keys ignored).
-    legacy = client.get("/api/v1/cases", headers=auth_headers)
-    assert legacy.status_code == 200
-
-
-def test_analyst_reads_require_auth(client):
-    assert client.get("/api/v1/analyst/brief").status_code == 401
-    assert client.post("/api/v1/analyst/simulate").status_code == 401

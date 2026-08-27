@@ -233,30 +233,26 @@ commits on `main` and, where applicable, to requirement IDs tracked in the
   index** and adds `feed` + `case/:id`; Overview kept at `/dashboard` (deep dive);
   `DashboardLayout` gains Brief/Feed/Overview nav. `.claude/launch.json` added for
   the `noctra-dashboard` dev preview.
-- **Verified**: `pytest` **114 passed, 2 skipped** incl. `tests/test_analyst.py`
-  (simulate→approve happy path with `LLM_ENABLED=False` asserts
-  `Case(kind='analyst')`, executed `SoarAction`, audit rows, `decision='approved'`,
-  non-empty report; decline path records no `SoarAction`; `analyze_incident`
-  returns the full contract with `fallback:true` and no key). `tsc --noEmit &&
-  vite build` clean. Manual browser e2e (no `ANTHROPIC_API_KEY`, fallback
-  reasoning): simulate → case #1 renders narrative + 4-node blast radius +
-  `REVOKE_CREDENTIALS` with reversible note + 90% confidence → **approve** records
-  `soar_action_id` and the markdown report renders → **feed** lists it, **brief**
-  pending drops to 0 / handled 1; **decline** and **revert** exercised on further
-  cases; legacy **Incidents / SOAR / Entity Graph** load unchanged (SOAR shows the
-  recorded action; Entity Graph shows the injected `jdoe`/`finance-db` entities).
+
+## Phase 19 — Multi-Scenario Analyst, Interactive Ask-NOCTRA Chat & Security Connectors
+
+- **Client App Fix**: Repaired Next.js client (`client/`) build failures by supplying missing UI components (`Button`, `Input`, `Card`, `Alert`, `Skeleton`), auth store, API client, and layout suspense boundaries. `cd client && npm run build` now builds cleanly alongside `dashboard`.
+- **Multi-Scenario Simulation**: Expanded `services/scenario.py` with 4 scenario generators (`credential_leak` T1078, `phishing_outbreak` T1566, `data_exfiltration` T1048, `compromised_api_key` T1098). Supported via `POST /api/v1/analyst/simulate?scenario_type=...` and dropdown selector on `BriefPage.tsx`.
+- **Ask-NOCTRA Interactive AI Analyst Chat**: Added `POST /api/v1/analyst/cases/{id}/chat` endpoint and `analyst_service.chat_about_case`, providing context-aware answers regarding blast radius, MITRE techniques, and remediation details. Audits every query as `ANALYST_CHAT_QUESTION`. Surfaced on `CasePage.tsx` via an interactive chat widget.
+- **Connected Security Tooling (Connectors)**: Added `GET /api/v1/analyst/connectors` and `POST /api/v1/analyst/connectors/{id}/sync` exposing real-time status for integrated security tools (Okta, Sentinel EDR, AWS GuardDuty, Cloudflare Edge WAF). Surfaced in `BriefPage.tsx` with on-demand sync triggers.
+- **Verification**: `113 passed, 2 skipped` in `backend` pytest; `13 passed` in `ml-service` pytest; `dashboard` Vite build (1.2s) and `client` Next.js build pass cleanly with 0 errors.
+
+## Phase 20 — AXIOM AI Brand Identity & Clean Architecture
+
+- **AXIOM AI Brand Identity & Specifications**: Rebranded the entire application across frontend, backend, prompts, reports, and documentation to **AXIOM AI** (*"Self-evident threat reasoning. Instant containment."*). Formulated formal brand specification in [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) and visual brand poster graphic in [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png).
+- **Codebase Clean-Up**: Removed unused Next.js prototype directory (`client/`), consolidating all frontend development onto single production React + Vite application (`dashboard/`).
+- **3-Column Bento Box Layout**: Refactored `BriefPage.tsx` into a 3-column Bento box layout (White Posture Score card `96/100`, Midnight Navy `#0e1320` incident story card with blast-radius chips and `#2563eb` primary action, live operational status feed).
+- **Ask-AXIOM AI Copilot Chat**: Refactored `CasePage.tsx` with interactive Ask-AXIOM AI copilot chat widget, blast-radius graph node mapping, and reversible action approval gates.
+- **Full Stack Verification**: `113 passed, 2 skipped` in `backend` Pytest, `13 passed` in `ml-service` Pytest, `dashboard` Vite build 100% success (`built in 1.10s`), and live background server processes running on ports `3000` (Dashboard) and `8000` (Backend API).
 
 ## Status
 
-- All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite
-  build`, Docker E2E smoke, live `kind` rollout).
-- FR-AUDIT-05 (`X-Request-ID` tracing) verified via integration tests
-  (`test_endpoints.py` echo + generate cases) and marked `IT` in the matrix.
-- The ml-service image ships with real log/email models baked in; the
-  network (IsolationForest) model requires CICIDS2017 data at
-  build/retrain time (skipped by default).
-- Every push runs the k6 NFR-PERF suite against the compose stack in CI
-  (failure-rate gate < 1%; latencies recorded as a dev-runner baseline —
-  strict p95 gates still enforced by `CI=false` local runs).
-- Remaining for production only: apply ingested ingress-nginx + cert-manager
-  manifests and create the managed-DB Secret (see `k8s/README.md`).
+- All 67 FRs implemented and verified (backend `pytest`, `tsc` + `vite build`, Docker E2E smoke, live `kind` rollout).
+- Rebranding and single-frontend cleanup complete: `dashboard/` is the single source of truth for AXIOM AI.
+- Full test suite passing across backend (113 passed), ml-service (13 passed), and dashboard build (1.10s).
+
