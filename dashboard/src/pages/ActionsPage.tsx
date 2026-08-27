@@ -128,12 +128,12 @@ const ActionsPage: React.FC = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-line-subtle bg-app-subtle/80 text-content-tertiary uppercase font-bold tracking-wider">
-                  <th className="px-5 py-3.5">Case & Title</th>
-                  <th className="px-5 py-3.5">Action Type</th>
-                  <th className="px-5 py-3.5">Target Asset</th>
-                  <th className="px-5 py-3.5">SOAR ID</th>
-                  <th className="px-5 py-3.5">Status</th>
-                  <th className="px-5 py-3.5 text-right">Reversibility</th>
+                  <th scope="col" className="px-5 py-3.5">Case & Title</th>
+                  <th scope="col" className="px-5 py-3.5">Action Type</th>
+                  <th scope="col" className="px-5 py-3.5">Target Asset</th>
+                  <th scope="col" className="px-5 py-3.5">SOAR ID</th>
+                  <th scope="col" className="px-5 py-3.5">Status</th>
+                  <th scope="col" className="px-5 py-3.5 text-right">Reversibility</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle text-content-secondary">

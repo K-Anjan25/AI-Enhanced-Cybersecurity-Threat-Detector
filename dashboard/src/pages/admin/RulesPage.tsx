@@ -173,11 +173,11 @@ const RulesPage: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
               <tr>
-                <th className="px-5 py-3">Name</th>
-                <th className="px-5 py-3">Severity</th>
-                <th className="px-5 py-3">Pattern</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+                <th scope="col" className="px-5 py-3">Name</th>
+                <th scope="col" className="px-5 py-3">Severity</th>
+                <th scope="col" className="px-5 py-3">Pattern</th>
+                <th scope="col" className="px-5 py-3">Status</th>
+                <th scope="col" className="px-5 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-subtle text-sm">

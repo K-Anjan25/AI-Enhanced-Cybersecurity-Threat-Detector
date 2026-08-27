@@ -748,6 +748,19 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
   `aria-label`s. Admin tables verified to scroll horizontally.
 - Verified: tsc + build clean; preview serving.
 
+### Addendum — Stage 4 slice 2 (document titles, table semantics, 2026-08-27)
+
+- Follows slice 1 (committed separately: mobile drawer, skip-link, menu
+  Escape/outside-click, AlertDetailModal dialog semantics, Recharts
+  `role="img"` labels).
+- **Per-route document titles**: one effect in the shell maps every route to
+  its tab title ("Case #3 — NOCTRA", "Actions — NOCTRA", …) — tab and
+  screen-reader context.
+- **Table header semantics**: `scope="col"` added to every `<th>` across all
+  12 table surfaces (feed, actions, SOAR, alerts, entities, incidents, logs,
+  admin roles/reputation/rules/audit, shared TableWithAction).
+- Verified: tsc + build clean; preview serving. Backend untouched (118/2).
+
 ### Addendum — Exact brand spec implementation (2026-08-27, latest pass)
 
 - **Logo system replaced per the user's exact specification** (§12–13

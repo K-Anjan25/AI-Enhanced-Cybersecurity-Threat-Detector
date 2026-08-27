@@ -94,12 +94,12 @@ const SystemLogs: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
               <tr>
-                <th className="px-5 py-3">Action</th>
-                <th className="px-5 py-3">Actor</th>
-                <th className="px-5 py-3">Resource</th>
-                <th className="px-5 py-3">Details</th>
-                <th className="px-5 py-3">Source IP</th>
-                <th className="px-5 py-3">Timestamp</th>
+                <th scope="col" className="px-5 py-3">Action</th>
+                <th scope="col" className="px-5 py-3">Actor</th>
+                <th scope="col" className="px-5 py-3">Resource</th>
+                <th scope="col" className="px-5 py-3">Details</th>
+                <th scope="col" className="px-5 py-3">Source IP</th>
+                <th scope="col" className="px-5 py-3">Timestamp</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-subtle text-sm">

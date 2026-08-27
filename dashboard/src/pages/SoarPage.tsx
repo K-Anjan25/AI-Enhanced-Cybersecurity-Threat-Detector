@@ -371,11 +371,11 @@ const SoarPage: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Rule</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3 w-24">State</th>
-                  <th className="px-4 py-3 w-28">Actions</th>
+                  <th scope="col" className="px-4 py-3">Name</th>
+                  <th scope="col" className="px-4 py-3">Rule</th>
+                  <th scope="col" className="px-4 py-3">Action</th>
+                  <th scope="col" className="px-4 py-3 w-24">State</th>
+                  <th scope="col" className="px-4 py-3 w-28">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle text-sm">
@@ -449,11 +449,11 @@ const SoarPage: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                  <th className="px-5 py-3.5">Action</th>
-                  <th className="px-5 py-3.5 w-32">Severity</th>
-                  <th className="px-5 py-3.5 w-28">Status</th>
-                  <th className="px-5 py-3.5 w-24">Alert</th>
-                  <th className="px-5 py-3.5 w-44">Created</th>
+                  <th scope="col" className="px-5 py-3.5">Action</th>
+                  <th scope="col" className="px-5 py-3.5 w-32">Severity</th>
+                  <th scope="col" className="px-5 py-3.5 w-28">Status</th>
+                  <th scope="col" className="px-5 py-3.5 w-24">Alert</th>
+                  <th scope="col" className="px-5 py-3.5 w-44">Created</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle text-sm">

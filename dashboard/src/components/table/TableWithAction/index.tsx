@@ -85,7 +85,7 @@ export default function TableWithAction<T extends TableRowData = TableRowData>({
         <table className="w-full text-left text-sm">
           <thead className="bg-app-subtle text-content-secondary border-b border-line-subtle text-xs uppercase">
             <tr>
-              <th className="p-3 w-10 text-center">
+              <th scope="col" className="p-3 w-10 text-center">
                 <input
                   type="checkbox"
                   className="rounded border-line-subtle bg-app-bg text-accent-primary focus:ring-0"
@@ -98,7 +98,7 @@ export default function TableWithAction<T extends TableRowData = TableRowData>({
                   {col.label}
                 </th>
               ))}
-              <th className="p-3 text-right font-semibold">Actions</th>
+              <th scope="col" className="p-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line-subtle">

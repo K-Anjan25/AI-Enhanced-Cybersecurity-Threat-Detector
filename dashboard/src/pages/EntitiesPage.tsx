@@ -242,12 +242,12 @@ const EntitiesPage: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                <th className="px-5 py-3.5 w-28">Type</th>
-                <th className="px-5 py-3.5">Indicator</th>
-                <th className="px-5 py-3.5 w-32">Risk score</th>
-                <th className="px-5 py-3.5 w-24">Occurrences</th>
-                <th className="px-5 py-3.5 w-28">Last seen</th>
-                <th className="px-5 py-3.5 w-40 text-right">Actions</th>
+                <th scope="col" className="px-5 py-3.5 w-28">Type</th>
+                <th scope="col" className="px-5 py-3.5">Indicator</th>
+                <th scope="col" className="px-5 py-3.5 w-32">Risk score</th>
+                <th scope="col" className="px-5 py-3.5 w-24">Occurrences</th>
+                <th scope="col" className="px-5 py-3.5 w-28">Last seen</th>
+                <th scope="col" className="px-5 py-3.5 w-40 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-subtle text-sm">

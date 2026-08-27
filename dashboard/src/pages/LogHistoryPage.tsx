@@ -186,10 +186,10 @@ const LogHistoryPage: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                  <th className="px-4 py-3">File</th>
-                  <th className="px-4 py-3">Parsed</th>
-                  <th className="px-4 py-3">Threats</th>
-                  <th className="px-4 py-3">Uploaded</th>
+                  <th scope="col" className="px-4 py-3">File</th>
+                  <th scope="col" className="px-4 py-3">Parsed</th>
+                  <th scope="col" className="px-4 py-3">Threats</th>
+                  <th scope="col" className="px-4 py-3">Uploaded</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-subtle text-sm">

@@ -81,8 +81,8 @@ const AccessRolesPage: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
               <tr>
-                <th className="px-5 py-3">Role</th>
-                <th className="px-5 py-3">Clearance</th>
+                <th scope="col" className="px-5 py-3">Role</th>
+                <th scope="col" className="px-5 py-3">Clearance</th>
                 {allPermissions.map((perm) => (
                   <th key={perm} className="px-3 py-3 text-center">
                     {perm}

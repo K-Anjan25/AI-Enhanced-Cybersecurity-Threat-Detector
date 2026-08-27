@@ -141,11 +141,11 @@ const IncidentsPage: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                    <th className="px-5 py-3.5">Title</th>
-                    <th className="px-5 py-3.5 w-40">Status</th>
-                    <th className="px-5 py-3.5 w-32">Priority</th>
-                    <th className="px-5 py-3.5 w-36">Source alert</th>
-                    <th className="px-5 py-3.5 w-44">Last updated</th>
+                    <th scope="col" className="px-5 py-3.5">Title</th>
+                    <th scope="col" className="px-5 py-3.5 w-40">Status</th>
+                    <th scope="col" className="px-5 py-3.5 w-32">Priority</th>
+                    <th scope="col" className="px-5 py-3.5 w-36">Source alert</th>
+                    <th scope="col" className="px-5 py-3.5 w-44">Last updated</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-subtle text-sm">

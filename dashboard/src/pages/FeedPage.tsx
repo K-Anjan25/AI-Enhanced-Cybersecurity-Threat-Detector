@@ -82,10 +82,10 @@ const FeedPage: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">
-                    <th className="px-5 py-3.5">Case</th>
-                    <th className="px-5 py-3.5 w-28">Severity</th>
-                    <th className="px-5 py-3.5 w-40">Decision</th>
-                    <th className="px-5 py-3.5 w-44">Opened</th>
+                    <th scope="col" className="px-5 py-3.5">Case</th>
+                    <th scope="col" className="px-5 py-3.5 w-28">Severity</th>
+                    <th scope="col" className="px-5 py-3.5 w-40">Decision</th>
+                    <th scope="col" className="px-5 py-3.5 w-44">Opened</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line-subtle text-sm">

@@ -93,6 +93,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
     setMobileNavOpen(false);
   }, [location.pathname]);
 
+  // Per-route document titles (tab + screen-reader context).
+  useEffect(() => {
+    const path = location.pathname;
+    let title = "NOCTRA";
+    if (path === "/") title = "Analyst Inbox";
+    else if (path.startsWith("/case/")) title = `Case #${path.split("/")[2] ?? ""}`;
+    else if (path.startsWith("/feed")) title = "Cases";
+    else if (path.startsWith("/actions")) title = "Actions";
+    else if (path.startsWith("/reports")) title = "Reports";
+    else if (path.startsWith("/alerts")) title = "Alerts";
+    else if (path.startsWith("/entities")) title = "Entities & Graph";
+    else if (path.startsWith("/analytics")) title = "Analytics";
+    else if (path.startsWith("/dashboard")) title = "SOC Cockpit";
+    else if (path.startsWith("/soar")) title = "SOAR";
+    else if (path.startsWith("/incidents")) title = "Manual Incidents";
+    else if (path.startsWith("/logs")) title = "Log Uploads";
+    else if (path.startsWith("/profile") || path.startsWith("/account")) title = "Profile";
+    else if (path.startsWith("/admin")) title = "Administration";
+    document.title = `${title} — NOCTRA`;
+  }, [location.pathname]);
+
   const username: string = localStorage.getItem("username") || "User";
   const userRole: string = (localStorage.getItem("user_role") || "user").toLowerCase();
   const isAdmin = userRole === "admin";
