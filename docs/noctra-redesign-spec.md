@@ -696,6 +696,22 @@ Verified 2026-08-27 on the working branch, after the Stage-1 changes:
 - Not yet verified: full browser click-through of the new Inbox visual
   layout (live preview is running; screenshots/user pass pending).
 
+### Addendum — Stage 2 progress (2026-08-27, later pass)
+
+- **Alerts→Case bridge** (directive §4 mapping "Alert → Case Evidence"):
+  CasePage now resolves `source_alert_id` against the alert list and renders
+  an **Evidence (Observed)** night card — type, severity, source IP, MITRE
+  and the raw message; states honestly when the alert row is no longer
+  present. AlertDetailModal gains a direct "NOCTRA case #N →" link when a
+  case was opened from that alert. Verified live (case #3 ↔ alert #3,
+  credential_leak / T1078).
+- **401 session interceptor** added (QA MISSING-3 fixed): single-flight
+  `/refresh`, one retry, clean logout redirect; auth endpoints exempt.
+- **Severity tokens unified**: shared `Badge.tsx` and `AlertDetailModal`
+  migrated off status-/chart-4 colors onto the `severity-*` ramp — one
+  system app-wide (SoarPage already used it).
+- tsc + vite build clean; backend untouched (114/2 baseline holds).
+
 ### Addendum — Stage 1.2 (DUALITY, QA pass, 2026-08-27)
 
 - Implemented DUALITY per directive §5: day workspace + night canvas as

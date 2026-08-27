@@ -13,6 +13,7 @@ import {
   Send,
   Bot,
   User,
+  TriangleAlert,
 } from "lucide-react";
 import {
   PageHeader,
@@ -25,6 +26,8 @@ import {
   EmptyState,
 } from "../components/ui";
 import AnalystApi from "../api/analystApi";
+import { fetchAlerts } from "../api/alertApi";
+import type { Alert } from "../types/alert";
 import type { AnalystCase, BlastNode, Decision, ChatMessage } from "../types/analyst";
 import { getApiError } from "../utils/getApiError";
 
@@ -53,6 +56,9 @@ const CasePage: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
+  // Evidence state — the raw source alert linked to this case (observed fact).
+  const [evidence, setEvidence] = useState<Alert | null>(null);
+
   const loadCase = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -79,6 +85,27 @@ const CasePage: React.FC = () => {
   useEffect(() => {
     loadCase();
   }, [loadCase]);
+
+  // Resolve the linked source alert for the evidence panel (best-effort: the
+  // alert list is the only read surface; missing rows are stated honestly).
+  useEffect(() => {
+    let alive = true;
+    const alertId = data?.source_alert_id;
+    if (!alertId) {
+      setEvidence(null);
+      return;
+    }
+    fetchAlerts(1, 100)
+      .then((items) => {
+        if (alive) setEvidence(items.find((a) => a.id === alertId) ?? null);
+      })
+      .catch(() => {
+        if (alive) setEvidence(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [data?.source_alert_id]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +244,56 @@ const CasePage: React.FC = () => {
           <p className="text-content-secondary leading-relaxed">{analysis?.why_it_matters}</p>
         </div>
       </div>
+
+      {/* Evidence — the observed source alert, on the night canvas. */}
+      {data.source_alert_id && (
+        <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
+          <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
+            <TriangleAlert size={16} className="text-accent-secondary" aria-hidden />
+            <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Evidence</h2>
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-app-subtle/80 text-content-secondary border border-line-bright">
+              Observed
+            </span>
+            <span className="text-xs text-content-tertiary ml-auto font-mono">
+              Linked alert #{data.source_alert_id}
+            </span>
+          </div>
+          {evidence ? (
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Type</p>
+                  <p className="text-xs font-mono text-content-primary mt-0.5">{evidence.alert_type || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Severity</p>
+                  <div className="mt-0.5">
+                    <SeverityBadge severity={String(evidence.severity || "LOW")} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Source IP</p>
+                  <p className="text-xs font-mono text-content-primary mt-0.5">{evidence.source_ip || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">MITRE</p>
+                  <p className="text-xs font-mono text-content-primary mt-0.5">
+                    {evidence.mitre_technique_id || "—"}
+                  </p>
+                </div>
+              </div>
+              <pre className="p-3 rounded-xl bg-app-void text-content-secondary border border-line-bright text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+                {evidence.message || "(no raw message recorded)"}
+              </pre>
+            </div>
+          ) : (
+            <p className="px-5 py-4 text-xs text-content-tertiary">
+              Linked to alert #{data.source_alert_id} — the raw alert is no longer present in the current
+              alert list, so its details cannot be shown.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Blast radius — night canvas. Observed evidence, not inference. */}
       <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">

@@ -159,8 +159,10 @@ the FE are the raw API status value mappings, which are relabeled through
 2. **"Handled automatically" metric** — `/analyst/brief` has no such count;
    Home copy sticks to real numbers. Next: backend counts auto-closed
    detections per day.
-3. **401 auto-refresh** — no axios interceptor; add one on the store's
-   refresh flow.
+3. **401 auto-refresh** — ~~no axios interceptor~~ **FIXED (follow-up pass)**:
+   `api/axios.ts` now single-flight-refreshes on 401, retries the original
+   request once, and on failure clears session flags and returns the user to
+   `/login`. Auth endpoints are exempt (bad-password 401s behave normally).
 4. **Case timeline endpoint** — FE composes the case record from real case
    fields (opened/linked alert/decision/SOAR/report); a server-side timeline
    with audit-log joins would enrich it (Stage 2).

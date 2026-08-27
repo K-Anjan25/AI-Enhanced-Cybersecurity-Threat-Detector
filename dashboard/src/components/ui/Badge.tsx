@@ -22,20 +22,20 @@ export const Badge: React.FC<BadgeProps> = ({ children, className, ...props }) =
 
 const SEVERITY_STYLES: Record<Severity, { badge: string; dot: string }> = {
   CRITICAL: {
-    badge: "bg-status-critical/15 text-status-critical border-status-critical/30",
-    dot: "bg-status-critical",
+    badge: "bg-severity-critical/15 text-severity-critical border-severity-critical/30",
+    dot: "bg-severity-critical",
   },
   HIGH: {
-    badge: "bg-status-warning/15 text-status-warning border-status-warning/30",
-    dot: "bg-status-warning",
+    badge: "bg-severity-high/15 text-severity-high border-severity-high/30",
+    dot: "bg-severity-high",
   },
   MEDIUM: {
-    badge: "bg-status-warning/15 text-status-warning border-status-warning/30",
-    dot: "bg-status-warning",
+    badge: "bg-severity-medium/15 text-severity-medium border-severity-medium/30",
+    dot: "bg-severity-medium",
   },
   LOW: {
-    badge: "bg-status-success/15 text-status-success border-status-success/30",
-    dot: "bg-status-success",
+    badge: "bg-severity-low/15 text-severity-low border-severity-low/30",
+    dot: "bg-severity-low",
   },
 };
 

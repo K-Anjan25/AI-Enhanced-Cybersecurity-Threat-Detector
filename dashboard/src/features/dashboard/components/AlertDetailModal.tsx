@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import AnalystApi from "../../../api/analystApi";
 
 interface Props {
   alert: any;
@@ -6,10 +8,10 @@ interface Props {
 }
 
 const severityBadge: Record<string, string> = {
-  CRITICAL: "bg-status-critical/15 text-status-critical border-status-critical/30",
-  HIGH: "bg-status-warning/15 text-status-warning border-status-warning/30",
-  MEDIUM: "bg-chart-4/15 text-chart-4 border-chart-4/30",
-  LOW: "bg-status-success/15 text-status-success border-status-success/30",
+  CRITICAL: "bg-severity-critical/15 text-severity-critical border-severity-critical/30",
+  HIGH: "bg-severity-high/15 text-severity-high border-severity-high/30",
+  MEDIUM: "bg-severity-medium/15 text-severity-medium border-severity-medium/30",
+  LOW: "bg-severity-low/15 text-severity-low border-severity-low/30",
 };
 
 const bandBadge: Record<string, string> = {
@@ -29,6 +31,26 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 export default function AlertDetailModal({ alert, onClose }: Props) {
+  const [linkedCaseId, setLinkedCaseId] = useState<number | null>(null);
+
+  // Bridge to the analyst workflow: if a NOCTRA case was opened from this
+  // alert, offer a direct link (best-effort lookup over the decision feed).
+  useEffect(() => {
+    let alive = true;
+    if (alert?.id == null) return;
+    AnalystApi.fetchFeed({ page: 1, limit: 100 })
+      .then((res) => {
+        if (!alive) return;
+        const rows = Array.isArray(res) ? res : res?.data ?? [];
+        const hit = rows.find((c: { source_alert_id?: number | null }) => c.source_alert_id === alert.id);
+        if (hit) setLinkedCaseId(hit.id);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [alert?.id]);
+
   if (!alert) return null;
 
   const severity = String(alert.severity || alert.risk || "LOW").toUpperCase();
@@ -65,6 +87,15 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
             <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono border bg-accent-primary/10 text-accent-primary border-accent-primary/30">
               Alert #{alert.id}
             </span>
+          )}
+          {linkedCaseId != null && (
+            <Link
+              to={`/case/${linkedCaseId}`}
+              onClick={onClose}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border bg-accent-primary text-brand-ink border-transparent hover:opacity-90 transition"
+            >
+              NOCTRA case #{linkedCaseId} →
+            </Link>
           )}
         </div>
 
