@@ -89,7 +89,7 @@ const SystemLogs: React.FC = () => {
           description="Try clearing the action filter or checking back later."
         />
       ) : (
-      <div className="bg-app-surface rounded-xl border border-line-subtle shadow-sm overflow-hidden">
+      <div className="bg-app-surface rounded-2xl border border-line-subtle shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-app-subtle border-b border-line-subtle text-xs font-semibold uppercase tracking-wider text-content-secondary">

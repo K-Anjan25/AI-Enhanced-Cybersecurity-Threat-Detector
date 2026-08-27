@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AnalystApi from "../../../api/analystApi";
+import { Term } from "../../../components/ui";
 
 interface Props {
   alert: any;
@@ -79,7 +80,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-app-surface w-full max-w-2xl rounded-xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
+      <div className="bg-app-surface w-full max-w-2xl rounded-2xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-lg font-semibold text-content-primary">Alert Details</h3>
           <button
@@ -122,14 +123,18 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
             <span className="font-mono text-xs text-accent-primary">{alert.source_ip || "N/A"}</span>
           </DetailRow>
           <DetailRow label="Score">
-            {alert.score != null ? Number(alert.score).toFixed(3) : "N/A"}
+            {alert.score != null && Number.isFinite(Number(alert.score))
+              ? Number(alert.score).toFixed(3)
+              : "N/A"}
           </DetailRow>
           <DetailRow label="Timestamp">
             <span className="text-xs text-content-secondary">{alert.created_at || alert.timestamp || "N/A"}</span>
           </DetailRow>
 
           <div>
-            <h4 className="text-sm font-semibold text-content-primary mb-2">MITRE ATT&amp;CK</h4>
+            <h4 className="text-sm font-semibold text-content-primary mb-2">
+              <Term>MITRE</Term> ATT&amp;CK
+            </h4>
             {hasMitre ? (
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border bg-app-subtle text-content-primary border-line-subtle">
@@ -137,7 +142,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                 </span>
                 {alert.mitre_technique_id && (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono border bg-accent-primary/10 text-accent-primary border-accent-primary/30">
-                    {alert.mitre_technique_id}
+                    <Term mono>{alert.mitre_technique_id}</Term>
                   </span>
                 )}
                 {alert.mitre_technique && (
@@ -147,7 +152,9 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-content-tertiary">Unclassified — no MITRE mapping for this alert.</p>
+              <p className="text-xs text-content-tertiary">
+                Unclassified — no <Term>MITRE</Term> mapping for this alert.
+              </p>
             )}
           </div>
 
@@ -170,7 +177,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
                 </div>
                 {typeof threatIntel.threat_score === "number" && (
                   <p className="text-xs text-content-tertiary">
-                    Reputation score: <span className="text-content-primary font-mono">{threatIntel.threat_score.toFixed(3)}</span>
+                    <Term>Reputation</Term> score: <span className="text-content-primary font-mono">{threatIntel.threat_score.toFixed(3)}</span>
                     {threatIntel.ip_address ? (
                       <span> for <span className="font-mono text-accent-primary">{String(threatIntel.ip_address)}</span></span>
                     ) : null}
@@ -194,7 +201,7 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-medium hover:opacity-90 transition"
+            className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition"
           >
             Close
           </button>

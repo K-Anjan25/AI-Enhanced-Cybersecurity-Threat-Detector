@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import EntityApi, { type EntityGraphSummary, type EntityPathResult } from "../../../api/entityApi";
 import EntityGraphView from "../../../features/entities/components/EntityGraphView";
-import { PageHeader, Select, StatCard } from "../../../components/ui";
+import { NumberInput, PageHeader, Select, StatCard, Term } from "../../../components/ui";
 import type { EntityType, ThreatEntity } from "../../../types/entity";
 import { getApiError } from "../../../utils/getApiError";
 
@@ -125,8 +125,13 @@ const EntitiesPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="Entity Graph"
-        description="Extracted indicators from detected threats. Click “Graph” to explore connections."
+        title={<><Term>Entity</Term> Graph</>}
+        description={
+          <>
+            Extracted indicators from detected threats. Click “Graph” to explore connections
+            between <Term>entities</Term>.
+          </>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -170,34 +175,32 @@ const EntitiesPage: React.FC = () => {
         />
       </div>
 
-      <div className="bg-app-surface border border-line-subtle rounded-xl p-6 shadow-sm">
+      <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card">
         <h3 className="text-sm font-semibold text-content-primary mb-3">Path Finder</h3>
         <p className="text-xs text-content-tertiary mb-4">
           Trace the shortest directed attack path between two indicators by entity ID
           (find IDs in the table below).
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="number"
+          <NumberInput
             min={1}
             value={pathFrom}
-            onChange={(e) => setPathFrom(e.target.value)}
+            onChange={(v) => setPathFrom(Number.isNaN(v) ? "" : String(v))}
             placeholder="From entity ID"
-            className="w-full sm:w-48 px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+            className="w-full sm:w-48"
           />
-          <input
-            type="number"
+          <NumberInput
             min={1}
             value={pathTo}
-            onChange={(e) => setPathTo(e.target.value)}
+            onChange={(v) => setPathTo(Number.isNaN(v) ? "" : String(v))}
             placeholder="To entity ID"
-            className="w-full sm:w-48 px-3 py-2 bg-app-bg border border-line-subtle rounded-lg text-sm text-content-primary focus:outline-none focus:border-accent-primary"
+            className="w-full sm:w-48"
           />
           <button
             type="button"
             onClick={handleFindPath}
             disabled={pathLoading}
-            className="px-4 py-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-sm font-medium text-accent-primary transition disabled:opacity-40"
+            className="px-4 py-2 rounded-full bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-sm font-medium text-accent-primary transition disabled:opacity-40"
           >
             {pathLoading ? "Tracing…" : "Trace path"}
           </button>
@@ -237,7 +240,7 @@ const EntitiesPage: React.FC = () => {
         )}
       </div>
 
-      <div className="bg-app-surface rounded-xl border border-line-subtle shadow-sm overflow-hidden">
+      <div className="bg-app-surface rounded-2xl border border-line-subtle shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -280,24 +283,24 @@ const EntitiesPage: React.FC = () => {
                           <div
                             className="h-full rounded-full"
                             style={{
-                              width: `${Math.min(entity.risk_score * 100, 100)}%`,
+                              width: `${Math.min((Number(entity.risk_score) || 0) * 100, 100)}%`,
                               backgroundColor:
-                                entity.risk_score >= 0.75
-                                  ? "#e76f51"
-                                  : entity.risk_score >= 0.5
-                                  ? "#f4a261"
-                                  : entity.risk_score >= 0.25
-                                  ? "#e9c46a"
-                                  : "#84a98c",
+                                (entity.risk_score || 0) >= 0.75
+                                  ? "#f26d6d"
+                                  : (entity.risk_score || 0) >= 0.5
+                                  ? "#f0824f"
+                                  : (entity.risk_score || 0) >= 0.25
+                                  ? "#e5a54b"
+                                  : "#52b788",
                             }}
                           />
                         </div>
-                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${riskColor(entity.risk_score)}`}>
-                          {entity.risk_score.toFixed(2)}
+                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium border ${riskColor(entity.risk_score || 0)}`}>
+                          {(Number(entity.risk_score) || 0).toFixed(2)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-content-secondary">{entity.occurrences}</td>
+                    <td className="px-5 py-3.5 text-content-secondary">{entity.occurrences ?? 0}</td>
                     <td className="px-5 py-3.5 text-xs text-content-tertiary whitespace-nowrap">
                       {entity.last_seen ? new Date(entity.last_seen).toLocaleString() : "-"}
                     </td>
@@ -305,24 +308,23 @@ const EntitiesPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setGraphRoot(entity)}
-                        className="px-3 py-1.5 mr-2 rounded-lg bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-xs font-medium text-accent-primary transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="px-3 py-1.5 mr-2 rounded-full bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/30 text-xs font-medium text-accent-primary transition disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         Graph
                       </button>
-                      <input
-                        type="number"
+                      <NumberInput
                         min={0}
                         max={1}
                         step={0.05}
                         defaultValue={entity.risk_score}
-                        onChange={(e) => {
-                          const value = Number(e.target.value);
-                          if (!Number.isNaN(value) && value >= 0 && value <= 1) {
-                            handleRiskAdjust(entity, value);
+                        onChange={(v) => {
+                          if (!Number.isNaN(v) && v >= 0 && v <= 1) {
+                            handleRiskAdjust(entity, v);
                           }
                         }}
                         disabled={adjustingId === entity.id}
-                        className="w-16 px-2 py-1.5 bg-app-bg border border-line-subtle rounded-lg text-xs font-mono text-content-primary focus:outline-none focus:border-accent-primary transition disabled:opacity-40"
+                        className="w-24"
+                        fieldClassName="text-xs font-mono px-2 py-1.5"
                         aria-label={`Override risk score for ${entity.value}`}
                         title="Set risk score (0-1)"
                       />

@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     # Auth security
     COOKIE_AUTH: bool = False
     COOKIE_SECURE: bool = True
+    # Cookie SameSite policy. The dashboard is served from the same origin via
+    # the Vite/nginx proxy, so "lax" suffices in a normal tab. When the preview
+    # is embedded in a cross-site iframe (Arena live preview), "none" + Secure +
+    # Partitioned (CHIPS) is required for the browser to store/send the cookie.
+    COOKIE_SAMESITE: str = "lax"
+    COOKIE_PARTITIONED: bool = False
     LOGIN_MAX_ATTEMPTS: int = 5
     LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
 

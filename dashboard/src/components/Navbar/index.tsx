@@ -2,13 +2,25 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userActions";
-import { Search, Settings, LogOut, ShieldCheck, Bell, Menu } from "lucide-react";
+import { Search, Settings, LogOut, ShieldCheck, Bell, Menu, Inbox, ArrowRight } from "lucide-react";
 import BrandLogo from "../BrandLogo";
-import { BRAND_TAGLINE_SECONDARY } from "../../constants/brand";
+import { BRAND_TAGLINE } from "../../constants/brand";
 import AnalystApi from "../../api/analystApi";
 import type { NotificationItem } from "../../types/analyst";
+import { EVENTS, emit } from "../../lib/events";
+import { useNoctraEvent } from "../../hooks";
+import ThemeToggle from "../ThemeToggle";
 
 const SEEN_KEY = "noctra_notified_at";
+
+/** Clock text for notification rows — never "Invalid Date". */
+const nTime = (iso?: string): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
 
 export interface NavbarProps {
   onLogout?: () => void;
@@ -22,11 +34,16 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   const [notes, setNotes] = useState<NotificationItem[]>([]);
   const [seenAt, setSeenAt] = useState<string>(() => localStorage.getItem(SEEN_KEY) ?? "");
   const [search, setSearch] = useState<string>("");
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const headerRef = useRef<HTMLElement>(null);
 
-  // Dismiss both menus on outside click or Escape.
+  // Live pending count — the mini-cart pattern: the "Review decisions"
+  // button carries a count pill that updates whenever a case is decided
+  // (case page, drawer, anywhere) via the event bus.
+  useNoctraEvent(EVENTS.PENDING_CHANGED, (n) => setPendingCount(Number(n) || 0));
+
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!headerRef.current?.contains(e.target as Node)) {
@@ -51,9 +68,6 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   const username: string = localStorage.getItem("username") || "User";
   const userRole: string = (localStorage.getItem("user_role") || "user").toLowerCase();
 
-  // Derived notifications (pending decisions + recent outcomes) — polled,
-  // never fabricated. Unread = items newer than the last time the menu was
-  // opened (client-tracked; the API has no unread table by design).
   const loadNotes = useCallback(() => {
     AnalystApi.fetchNotifications()
       .then((res) => setNotes(res.items ?? []))
@@ -67,6 +81,11 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   }, [loadNotes]);
 
   const unreadCount = notes.filter((n) => !seenAt || n.at > seenAt).length;
+
+  useEffect(() => {
+    const pending = notes.filter((n) => n.kind === "decision_pending").length;
+    if (pending > 0) setPendingCount(pending);
+  }, [notes]);
 
   const openNotes = () => {
     setIsNotesOpen((v) => !v);
@@ -93,50 +112,49 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
   return (
     <header
       ref={headerRef}
-      className="h-16 bg-app-surface border-b border-line-subtle flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 w-full gap-2"
+      className="h-16 bg-app-surface/80 backdrop-blur-xl border-b border-line-subtle flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 w-full gap-2 sticky top-0"
     >
       <div className="flex items-center gap-3 min-w-0">
         <button
           type="button"
           onClick={onOpenNav}
           aria-label="Open navigation"
-          className="lg:hidden w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer shrink-0"
+          className="lg:hidden w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer shrink-0"
         >
           <Menu size={16} aria-hidden />
         </button>
 
-        <Link to="/" className="flex items-center hover:opacity-90 transition min-w-0" aria-label="NOCTRA home">
-          {/* Full lockup from sm up; icon-only on the narrowest screens. */}
-          <span className="hidden sm:flex">
+        <Link to="/" className="flex items-center hover:opacity-80 transition min-w-0" aria-label="NOCTRA home">
+          <span className="hidden lg:inline-flex">
             <BrandLogo size={26} />
           </span>
-          <span className="sm:hidden flex">
+          <span className="lg:hidden inline-flex">
             <BrandLogo size={26} withWordmark={false} />
           </span>
         </Link>
 
         <span className="hidden xl:inline text-[11px] font-mono text-content-tertiary truncate">
-          {BRAND_TAGLINE_SECONDARY}
+          {BRAND_TAGLINE}
         </span>
       </div>
 
       <div className="w-80 max-w-[40%] hidden md:block">
         <div className="relative">
-          <Search size={14} className="absolute inset-y-0 left-3 my-auto text-content-tertiary" aria-hidden />
+          <Search size={14} className="absolute inset-y-0 left-3.5 my-auto text-content-tertiary" aria-hidden />
           <input
             type="text"
             placeholder="Search IP, threat, hash…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="w-full bg-app-bg text-sm text-content-primary pl-9 pr-14 py-2 rounded-lg border border-line-subtle focus:outline-none focus:border-accent-primary transition placeholder-content-tertiary"
+            className="w-full bg-app-subtle/80 text-sm text-content-primary pl-9 pr-14 py-2 rounded-full border border-transparent focus:outline-none focus:border-accent-primary/40 focus:bg-app-surface transition placeholder-content-tertiary"
           />
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event("noctra:command-menu"))}
             aria-label="Open command menu"
             title="Command menu (⌘K)"
-            className="absolute inset-y-0 right-2 my-auto h-6 px-1.5 rounded border border-line-subtle bg-app-subtle text-[10px] font-mono text-content-tertiary hover:text-content-primary transition cursor-pointer"
+            className="absolute inset-y-0 right-1.5 my-auto h-6 px-1.5 rounded-full border border-line-subtle bg-app-surface text-[10px] font-mono text-content-tertiary hover:text-content-primary transition cursor-pointer"
           >
             ⌘K
           </button>
@@ -148,12 +166,46 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
         onClick={() => window.dispatchEvent(new Event("noctra:command-menu"))}
         aria-label="Open command menu"
         title="Command menu (⌘K)"
-        className="md:hidden w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer"
+        className="md:hidden w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer"
       >
         <Search size={15} aria-hidden />
       </button>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
+
+        {/* Mini-cart pattern: "Review decisions" with a live pending count pill. */}
+        <button
+          type="button"
+          onClick={() => emit(EVENTS.OPEN_PENDING_DRAWER)}
+          aria-label={`Review pending decisions${pendingCount ? ` — ${pendingCount} pending` : ""}`}
+          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-xs font-semibold hover:opacity-90 transition shadow-float cursor-pointer shrink-0"
+        >
+          Review decisions
+          <span className="inline-flex items-center gap-1">
+            {pendingCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-ink/20 text-brand-ink text-[10px] font-bold flex items-center justify-center tabular-nums">
+                {pendingCount > 99 ? "99+" : pendingCount}
+              </span>
+            )}
+            <ArrowRight size={13} aria-hidden />
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => emit(EVENTS.OPEN_PENDING_DRAWER)}
+          aria-label={`Review pending decisions${pendingCount ? ` — ${pendingCount} pending` : ""}`}
+          className="sm:hidden relative w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer shrink-0"
+        >
+          <Inbox size={16} aria-hidden />
+          {pendingCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-status-critical text-white text-[9px] font-bold flex items-center justify-center tabular-nums">
+              {pendingCount > 9 ? "9+" : pendingCount}
+            </span>
+          )}
+        </button>
+
         <div className="relative">
           <button
             type="button"
@@ -162,11 +214,11 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
             aria-haspopup="menu"
             aria-expanded={isNotesOpen}
             title="Notifications"
-            className="relative w-9 h-9 rounded-lg bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary hover:bg-line-bright transition flex items-center justify-center cursor-pointer"
+            className="relative w-9 h-9 rounded-full bg-app-subtle border border-line-subtle text-content-secondary hover:text-content-primary transition flex items-center justify-center cursor-pointer"
           >
             <Bell size={16} aria-hidden />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-status-critical text-brand-ink text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-status-critical text-white text-[9px] font-bold flex items-center justify-center">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -176,13 +228,13 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
             <div
               role="menu"
               aria-label="Notifications"
-              className="absolute right-0 mt-2 w-80 bg-app-surface border border-line-subtle rounded-xl shadow-overlay py-2 z-50 animate-scale-in"
+              className="absolute right-0 mt-2 w-80 bg-app-surface border border-line-subtle rounded-2xl shadow-overlay py-2 z-50 animate-scale-in"
             >
               <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary">
                 Notifications
               </p>
               {notes.length === 0 ? (
-                <p className="px-4 py-4 text-xs text-content-tertiary">
+                <p className="px-4 py-4 text-xs text-content-secondary">
                   Nothing needs your attention — no pending decisions, no recent outcomes.
                 </p>
               ) : (
@@ -209,10 +261,10 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
                             {n.title}
                           </span>
                           <span className="ml-auto text-[10px] font-mono text-content-tertiary shrink-0">
-                            {new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {nTime(n.at)}
                           </span>
                         </span>
-                        <span className="block text-[11px] text-content-tertiary mt-0.5 pl-3.5">
+                        <span className="block text-[11px] text-content-secondary mt-0.5 pl-3.5">
                           {n.detail} · case #{n.case_id}
                         </span>
                       </button>
@@ -233,7 +285,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
             }}
             aria-expanded={isProfileMenuOpen}
             aria-haspopup="menu"
-            className="w-9 h-9 rounded-full bg-accent-primary text-brand-ink font-bold flex items-center justify-center hover:bg-accent-secondary transition ring-2 ring-accent-primary/20 cursor-pointer"
+            className="w-9 h-9 rounded-full bg-brand-gradient text-brand-ink font-bold flex items-center justify-center hover:opacity-90 transition ring-2 ring-accent-primary/20 cursor-pointer"
           >
             {username.charAt(0).toUpperCase()}
           </button>
@@ -241,15 +293,15 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
           {isProfileMenuOpen && (
             <div
               role="menu"
-              className="absolute right-0 mt-2 w-56 bg-app-surface border border-line-subtle rounded-xl shadow-overlay py-2 z-50 animate-scale-in"
+              className="absolute right-0 mt-2 w-56 bg-app-surface border border-line-subtle rounded-2xl shadow-overlay py-2 z-50 animate-scale-in"
             >
               <div className="px-4 py-2.5 border-b border-line-subtle flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-accent-primary text-brand-ink flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-8 h-8 rounded-full bg-brand-gradient text-brand-ink flex items-center justify-center font-bold text-xs shrink-0">
                   {username.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-content-primary truncate">{username}</p>
-                  <p className="text-xs text-accent-primary capitalize flex items-center gap-1">
+                  <p className="text-xs text-accent-secondary capitalize flex items-center gap-1">
                     <ShieldCheck size={11} aria-hidden /> {userRole}
                   </p>
                 </div>

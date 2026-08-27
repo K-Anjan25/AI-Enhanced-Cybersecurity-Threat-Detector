@@ -8,6 +8,7 @@ import {
   Modal,
   StatusBadge,
   Select,
+  Term,
 } from "../../../components/ui";
 import TextInput from "../../../components/common/TextInput";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -117,15 +118,20 @@ const ReputationPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
-        title="IP Reputation"
-        description="Threat-intel scoring and blacklist status for observed source IPs. Changes are audited."
+        title={<>IP <Term>Reputation</Term></>}
+        description={
+          <>
+            Threat-intel scoring and <Term>blacklist</Term> status for observed source IPs.
+            Changes are audited.
+          </>
+        }
         backTo="/admin"
         crumbs={[{ label: "Admin", to: "/admin" }, { label: "IP Reputation" }]}
         actions={
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:opacity-90 transition shadow-md"
+            className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition shadow-float"
           >
             + Add IP
           </button>
@@ -145,12 +151,17 @@ const ReputationPage: React.FC = () => {
           <EmptyState
             icon={<ShieldOff size={28} />}
             title="No reputation entries yet"
-            description="Add an IP with a threat score, or block addresses from the alerts view."
+            description={
+              <>
+                Add an IP with a threat score, or <Term>blacklist</Term> addresses from the alerts
+                view.
+              </>
+            }
             action={
               <button
                 type="button"
                 onClick={openCreate}
-                className="px-4 py-2 rounded-lg bg-accent-primary text-brand-ink text-sm font-semibold hover:opacity-90 transition"
+                className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition"
               >
                 Add IP
               </button>
@@ -181,8 +192,8 @@ const ReputationPage: React.FC = () => {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border tabular-nums ${scoreColor(row.threat_score)}`}>
-                      {(row.threat_score * 100).toFixed(0)}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border tabular-nums ${scoreColor(Number(row.threat_score ?? 0))}`}>
+                      {(Number(row.threat_score ?? 0) * 100).toFixed(0)}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-content-secondary">{row.category || "—"}</td>
@@ -222,7 +233,7 @@ const ReputationPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 text-sm rounded-lg text-content-secondary hover:bg-app-subtle transition"
+              className="px-4 py-2 text-sm rounded-full text-content-secondary hover:bg-app-subtle transition"
             >
               Cancel
             </button>
@@ -230,7 +241,7 @@ const ReputationPage: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent-primary text-brand-ink hover:opacity-90 transition disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold rounded-full bg-brand-gradient text-brand-ink hover:opacity-90 transition disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Entry"}
             </button>

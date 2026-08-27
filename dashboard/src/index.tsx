@@ -6,6 +6,7 @@ import store from "./store/store";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./utils/toastBridge";
+import { ThemeProvider } from "./theme/ThemeProvider";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/sora";
 import "@fontsource-variable/jetbrains-mono";
@@ -29,7 +30,9 @@ root.render(
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <ErrorBoundary>
-            <App />
+            <ThemeProvider>
+              <App />
+            </ThemeProvider>
           </ErrorBoundary>
         </ToastProvider>
       </QueryClientProvider>
