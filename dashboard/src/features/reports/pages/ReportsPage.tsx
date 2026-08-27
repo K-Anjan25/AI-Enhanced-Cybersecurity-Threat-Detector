@@ -32,8 +32,11 @@ const ReportsPage: React.FC = () => {
     setError(null);
     try {
       const res = await AnalystApi.fetchFeed({ page: 1, limit: 50 });
+      // Defensive: the feed envelope is {data,total,…}, but tolerate a bare
+      // array (same contract as the other feed consumers).
+      const rows = Array.isArray(res) ? res : res?.data ?? [];
       // Cases that have a generated report
-      const reportedCases = res.data.filter((c) => c.report && c.report.trim() !== "");
+      const reportedCases = rows.filter((c) => c.report && c.report.trim() !== "");
       setCases(reportedCases);
       if (reportedCases.length > 0) {
         setSelectedCase(reportedCases[0]);
@@ -65,8 +68,8 @@ const ReportsPage: React.FC = () => {
 
   const filtered = cases.filter(
     (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.id.toString().includes(search)
+      (c.title || "").toLowerCase().includes(search.toLowerCase()) ||
+      String(c.id).includes(search)
   );
 
   if (loading) {

@@ -126,6 +126,9 @@ const DashboardOverviewPage: React.FC = () => {
     );
   }
 
+  const maxThreatCount =
+    threats.reduce((m, t) => Math.max(m, t.count || 0), 0) || 1;
+
   const criticalAlerts = liveAlerts
     .filter((a) => String(a.severity || a.risk || "").toUpperCase() === "CRITICAL")
     .slice(0, 5);
@@ -245,7 +248,7 @@ const DashboardOverviewPage: React.FC = () => {
               <EmptyState title="No threat patterns yet" description="Threats will appear as detections are analyzed." />
             ) : (
               threats.slice(0, 6).map((t, idx) => {
-                const pct = threats[0]?.count ? Math.round((t.count / threats[0].count) * 100) : 0;
+                const pct = Math.round(((t.count || 0) / maxThreatCount) * 100);
                 return (
                   <div key={idx} className="flex items-center gap-3">
                     <span className="w-5 text-xs font-mono text-content-tertiary">{idx + 1}</span>

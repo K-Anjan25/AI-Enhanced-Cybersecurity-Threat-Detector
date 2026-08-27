@@ -123,7 +123,9 @@ export default function AlertDetailModal({ alert, onClose }: Props) {
             <span className="font-mono text-xs text-accent-primary">{alert.source_ip || "N/A"}</span>
           </DetailRow>
           <DetailRow label="Score">
-            {alert.score != null ? Number(alert.score).toFixed(3) : "N/A"}
+            {alert.score != null && Number.isFinite(Number(alert.score))
+              ? Number(alert.score).toFixed(3)
+              : "N/A"}
           </DetailRow>
           <DetailRow label="Timestamp">
             <span className="text-xs text-content-secondary">{alert.created_at || alert.timestamp || "N/A"}</span>

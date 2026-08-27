@@ -13,6 +13,15 @@ import ThemeToggle from "../ThemeToggle";
 
 const SEEN_KEY = "noctra_notified_at";
 
+/** Clock text for notification rows — never "Invalid Date". */
+const nTime = (iso?: string): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
 export interface NavbarProps {
   onLogout?: () => void;
   /** Opens the mobile navigation drawer (rendered by DashboardLayout). */
@@ -252,7 +261,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
                             {n.title}
                           </span>
                           <span className="ml-auto text-[10px] font-mono text-content-tertiary shrink-0">
-                            {new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {nTime(n.at)}
                           </span>
                         </span>
                         <span className="block text-[11px] text-content-secondary mt-0.5 pl-3.5">
