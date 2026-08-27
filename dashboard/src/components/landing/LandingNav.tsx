@@ -45,8 +45,13 @@ export default function LandingNav() {
           scrolled && "-translate-y-24"
         )}
       >
-        <Link to="/" className="flex items-center pl-1 hover:opacity-80 transition">
-          <BrandLogo size={22} />
+        <Link to="/" className="flex items-center pl-1 hover:opacity-80 transition" aria-label="NOCTRA home">
+          <span className="hidden sm:inline-flex">
+            <BrandLogo size={22} />
+          </span>
+          <span className="sm:hidden inline-flex">
+            <BrandLogo size={22} withWordmark={false} />
+          </span>
         </Link>
 
         <nav aria-label="Landing" className="hidden md:flex items-center gap-0.5 ml-2">

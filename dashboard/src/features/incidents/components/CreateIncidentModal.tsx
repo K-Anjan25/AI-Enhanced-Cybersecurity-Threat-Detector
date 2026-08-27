@@ -43,7 +43,7 @@ const CreateIncidentModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-app-surface w-full max-w-lg rounded-2xl p-6 shadow-2xl border border-line-subtle max-h-[90vh] overflow-y-auto">
+      <div className="bg-app-surface w-full max-w-lg rounded-3xl p-6 shadow-overlay border border-line-subtle max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-5">
           <h3 className="text-lg font-semibold text-content-primary">New incident</h3>
           <button
