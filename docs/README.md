@@ -7,6 +7,7 @@ Software-engineering documentation for the **AI-Enhanced Cybersecurity Threat De
 
 | Document | Type | Contents |
 | --- | --- | --- |
+| [`wireframes/`](wireframes/) | Wireframes | Code-accurate HTML wireframe kit — every route in the dashboard mapped 1:1 (open `wireframes/index.html`) |
 | [`functional-requirements.md`](functional-requirements.md) | FRS | Functional requirements (FR-xx) by module, MoSCoW priorities |
 | [`non-functional-requirements.md`](non-functional-requirements.md) | NFRS | Non-functional requirements (NFR-xx) with measurable targets + verification |
 | [`database-design.md`](database-design.md) | DB Design | ERD, table catalog, normalization analysis (1NF/2NF/3NF/BCNF), indexes |

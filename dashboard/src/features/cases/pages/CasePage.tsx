@@ -306,7 +306,7 @@ const CasePage: React.FC = () => {
 
       {/* Evidence — the observed source alert, on the night canvas. */}
       {data.source_alert_id && (
-        <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
+        <div className="night console-panel text-content-primary rounded-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
             <TriangleAlert size={16} className="text-accent-secondary" aria-hidden />
             <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">Evidence</h2>
@@ -357,7 +357,7 @@ const CasePage: React.FC = () => {
       )}
 
       {/* Blast radius — night canvas. Observed evidence, not inference. */}
-      <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
+      <div className="night console-panel text-content-primary rounded-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-line-bright flex items-center gap-2">
           <GitBranch size={16} className="text-accent-secondary" aria-hidden />
           <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
@@ -461,7 +461,7 @@ const CasePage: React.FC = () => {
       )}
 
       {/* Ask NOCTRA — interactive analyst chat (night canvas) */}
-      <div className="night bg-app-navy text-content-primary rounded-2xl border border-app-void overflow-hidden shadow-navy">
+      <div className="night console-panel text-content-primary rounded-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-line-bright flex items-center gap-2 bg-app-void/60">
           <MessageSquare size={16} className="text-accent-secondary" />
           <h2 className="text-sm font-bold text-content-primary font-display tracking-tight">
@@ -590,7 +590,7 @@ const CasePage: React.FC = () => {
             </div>
 
             {showReport && data.report && (
-              <pre className="night p-4 rounded-xl bg-app-void text-content-secondary border border-app-navy text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+              <pre className="night console-panel p-4 rounded-sm text-content-secondary text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
                 {data.report}
               </pre>
             )}

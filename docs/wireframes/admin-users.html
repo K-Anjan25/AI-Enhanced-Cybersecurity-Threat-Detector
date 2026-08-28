@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Admin — Users, Tenants, Roles — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="users">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Admin — Users · Tenants · Roles</span>
+  <span style="opacity:.55">roster, cross-tenant views, ABAC matrix</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="admin.html">← Prev</a>
+    <a href="admin-config.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Routes <code>/admin/users</code> · <code>/admin/tenants</code> · <code>/admin/roles</code></span>
+  <span class="chip src">Source <code>AdminUsers.tsx</code> · <code>TenantsPage.tsx</code> · <code>AccessRolesPage.tsx</code></span>
+  <span class="chip api">GET <code>/users</code> · PATCH <code>/users/:id</code> · GET <code>/admin/orgs</code> · GET <code>/admin/roles</code></span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel" id="users">A — User roster + edit modal</p>
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <div class="wf-pagehead">
+            <div>
+              <p class="crumbs">← Administration / Users</p>
+              <h1>Users</h1>
+              <p class="desc">Provisioned accounts across this deployment. Admins can edit role and active state.</p>
+            </div>
+            <div class="actions"><span class="wf-btn primary">+ Add user</span></div>
+          </div>
+
+          <div class="wf-card bare" style="position:relative">
+            <table class="wf-table">
+              <thead><tr><th>User ID</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th style="text-align:right"></th></tr></thead>
+              <tbody>
+                <tr><td class="mono">1</td><td class="strong">admin</td><td class="mono">admin@noctra.ai</td><td><span class="wf-badge">ADMIN</span></td><td><span class="wf-badge ok">active</span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+                <tr><td class="mono">2</td><td class="strong">demo</td><td class="mono">demo@noctra.ai</td><td><span class="wf-badge">ANALYST</span></td><td><span class="wf-badge ok">active</span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+                <tr><td class="mono">3</td><td class="strong">jlee</td><td class="mono">jlee@noctra.ai</td><td><span class="wf-badge">USER</span></td><td><span class="wf-badge">blocked</span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+              </tbody>
+            </table>
+
+            <!-- Edit user modal -->
+            <div class="wf-modalwrap" style="position:absolute;inset:0;border-radius:16px">
+              <div class="wf-modal" style="max-width:430px;margin:48px auto">
+                <h3 style="margin:0 0 4px;font-family:var(--wf-font-display)">Edit user — jlee</h3>
+                <p class="wf-small" style="margin:0 0 14px">jlee@noctra.ai · user id 3 (read-only)</p>
+                <div class="wf-stack">
+                  <div class="wf-field"><label>Role</label><span class="wf-select" style="width:100%">USER</span></div>
+                  <div class="wf-row between"><span class="wf-small" style="font-weight:600">Account active</span><span class="wf-toggle on"></span></div>
+                  <p class="wf-mono" style="margin:0">PATCH /users/3 · audits USER_UPDATED</p>
+                  <div class="wf-row" style="justify-content:flex-end"><span class="wf-btn ghost sm">Cancel</span><span class="wf-btn primary sm">Save</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel" id="tenants">B — Tenants (cross-tenant, FR-TENANT-06)</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-card bare">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--wf-line)">
+        <div class="wf-cardhead" style="margin:0"><div><h3>Tenant workspaces</h3><p>Every organization: member count + lifecycle (admin sees across tenants; data stays org-scoped elsewhere).</p></div></div>
+      </div>
+      <table class="wf-table">
+        <thead><tr><th>Org</th><th>Members</th><th>Plan / tier</th><th>Created</th><th style="text-align:right">Status</th></tr></thead>
+        <tbody>
+          <tr><td class="strong">Acme Corp</td><td class="mono">4</td><td class="mono">standard</td><td class="mono">2026-07-02</td><td style="text-align:right"><span class="wf-badge ok">active</span></td></tr>
+          <tr><td class="strong">Globex</td><td class="mono">2</td><td class="mono">trial</td><td class="mono">2026-08-11</td><td style="text-align:right"><span class="wf-badge warn">seeding</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel" id="roles">C — Access roles (ABAC matrix)</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-card bare">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--wf-line)">
+        <div class="wf-cardhead" style="margin:0"><div><h3>Access roles — permission matrix</h3><p>Which permissions each role holds, clamped by clearance level (from core/abac.py).</p></div></div>
+      </div>
+      <table class="wf-table">
+        <thead><tr><th>Permission</th><th style="text-align:center">USER</th><th style="text-align:center">ANALYST</th><th style="text-align:center">ADMIN</th></tr></thead>
+        <tbody>
+          <tr><td class="strong">alerts:read</td><td style="text-align:center">●</td><td style="text-align:center">●</td><td style="text-align:center">●</td></tr>
+          <tr><td class="strong">cases:decide</td><td style="text-align:center">—</td><td style="text-align:center">●</td><td style="text-align:center">●</td></tr>
+          <tr><td class="strong">users:manage</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">●</td></tr>
+          <tr><td class="strong">audit:read</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">●</td></tr>
+          <tr><td class="strong">rules:write</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td style="text-align:center">●</td></tr>
+        </tbody>
+      </table>
+      <div class="wf-pagination"><span>Effective permissions returned by <code>/user/me</code> gate routes and nav server-side</span></div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Edit-user modal</b> — role (USER/ANALYST/ADMIN) + account-active toggle; PATCH <code>/users/:id</code> writes an audit row (USER_UPDATED). Self-registration can no longer grant ADMIN (hardened).</div></li>
+    <li><span class="wf-c">2</span><div><b>Tenants</b> — admin-only cross-tenant list; everywhere else every query is org-filtered server-side (org_id tenancy).</div></li>
+    <li><span class="wf-c">3</span><div><b>Roles matrix</b> renders the ABAC catalog from the backend; the frontend never hard-codes permissions.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

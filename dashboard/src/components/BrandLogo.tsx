@@ -1,4 +1,4 @@
-import React, { useId } from "react";
+import React from "react";
 
 type Props = {
   collapsed?: boolean;
@@ -10,14 +10,13 @@ type Props = {
 };
 
 /**
- * NOCTRA mark — crescent moon brand mark (2026-08-27, per design review).
+ * NOCTRA mark — SIGNAL identity (design source: newfile.html).
  *
- * Icon: a crescent moon (night watch) in a diagonal violet gradient
- * #6C5CE7 → #9D7CFF (top-left dark → bottom-right light). A 4-pointed
- * sparkle (#B18CFF) — insight — sits at the crescent's upper tip.
- * Wordmark: "NOCTRA" in Sora SemiBold, uppercase, slightly extended
- * tracking; the "A" carries a sparkle at its apex. Tagline beneath in Inter
- * Medium, wide tracking, #9D7CFF. Lockup: [icon] [divider] [wordmark+tagline].
+ * Icon: the signal-dot — a small green transmission dot with a soft halo
+ * and a slow pulse (live monitoring). It is the same dot that marks
+ * "systems nominal" across the console.
+ * Wordmark: "NOCTRA" in DM Sans Bold, uppercase, wide tracking
+ * (0.22em — matches the Canva header lockup). No divider, no gradient.
  */
 const BrandLogo: React.FC<Props> = ({
   collapsed = false,
@@ -26,43 +25,28 @@ const BrandLogo: React.FC<Props> = ({
   mono = false,
   className,
 }) => {
-  const uid = useId().replace(/[:]/g, "");
-  const gradId = `noctra-moon-${uid}-${mono ? "mono" : "color"}`;
-  const maskId = `noctra-moon-${uid}-cut`;
-  const fillMain = mono ? "currentColor" : `url(#${gradId})`;
-  const sparkleFill = mono ? "currentColor" : "#B18CFF";
+  const dotSize = Math.max(8, Math.round(size * 0.3));
+  const dotColor = mono ? "currentColor" : "#a6ff3f";
 
   const icon = (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <span
+      className={mono ? "inline-flex items-center shrink-0" : "inline-flex items-center shrink-0"}
+      style={{ width: dotSize + 10, height: dotSize + 10, justifyContent: "center" }}
       aria-hidden
-      className="shrink-0"
     >
-      <defs>
-        <linearGradient id={gradId} x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor={mono ? "currentColor" : "#6C5CE7"} />
-          <stop offset="1" stopColor={mono ? "currentColor" : "#9D7CFF"} />
-        </linearGradient>
-        <mask id={maskId}>
-          <rect width="32" height="32" fill="white" />
-          {/* Bite cut — removes the upper-right disc to form the crescent. */}
-          <circle cx="21" cy="11" r="9" fill="black" />
-        </mask>
-      </defs>
-
-      {/* Crescent moon — full disc in the brand gradient, bite cut via mask. */}
-      <circle cx="16" cy="16" r="12" fill={fillMain} mask={`url(#${maskId})`} />
-      {/* Insight sparkle at the crescent's upper tip. */}
-      <path
-        d="M6 0 C6.6 2.9 9.1 5.4 12 6 C9.1 6.6 6.6 9.1 6 12 C5.4 9.1 2.9 6.6 0 6 C2.9 5.4 5.4 2.9 6 0 Z"
-        transform="translate(23.8 1.4) scale(0.42)"
-        fill={sparkleFill}
+      <span
+        className={mono ? "" : "signal-dot"}
+        style={{
+          width: dotSize,
+          height: dotSize,
+          borderRadius: 999,
+          background: dotColor,
+          boxShadow: mono
+            ? undefined
+            : "0 0 0 4px rgba(166,255,63,.12), 0 0 14px rgba(166,255,63,.8)",
+        }}
       />
-    </svg>
+    </span>
   );
 
   if (!withWordmark || collapsed) {
@@ -72,31 +56,18 @@ const BrandLogo: React.FC<Props> = ({
   return (
     <span className={`inline-flex items-center gap-3 ${className || ""}`}>
       {icon}
-      {/* Thin vertical divider per lockup spec. */}
-      <span className="w-px h-[26px] bg-line-bright" aria-hidden />
       <span className="flex flex-col leading-none">
-        <span className="flex items-center text-[15px] font-semibold font-display tracking-[0.07em] uppercase text-content-primary">
-          {"NOCTR"}
-          {/* Stylized A — sparkle at its apex (intelligence/autonomy). */}
-          <span className="relative inline-block">
-            A
-            <svg
-              width="8"
-              height="8"
-              viewBox="0 0 12 12"
-              className="absolute -top-1 -right-1.5"
-              aria-hidden
-            >
-              <path
-                d="M6 0 C6.6 2.9 9.1 5.4 12 6 C9.1 6.6 6.6 9.1 6 12 C5.4 9.1 2.9 6.6 0 6 C2.9 5.4 5.4 2.9 6 0 Z"
-                fill="#B18CFF"
-              />
-            </svg>
+        <span
+          className="text-[15px] font-bold font-display tracking-[0.22em] uppercase text-content-primary"
+          style={{ fontSize: Math.max(13, size * 0.56) }}
+        >
+          NOCTRA
+        </span>
+        {!mono && size >= 40 && (
+          <span className="tech-label text-content-tertiary mt-1.5 whitespace-nowrap">
+            Threat intelligence, always on
           </span>
-        </span>
-        <span className="text-[7px] font-medium font-sans tracking-[0.18em] text-[#9d7cff] uppercase mt-1.5 whitespace-nowrap">
-          Your autonomous security analyst
-        </span>
+        )}
       </span>
     </span>
   );

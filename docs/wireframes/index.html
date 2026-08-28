@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NOCTRA — UI Wireframe Kit · SIGNAL (code-accurate)</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+<style>
+  .wf-hub { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+  .wf-hub-head h1 { font-family: var(--wf-font-display); font-size: 34px; letter-spacing: -0.02em; margin: 0; display:flex; align-items:center; gap:14px; }
+  .wf-hub-head p { color: var(--wf-ink-2); max-width: 720px; margin-top: 12px; }
+  .wf-hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 28px; }
+  .wf-tile { display: block; text-decoration: none; color: inherit; background: var(--wf-surface); border: 1px solid var(--wf-line); border-radius: 14px; padding: 16px; transition: border-color .15s; }
+  .wf-tile:hover { border-color: var(--wf-accent); }
+  .wf-tile .route { font-family: var(--wf-font-mono); font-size: 11px; color: var(--wf-accent); font-weight: 700; }
+  .wf-tile b { display: block; font-size: 14.5px; margin: 6px 0 3px; }
+  .wf-tile p { margin: 0; font-size: 11.5px; color: var(--wf-ink-3); }
+  .wf-hub section { margin-top: 44px; }
+  .wf-hub h2 { font-family: var(--wf-font-display); font-size: 15px; text-transform: uppercase; letter-spacing: .12em; color: var(--wf-ink-2); margin: 0 0 14px; }
+  .wf-hub table { width: 100%; border-collapse: collapse; background: var(--wf-surface); border: 1px solid var(--wf-line); border-radius: 12px; overflow: hidden; font-size: 12.5px; }
+  .wf-hub th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--wf-ink-3); padding: 10px 14px; border-bottom: 1px solid var(--wf-line); background: var(--wf-subtle); }
+  .wf-hub td { padding: 10px 14px; border-bottom: 1px solid var(--wf-line); color: var(--wf-ink-2); }
+  .wf-hub tr:last-child td { border-bottom: 0; }
+  .wf-hub td a { color: var(--wf-accent); font-weight: 700; text-decoration: none; }
+  .wf-hub code { font-family: var(--wf-font-mono); font-size: 11px; background: var(--wf-subtle); border: 1px solid var(--wf-line); border-radius: 5px; padding: 1px 5px; }
+  .legendbox { background: var(--wf-surface); border: 1px solid var(--wf-line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .legendbox .row { display: flex; gap: 12px; align-items: flex-start; font-size: 12.5px; color: var(--wf-ink-2); }
+</style>
+</head>
+<body class="wf-doc">
+
+<div class="wf-hub">
+  <div class="wf-hub-head">
+    <h1>
+<svg width="36" height="36" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#a6ff3f"/><circle cx="12" cy="12" r="9" fill="none" stroke="#a6ff3f" stroke-opacity="0.35"/><circle cx="12" cy="12" r="12" fill="none" stroke="#a6ff3f" stroke-opacity="0.14"/></svg>
+      NOCTRA — UI Wireframe Kit v3 · SIGNAL
+    </h1>
+    <p>
+      <b>Code-accurate wireframes, generated from the repository.</b> Every board below maps 1:1 to a route in
+      <code>dashboard/src/App.tsx</code>, uses the real navigation IA, real copy, real data contracts and the real
+      DUALITY token system (day workspace / night analyst canvas). This kit supersedes the exploratory concept
+      boards in <code>docs/ui-concepts/</code> — those were direction-finding; these are the product.
+    </p>
+    <div class="wf-hub-grid">
+      <a class="wf-tile" href="analyst-inbox.html"><span class="route">/</span><b>Analyst Inbox</b><p>Home — the loop entry point. Lead case, queue, connectors.</p></a>
+      <a class="wf-tile" href="cases-feed.html"><span class="route">/feed</span><b>Cases — Decision Feed</b><p>One action per row; calm decision vocabulary.</p></a>
+      <a class="wf-tile" href="case-workspace.html"><span class="route">/case/:id</span><b>Case Workspace</b><p>The decision screen: assessment, evidence, blast radius, gate.</p></a>
+      <a class="wf-tile" href="actions-log.html"><span class="route">/actions</span><b>Actions Log</b><p>Recorded actions + reversibility.</p></a>
+      <a class="wf-tile" href="reports.html"><span class="route">/reports</span><b>Incident Reports</b><p>Master–detail markdown reports.</p></a>
+      <a class="wf-tile" href="soc-cockpit.html"><span class="route">/dashboard</span><b>SOC Cockpit</b><p>KPI strip, trend, top threats, critical alerts.</p></a>
+      <a class="wf-tile" href="alerts.html"><span class="route">/alerts</span><b>Threat Alerts</b><p>Detection stream + detail modal + save-critical.</p></a>
+      <a class="wf-tile" href="analytics.html"><span class="route">/analytics</span><b>AI Analytics</b><p>Trend/donut/bars + model explain &amp; benchmark.</p></a>
+      <a class="wf-tile" href="entities.html"><span class="route">/entities</span><b>Entity Graph</b><p>Inventory, path finder, graph explorer.</p></a>
+      <a class="wf-tile" href="soar.html"><span class="route">/soar</span><b>SOAR Automation</b><p>Dry-run evaluator, playbooks, recorded actions.</p></a>
+      <a class="wf-tile" href="incidents.html"><span class="route">/incidents</span><b>Manual Incidents</b><p>Human-opened investigations + create modal.</p></a>
+      <a class="wf-tile" href="logs.html"><span class="route">/logs</span><b>Log Uploads</b><p>SENSE stage: dropzone + batch history.</p></a>
+      <a class="wf-tile" href="profile.html"><span class="route">/profile · /account</span><b>Profile &amp; Account</b><p>Avatar upload, details, password.</p></a>
+      <a class="wf-tile" href="admin.html"><span class="route">/admin</span><b>Administration Hub</b><p>Metrics + link tiles (ABAC-gated).</p></a>
+      <a class="wf-tile" href="admin-users.html"><span class="route">/admin/users · /tenants · /roles</span><b>Admin — People</b><p>Roster + edit modal, tenants, ABAC matrix.</p></a>
+      <a class="wf-tile" href="admin-config.html"><span class="route">/admin/rules · /reputation · /engine-settings · /system-logs</span><b>Admin — Config</b><p>Rules, reputation, engine, audit.</p></a>
+      <a class="wf-tile" href="app-shell.html"><span class="route">shell</span><b>App Shell &amp; Overlays</b><p>Sidebar/topbar anatomy, ⌘K menu, pending drawer.</p></a>
+      <a class="wf-tile" href="landing.html"><span class="route">/welcome</span><b>Landing</b><p>Ported 1:1 from newfile.html — hero, console demo, scan radar.</p></a>
+      <a class="wf-tile" href="auth.html"><span class="route">/login · /register · /reset</span><b>Auth</b><p>Ink canvas, signal-dot brand panel + form cards.</p></a>
+      <a class="wf-tile" href="mobile.html"><span class="route">responsive</span><b>Mobile Patterns</b><p>Inbox, case decision, nav drawer.</p></a>
+    </div>
+  </div>
+
+  <section>
+    <h2>Legend — wireframe conventions</h2>
+    <div class="legendbox">
+      <div class="row"><span class="wf-c">n</span><div><b>Numbered callout</b> — explained in the Notes list under each board.</div></div>
+      <div class="row"><span style="width:34px;height:22px;border:1.4px dashed var(--wf-line-2);border-radius:6px;background:linear-gradient(45deg,transparent 47%,var(--wf-line-2) 47%,var(--wf-line-2) 53%,transparent 53%);background-size:12px 12px;flex:none"></span><div><b>X-box</b> — dynamic region (chart, graph, report body, avatar). Never fake data.</div></div>
+      <div class="row"><span class="wf-night" style="padding:6px 10px;font-size:10px;flex:none">panel</span><div><b>Console panel</b> — the analyst&rsquo;s voice (briefs, evidence, blast radius, reports): ink gradient, green hairline, optional HUD corner brackets.</div></div>
+      <div class="row"><span class="wf-btn primary sm">Primary</span><div><b>Signal green</b> appears only where the design puts it: mark, active nav, actions, live status, event markers.</div></div>
+      <div class="row"><span class="wf-sev high"><i class="d"></i>HIGH</span><div><b>Severity = dot + label</b> — never color alone.</div></div>
+      <div class="row"><span class="wf-mono">mono</span><div><b>Space Mono</b> — tech labels, identifiers, telemetry, timestamps.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Screen inventory — wireframe ↔ code map</h2>
+    <table>
+      <thead><tr><th>#</th><th>Route</th><th>Wireframe</th><th>Source (dashboard/src)</th><th>Primary APIs</th></tr></thead>
+      <tbody>
+        <tr><td>01</td><td><code>/</code></td><td><a href="analyst-inbox.html">analyst-inbox.html</a></td><td><code>features/inbox/pages/BriefPage.tsx</code></td><td>GET /analyst/brief · /connectors · /feed</td></tr>
+        <tr><td>02</td><td><code>/feed</code></td><td><a href="cases-feed.html">cases-feed.html</a></td><td><code>features/cases/pages/FeedPage.tsx</code></td><td>GET /analyst/feed</td></tr>
+        <tr><td>03</td><td><code>/case/:id</code></td><td><a href="case-workspace.html">case-workspace.html</a></td><td><code>features/cases/pages/CasePage.tsx</code></td><td>GET /analyst/cases/:id · approve/decline/revert · chat · timeline</td></tr>
+        <tr><td>04</td><td><code>/actions</code></td><td><a href="actions-log.html">actions-log.html</a></td><td><code>features/actions/pages/ActionsPage.tsx</code></td><td>GET /analyst/feed</td></tr>
+        <tr><td>05</td><td><code>/reports</code></td><td><a href="reports.html">reports.html</a></td><td><code>features/reports/pages/ReportsPage.tsx</code></td><td>GET /analyst/cases/:id/report</td></tr>
+        <tr><td>06</td><td><code>/dashboard</code></td><td><a href="soc-cockpit.html">soc-cockpit.html</a></td><td><code>features/dashboard/pages/DashboardOverviewPage.tsx</code></td><td>GET /analytics/overview · top-threats · trends</td></tr>
+        <tr><td>07</td><td><code>/alerts</code></td><td><a href="alerts.html">alerts.html</a></td><td><code>ThreatAlertsPage.tsx</code> → <code>AlertList.tsx</code></td><td>GET /alerts · POST /save-scanned-alerts</td></tr>
+        <tr><td>08</td><td><code>/analytics</code></td><td><a href="analytics.html">analytics.html</a></td><td><code>features/analytics/pages/AIAnalyticsPage.tsx</code></td><td>GET /analytics/* · /ml/benchmark · /ml/explain/:kind</td></tr>
+        <tr><td>09</td><td><code>/entities</code></td><td><a href="entities.html">entities.html</a></td><td><code>EntitiesPage.tsx</code> + <code>EntityGraphView.tsx</code></td><td>GET /entities · /summary · /:id/graph · /path</td></tr>
+        <tr><td>10</td><td><code>/soar</code></td><td><a href="soar.html">soar.html</a></td><td><code>features/soar/pages/SoarPage.tsx</code></td><td>POST /soar/evaluate · CRUD /soar/playbooks · GET /soar/actions</td></tr>
+        <tr><td>11</td><td><code>/incidents</code></td><td><a href="incidents.html">incidents.html</a></td><td><code>IncidentsPage.tsx</code> + <code>CreateIncidentModal.tsx</code></td><td>GET/POST /incidents</td></tr>
+        <tr><td>12</td><td><code>/logs</code></td><td><a href="logs.html">logs.html</a></td><td><code>features/system/pages/LogHistoryPage.tsx</code></td><td>POST /upload-logs · GET /logs/history</td></tr>
+        <tr><td>13</td><td><code>/profile · /account</code></td><td><a href="profile.html">profile.html</a></td><td><code>Profile.tsx</code> · <code>Account.tsx</code></td><td>PATCH /user/profile · POST /user/profile/image</td></tr>
+        <tr><td>14</td><td><code>/admin</code></td><td><a href="admin.html">admin.html</a></td><td><code>admin/pages/AdminDashboard.tsx</code></td><td>GET /admin/orgs · /users · /rules</td></tr>
+        <tr><td>15</td><td><code>/admin/users</code></td><td><a href="admin-users.html">admin-users.html</a></td><td><code>AdminUsers.tsx</code> · <code>TenantsPage.tsx</code> · <code>AccessRolesPage.tsx</code></td><td>GET/PATCH /users · GET /admin/orgs · /admin/roles</td></tr>
+        <tr><td>16</td><td><code>/admin/{rules,reputation,engine-settings,system-logs}</code></td><td><a href="admin-config.html">admin-config.html</a></td><td><code>RulesPage.tsx</code> · <code>ReputationPage.tsx</code> · <code>EngineSettingsPage.tsx</code> · <code>SystemLogsPage.tsx</code></td><td>CRUD /rules · /reputation · GET/PUT /engine/settings · GET /audit</td></tr>
+        <tr><td>17</td><td>shell</td><td><a href="app-shell.html">app-shell.html</a></td><td><code>DashboardLayout</code> · <code>Navbar</code> · <code>CommandMenu</code> · <code>PendingDecisionsDrawer</code></td><td>—</td></tr>
+        <tr><td>18</td><td><code>/welcome</code></td><td><a href="landing.html">landing.html</a></td><td><code>LandingPage.tsx</code> → <code>components/landing/*</code></td><td>—</td></tr>
+        <tr><td>19</td><td><code>/login · /register · /reset-password</code></td><td><a href="auth.html">auth.html</a></td><td><code>auth/pages/*</code> + <code>AuthLayout.tsx</code></td><td>POST /auth/*</td></tr>
+        <tr><td>20</td><td>responsive</td><td><a href="mobile.html">mobile.html</a></td><td>all pages (stacking layouts, useMediaQuery)</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>System rules these wireframes encode</h2>
+    <div class="legendbox">
+      <div class="row"><b style="min-width:120px">SIGNAL</b><div>Ink canvas everywhere (dark-first); the analyst&rsquo;s voice panels get the console-panel treatment (green hairline, HUD corners). A “day ops” paper variant exists behind the theme toggle; auth + landing are always ink.</div></div>
+      <div class="row"><b style="min-width:120px">Loop-first IA</b><div>MAIN nav = Sense → Reason → Decide → Report (Home / Cases / Actions / Reports). Everything else is progressive disclosure in Investigate / Automate / System — never removed.</div></div>
+      <div class="row"><b style="min-width:120px">Honesty</b><div>No fabricated metrics, no “NO DATA”. Empty states are hand-written sentences. Missing artifacts say “skipped”.</div></div>
+      <div class="row"><b style="min-width:120px">Calm alarm</b><div>Color is alarm — only “waiting on you” warms up. Severity is always dot + label. Record-only vocabulary (“recorded”, never “executed”).</div></div>
+      <div class="row"><b style="min-width:120px">Type</b><div>DM Sans for everything (bold + tight tracking for display); Space Mono for tech labels, identifiers and telemetry. Fluid clamp() scale, sharp corners (2–4px) everywhere.</div></div>
+      <div class="row"><b style="min-width:120px">Components</b><div>Pages compose the shared kit: PageHeader, Card, StatCard, Badge/SeverityBadge/StatusBadge, EmptyState, Modal, ConfirmDialog, Select, Term.</div></div>
+    </div>
+  </section>
+</div>
+
+</body>
+</html>

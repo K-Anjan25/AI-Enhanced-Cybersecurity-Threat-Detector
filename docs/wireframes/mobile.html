@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Mobile Patterns — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Mobile Patterns</span>
+  <span style="opacity:.55">inbox · case decision · nav drawer</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="auth.html">← Prev</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip src">Responsive rules from every page (useMediaQuery / stacking layouts)</span>
+  <span class="chip">Sidebar → overlay drawer · tables → cards/stack · charts scale by %</span>
+</div>
+
+<div class="wf-canvas">
+  <div class="wf-phones">
+
+    <!-- Phone 1: mobile inbox -->
+    <div class="wf-phone">
+      <div class="wf-topbar" style="padding:0 14px">
+        <i class="ico" style="width:16px;height:16px;border-radius:4px;display:inline-block;border:1.4px solid #c4c4bc"></i>
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/></svg>
+        <span class="wf-top-actions"><span class="wf-iconbtn"><i class="ico" style="width:12px;height:12px;border-radius:3px;display:inline-block;border:1.3px solid currentColor;opacity:.6"></i></span><span class="wf-avatar" style="width:28px;height:28px;font-size:11px">D</span></span>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <b style="font-family:var(--wf-font-display);font-size:18px">Analyst Inbox</b>
+          <p class="wf-small">14 events today · 1 waiting.</p>
+        </div>
+        <div class="wf-row wrap" style="gap:6px"><span class="wf-btn secondary sm">Credential Leak (T1078) ▾</span><span class="wf-btn primary sm">✦ Simulate</span></div>
+        <div class="wf-night" style="padding:16px">
+          <div class="wf-row between"><p class="overline" style="margin:0">Needs your decision</p><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></div>
+          <h3 style="font-family:var(--wf-font-display);font-size:14px;margin:8px 0">Credential leak on billing-service</h3>
+          <div class="wf-grid cols-2" style="gap:8px;margin-top:10px">
+            <div><p class="overline" style="margin:0">Affected</p><span class="wf-mono" style="color:var(--wf-night-ink);font-weight:700">4 systems</span></div>
+            <div><p class="overline" style="margin:0">Confidence</p><span class="wf-mono" style="color:var(--wf-night-ink);font-weight:700">96%</span></div>
+          </div>
+          <div class="wf-row" style="justify-content:flex-end;margin-top:12px"><span class="wf-btn primary sm">Review case #41</span></div>
+        </div>
+        <div class="wf-card" style="padding:14px">
+          <span class="wf-overline" style="margin:0">Awaiting decision</span>
+          <div class="wf-row between" style="margin-top:8px"><span class="wf-small">Phishing — finance mailbox</span><span class="wf-sev medium"><i class="d"></i>MEDIUM</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone 2: case decision -->
+    <div class="wf-phone">
+      <div class="wf-topbar" style="padding:0 14px">
+        <span class="wf-small">←</span>
+        <span class="wf-mono">Case #41</span>
+        <span class="wf-top-actions"><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></span>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <b style="font-family:var(--wf-font-display);font-size:16px">Credential leak detected on billing-service</b>
+        <div class="wf-card" style="padding:14px">
+          <span class="wf-overline" style="margin:0">NOCTRA&rsquo;s assessment</span>
+          <div class="wf-lines" style="margin-top:8px"><i class="w80"></i><i class="w60"></i></div>
+        </div>
+        <div class="wf-night" style="padding:14px">
+          <span class="overline">Blast radius</span>
+          <div class="wf-x" style="min-height:110px;margin-top:8px"><span class="tag">graph (tap to explore)</span></div>
+        </div>
+        <div class="wf-card" style="padding:14px">
+          <b style="font-size:13px">This one&rsquo;s your call.</b>
+          <p class="wf-small" style="margin:4px 0 10px">Approving records the action and generates a report.</p>
+          <div class="wf-row" style="gap:8px"><span class="wf-btn secondary sm" style="flex:1;justify-content:center">Decline</span><span class="wf-btn primary sm" style="flex:1;justify-content:center">Approve</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone 3: nav drawer -->
+    <div class="wf-phone" style="background:#3a3d46">
+      <div style="display:flex;height:100%">
+        <div class="wf-sidebar" style="width:250px;border-radius:0;flex:none">
+          <div class="wf-brand"><span class="wf-brand-name"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/></svg><span>NOCTRA</span></span><span class="wf-small">Close ×</span></div>
+          <nav>
+            <p class="wf-nav-group">Main</p>
+            <span class="wf-nav-item active"><i class="ico"></i><span>Home</span></span>
+            <span class="wf-nav-item"><i class="ico"></i><span>Cases</span></span>
+            <span class="wf-nav-item"><i class="ico"></i><span>Actions</span></span>
+            <span class="wf-nav-item"><i class="ico"></i><span>Reports</span></span>
+            <div class="wf-nav-sep"></div>
+            <p class="wf-nav-group">Investigate</p>
+            <span class="wf-nav-item"><i class="ico"></i><span>Alerts</span></span>
+            <span class="wf-nav-item"><i class="ico"></i><span>Entities &amp; Graph</span></span>
+          </nav>
+        </div>
+        <div style="flex:1"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Inbox</b> — the 12-col lead grid collapses to a single column; facts stack 2-up; simulate controls wrap and stay reachable with a thumb.</div></li>
+    <li><span class="wf-c">2</span><div><b>Case decision</b> — the decision gate pins to the end of the stack with full-width buttons; blast radius stays on the night canvas.</div></li>
+    <li><span class="wf-c">3</span><div><b>Nav drawer</b> — the sidebar becomes an overlay with backdrop + Close ×; route change closes it automatically.</div></li>
+    <li><span class="wf-c">4</span><div><b>Tables become cards</b> on narrow viewports (alerts, feed, entities); charts scale via percentage radii and <code>useIsMobile</code> variants.</div></li>
+  </ol>
+</section>
+
+</body>
+</html>

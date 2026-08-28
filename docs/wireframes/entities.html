@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Entity Graph — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="entities">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Entity Graph — indicators &amp; relationships</span>
+  <span style="opacity:.55">the blast-radius data underneath the cases</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="analytics.html">← Prev</a>
+    <a href="soar.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/entities</code></span>
+  <span class="chip src">Source <code>EntitiesPage.tsx</code> + <code>EntityGraphView.tsx</code></span>
+  <span class="chip api">GET <code>/entities</code> · <code>/entities/summary</code> · <code>/entities/:id/graph?depth=</code> · <code>/entities/path?from=&amp;to=</code></span>
+  <span class="chip api">POST <code>/entities/:id/reputation</code></span>
+  <span class="chip">Boards: A table + summary · B graph explorer</span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel">A — Entity inventory</p>
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <div class="wf-pagehead">
+            <div>
+              <h1>Entity Graph</h1>
+              <p class="desc">Extracted indicators from detected threats. Click “Graph” to explore connections between entities.</p>
+            </div>
+          </div>
+
+          <div class="wf-row wrap">
+            <span class="wf-select" style="min-width:190px">All types</span>
+            <span class="wf-btn secondary sm">Refresh</span>
+          </div>
+
+          <div class="wf-grid cols-4">
+            <div class="wf-stat"><p class="lab" style="margin:0">Graph nodes</p><p class="val">10</p></div>
+            <div class="wf-stat"><p class="lab" style="margin:0">Graph edges</p><p class="val">9</p></div>
+            <div class="wf-stat tone-warn"><p class="lab" style="margin:0">Top hub degree</p><p class="val">4</p></div>
+            <div class="wf-stat tone-ok"><p class="lab" style="margin:0">Indicators</p><p class="val">10</p></div>
+          </div>
+
+          <!-- Path finder -->
+          <div class="wf-card">
+            <div class="wf-cardhead"><div><h3>Path Finder</h3><p>Trace the shortest directed attack path between two indicators by entity ID.</p></div></div>
+            <div class="wf-row wrap">
+              <span class="wf-input" style="width:150px">From entity ID</span>
+              <span class="wf-input" style="width:150px">To entity ID</span>
+              <span class="wf-btn primary sm">Find path</span>
+              <span class="wf-mono" style="margin-left:8px">→ 3 hops · 4 nodes<span class="wf-c">1</span></span>
+            </div>
+          </div>
+
+          <div class="wf-card bare">
+            <table class="wf-table">
+              <thead><tr><th>Entity</th><th>Type</th><th>Occurrences</th><th>Risk score</th><th>Last seen</th><th style="text-align:right"></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="mono strong">203.0.113.10</td>
+                  <td><span class="wf-badge">ip</span></td>
+                  <td class="mono">7</td>
+                  <td><div class="wf-row" style="gap:8px"><span class="wf-risk" style="width:90px"><i style="width:88%"></i></span><span class="wf-mono">0.88</span></div><span class="wf-c">2</span></td>
+                  <td class="mono">09:07</td>
+                  <td style="text-align:right"><span class="wf-btn ghost sm">Graph</span> <span class="wf-btn ghost sm">Risk</span></td>
+                </tr>
+                <tr>
+                  <td class="mono strong">paste.io/f/9x2k</td>
+                  <td><span class="wf-badge">domain</span></td>
+                  <td class="mono">3</td>
+                  <td><div class="wf-row" style="gap:8px"><span class="wf-risk" style="width:90px"><i style="width:64%;background:var(--wf-accent)"></i></span><span class="wf-mono">0.64</span></div></td>
+                  <td class="mono">09:07</td>
+                  <td style="text-align:right"><span class="wf-btn ghost sm">Graph</span> <span class="wf-btn ghost sm">Risk</span></td>
+                </tr>
+                <tr>
+                  <td class="mono strong">svc-billing</td>
+                  <td><span class="wf-badge">account</span></td>
+                  <td class="mono">2</td>
+                  <td><div class="wf-row" style="gap:8px"><span class="wf-risk" style="width:90px"><i style="width:71%"></i></span><span class="wf-mono">0.71</span></div></td>
+                  <td class="mono">09:12</td>
+                  <td style="text-align:right"><span class="wf-btn ghost sm">Graph</span> <span class="wf-btn ghost sm">Risk</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="wf-pagination"><span>10 entities · 7 types (ip · domain · hash · email · file · account · host)</span></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">B — Graph explorer (EntityGraphView)</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-card bare">
+      <div class="wf-row between" style="padding:14px 18px;border-bottom:1px solid var(--wf-line)">
+        <b style="font-size:13.5px">Graph — entity #4 “203.0.113.10” · depth 3</b>
+        <span class="wf-row" style="gap:8px">
+          <span class="wf-btn ghost sm">−</span><span class="wf-mono">100%</span><span class="wf-btn ghost sm">+</span><span class="wf-btn secondary sm">Reset</span>
+          <span class="wf-badge">10 nodes</span><span class="wf-badge">9 edges</span>
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:8fr 4fr">
+        <div class="wf-x" style="border:0;border-radius:0;min-height:340px">
+          <svg viewBox="0 0 700 340" style="width:100%;height:340px" aria-label="placeholder force graph">
+            <line x1="350" y1="170" x2="180" y2="90"  stroke="#c4c4bc" stroke-width="1.4"/>
+            <line x1="350" y1="170" x2="520" y2="80"  stroke="#c4c4bc" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <line x1="350" y1="170" x2="560" y2="250" stroke="#c4c4bc" stroke-width="1.4"/>
+            <line x1="180" y1="90"  x2="120" y2="220" stroke="#c4c4bc" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <circle cx="350" cy="170" r="17" fill="#7163d2"/>
+            <circle cx="180" cy="90"  r="12" fill="#d9d9d3" stroke="#9aa0ac"/>
+            <circle cx="520" cy="80"  r="12" fill="#d9d9d3" stroke="#9aa0ac"/>
+            <circle cx="560" cy="250" r="12" fill="#d9d9d3" stroke="#9aa0ac"/>
+            <circle cx="120" cy="220" r="9"  fill="#d9d9d3" stroke="#9aa0ac"/>
+            <text x="350" y="204" font-family="JetBrains Mono, monospace" font-size="10" fill="#6c7280" text-anchor="middle">203.0.113.10 (focus)</text>
+          </svg>
+          <span class="tag" style="bottom:10px">interactive SVG — scroll-to-zoom (to cursor) · drag-to-pan · hover dims non-connected</span>
+        </div>
+        <div style="border-left:1px solid var(--wf-line);padding:16px" class="wf-stack">
+          <b style="font-size:13px">203.0.113.10 <span class="wf-badge">ip</span></b>
+          <div><p class="wf-overline" style="margin:0 0 4px">Risk score</p><div class="wf-row" style="gap:8px"><span class="wf-risk" style="flex:1"><i style="width:88%"></i></span><span class="wf-mono">0.88</span></div></div>
+          <div class="wf-row between"><span class="wf-small">Occurrences</span><span class="wf-mono">7</span></div>
+          <div class="wf-row between"><span class="wf-small">Last seen</span><span class="wf-mono">09:07</span></div>
+          <div class="wf-sep" style="margin:8px 0"></div>
+          <p class="wf-overline" style="margin:0">Connections</p>
+          <div class="wf-stack-6">
+            <span class="wf-row between"><span class="wf-mono" style="font-size:11px">paste.io — resolves_to</span><span class="wf-btn ghost sm">Pivot</span></span>
+            <span class="wf-row between"><span class="wf-mono" style="font-size:11px">db-02 — communicates</span><span class="wf-btn ghost sm">Pivot</span></span>
+            <span class="wf-row between"><span class="wf-mono" style="font-size:11px">9f2c…a41 — derives_from</span><span class="wf-btn ghost sm">Pivot</span></span>
+          </div>
+          <p class="wf-small">Double-click a node to pivot the graph around it. Esc closes the panel.<span class="wf-c">3</span></p>
+        </div>
+      </div>
+      <div class="wf-row between" style="padding:12px 18px;border-top:1px solid var(--wf-line)">
+        <span class="wf-legend"><span><i class="d"></i>ip</span><span><i class="d"></i>domain</span><span><i class="d"></i>hash</span><span><i class="d"></i>email</span><span><i class="d"></i>file</span><span><i class="d"></i>account</span><span><i class="d"></i>host</span></span>
+        <span class="wf-legend"><span>── relation</span><span>-- derived relation</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Path Finder</b> — BFS shortest directed path (<code>GET /entities/path</code>); result renders hop count + node chain inline.</div></li>
+    <li><span class="wf-c">2</span><div><b>Risk score is a 0–1 bar + mono number</b>, NaN-guarded (Number()/?? fallbacks) in both the table and the graph panel.</div></li>
+    <li><span class="wf-c">3</span><div><b>Graph explorer</b> — scroll-to-zoom to cursor, drag-to-pan with pointer capture, hover dimming, floating tooltip (type/value/risk/occurrences/degree), click-to-select details panel, double-click pivot, zoom buttons with % readout, 7-type + relation legend. Details panel stacks below the graph on mobile.</div></li>
+    <li><span class="wf-c">4</span><div><b>Summary endpoint</b> powers the 4 StatCards (nodes, edges, top-hub degree, indicator count by type).</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

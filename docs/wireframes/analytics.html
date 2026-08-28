@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · AI Analytics — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="analytics">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">AI Analytics</span>
+  <span style="opacity:.55">aggregated detection telemetry + model introspection</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="alerts.html">← Prev</a>
+    <a href="entities.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/analytics</code></span>
+  <span class="chip src">Source <code>src/features/analytics/pages/AIAnalyticsPage.tsx</code></span>
+  <span class="chip api">GET <code>/analytics/overview</code> · <code>/analytics/trends?days=7|14|30|90</code></span>
+  <span class="chip api">GET <code>/ml/benchmark</code> · <code>/ml/explain/:kind</code></span>
+  <span class="chip">Charts: recharts, themed via CSS vars; interactive (tooltip, legend toggles, hover slices)</span>
+</div>
+
+<div class="wf-canvas">
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <div class="wf-pagehead">
+            <div>
+              <h1>AI Analytics</h1>
+              <p class="desc">Aggregated detection telemetry from the AI threat engine.</p>
+            </div>
+          </div>
+
+          <!-- KPI strip -->
+          <div class="wf-grid cols-5">
+            <div class="wf-stat"><p class="lab" style="margin:0">Total Alerts</p><p class="val">41</p></div>
+            <div class="wf-stat tone-crit"><p class="lab" style="margin:0">Critical</p><p class="val">4</p></div>
+            <div class="wf-stat tone-warn"><p class="lab" style="margin:0">High</p><p class="val">10</p></div>
+            <div class="wf-stat tone-warn"><p class="lab" style="margin:0">Medium</p><p class="val">15</p></div>
+            <div class="wf-stat tone-ok"><p class="lab" style="margin:0">Low</p><p class="val">12</p></div>
+          </div>
+
+          <div class="wf-grid cols-2">
+            <!-- Alert trend: range control + legend toggles -->
+            <div class="wf-card">
+              <div class="wf-cardhead">
+                <div><h3>Alert Trend</h3><p>Daily alerts over the last 7 days, split by severity.</p></div>
+                <span class="wf-seg"><span class="on">7d</span><span>14d</span><span>30d</span><span>90d</span></span>
+              </div>
+              <div class="wf-chart">
+                <svg viewBox="0 0 600 200" preserveAspectRatio="none" aria-label="placeholder multi-series line chart">
+                  <line class="axis" x1="0" y1="170" x2="600" y2="170"/>
+                  <line class="axis" x1="0" y1="113" x2="600" y2="113"/>
+                  <line class="axis" x1="0" y1="56" x2="600" y2="56"/>
+                  <polyline class="series" points="10,150 108,128 206,138 304,90 402,102 500,48 590,62"/>
+                  <polyline class="series acc" points="10,162 108,156 206,160 304,136 402,142 500,118 590,124"/>
+                </svg>
+              </div>
+              <div class="wf-row between" style="margin-top:10px">
+                <span class="wf-legend"><span><i class="d"></i>Total</span><span><i class="d"></i>Critical</span><span><i class="d"></i>High</span><span><i class="d"></i>Medium</span><span><i class="d"></i>Low</span></span>
+                <span class="wf-small">total 41 · avg 5.9/day · peak Wed<span class="wf-c">1</span></span>
+              </div>
+            </div>
+
+            <!-- Severity donut -->
+            <div class="wf-card">
+              <div class="wf-cardhead"><div><h3>Severity Distribution</h3><p>Share of detections by severity band.</p></div></div>
+              <div style="display:flex;gap:24px;align-items:center">
+                <div class="wf-donut"></div>
+                <div class="wf-stack-6" style="flex:1">
+                  <div class="wf-row between"><span class="wf-sev critical"><i class="d"></i>CRITICAL</span><span class="wf-mono">4 · 10%</span></div>
+                  <div class="wf-row between"><span class="wf-sev high"><i class="d"></i>HIGH</span><span class="wf-mono">10 · 24%</span></div>
+                  <div class="wf-row between"><span class="wf-sev medium"><i class="d"></i>MEDIUM</span><span class="wf-mono">15 · 37%</span></div>
+                  <div class="wf-row between"><span class="wf-sev low"><i class="d"></i>LOW</span><span class="wf-mono">12 · 29%</span></div>
+                </div>
+              </div>
+              <p class="wf-small" style="margin-top:12px">Hover: slice pops outward; tooltip shows count + % of total.<span class="wf-c">2</span></p>
+            </div>
+          </div>
+
+          <div class="wf-grid cols-2">
+            <!-- Detections by type -->
+            <div class="wf-card">
+              <div class="wf-cardhead"><div><h3>Detections by Type</h3><p>Which detectors fired most.</p></div></div>
+              <div class="wf-bars"><i style="height:88%"></i><i style="height:56%"></i><i style="height:44%"></i><i style="height:34%"></i><i style="height:26%"></i><i class="acc" style="height:18%"></i></div>
+              <div class="wf-row" style="margin-top:8px"><span class="wf-mono" style="flex:1;text-align:center">c-l</span><span class="wf-mono" style="flex:1;text-align:center">b-f</span><span class="wf-mono" style="flex:1;text-align:center">phish</span><span class="wf-mono" style="flex:1;text-align:center">beac</span><span class="wf-mono" style="flex:1;text-align:center">mal</span><span class="wf-mono" style="flex:1;text-align:center">dns</span></div>
+            </div>
+
+            <!-- Recent detections -->
+            <div class="wf-card">
+              <div class="wf-cardhead"><div><h3>Recent Detections</h3><p>Latest rows from the alert stream.</p></div></div>
+              <div class="wf-stack-6">
+                <div class="wf-row between"><span class="wf-mono">#1041 credential_leak</span><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></div>
+                <div class="wf-row between"><span class="wf-mono">#1040 brute_force</span><span class="wf-sev high"><i class="d"></i>HIGH</span></div>
+                <div class="wf-row between"><span class="wf-mono">#1039 dns_tunnel</span><span class="wf-sev medium"><i class="d"></i>MEDIUM</span></div>
+                <div class="wf-row between"><span class="wf-mono">#1038 phishing</span><span class="wf-sev medium"><i class="d"></i>MEDIUM</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model introspection: explain + benchmark -->
+          <div class="wf-grid cols-2">
+            <div class="wf-card">
+              <div class="wf-cardhead"><div><h3>Model Explainability</h3><p>Why the model scored a sample this way.</p></div></div>
+              <div class="wf-row wrap" style="gap:10px">
+                <span class="wf-select" style="min-width:130px">log</span>
+                <span class="wf-input" style="flex:1;min-width:200px;border-radius:10px">Paste a log line / DNS name…</span>
+                <span class="wf-btn primary sm">Explain</span>
+              </div>
+              <div class="wf-x" style="margin-top:12px;min-height:96px"><span class="tag">contributions + summary + method (dependency-free /explain/*)</span><span class="wf-c" style="position:absolute;top:8px;right:8px">3</span></div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-cardhead"><div><h3>Model Benchmark</h3><p>Deployed artifacts vs holdout sets.</p></div></div>
+              <table class="wf-table">
+                <thead><tr><th>Model</th><th>Precision</th><th>Recall</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td class="strong">log classifier</td><td class="mono">0.91</td><td class="mono">0.88</td><td><span class="wf-badge ok">ok</span></td></tr>
+                  <tr><td class="strong">email classifier</td><td class="mono">0.89</td><td class="mono">0.90</td><td><span class="wf-badge ok">ok</span></td></tr>
+                  <tr><td class="strong">network outlier</td><td class="mono">—</td><td class="mono">—</td><td><span class="wf-badge warn">skipped — artifact missing</span><span class="wf-c">4</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Trend chart</b> — segmented 7/14/30/90-day control (backend <code>?days=</code>), clickable legend toggling Total/Critical/High/Medium/Low series, rich themed tooltip, summary strip (total · avg/day · peak). Dots render for ≤14-day ranges.</div></li>
+    <li><span class="wf-c">2</span><div><b>Donut</b> — hover-active slices, center total, legend with count + %. Radius is percentage-based (scales on mobile).</div></li>
+    <li><span class="wf-c">3</span><div><b>Explainability</b> — <code>/ml/explain/:kind</code> for log/email/network/dns: coefficient/keyword/centroid/rule evidence per model family. Never a black box.</div></li>
+    <li><span class="wf-c">4</span><div><b>Benchmark is honest</b> — when an artifact is missing the row says “skipped — artifact missing”, it never invents numbers.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

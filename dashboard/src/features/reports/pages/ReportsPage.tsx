@@ -195,7 +195,7 @@ const ReportsPage: React.FC = () => {
                   </span>
                 </div>
 
-                <pre className="night p-5 rounded-2xl bg-app-navy text-content-secondary border border-app-void text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto shadow-navy">
+                <pre className="night console-panel p-5 rounded-sm text-content-secondary text-xs whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
                   {selectedCase.report}
                 </pre>
               </Card>

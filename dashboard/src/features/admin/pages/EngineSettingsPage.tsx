@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import EngineApi from "../../../api/engineApi";
 import type { EngineSettings } from "../../../types/engine";
-import { BackButton, NumberInput } from "../../../components/ui";
+import { NumberInput, PageHeader } from "../../../components/ui";
 
 const DEFAULT_SETTINGS: EngineSettings = {
   detectionSensitivity: "MEDIUM",
@@ -62,15 +62,12 @@ const EngineSettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <header>
-        <div className="mb-1.5">
-          <BackButton to="/admin" label="Back to Admin" />
-        </div>
-        <h1 className="text-2xl font-semibold text-content-primary">Engine Settings</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          Configure the AI threat detection engine. Changes are persisted and audited.
-        </p>
-      </header>
+      <PageHeader
+        title="Engine Settings"
+        backTo="/admin"
+        crumbs={[{ label: "Administration", to: "/admin" }, { label: "Engine Settings" }]}
+        description="Configure the AI threat detection engine. Changes are persisted and audited."
+      />
 
       {error && (
         <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">
@@ -178,7 +175,7 @@ const EngineSettingsPage: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2.5 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-sm bg-brand-gradient text-brand-ink text-sm font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save Settings"}
             </button>

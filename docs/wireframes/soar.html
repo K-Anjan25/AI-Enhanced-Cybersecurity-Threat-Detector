@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · SOAR Automation — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="soar">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">SOAR Automation — record-only</span>
+  <span style="opacity:.55">dry-run evaluator · playbooks · recorded actions</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="entities.html">← Prev</a>
+    <a href="incidents.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/soar</code></span>
+  <span class="chip src">Source <code>src/features/soar/pages/SoarPage.tsx</code></span>
+  <span class="chip api">POST <code>/soar/evaluate</code> · GET/POST/PATCH/DELETE <code>/soar/playbooks</code> · GET <code>/soar/actions</code></span>
+  <span class="chip">SOAR is record-only: actions are recorded, never executed</span>
+</div>
+
+<div class="wf-canvas">
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <div class="wf-pagehead">
+            <div>
+              <h1>SOAR Automation</h1>
+              <p class="desc">See every action the rules engine has recorded, and test rule matching safely — record-only, never live execution.</p>
+            </div>
+          </div>
+
+          <div class="wf-grid cols-2">
+            <!-- Dry-run evaluator -->
+            <div class="wf-card">
+              <div class="wf-cardhead"><div><h3 style="font-size:16px">Dry-run evaluator</h3><p>Test a log line against active rules — nothing is recorded and nothing runs.</p></div></div>
+              <div class="wf-stack">
+                <div class="wf-field"><label>Alert type</label><span class="wf-select" style="width:100%">system_log</span></div>
+                <div class="wf-field"><label>Message</label><span class="wf-textarea" style="display:block">Multiple failed password attempts for root from 203.0.113.10</span></div>
+                <div><span class="wf-btn primary">Test rules</span></div>
+                <div class="wf-badge ok" style="align-self:flex-start">Matched rule #12 → would record ISOLATE_HOST (dry-run)</div>
+              </div>
+            </div>
+
+            <!-- Playbook manager -->
+            <div class="wf-card">
+              <div class="wf-cardhead">
+                <div><h3 style="font-size:16px">Playbooks</h3><p>Explicit rule → action overrides. Inactive playbooks fall back to heuristics.</p></div>
+                <span class="wf-btn primary sm">+ New playbook</span>
+              </div>
+              <table class="wf-table">
+                <thead><tr><th>Rule</th><th>Action</th><th>Override</th><th>Active</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td class="strong">credential_leak</td><td class="mono">REVOKE_CREDENTIALS</td><td class="mono">rule-12</td><td><span class="wf-toggle on"></span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+                  <tr><td class="strong">brute_force</td><td class="mono">ISOLATE_HOST</td><td class="wf-small">heuristic</td><td><span class="wf-toggle"></span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recorded actions -->
+          <div class="wf-card bare">
+            <div style="padding:16px 18px;border-bottom:1px solid var(--wf-line)">
+              <div class="wf-cardhead" style="margin:0"><div><h3>Recorded automation actions</h3><p>Output of rule evaluation — record-only, with undo paths.</p></div></div>
+            </div>
+            <table class="wf-table">
+              <thead><tr><th>Action ID</th><th>Rule / Source</th><th>Action</th><th>Target</th><th>Recorded at</th><th style="text-align:right">Status</th></tr></thead>
+              <tbody>
+                <tr><td class="mono strong">#118</td><td class="mono">rule-12</td><td class="mono" style="color:var(--wf-accent);font-weight:700">REVOKE_CREDENTIALS</td><td class="mono">svc-billing</td><td class="mono">09:31</td><td style="text-align:right"><span class="wf-badge ok">recorded</span></td></tr>
+                <tr><td class="mono strong">#104</td><td class="mono">heuristic</td><td class="mono" style="color:var(--wf-accent);font-weight:700">BLOCK_EGRESS</td><td class="mono">db-02</td><td class="mono">Aug 26</td><td style="text-align:right"><span class="wf-badge">reverted</span></td></tr>
+                <tr><td class="mono strong">#096</td><td class="mono">rule-07</td><td class="mono" style="color:var(--wf-accent);font-weight:700">ISOLATE_HOST</td><td class="mono">db-02</td><td class="mono">Aug 25</td><td style="text-align:right"><span class="wf-badge ok">recorded</span></td></tr>
+              </tbody>
+            </table>
+            <div class="wf-pagination"><span>12 recorded actions</span><span class="pages"><span class="pg on">1</span><span class="pg">2</span></span></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Dry-run evaluator</b> — POST /soar/evaluate returns which rules would match and what would be recorded; the result is framed as “would record … (dry-run)”.</div></li>
+    <li><span class="wf-c">2</span><div><b>Playbooks</b> — full CRUD manager for explicit rule→action overrides; inactive rows show the heuristic fallback. Toggle state persists server-side.</div></li>
+    <li><span class="wf-c">3</span><div><b>Recorded actions table</b> — the same record-only vocabulary as the Actions Log; “recorded”, never “executed”.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

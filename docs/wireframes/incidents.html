@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Manual Incidents — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="incidents">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Manual Incidents</span>
+  <span style="opacity:.55">human-opened investigations (distinct from analyst cases)</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="soar.html">← Prev</a>
+    <a href="logs.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/incidents</code></span>
+  <span class="chip src">Source <code>IncidentsPage.tsx</code> + <code>CreateIncidentModal.tsx</code></span>
+  <span class="chip api">GET/POST <code>/incidents</code></span>
+  <span class="chip">Boards: A incident board · B create modal</span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel">A — Incident board (status filter + cards)</p>
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <div class="wf-pagehead">
+            <div>
+              <h1>Incidents</h1>
+              <p class="desc">Track and triage security incidents from detection to closure.</p>
+            </div>
+            <div class="actions"><span class="wf-btn primary">+ New incident</span></div>
+          </div>
+
+          <div class="wf-row wrap">
+            <span class="wf-select" style="min-width:190px">All statuses</span>
+            <span class="wf-btn secondary sm">Refresh</span>
+          </div>
+
+          <div class="wf-grid cols-3">
+            <div class="wf-card">
+              <div class="wf-row between"><span class="wf-mono" style="font-weight:700">#INC-07</span><span class="wf-badge warn">investigating</span></div>
+              <p style="margin:8px 0 4px;font-weight:700;font-size:13px">Suspicious egress from db-02</p>
+              <p class="wf-small">Large nightly upload to an unknown bucket. Linked alert #1037.</p>
+              <div class="wf-sep"></div>
+              <div class="wf-row between wf-small"><span>opened Aug 27</span><span class="wf-mono">assignee: demo</span></div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-row between"><span class="wf-mono" style="font-weight:700">#INC-06</span><span class="wf-badge crit">critical</span></div>
+              <p style="margin:8px 0 4px;font-weight:700;font-size:13px">API key rotation overdue</p>
+              <p class="wf-small">Key age exceeds policy; rotation requested by engine rule.</p>
+              <div class="wf-sep"></div>
+              <div class="wf-row between wf-small"><span>opened Aug 26</span><span class="wf-mono">assignee: admin</span></div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-row between"><span class="wf-mono" style="font-weight:700">#INC-05</span><span class="wf-badge ok">resolved</span></div>
+              <p style="margin:8px 0 4px;font-weight:700;font-size:13px">Phishing follow-up — finance</p>
+              <p class="wf-small">Mailbox quarantine verified; users retrained.</p>
+              <div class="wf-sep"></div>
+              <div class="wf-row between wf-small"><span>opened Aug 21</span><span class="wf-mono">assignee: demo</span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">B — Create incident modal (CreateIncidentModal)</p>
+  <div class="wf-frame" style="padding:24px;background:var(--wf-paper)">
+    <div class="wf-modalwrap">
+      <div class="wf-modal">
+        <h3 style="margin:0 0 14px;font-family:var(--wf-font-display)">New incident</h3>
+        <div class="wf-stack">
+          <div class="wf-field"><label>Title</label><span class="wf-input" style="display:block">Short, factual title…</span></div>
+          <div class="wf-field"><label>Description</label><span class="wf-textarea" style="display:block;min-height:70px">What happened, what&rsquo;s affected…</span></div>
+          <div class="wf-grid cols-2" style="gap:12px">
+            <div class="wf-field"><label>Severity</label><span class="wf-select" style="width:100%">HIGH</span></div>
+            <div class="wf-field"><label>Status</label><span class="wf-select" style="width:100%">investigating</span></div>
+          </div>
+          <div class="wf-row" style="justify-content:flex-end"><span class="wf-btn ghost">Cancel</span><span class="wf-btn primary">Create incident</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Two investigation types</b>: analyst Cases (the loop, auto-generated) vs manual Incidents (human-opened). The nav separates them; the Cockpit KPI counts incidents.</div></li>
+    <li><span class="wf-c">2</span><div><b>Status filter</b> (All/open/investigating/resolved/closed) drives the server query and resets pagination to page 1.</div></li>
+    <li><span class="wf-c">3</span><div><b>Card grid</b> — title/description truncated with title tooltips; empty state names the active filter.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

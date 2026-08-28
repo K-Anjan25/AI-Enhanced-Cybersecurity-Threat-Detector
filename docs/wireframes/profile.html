@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Profile & Account — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="profile">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Analyst Profile &amp; Account</span>
+  <span style="opacity:.55">avatar upload · details · password</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="logs.html">← Prev</a>
+    <a href="admin.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Routes <code>/profile</code> · <code>/account</code></span>
+  <span class="chip src">Source <code>Profile.tsx</code> · <code>Account.tsx</code></span>
+  <span class="chip api">PATCH <code>/user/profile</code> · POST <code>/user/profile/image</code> (multipart) · PUT <code>/user/password</code></span>
+  <span class="chip">Redesign: header now uses shared PageHeader (was hand-rolled)</span>
+</div>
+
+<div class="wf-canvas">
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main" style="max-width:920px;width:100%;margin:0 auto">
+          <div class="wf-pagehead">
+            <div>
+              <h1>Analyst Profile<span class="wf-c">1</span></h1>
+              <p class="desc">Update your personal details, profile settings, and security credentials.</p>
+            </div>
+          </div>
+
+          <!-- Profile details card -->
+          <div class="wf-card">
+            <div class="wf-row" style="gap:18px;padding-bottom:18px;border-bottom:1px solid var(--wf-line)">
+              <span class="wf-avatar lg">D<span class="wf-c">2</span></span>
+              <div class="wf-stack-6" style="justify-content:center">
+                <div class="wf-row">
+                  <span class="wf-btn secondary sm">Change photo</span>
+                  <span class="wf-btn ghost sm">Remove</span>
+                </div>
+                <span class="wf-small">PNG / JPEG / WEBP / GIF · ≤ 5 MB · or paste a URL below</span>
+              </div>
+            </div>
+            <div class="wf-grid cols-2" style="margin-top:18px">
+              <div class="wf-field"><label>Full name</label><span class="wf-input" style="display:block">Demo Analyst</span></div>
+              <div class="wf-field"><label>Email</label><span class="wf-input" style="display:block">demo@noctra.ai</span></div>
+              <div class="wf-field"><label>Profile image URL</label><span class="wf-input" style="display:block">https://…</span></div>
+              <div class="wf-field"><label>Role</label><span class="wf-badge" style="align-self:flex-end">ANALYST</span></div>
+            </div>
+            <div class="wf-row" style="justify-content:flex-end;margin-top:16px"><span class="wf-btn primary">Save changes</span></div>
+          </div>
+
+          <!-- Password card -->
+          <div class="wf-card">
+            <div class="wf-cardhead"><div><h3>Change password</h3><p>Current password required; new password validated against the register rules.</p></div></div>
+            <div class="wf-grid cols-3">
+              <div class="wf-field"><label>Current</label><span class="wf-input" style="display:block">••••••••</span></div>
+              <div class="wf-field"><label>New</label><span class="wf-input" style="display:block">••••••••</span></div>
+              <div class="wf-field"><label>Confirm</label><span class="wf-input" style="display:block">••••••••</span></div>
+            </div>
+            <div class="wf-row" style="justify-content:flex-end;margin-top:16px"><span class="wf-btn secondary">Update password</span></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Redesign change:</b> hand-rolled <code>&lt;h1&gt;</code> replaced by the shared <code>PageHeader</code> so the page reads like every other screen (title + description, token type scale).</div></li>
+    <li><span class="wf-c">2</span><div><b>Avatar upload</b> — camera badge on hover, hidden file input with client-side type/size validation, upload progress overlay; previous file is deleted server-side. Avatars are served from <code>/uploads/avatars/</code>.</div></li>
+    <li><span class="wf-c">3</span><div><b>Forms are Formik + Yup</b> — same validators as register; inline field errors, never a bare alert.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

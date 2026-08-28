@@ -3,29 +3,29 @@ import LandingNav from "../../../components/landing/LandingNav";
 import LandingHero from "../../../components/landing/LandingHero";
 import TrustBar from "../../../components/landing/TrustBar";
 import FeatureGrid from "../../../components/landing/FeatureGrid";
-import HowItWorks from "../../../components/landing/HowItWorks";
+import ConsoleDemo from "../../../components/landing/ConsoleDemo";
 import FinalCTA from "../../../components/landing/FinalCTA";
 
 /**
- * Landing — WordPress/WooCommerce-grade marketing surface, rebuilt per
- * docs/frontend-commercial-redesign.md:
+ * Landing — the NOCTRA Signal marketing surface, ported from newfile.html
+ * (the Canva export of noctradesign.my.canva.site):
  *
- *   sticky nav (hide-on-scroll) → hero with real product preview → proof
- *   strip (real test numbers) → feature bento → how-it-works timeline →
- *   trust panel + final CTA → multi-column footer.
+ *   blur header (signal-dot brand) → hero with HUD-bracketed topology →
+ *   coverage stats band → interactive console demo (metrics + prioritized
+ *   events + scan radar) → intelligence features → access panel → footer.
  *
- * Every claim is true of the product today. No fabricated metrics, no stock
- * art — the product preview is built in CSS from real case language.
+ * The page is the ink canvas by design (night + noctra-canvas): the grid
+ * texture, glows and signal green are the brand, not a theme choice.
  */
 const LandingPage: React.FC = () => (
-  <div className="min-h-screen bg-app-bg text-content-primary flex flex-col font-sans">
+  <div className="night noctra-canvas flex min-h-screen flex-col font-sans text-content-primary">
     <LandingNav />
 
     <main className="flex-1">
       <LandingHero />
       <TrustBar />
+      <ConsoleDemo />
       <FeatureGrid />
-      <HowItWorks />
       <FinalCTA />
     </main>
   </div>

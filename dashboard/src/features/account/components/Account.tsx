@@ -3,7 +3,7 @@ import { useFormik } from "formik";
 import { useMutation } from "react-query";
 import { useNavigate } from "react-router-dom";
 import TextInput from "../../../components/common/TextInput";
-import { Spinner } from "../../../components/ui";
+import { PageHeader, Spinner } from "../../../components/ui";
 import accountForm from "../../../validators/accountValidator";
 import { UserApi } from "../../../api/userApi";
 import { setToken } from "../../../utils/token";
@@ -40,10 +40,13 @@ export default function Account(): React.ReactElement {
   });
 
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-app-surface rounded-2xl border border-line-subtle shadow-card">
-      <h2 className="text-xl font-bold text-content-primary mb-6 text-center">
-        Change Password
-      </h2>
+    <div className="max-w-md w-full mx-auto space-y-6">
+      <PageHeader
+        title="Change Password"
+        backTo="/profile"
+        description="Update your security credentials. You'll stay signed in with your new password."
+      />
+      <div className="p-6 bg-app-surface rounded-2xl border border-line-subtle shadow-card">
 
       <form onSubmit={form.handleSubmit} className="flex flex-col gap-4">
         <TextInput
@@ -74,7 +77,7 @@ export default function Account(): React.ReactElement {
         <button
           type="submit"
           disabled={updateMutation.isLoading}
-          className="w-full mt-2 py-2.5 px-4 bg-brand-gradient hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-brand-ink font-medium rounded-full transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+          className="w-full mt-2 py-2.5 px-4 bg-brand-gradient hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed text-brand-ink font-medium rounded-sm transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
         >
           {updateMutation.isLoading ? (
             <Spinner variant="light" className="mr-2" />
@@ -82,6 +85,7 @@ export default function Account(): React.ReactElement {
           {updateMutation.isLoading ? "Updating..." : "Change Password"}
         </button>
       </form>
+      </div>
     </div>
   );
 }

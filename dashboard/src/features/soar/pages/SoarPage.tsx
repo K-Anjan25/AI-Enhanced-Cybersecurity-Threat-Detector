@@ -262,7 +262,7 @@ const SoarPage: React.FC = () => {
             <button
               type="submit"
               disabled={evaluating || !evalMessage.trim()}
-              className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-sm bg-brand-gradient text-brand-ink text-sm font-medium hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {evaluating ? "Testing…" : "Test rules"}
             </button>
@@ -296,7 +296,7 @@ const SoarPage: React.FC = () => {
             <button
               type="submit"
               disabled={triggering || !triggerId}
-              className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-sm bg-brand-gradient text-brand-ink text-sm font-medium hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {triggering ? "Triggering…" : "Trigger & record"}
             </button>
@@ -352,7 +352,7 @@ const SoarPage: React.FC = () => {
             <button
               type="submit"
               disabled={pbSaving || !pbRuleId || !pbName.trim()}
-              className="mt-1.5 w-full px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="mt-1.5 w-full px-4 py-2 rounded-sm bg-brand-gradient text-brand-ink text-sm font-medium hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {pbSaving ? "Saving…" : "Add playbook"}
             </button>

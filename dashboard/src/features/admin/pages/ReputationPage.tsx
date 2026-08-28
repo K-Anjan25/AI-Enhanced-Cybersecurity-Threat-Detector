@@ -131,7 +131,7 @@ const ReputationPage: React.FC = () => {
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition shadow-float"
+            className="px-4 py-2 rounded-sm bg-brand-gradient text-brand-ink text-sm font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition shadow-float"
           >
             + Add IP
           </button>
@@ -161,7 +161,7 @@ const ReputationPage: React.FC = () => {
               <button
                 type="button"
                 onClick={openCreate}
-                className="px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition"
+                className="px-4 py-2 rounded-sm bg-brand-gradient text-brand-ink text-sm font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition"
               >
                 Add IP
               </button>
@@ -241,7 +241,7 @@ const ReputationPage: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 text-sm font-semibold rounded-full bg-brand-gradient text-brand-ink hover:opacity-90 transition disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold rounded-sm bg-brand-gradient text-brand-ink hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save Entry"}
             </button>
