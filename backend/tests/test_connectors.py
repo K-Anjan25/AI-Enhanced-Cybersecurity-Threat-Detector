@@ -234,6 +234,94 @@ def test_poll_mode_requires_an_endpoint(db_session, org):
         )
 
 
+# ---------------------------------------------------------------------------
+# SSRF guard on the outbound poll
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def production(monkeypatch):
+    """Non-dev ENVIRONMENT — the guard is deliberately off in dev/test so the
+    local walkthrough can point a connector at 127.0.0.1."""
+    monkeypatch.setattr(connector_service.settings, "ENVIRONMENT", "production")
+    return "production"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1:9000/events",
+        "http://localhost/events",
+        "http://169.254.169.254/latest/meta-data/",  # cloud metadata
+        "http://10.0.3.17/events",
+        "http://192.168.1.1/events",
+        "http://172.16.0.9/events",
+    ],
+)
+def test_production_refuses_internal_poll_endpoints(production, db_session, org, url):
+    """Poll mode makes the server fetch a tenant-supplied URL, so an internal
+    address has to be refused rather than fetched."""
+    with pytest.raises(ValueError, match="refusing to fetch"):
+        connector_service.upsert_config(
+            db_session, org.id, "okta", {"mode": "poll", "endpoint": url}, actor="admin"
+        )
+
+
+def test_production_refuses_non_http_schemes(production, db_session, org):
+    with pytest.raises(ValueError, match="http"):
+        connector_service.upsert_config(
+            db_session,
+            org.id,
+            "okta",
+            {"mode": "poll", "endpoint": "file:///etc/passwd"},
+            actor="admin",
+        )
+
+
+def test_dev_environment_still_allows_loopback(db_session, org):
+    """The escape hatch has to keep working: docs/demo.md walks a connector
+    against a local mock endpoint."""
+    monkeypatched = connector_service.settings.ENVIRONMENT
+    try:
+        connector_service.settings.ENVIRONMENT = "development"
+        saved = connector_service.upsert_config(
+            db_session,
+            org.id,
+            "okta",
+            {"mode": "poll", "endpoint": "http://127.0.0.1:9000/events"},
+            actor="admin",
+        )
+    finally:
+        connector_service.settings.ENVIRONMENT = monkeypatched
+    assert saved["endpoint"] == "http://127.0.0.1:9000/events"
+
+
+def test_sync_refuses_to_fetch_an_internal_endpoint_even_if_config_predates_it(
+    production, db_session, org, monkeypatch
+):
+    """Defence in depth: a row written in dev (or before the guard) must not
+    turn into an internal request at poll time — and it must be recorded as a
+    failed sync, not a silent success."""
+    connector_service.settings.ENVIRONMENT = "development"
+    connector_service.upsert_config(
+        db_session,
+        org.id,
+        "okta",
+        {"mode": "poll", "endpoint": "http://169.254.169.254/latest/meta-data/"},
+        actor="admin",
+    )
+    connector_service.settings.ENVIRONMENT = "production"
+
+    def _must_not_run(*args, **kwargs):  # pragma: no cover - guard must fire first
+        raise AssertionError("requests.get must not be reached")
+
+    monkeypatch.setattr(connector_service.requests, "get", _must_not_run)
+
+    result = connector_service.sync(db_session, org.id, "okta", actor="admin")
+    assert result["status"] == "error"
+    assert "refusing to fetch" in (result.get("message") or "")
+
+
 def test_unknown_connector_is_rejected(db_session, org):
     with pytest.raises(ValueError):
         connector_service.upsert_config(

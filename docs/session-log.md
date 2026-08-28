@@ -776,3 +776,33 @@ is not bumped back to `^30` without also bumping the workflow's Node.
 One test caught a mistake in itself rather than in the code — asserting "2
 decisions by you" when `handled_today` is 1; the component's singular copy was
 right and the assertion was wrong. Worth keeping it as an explicit assertion.
+
+## Phase 34 — merge-readiness review of the connector work
+
+Reviewing PR #5 for merge rather than shipping more surface turned up two
+things in the connector code that had no business merging as they stood:
+
+**Token comparison was not constant-time.** `token != cfg.ingest_token` in the
+push webhook leaks match position through timing. Now `hmac.compare_digest`.
+
+**Polling had no SSRF guard.** Poll mode makes the server fetch a
+tenant-supplied URL, so `http://169.254.169.254/latest/meta-data/` (cloud
+metadata) or an internal service were both reachable by typing them into a
+config box. `_guard_endpoint` now refuses private, loopback, link-local and
+reserved addresses at configuration time (422) *and* again at fetch time (so a
+row written in dev, or before the guard existed, still cannot be fetched — it
+records a failed sync instead of a 500).
+
+The guard is deliberately inactive when `ENVIRONMENT` is a dev/test value:
+§3a of the demo points a connector at `127.0.0.1`, which is exactly the address
+a deployed instance must refuse, and `k8s/configmap.yaml` sets
+`ENVIRONMENT: "production"`. Its three real limits are recorded in the code
+docstring and in demo.md's known gaps: unresolvable names cannot be judged,
+DNS rebinding between check and request is not covered, and it is defence in
+depth rather than a sealed boundary.
+
+Also documented as known gaps rather than quietly shipped: connector
+credentials are stored in plaintext (never returned by the API — only
+`has_*_token` booleans), and the ingest webhook has no rate limit.
+
+Backend suite now 145 passed, 2 skipped (was 136; +9 guard tests).

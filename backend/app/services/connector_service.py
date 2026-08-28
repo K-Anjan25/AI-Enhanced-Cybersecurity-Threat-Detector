@@ -14,12 +14,17 @@ Replaces the hardcoded connector list. The rules this module exists to uphold:
 
 from __future__ import annotations
 
+import hmac
+import ipaddress
+import socket
 import time
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 import requests
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models import ConnectorSource, SecurityAlert
 from app.services.mitre import map_alert
 from app.utils.helpers import create_audit_log
@@ -36,6 +41,77 @@ CATALOGUE: list[tuple[str, str, str]] = [
 
 VALID_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
 REQUEST_TIMEOUT = (3, 10)  # (connect, read) seconds
+
+# Poll mode makes this server fetch a URL a tenant typed. Unchecked, that is a
+# ready-made SSRF: point it at cloud metadata (169.254.169.254), at a service
+# that trusts the pod's network position, or at the API itself. Non-local
+# environments refuse internal addresses — see _guard_endpoint.
+_DEV_ENVIRONMENTS = {"development", "dev", "local", "test", "testing"}
+
+
+def _is_internal_address(raw: str) -> bool:
+    ip = ipaddress.ip_address(raw)
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def _guard_endpoint(url: str | None) -> None:
+    """Refuse endpoints that would turn a poll into an SSRF.
+
+    Inactive in dev/test environments on purpose: the local walkthrough in
+    docs/demo.md points a connector at http://127.0.0.1, which is precisely
+    the address a deployed instance must refuse. `ENVIRONMENT` is
+    "development" by default and "production" in k8s/configmap.yaml.
+
+    Two honest limits:
+    * A name this process cannot resolve cannot be judged here, so it is
+      allowed through and left to fail (or succeed) at request time.
+    * DNS rebinding between this check and requests' own lookup is not
+      covered — closing that means pinning the resolved IP for the
+      connection, a larger change than this guard.
+
+    So this is defence in depth against a hostile or mistaken endpoint, not a
+    sealed boundary.
+    """
+    if (settings.ENVIRONMENT or "").strip().lower() in _DEV_ENVIRONMENTS:
+        return
+    if not url:
+        return
+
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("endpoint must be an http(s) URL")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("endpoint URL has no host")
+
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if _is_internal_address(literal):
+            raise ValueError(_INTERNAL_ENDPOINT_MESSAGE)
+        return
+
+    try:
+        resolved = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return  # Nothing to judge here; the request itself will fail.
+    if any(_is_internal_address(info[4][0]) for info in resolved):
+        raise ValueError(_INTERNAL_ENDPOINT_MESSAGE)
+
+
+_INTERNAL_ENDPOINT_MESSAGE = (
+    "endpoint resolves to a private, loopback or link-local address — "
+    "refusing to fetch it"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -191,8 +267,12 @@ def upsert_config(
     mode = (payload.get("mode") or "push").lower()
     if mode not in {"poll", "push"}:
         raise ValueError("mode must be 'poll' or 'push'")
-    if mode == "poll" and not payload.get("endpoint"):
-        raise ValueError("poll mode requires an endpoint URL")
+    if mode == "poll":
+        if not payload.get("endpoint"):
+            raise ValueError("poll mode requires an endpoint URL")
+        # Refuse an SSRF endpoint at configuration time rather than at the
+        # first poll — the operator should see why it was rejected now.
+        _guard_endpoint(payload.get("endpoint"))
 
     cfg = get_config(db, org_id, connector_id)
     created = cfg is None
@@ -383,7 +463,9 @@ def ingest_push(
         )
         .first()
     )
-    if cfg is None or not token or token != cfg.ingest_token:
+    if cfg is None or not token or not hmac.compare_digest(
+        token, cfg.ingest_token or ""
+    ):
         raise PermissionError("Unknown connector ID or invalid ingest token")
 
     if not isinstance(events, list):
@@ -493,6 +575,11 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
 
     started = time.perf_counter()
     try:
+        # Re-checked here as well as on write: a config created in a dev
+        # environment, or before this guard existed, must still not turn into
+        # an internal request. Raising inside the try records it as a failed
+        # sync rather than a 500.
+        _guard_endpoint(cfg.endpoint)
         response = requests.get(cfg.endpoint, headers=headers or None, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         payload = response.json()

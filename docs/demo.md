@@ -286,7 +286,7 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 136 passed, 2 skipped
+cd backend   && pytest tests      # 145 passed, 2 skipped
 cd ml-service&& pytest tests      # 13 passed
 cd dashboard && npm run test:ci   # 14 passed (Vitest)
 cd dashboard && npx tsc --noEmit && npm run build
@@ -317,6 +317,20 @@ Honest gaps are better than surprise gaps. As of this writing:
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.
+- **Connector credentials are stored in plaintext.** A configured source keeps
+  its outbound auth token and its push shared secret in cleartext in the
+  database, and they are never returned by the API (only `has_auth_token` /
+  `has_ingest_token` booleans). Fine for a self-hosted demo; encrypt at rest
+  before this holds real credentials.
+- **The webhook has no rate limit.** Any caller holding the shared secret can
+  post events as fast as it likes. Token comparison is constant-time, but
+  throttling the ingest endpoint is not done yet.
+- **The SSRF guard on polling is defence in depth, not a sealed boundary.**
+  Poll endpoints resolving to private, loopback or link-local addresses are
+  refused — but only when `ENVIRONMENT` is not a dev/test value (the local
+  walkthrough in §3a deliberately uses `127.0.0.1`), a name this process
+  cannot resolve cannot be judged, and DNS rebinding between the check and the
+  request is not covered. Don't describe it as "SSRF-proof".
 - **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
   deterministic fallback and the UI labels it "NOCTRA built-in reasoning engine"
   with confidence `n/a`.
