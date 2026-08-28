@@ -113,7 +113,8 @@ python -m uvicorn app.main:app --port 8000
 #### NOCTRA Dashboard
 ```bash
 cd dashboard
-npm run dev
+npm install
+npm start        # Vite dev server on :3000, proxies /api → :8000
 ```
 
 ---

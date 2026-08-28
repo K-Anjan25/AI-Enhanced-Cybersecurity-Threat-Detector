@@ -24,6 +24,7 @@ import {
   ConfirmDialog,
   EmptyState,
   SkeletonChart,
+  ThinkingIndicator,
   Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
@@ -507,9 +508,9 @@ const CasePage: React.FC = () => {
             </div>
           ))}
           {chatLoading && (
-            <div className="flex items-center gap-2 text-xs text-content-tertiary animate-pulse">
-              <Bot size={14} className="text-accent-secondary" /> NOCTRA is reasoning…
-            </div>
+            /* Spec §30: AI reasoning is a three-dot shimmer — never a pulsing
+               block of text, never a glow storm. */
+            <ThinkingIndicator label="NOCTRA is reasoning" className="px-1 py-1" />
           )}
         </div>
 

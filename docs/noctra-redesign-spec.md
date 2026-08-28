@@ -716,13 +716,13 @@ decorative KPI cards on primary surfaces. Palette per §16.
   script + verification matrix.
 - After each stage: `pytest` (backend+ml), `tsc --noEmit`, `vite build`.
 
-**Status (2026-08-28):** Stages 1–3 shipped. Stage 4 is mostly shipped —
-responsive hardening (mobile nav drawer, responsive topbar) and the a11y slice
+**Status (2026-08-28):** Stages 1–3 shipped. **Stage 4 is complete** —
+responsive hardening (mobile nav drawer, responsive topbar), the a11y slice
 (skip link, dialog semantics, outside-click/Escape dismissal, chart
-`role="img"` labels) are done, and the **demo script + verification matrix now
-live in [`docs/demo.md`](demo.md)**. Still open: the motion polish pass. The
-visual identity has since moved to SIGNAL (§40) — Stages 1–3 are documented
-against the retired DUALITY system.
+`role="img"` labels), the **demo script + verification matrix**
+([`docs/demo.md`](demo.md)), and the **motion polish pass** (§40.8). The visual
+identity has since moved to SIGNAL (§40) — Stages 1–3 are documented against
+the retired DUALITY system.
 
 ## 33–36. Files Add / Modify / Deprecate / Preserved
 
@@ -1039,3 +1039,44 @@ route, nav item or page section.
   `:3000` proxy.
 - Route-by-route pass criteria: see the **verification matrix** in
   [`docs/demo.md`](demo.md).
+
+### 40.8 Motion contract
+
+Motion **explains state**; it never entertains. Everything below is enforced in
+code — `tailwind.config.js` (keyframes/durations), `styles/globals.css`
+(reduced-motion), `index.tsx` (`MotionConfig`), `components/ui/ThinkingDots.tsx`.
+
+**Durations.** Entrances live in the **140–240ms** band, all `ease-out`:
+`fade-in` 160ms (page/row), `fade-up` 240ms (lead card only), `scale-in` 140ms
+(overlays, command menu), `slide-in-right` 180ms (drawers, toasts). Longer
+motion is reserved for two things only: the landing's reveal/stagger
+(0.7s, once, on first paint) and the reasoning dots.
+
+**What may loop.** Only "work in progress": the **three-dot reasoning
+shimmer** (`ThinkingIndicator` — opacity only, 1.05s, staggered 160ms),
+skeletons, the route-loading ping, and the `signal-dot` live mark. Nothing else
+loops.
+
+**What never animates.**
+- **Severity never pulses.** Colour + dot + label, static. A pulsing CRITICAL
+  badge is noise where attention must be calm.
+- **No glow storms.** The single glow in the system is `shadow-signal` on
+  primary-action hover.
+- **No decorative parallax, no bouncing, no entrance on scroll.**
+
+**AI reasoning** is the three-dot shimmer next to an honest label, never a
+pulsing block of text, never a spinner pretending to think.
+
+**Reduced motion → instant.** Three layers, because CSS alone cannot reach JS:
+1. `globals.css` collapses every `animation-duration` and `transition-duration`
+   to `0.01ms` and forces `scroll-behavior: auto`.
+2. `index.tsx` wraps the app in `<MotionConfig reducedMotion="user">` —
+   framer-motion animates via JS, so the CSS rule never applied to it.
+3. `LandingHero.tsx` checks `prefers-reduced-motion` before using
+   `scrollIntoView({ behavior: "smooth" })`; `useCountUp` snaps to its target.
+
+Looping indicators land on their **static frame** rather than disappearing, so a
+"working" state still reads as working.
+
+**Decision-state pills** (`Badge`) carry `transition-colors duration-200`: a
+pending → approved flip re-tints instead of snapping.

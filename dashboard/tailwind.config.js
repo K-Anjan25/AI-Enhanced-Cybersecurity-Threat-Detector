@@ -138,12 +138,21 @@ module.exports = {
           "0%": { opacity: "0", transform: "translateX(12px)" },
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
+        // AI "reasoning" (spec §30): three dots, staggered. Opacity only —
+        // no scale, no glow. Reduced-motion collapses this to a static dot.
+        "thinking-dot": {
+          "0%, 100%": { opacity: "0.25" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
+        // Motion contract (spec §40.8): entrances land in the 140–240ms band;
+        // only repeated "work in progress" animation may loop.
         "fade-in": "fade-in 160ms ease-out",
         "fade-up": "fade-up 240ms ease-out",
         "scale-in": "scale-in 140ms ease-out",
         "slide-in-right": "slide-in-right 180ms ease-out",
+        "thinking-dot": "thinking-dot 1.05s ease-in-out infinite",
       },
     },
   },

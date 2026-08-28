@@ -242,8 +242,10 @@ const BriefPage: React.FC = () => {
       {!onboardingDismissed && <OnboardingChecklist steps={onboardingSteps} onDismiss={dismissOnboarding} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Lead card — the one thing that needs a decision, on the night canvas. */}
-        <div className="night console-panel hud-corners lg:col-span-7 text-content-primary rounded-sm p-6 flex flex-col justify-between min-h-[320px]">
+        {/* Lead card — the one thing that needs a decision, on the night canvas.
+            It is the only element that enters with a fade-up (spec §30): the
+            eye should land here first. */}
+        <div className="night console-panel hud-corners lg:col-span-7 text-content-primary rounded-sm p-6 flex flex-col justify-between min-h-[320px] animate-fade-up">
           {latestCase ? (
             <>
               <div>

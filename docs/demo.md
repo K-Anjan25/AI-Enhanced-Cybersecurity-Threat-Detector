@@ -28,8 +28,10 @@ Manual dev setup instead (three terminals + a seed):
 ```bash
 cd ml-service && python -m uvicorn app.main:app --port 8001
 cd backend   && python -m uvicorn app.main:app --port 8000
-cd backend   && python seed_preview.py          # demo user + ~60 alerts over 7 days
-cd dashboard && npm run dev                     # Vite proxies /api → :8000
+cd backend   && python seed_preview.py          # demo user + ~50 alerts over 8 days
+cd dashboard && npm install && npm start        # Vite proxies /api → :8000
+                                                # NB: the script is `npm start`
+                                                # (`npm run dev` does not exist)
 ```
 
 ### Sign in

@@ -620,3 +620,51 @@ documentation drift the Phase-29 SIGNAL retheme left behind.
 
 Verified: backend 121 passed / 2 skipped; ml-service 13 passed;
 `tsc --noEmit` + `vite build` clean.
+
+## Phase 31 — Stage 4 close: motion polish
+
+The last open item from the Stage 4 roadmap (spec §32). Motion audited against
+§30, three real gaps found and fixed, and the contract written down as §40.8 so
+it stops drifting.
+
+**Gaps found (all three were invisible to the CSS-only reduced-motion rule):**
+- **framer-motion ignored `prefers-reduced-motion`.** `PageTransition` animates
+  via JS, so the `animation-duration: 0.01ms !important` override in
+  `globals.css` never reached it — reduced-motion users still got the 220ms
+  page slide. Fixed by wrapping the app in `<MotionConfig reducedMotion="user">`
+  (`index.tsx`): transforms are dropped, opacity/color still animate.
+- **Landing smooth-scroll ignored it too.** `LandingHero` called
+  `scrollIntoView({ behavior: "smooth" })` unconditionally; it now checks
+  `matchMedia("(prefers-reduced-motion: reduce)")` and falls back to `auto`.
+- **The AI "reasoning" indicator wasn't the spec'd one.** §30 asks for a
+  three-dot text shimmer; the case chat rendered a `animate-pulse` text line.
+  Replaced with `components/ui/ThinkingDots.tsx` (`ThinkingIndicator`): three
+  1px signal dots, opacity-only 1.05s stagger, `role="status"`, dots
+  `aria-hidden` with the meaning carried by the label.
+
+**Also in this pass:**
+- `Badge` gained `transition-colors duration-200` — the decision-state pill
+  re-tints on pending → approved instead of snapping (§30).
+- Lead case card on the Inbox now enters with `animate-fade-up` (240ms) — the
+  only element on the page that does, so the eye lands on the decision first.
+- `globals.css` reduced-motion block now also forces `scroll-behavior: auto`,
+  and carries a comment naming the three layers (CSS / framer / JS scroll)
+  because a future reader would otherwise assume one layer covers everything.
+- `tailwind.config.js`: `thinking-dot` keyframes + a comment recording the
+  140–240ms entrance band.
+
+**Doc bug caught by running the stack:** `docs/demo.md` (and `README.md`)
+instructed `cd dashboard && npm run dev` — **that script does not exist**; the
+package exposes `start` (and `build`). Both corrected to `npm install &&
+npm start`. Found only because the demo script was actually executed.
+
+**Live verification (SQLite, `COOKIE_AUTH=true`, Vite proxy on :3000):**
+login `demo` 200 → `/me` 200 (ANALYST) → `/analyst/brief` returns the five real
+counts → `POST /analyst/simulate?scenario_type=credential_leak` → case #1
+`critical` / `REVOKE_CREDENTIALS` / `fallback: true` + `fallback-template` /
+3 blast nodes → timeline `['evidence','opened']` → approve → `approved`,
+`resolved`, `soar_action_id` recorded → report generated naming the fallback
+model. Every claim in `docs/demo.md` now has a live pass behind it.
+
+Verified: `tsc --noEmit` + `vite build` clean; backend 121/2 and ml 13
+unchanged (no backend code touched).
