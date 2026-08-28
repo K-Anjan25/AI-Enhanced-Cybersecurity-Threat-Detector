@@ -64,7 +64,7 @@
 
           <div class="wf-grid cols-12-7-5">
             <!-- Lead card — night canvas: the one thing that needs a decision -->
-            <div class="wf-night">
+            <div class="wf-night wf-hud">
               <div class="wf-row between">
                 <p class="overline" style="margin:0">Needs your decision</p>
                 <span class="wf-sev critical"><i class="d"></i>CRITICAL</span>
@@ -164,7 +164,7 @@
     <li><span class="wf-c">1</span><div><b>Header is a live sentence, not a dashboard.</b> The PageHeader description renders the four brief numbers verbatim from <code>GET /analyst/brief</code>. No fabricated metrics.</div></li>
     <li><span class="wf-c">2</span><div><b>Simulate scenario</b> (primary action) posts to <code>/analyst/simulate</code> with the selected scenario (credential_leak / phishing_outbreak / data_exfiltration / compromised_api_key) and routes to the new case.</div></li>
     <li><span class="wf-c">3</span><div><b>Onboarding checklist</b> — first-run only, each step derived from real data (brief counts, feed visits); dismissible, persisted in localStorage.</div></li>
-    <li><span class="wf-c">4</span><div><b>Lead card = night canvas</b> (DUALITY scope). The one case that needs a decision: headline, what happened, why it matters, 4-up facts (Affected / Confidence / Recommends / Reversible), model attribution line, blast-radius chips.</div></li>
+    <li><span class="wf-c">4</span><div><b>Lead card = console panel</b> (green hairline + HUD corner brackets — the newfile treatment). The one case that needs a decision: headline, what happened, why it matters, 4-up facts (Affected / Confidence / Recommends / Reversible), model attribution line, blast-radius chips.</div></li>
     <li><span class="wf-c">5</span><div><b>Severity is dot + label</b> everywhere — never color alone (a11y rule from the brand spec).</div></li>
     <li><span class="wf-c">6</span><div><b>Queue</b> lists the next pending cases (max 6) with severity + time; whole row is a link to <code>/case/:id</code>.</div></li>
     <li><span class="wf-c">7</span><div><b>Empty state</b> (not shown): “Nothing needs you right now.” — the moon icon + honest copy about watching/handled counts.</div></li>

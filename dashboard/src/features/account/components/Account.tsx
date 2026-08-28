@@ -77,7 +77,7 @@ export default function Account(): React.ReactElement {
         <button
           type="submit"
           disabled={updateMutation.isLoading}
-          className="w-full mt-2 py-2.5 px-4 bg-brand-gradient hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-brand-ink font-medium rounded-full transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+          className="w-full mt-2 py-2.5 px-4 bg-brand-gradient hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed text-brand-ink font-medium rounded-sm transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
         >
           {updateMutation.isLoading ? (
             <Spinner variant="light" className="mr-2" />

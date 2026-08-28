@@ -4,12 +4,12 @@ import BrandLogo from "../../../components/BrandLogo";
 import { ThemeToggle } from "../../../components/ThemeToggle";
 
 /**
- * AuthLayout — shared shell for the sign-in / sign-up screens, built to
- * direction L (Apple product-page style):
- *   left  — brand panel: crescent-moon mark, mono overline, big display
- *           headline (gradient phrase), calm subhead, three product truths.
- *   right — the form card on the light-gray canvas.
- * Light/dark theme toggle sits top-right on every auth screen.
+ * AuthLayout — shared shell for the sign-in / sign-up screens, in the
+ * NOCTRA Signal system (newfile.html):
+ *   left  — brand panel on the ink canvas: signal-dot mark, tech-label
+ *           overline, big tight display headline, three product truths.
+ *   right — the form card on the grid-textured canvas.
+ * The auth surface is the ink canvas by design (no theme toggle).
  */
 export interface AuthLayoutProps {
   headline: React.ReactNode;
@@ -37,18 +37,14 @@ const FEATURES = [
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ headline, subhead, children }) => {
   return (
-    <div className="relative min-h-screen bg-app-bg lg:flex">
-      <ThemeToggle variant="pill" className="absolute top-4 right-4 z-20" />
-
+    <div className="night noctra-canvas relative min-h-screen lg:flex">
       {/* Brand panel (desktop) */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 px-12 py-10 border-r border-line-subtle bg-app-surface/50">
+      <div className="hidden lg:flex flex-col justify-between w-1/2 px-12 py-10 border-r border-white/10">
         <BrandLogo size={44} />
 
         <div className="max-w-md">
-          <p className="text-[11px] font-mono uppercase tracking-[0.22em] text-accent-primary font-medium">
-            Your autonomous security analyst
-          </p>
-          <h1 className="mt-5 font-display font-semibold text-[2.5rem] leading-[1.08] tracking-tight text-content-primary text-balance">
+          <p className="tech-label text-accent-primary">Threat intelligence, always on</p>
+          <h1 className="mt-5 font-display font-semibold text-[2.5rem] leading-[1.05] tracking-[-0.035em] text-content-primary text-balance">
             {headline}
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-content-secondary">{subhead}</p>
@@ -57,7 +53,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ headline, subhead, children }) 
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="flex items-start gap-3 bg-app-bg border border-line-subtle rounded-xl px-4 py-3"
+                className="flex items-start gap-3 rounded-sm border border-line-subtle bg-app-surface/60 px-4 py-3"
               >
                 <f.icon size={15} className="mt-0.5 text-accent-primary shrink-0" aria-hidden />
                 <div>
@@ -69,8 +65,8 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ headline, subhead, children }) 
           </div>
         </div>
 
-        <p className="text-[11px] font-mono text-content-tertiary">
-          NOCTRA — your autonomous security analyst · noctra.ai
+        <p className="tech-label text-content-tertiary">
+          NOCTRA — threat intelligence, always on · noctra.ai
         </p>
       </div>
 

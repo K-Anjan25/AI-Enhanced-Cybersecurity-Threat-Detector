@@ -175,7 +175,7 @@ const EngineSettingsPage: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2.5 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-sm bg-brand-gradient text-brand-ink text-sm font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save Settings"}
             </button>

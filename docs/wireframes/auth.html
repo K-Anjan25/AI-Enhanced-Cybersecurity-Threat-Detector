@@ -24,6 +24,7 @@
   <span class="chip src">Source <code>AuthLayout.tsx</code> · <code>Login.tsx</code> · <code>Register.tsx</code> · <code>ResetPassword.tsx</code></span>
   <span class="chip api">POST <code>/auth/login</code> · <code>/auth/register</code> · <code>/auth/forgot-password</code> · <code>/auth/reset-password</code></span>
   <span class="chip">COOKIE_AUTH=true → httpOnly cookie session (SameSite=None; Partitioned in the preview)</span>
+  <span class="chip">Ink canvas by design — no theme toggle on auth surfaces</span>
 </div>
 
 <div class="wf-canvas">
@@ -44,12 +45,11 @@
             <div class="wf-card" style="padding:12px 16px"><b style="font-size:12.5px">Record every step</b><p class="wf-small" style="margin:2px 0 0">Append-only audit trail. NOCTRA records actions, never executes them.</p></div>
           </div>
         </div>
-        <span class="wf-mono">NOCTRA — your autonomous security analyst · noctra.ai</span>
+        <span class="wf-overline" style="margin:0">NOCTRA — threat intelligence, always on · noctra.ai</span>
       </div>
 
       <!-- Form panel -->
       <div style="background:var(--wf-paper);display:flex;align-items:center;justify-content:center;padding:32px;position:relative">
-        <span class="wf-toggle on" style="position:absolute;top:16px;right:16px"></span>
         <div class="wf-card" style="width:100%;max-width:380px">
           <h2 style="font-family:var(--wf-font-display);margin:0 0 4px;font-size:20px">Welcome back</h2>
           <p class="wf-small" style="margin:0 0 18px">Sign in to open your analyst inbox.</p>

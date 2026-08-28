@@ -243,7 +243,7 @@ const BriefPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Lead card — the one thing that needs a decision, on the night canvas. */}
-        <div className="night lg:col-span-7 bg-app-navy text-content-primary rounded-2xl p-6 shadow-navy flex flex-col justify-between min-h-[320px]">
+        <div className="night console-panel hud-corners lg:col-span-7 text-content-primary rounded-sm p-6 flex flex-col justify-between min-h-[320px]">
           {latestCase ? (
             <>
               <div>
@@ -336,7 +336,7 @@ const BriefPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(`/case/${latestCase.id}`)}
-                  className="bg-brand-gradient hover:opacity-90 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-full transition"
+                  className="bg-brand-gradient hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 text-brand-ink font-semibold text-xs px-5 py-2.5 rounded-sm transition"
                 >
                   Review case #{latestCase.id}
                 </button>

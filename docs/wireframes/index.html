@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NOCTRA — UI Wireframe Kit (code-accurate)</title>
+<title>NOCTRA — UI Wireframe Kit · SIGNAL (code-accurate)</title>
 <link rel="stylesheet" href="assets/wireframes.css" />
 <style>
   .wf-hub { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
@@ -32,8 +32,8 @@
 <div class="wf-hub">
   <div class="wf-hub-head">
     <h1>
-      <svg width="36" height="36" viewBox="0 0 24 24"><path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/></svg>
-      NOCTRA — UI Wireframe Kit v2
+<svg width="36" height="36" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#a6ff3f"/><circle cx="12" cy="12" r="9" fill="none" stroke="#a6ff3f" stroke-opacity="0.35"/><circle cx="12" cy="12" r="12" fill="none" stroke="#a6ff3f" stroke-opacity="0.14"/></svg>
+      NOCTRA — UI Wireframe Kit v3 · SIGNAL
     </h1>
     <p>
       <b>Code-accurate wireframes, generated from the repository.</b> Every board below maps 1:1 to a route in
@@ -59,8 +59,8 @@
       <a class="wf-tile" href="admin-users.html"><span class="route">/admin/users · /tenants · /roles</span><b>Admin — People</b><p>Roster + edit modal, tenants, ABAC matrix.</p></a>
       <a class="wf-tile" href="admin-config.html"><span class="route">/admin/rules · /reputation · /engine-settings · /system-logs</span><b>Admin — Config</b><p>Rules, reputation, engine, audit.</p></a>
       <a class="wf-tile" href="app-shell.html"><span class="route">shell</span><b>App Shell &amp; Overlays</b><p>Sidebar/topbar anatomy, ⌘K menu, pending drawer.</p></a>
-      <a class="wf-tile" href="landing.html"><span class="route">/welcome</span><b>Landing</b><p>Marketing surface — real claims only.</p></a>
-      <a class="wf-tile" href="auth.html"><span class="route">/login · /register · /reset</span><b>Auth</b><p>Split brand panel + form cards.</p></a>
+      <a class="wf-tile" href="landing.html"><span class="route">/welcome</span><b>Landing</b><p>Ported 1:1 from newfile.html — hero, console demo, scan radar.</p></a>
+      <a class="wf-tile" href="auth.html"><span class="route">/login · /register · /reset</span><b>Auth</b><p>Ink canvas, signal-dot brand panel + form cards.</p></a>
       <a class="wf-tile" href="mobile.html"><span class="route">responsive</span><b>Mobile Patterns</b><p>Inbox, case decision, nav drawer.</p></a>
     </div>
   </div>
@@ -70,10 +70,10 @@
     <div class="legendbox">
       <div class="row"><span class="wf-c">n</span><div><b>Numbered callout</b> — explained in the Notes list under each board.</div></div>
       <div class="row"><span style="width:34px;height:22px;border:1.4px dashed var(--wf-line-2);border-radius:6px;background:linear-gradient(45deg,transparent 47%,var(--wf-line-2) 47%,var(--wf-line-2) 53%,transparent 53%);background-size:12px 12px;flex:none"></span><div><b>X-box</b> — dynamic region (chart, graph, report body, avatar). Never fake data.</div></div>
-      <div class="row"><span class="wf-night" style="padding:6px 10px;font-size:10px;flex:none">night</span><div><b>Night canvas</b> — the analyst&rsquo;s voice (AI briefs, evidence, blast radius, reports). Dark in both themes.</div></div>
-      <div class="row"><span class="wf-btn primary sm">Primary</span><div><b>Violet</b> appears only where the brand puts it: mark, active nav, primary actions.</div></div>
+      <div class="row"><span class="wf-night" style="padding:6px 10px;font-size:10px;flex:none">panel</span><div><b>Console panel</b> — the analyst&rsquo;s voice (briefs, evidence, blast radius, reports): ink gradient, green hairline, optional HUD corner brackets.</div></div>
+      <div class="row"><span class="wf-btn primary sm">Primary</span><div><b>Signal green</b> appears only where the design puts it: mark, active nav, actions, live status, event markers.</div></div>
       <div class="row"><span class="wf-sev high"><i class="d"></i>HIGH</span><div><b>Severity = dot + label</b> — never color alone.</div></div>
-      <div class="row"><span class="wf-mono">mono</span><div><b>JetBrains Mono</b> — identifiers, numbers, timestamps, machine values.</div></div>
+      <div class="row"><span class="wf-mono">mono</span><div><b>Space Mono</b> — tech labels, identifiers, telemetry, timestamps.</div></div>
     </div>
   </section>
 
@@ -109,11 +109,11 @@
   <section>
     <h2>System rules these wireframes encode</h2>
     <div class="legendbox">
-      <div class="row"><b style="min-width:120px">DUALITY</b><div>Day workspace for working surfaces; night canvas wherever the analyst speaks (briefs, evidence, blast radius, reports). Night stays dark in both themes.</div></div>
+      <div class="row"><b style="min-width:120px">SIGNAL</b><div>Ink canvas everywhere (dark-first); the analyst&rsquo;s voice panels get the console-panel treatment (green hairline, HUD corners). A “day ops” paper variant exists behind the theme toggle; auth + landing are always ink.</div></div>
       <div class="row"><b style="min-width:120px">Loop-first IA</b><div>MAIN nav = Sense → Reason → Decide → Report (Home / Cases / Actions / Reports). Everything else is progressive disclosure in Investigate / Automate / System — never removed.</div></div>
       <div class="row"><b style="min-width:120px">Honesty</b><div>No fabricated metrics, no “NO DATA”. Empty states are hand-written sentences. Missing artifacts say “skipped”.</div></div>
       <div class="row"><b style="min-width:120px">Calm alarm</b><div>Color is alarm — only “waiting on you” warms up. Severity is always dot + label. Record-only vocabulary (“recorded”, never “executed”).</div></div>
-      <div class="row"><b style="min-width:120px">Type</b><div>Sora for brand moments (page titles, case headlines); Inter for UI; JetBrains Mono for identifiers/numbers/timestamps. Fluid clamp() scale.</div></div>
+      <div class="row"><b style="min-width:120px">Type</b><div>DM Sans for everything (bold + tight tracking for display); Space Mono for tech labels, identifiers and telemetry. Fluid clamp() scale, sharp corners (2–4px) everywhere.</div></div>
       <div class="row"><b style="min-width:120px">Components</b><div>Pages compose the shared kit: PageHeader, Card, StatCard, Badge/SeverityBadge/StatusBadge, EmptyState, Modal, ConfirmDialog, Select, Term.</div></div>
     </div>
   </section>
