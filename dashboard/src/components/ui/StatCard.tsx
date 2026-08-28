@@ -40,17 +40,17 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => (
   <Card className={cn("p-5 flex flex-col justify-between gap-3", className)}>
     <div className="flex items-start justify-between gap-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-content-tertiary leading-tight">
+      <p className="tech-label text-content-tertiary leading-tight">
         {label}
       </p>
       {icon && (
-        <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", TONE_ICON[tone])}>
+        <span className={cn("w-9 h-9 rounded-sm flex items-center justify-center shrink-0", TONE_ICON[tone])}>
           {icon}
         </span>
       )}
     </div>
     <div>
-      <p className={cn("text-3xl font-bold tabular-nums leading-none", TONE_TEXT[tone])}>{value}</p>
+      <p className={cn("text-3xl font-bold tabular-nums leading-none tracking-tight", TONE_TEXT[tone])}>{value}</p>
       {hint && <p className="text-xs text-content-tertiary mt-2">{hint}</p>}
     </div>
   </Card>

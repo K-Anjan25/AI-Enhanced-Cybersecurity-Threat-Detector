@@ -194,7 +194,7 @@ const PendingDecisionsDrawer: React.FC = () => {
               close();
               navigate("/feed");
             }}
-            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-brand-gradient text-brand-ink text-sm font-semibold hover:opacity-90 transition shadow-float cursor-pointer"
+            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-sm bg-brand-gradient text-brand-ink text-sm font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition shadow-float cursor-pointer"
           >
             Review & decide <ArrowRight size={15} aria-hidden />
           </button>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · App Shell & Overlays — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="none">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">App Shell &amp; Overlays</span>
+  <span style="opacity:.55">sidebar · topbar · ⌘K command menu · pending drawer · density</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="admin-config.html">← Prev</a>
+    <a href="landing.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip src">Source <code>DashboardLayout/index.tsx</code> · <code>Navbar/index.tsx</code> · <code>CommandMenu.tsx</code> · <code>PendingDecisionsDrawer.tsx</code></span>
+  <span class="chip">Nav IA: MAIN = the analyst loop · INVESTIGATE / AUTOMATE / SYSTEM = progressive disclosure</span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel">A — Shell anatomy (sidebar + topbar + main)</p>
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+        <main class="wf-main">
+          <div class="wf-empty" style="min-height:300px">
+            <b>Page content slot</b>
+            <code>main</code> — every screen in this kit renders here. Density toggle (comfortable / compact) rescales the shell padding + card gaps; collapse button shrinks the sidebar to a 68px icon rail. The shell sits on the ink canvas with the signal grid texture (noctra-canvas).
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">B — Command menu (⌘K / Ctrl+K)</p>
+  <div class="wf-frame" style="padding:20px;background:var(--wf-paper)">
+    <div class="wf-modalwrap">
+      <div class="wf-modal" style="max-width:560px;margin:20px auto">
+        <div class="wf-row"><span class="wf-input" style="flex:1;border-radius:10px">Search commands, cases, scenarios…<span class="wf-c">1</span></span></div>
+        <div class="wf-stack-6" style="margin-top:14px">
+          <div>
+            <p class="wf-overline" style="margin:0 0 6px">Navigate</p>
+            <div class="wf-stack-6">
+              <div class="wf-row between"><span class="wf-muted" style="font-size:12.5px"><i class="ico" style="display:inline-block;width:13px;height:13px;border:1.3px solid #9aa0ac;border-radius:4px;vertical-align:-2px;margin-right:8px"></i>Home <span class="wf-small">Analyst inbox</span></span><span class="wf-mono">↵</span></div>
+              <div class="wf-row between"><span class="wf-muted" style="font-size:12.5px"><i class="ico" style="display:inline-block;width:13px;height:13px;border:1.3px solid #9aa0ac;border-radius:4px;vertical-align:-2px;margin-right:8px"></i>Cases <span class="wf-small">Decision feed</span></span><span class="wf-mono">↓</span></div>
+            </div>
+          </div>
+          <div>
+            <p class="wf-overline" style="margin:0 0 6px">Cases</p>
+            <div class="wf-stack-6">
+              <div class="wf-row between"><span class="wf-mono" style="font-size:12px">Case #41 — Credential leak detected…</span><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></div>
+              <div class="wf-row between"><span class="wf-mono" style="font-size:12px">Case #40 — Phishing outbreak…</span><span class="wf-sev medium"><i class="d"></i>MEDIUM</span></div>
+            </div>
+          </div>
+          <div>
+            <p class="wf-overline" style="margin:0 0 6px">Actions</p>
+            <div class="wf-stack-6">
+              <div class="wf-row between"><span class="wf-muted" style="font-size:12.5px">Simulate: Credential leak (T1078)</span><span class="wf-mono">↵</span></div>
+              <div class="wf-row between"><span class="wf-muted" style="font-size:12.5px">Simulate: Data exfiltration (T1048)</span><span class="wf-mono"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">C — Pending Decisions drawer (mini-cart pattern)</p>
+  <div class="wf-frame" style="padding:0;background:var(--wf-paper);display:flex">
+    <div style="flex:1;padding:20px">
+      <div class="wf-empty" style="min-height:340px"><b>Dimmed page beneath the overlay</b>Everything below the scrim stays where it is — the drawer never navigates away.</div>
+    </div>
+    <div class="wf-drawer">
+      <div class="wf-row between">
+        <b style="font-family:var(--wf-font-display);font-size:14px">Pending decisions</b>
+        <span class="wf-small">Close ×</span>
+      </div>
+      <p class="wf-small" style="margin:4px 0 14px">2 cases waiting on you</p>
+      <div class="wf-stack-6">
+        <div class="wf-card" style="background:var(--wf-subtle);box-shadow:none">
+          <div class="wf-row between"><span class="wf-mono">Case #41</span><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></div>
+          <p style="margin:6px 0 8px;font-size:12.5px;font-weight:600">Credential leak detected on billing-service</p>
+          <div class="wf-row"><span class="wf-btn secondary sm">Decline</span><span class="wf-btn primary sm">Approve</span><span class="wf-c">2</span></div>
+        </div>
+        <div class="wf-card" style="background:var(--wf-subtle);box-shadow:none">
+          <div class="wf-row between"><span class="wf-mono">Case #40</span><span class="wf-sev medium"><i class="d"></i>MEDIUM</span></div>
+          <p style="margin:6px 0 8px;font-size:12.5px;font-weight:600">Phishing outbreak — finance team mailbox</p>
+          <div class="wf-row"><span class="wf-btn secondary sm">Decline</span><span class="wf-btn primary sm">Approve</span></div>
+        </div>
+      </div>
+      <div style="margin-top:16px"><span class="wf-btn primary" style="width:100%;justify-content:center">Open the case →</span></div>
+      <p class="wf-small" style="margin-top:12px;text-align:center">Empty state: “Nothing needs you right now.”<span class="wf-c">3</span></p>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">D — Notifications popover</p>
+  <div class="wf-frame" style="padding:20px;background:var(--wf-paper)">
+    <div class="wf-card" style="max-width:360px;margin-left:auto">
+      <b style="font-size:13px">Notifications</b>
+      <div class="wf-stack-6" style="margin-top:10px">
+        <div class="wf-row between"><span class="wf-muted" style="font-size:12px">Case #41 needs your decision</span><span class="wf-mono">09:12</span></div>
+        <div class="wf-row between"><span class="wf-muted" style="font-size:12px">Connector sync finished — GuardDuty</span><span class="wf-mono">09:05</span></div>
+        <div class="wf-row between"><span class="wf-muted" style="font-size:12px">Report generated — case #39</span><span class="wf-mono">Aug 26</span></div>
+      </div>
+      <p class="wf-small" style="margin-top:10px">Polls <code>/analyst/notifications</code> every 60s; unread = newer than last-opened timestamp.</p>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Command menu</b> (⌘K) — fuzzy filter over Navigate (11 routes) / Cases (live feed) / Actions (4 simulate scenarios). ⌘K opens from anywhere; also opened from the topbar search chip.</div></li>
+    <li><span class="wf-c">2</span><div><b>Pending drawer</b> — the WooCommerce mini-cart pattern: always-visible count pill on the “Review decisions” button, slide-out drawer with quick approve/decline and a single “open the case” CTA. Count stays in sync via the <code>noctra:pending-changed</code> event bus.</div></li>
+    <li><span class="wf-c">3</span><div><b>Honest empty states</b> are a system rule: “Nothing needs you right now.” — never “NO DATA”.</div></li>
+    <li><span class="wf-c">4</span><div><b>Accessibility</b> — skip-to-content link, aria-current on the active nav item, Escape closes overlays, focus-visible ring everywhere, reduced-motion respected.</div></li>
+    <li><span class="wf-c">5</span><div><b>Mobile</b> — sidebar becomes an overlay drawer (backdrop + Close ×); route changes close it. See the Mobile wireframe.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

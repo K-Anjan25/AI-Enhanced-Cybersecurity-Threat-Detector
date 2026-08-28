@@ -3,7 +3,7 @@ import { useFormik } from "formik";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { Camera } from "lucide-react";
 import Button from "../../../components/ui/Button";
-import { Spinner } from "../../../components/ui";
+import { PageHeader, Spinner } from "../../../components/ui";
 import TextInput from "../../../components/common/TextInput";
 import { profileSchema, initialProfileValues } from "../../../validators/profileValidator";
 import userApi from "../../../api/userApi";
@@ -151,13 +151,11 @@ export default function Profile(): React.ReactElement {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6 text-content-primary">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Analyst Profile</h1>
-        <p className="text-content-secondary text-sm mt-1">
-          Update your personal details, profile settings, and security credentials.
-        </p>
-      </div>
+    <div className="max-w-4xl w-full mx-auto space-y-6 text-content-primary">
+      <PageHeader
+        title="Analyst Profile"
+        description="Update your personal details, profile settings, and security credentials."
+      />
 
       {/* Profile Details Form */}
       <div className="bg-app-surface border border-line-subtle rounded-2xl p-6 shadow-card space-y-6">

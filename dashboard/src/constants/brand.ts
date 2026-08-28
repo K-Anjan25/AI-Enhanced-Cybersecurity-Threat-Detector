@@ -10,24 +10,24 @@
 
 export const BRAND_NAME = "NOCTRA" as const;
 export const BRAND_WORDMARK = "NOCTRA" as const;
-export const BRAND_TAGLINE = "Your autonomous security analyst." as const;
-export const BRAND_HERO_LINE = "The analyst your team doesn't have." as const;
+export const BRAND_TAGLINE = "Threat intelligence, always on." as const;
+export const BRAND_HERO_LINE = "See the threat before it sees you." as const;
 export const BRAND_POSITIONING =
-  "NOCTRA is the security analyst a small company employs: it watches continuously, explains plainly, proposes one reversible action, and records every decision." as const;
+  "NOCTRA continuously maps your attack surface, detects what matters, and turns fragmented signals into decisive action." as const;
 export const BRAND_DOMAIN_HINT = "noctra.ai" as const;
 
 /** Exact logo gradient (user-locked brand spec §12). Used on the mark, hero
  *  accent and primary actions only — never decorative noise. */
 export const BRAND_GRADIENT = {
-  from: "#6C5CE7", // deep violet (top-left)
-  to: "#9D7CFF", // lavender (bottom-right)
-  sparkle: "#B18CFF",
+  from: "#a6ff3f", // signal green (flat — the accent is never a gradient)
+  to: "#a6ff3f",
+  sparkle: "#d6ff8c",
 } as const;
 
 export const BRAND_TYPOGRAPHY = {
-  display: "Sora", // brand moments: heroes, page titles, case headlines
-  sans: "Inter", // UI and body — the working surface
-  mono: "JetBrains Mono", // identifiers, numbers, severity metadata, timestamps
+  display: "DM Sans", // heroes, page titles, case headlines (bold + tight)
+  sans: "DM Sans", // UI and body — the working surface
+  mono: "Space Mono", // tech labels, identifiers, telemetry, timestamps
 } as const;
 
 /**
@@ -55,21 +55,21 @@ export const BRAND_TYPE_SCALE = {
 
 /** Brand palette — ink foundation + periwinkle accent (see docs/noctra-redesign-spec.md §16). */
 export const BRAND_PALETTE = {
-  voidInk: "#08090d",
-  bgInk: "#0c0e14",
-  surface: "#14161d",
-  canvas: "#10131c", // editorial canvas panels (NOCTRA's voice)
-  accentPrimary: "#9d7cff", // PRIMARY — brand + primary action (lavender, gradient end)
-  accentSecondary: "#c9c4ff", // hover / bright accents on dark
-  accentDeep: "#6c5ce7", // gradient start — accent text/links on light surfaces
-  accentStar: "#b18cff", // insight sparkle
-  badgeInk: "#0b0e1a", // app-icon badge background
+  voidInk: "#070b0f", // ink canvas
+  bgInk: "#070b0f",
+  surface: "#0d151b", // console panel
+  canvas: "#0d151b", // analyst-voice panels (console-panel treatment)
+  accentPrimary: "#a6ff3f", // signal green — brand + primary action
+  accentSecondary: "#d6ff8c", // hover / bright accents on ink
+  accentDeep: "#73bf19", // signal-dark — accent text/links on light surfaces
+  accentStar: "#d6ff8c", // insight sparkle
+  badgeInk: "#071006", // text on signal fills
   success: "#4cc38a",
   warning: "#e5a54b",
   critical: "#f26d6d",
-  contentPrimary: "#eceef4",
-  contentSecondary: "#a6acbf",
-  contentTertiary: "#6e7487",
+  contentPrimary: "#e8f0ed",
+  contentSecondary: "#aebdc0",
+  contentTertiary: "#8fa2a8",
 } as const;
 
 /** Severity ramp — always rendered as dot + label, never color alone. */
@@ -82,7 +82,7 @@ export const BRAND_SEVERITY = {
 
 /** Categorical data-visualization palette. */
 export const BRAND_DATAVIZ = [
-  "#8b7cf6",
+  "#a6ff3f",
   "#4fb8a8",
   "#e5a54b",
   "#e77a8b",

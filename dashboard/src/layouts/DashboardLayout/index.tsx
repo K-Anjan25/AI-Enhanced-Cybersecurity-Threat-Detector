@@ -151,10 +151,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         key={item.name}
         to={item.path}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-semibold transition ${
+        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-semibold transition border-l-2 ${
           active
-            ? "bg-brand-gradient text-brand-ink shadow-float"
-            : "text-content-secondary hover:bg-app-subtle hover:text-content-primary"
+            ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
+            : "border-transparent text-content-secondary hover:bg-app-subtle hover:text-accent-primary"
         }`}
       >
         <Icon size={17} className="shrink-0" aria-hidden />
@@ -168,7 +168,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
   return (
     <div
-      className="h-screen w-screen bg-app-bg text-content-primary flex overflow-hidden font-sans"
+      className="noctra-canvas h-screen w-screen text-content-primary flex overflow-hidden font-sans"
       data-density={density}
     >
       <a
@@ -240,7 +240,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             </button>
             <p
               className={cn(
-                "px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary",
+                "px-3.5 pb-1.5 tech-label text-content-tertiary",
                 !isSidebarOpen && "text-center"
               )}
             >
@@ -249,14 +249,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
             {MAIN_NAV_ITEMS.map(renderItem)}
 
             <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
-              <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
+              <p className={cn("px-3.5 pb-1.5 tech-label text-content-tertiary", !isSidebarOpen && "text-center")}>
                 {sectionLabel("Investigate")}
               </p>
               {INVESTIGATE_NAV_ITEMS.map(renderItem)}
             </div>
 
             <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
-              <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
+              <p className={cn("px-3.5 pb-1.5 tech-label text-content-tertiary", !isSidebarOpen && "text-center")}>
                 {sectionLabel("Automate")}
               </p>
               {adminVisible ? (
@@ -268,7 +268,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
 
             {adminVisible && (
               <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
-                <p className={cn("px-3.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-content-tertiary", !isSidebarOpen && "text-center")}>
+                <p className={cn("px-3.5 pb-1.5 tech-label text-content-tertiary", !isSidebarOpen && "text-center")}>
                   {sectionLabel("System")}
                 </p>
                 {SYSTEM_NAV_ITEMS.map(renderItem)}

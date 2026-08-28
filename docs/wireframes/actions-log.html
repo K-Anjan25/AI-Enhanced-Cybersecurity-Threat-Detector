@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Actions Log — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="actions">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Actions Log</span>
+  <span style="opacity:.55">the audit trail of what was recorded</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="case-workspace.html">← Prev</a>
+    <a href="reports.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/actions</code></span>
+  <span class="chip src">Source <code>src/features/actions/pages/ActionsPage.tsx</code></span>
+  <span class="chip api">GET <code>/analyst/feed</code> (approved/reverted cases joined to SOAR actions)</span>
+  <span class="chip">State: 12 recorded actions</span>
+</div>
+
+<div class="wf-canvas">
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <div class="wf-pagehead">
+            <div>
+              <h1>Actions Log</h1>
+              <p class="desc">Every containment action NOCTRA has recorded for your review.</p>
+            </div>
+          </div>
+
+          <!-- Filter bar + record-only trust strip -->
+          <div class="wf-card wf-row between wrap" style="gap:12px">
+            <span class="wf-input" style="flex:1;min-width:220px">⌕ Filter by action type, target, or case title…</span>
+            <span class="wf-row wf-small" style="gap:6px"><span style="color:var(--wf-ok)">⛨</span> Record-only SOAR · every action reversible<span class="wf-c">1</span></span>
+          </div>
+
+          <div class="wf-card bare">
+            <table class="wf-table">
+              <thead>
+                <tr>
+                  <th>Case &amp; Title</th>
+                  <th>Action Type</th>
+                  <th>Target Asset</th>
+                  <th>SOAR ID</th>
+                  <th>Status</th>
+                  <th style="text-align:right">Reversibility</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="strong">#41 · Credential leak…<br/><span class="wf-small">billing-service</span></td>
+                  <td class="mono" style="color:var(--wf-accent);font-weight:700">REVOKE_CREDENTIALS</td>
+                  <td class="mono">svc-billing</td>
+                  <td class="mono">#118</td>
+                  <td><span class="wf-badge ok">Recorded</span></td>
+                  <td style="text-align:right"><span class="wf-badge">Undo path</span><span class="wf-c">2</span></td>
+                </tr>
+                <tr>
+                  <td class="strong">#37 · Large upload to unknown bucket</td>
+                  <td class="mono" style="color:var(--wf-accent);font-weight:700">BLOCK_EGRESS</td>
+                  <td class="mono">db-02</td>
+                  <td class="mono">#104</td>
+                  <td><span class="wf-badge">Reverted</span></td>
+                  <td style="text-align:right"><span class="wf-badge">Reverted</span></td>
+                </tr>
+                <tr>
+                  <td class="strong">#39 · Beaconing to unclassified domain</td>
+                  <td class="mono" style="color:var(--wf-accent);font-weight:700">ISOLATE_HOST</td>
+                  <td class="mono">db-02</td>
+                  <td class="mono">#096</td>
+                  <td><span class="wf-badge ok">Recorded</span></td>
+                  <td style="text-align:right"><span class="wf-badge">Undo path</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="wf-pagination"><span>12 recorded actions</span><span class="pages"><span class="pg on">1</span><span class="pg">2</span></span></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Trust strip</b> — persistent reminder that SOAR is <em>record-only</em> and every action is reversible. This vocabulary is enforced repo-wide (terminology playbook).</div></li>
+    <li><span class="wf-c">2</span><div><b>Reversibility column</b> — surfaces the undo path (or the fact the action was already reverted). Mono for identifiers, per typography rules.</div></li>
+    <li><span class="wf-c">3</span><div><b>Client-side filter</b> over action type / target / case title; empty state: “No recorded actions”.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

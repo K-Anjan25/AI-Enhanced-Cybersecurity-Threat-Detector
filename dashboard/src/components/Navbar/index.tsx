@@ -179,7 +179,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout, onOpenNav }) => {
           type="button"
           onClick={() => emit(EVENTS.OPEN_PENDING_DRAWER)}
           aria-label={`Review pending decisions${pendingCount ? ` — ${pendingCount} pending` : ""}`}
-          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-gradient text-brand-ink text-xs font-semibold hover:opacity-90 transition shadow-float cursor-pointer shrink-0"
+          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-sm bg-brand-gradient text-brand-ink text-xs font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition shadow-float cursor-pointer shrink-0"
         >
           Review decisions
           <span className="inline-flex items-center gap-1">
