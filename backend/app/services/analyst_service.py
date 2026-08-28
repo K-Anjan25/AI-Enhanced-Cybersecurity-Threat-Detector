@@ -347,69 +347,66 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
 
 
 def get_connectors_status() -> list[dict]:
-    """Return status and sync telemetry for integrated security connectors."""
+    """The connector catalogue — the sources NOCTRA is built to ingest from.
+
+    Honest status: **no provider is contacted in this deployment.** Every row
+    therefore reports `live: False` / `status: "not_connected"`, and carries no
+    telemetry — `last_sync`, `assets_monitored` and `latency_ms` are `None`
+    until a source is genuinely wired up, at which point they hold real values
+    read from that source. The UI renders "—" for `None` rather than showing a
+    number that would be a guess.
+    """
+    catalogue = [
+        ("okta", "Okta Identity Cloud", "Identity"),
+        ("sentinel", "CrowdStrike / Sentinel EDR", "Endpoint"),
+        ("guardduty", "AWS GuardDuty & IAM Audit", "Cloud Security"),
+        ("cloudflare", "Cloudflare Edge WAF", "Network & Edge"),
+    ]
     return [
         {
-            "id": "okta",
-            "name": "Okta Identity Cloud",
-            "category": "Identity",
-            "status": "connected",
-            "last_sync": "1 minute ago",
-            "assets_monitored": 1240,
-            "latency_ms": 42,
-        },
-        {
-            "id": "sentinel",
-            "name": "CrowdStrike / Sentinel EDR",
-            "category": "Endpoint",
-            "status": "connected",
-            "last_sync": "Just now",
-            "assets_monitored": 450,
-            "latency_ms": 18,
-        },
-        {
-            "id": "guardduty",
-            "name": "AWS GuardDuty & IAM Audit",
-            "category": "Cloud Security",
-            "status": "connected",
-            "last_sync": "3 minutes ago",
-            "assets_monitored": 18,
-            "latency_ms": 65,
-        },
-        {
-            "id": "cloudflare",
-            "name": "Cloudflare Edge WAF",
-            "category": "Network & Edge",
-            "status": "connected",
-            "last_sync": "Just now",
-            "assets_monitored": 6,
-            "latency_ms": 12,
-        },
+            "id": connector_id,
+            "name": name,
+            "category": category,
+            "status": "not_connected",
+            "live": False,
+            "last_sync": None,
+            "assets_monitored": None,
+            "latency_ms": None,
+        }
+        for connector_id, name, category in catalogue
     ]
 
 
 def sync_connector(db, connector_id: str, actor: str) -> dict:
-    """Trigger on-demand sync for a security connector."""
+    """Record an on-demand sync request for a security connector.
+
+    Nothing is fetched: no provider credentials or endpoints are configured in
+    this deployment, so the honest outcome is "request recorded", not "synced".
+    The audit entry still lands, because "someone asked for a sync" is a real
+    event worth recording.
+    """
     connectors = {c["id"]: c for c in get_connectors_status()}
     if connector_id not in connectors:
         raise ValueError(f"Unknown connector ID: {connector_id}")
 
     conn = connectors[connector_id]
-    conn["last_sync"] = "Just now"
 
     create_audit_log(
         db,
-        action="CONNECTOR_SYNC_TRIGGERED",
+        action="CONNECTOR_SYNC_REQUESTED",
         actor=actor,
         resource=f"connector:{connector_id}",
-        details=f"Synced {conn['name']}",
+        details=f"Sync requested for {conn['name']} (no live source configured)",
     )
 
     return {
-        "status": "success",
+        "status": "recorded",
         "connector_id": connector_id,
-        "message": f"Successfully synchronized {conn['name']}",
-        "assets_monitored": conn["assets_monitored"],
+        "message": (
+            f"Sync request recorded for {conn['name']}. Live connector sync is "
+            f"not enabled in this deployment — no data was fetched."
+        ),
+        "live": conn["live"],
     }
 
 

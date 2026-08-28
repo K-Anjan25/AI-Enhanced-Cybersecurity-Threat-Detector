@@ -127,8 +127,16 @@ def test_cookie_auth_flow(client, db_session):
 
     original_cookie = settings.COOKIE_AUTH
     original_secure = settings.COOKIE_SECURE
+    original_samesite = settings.COOKIE_SAMESITE
+    original_partitioned = settings.COOKIE_PARTITIONED
     settings.COOKIE_AUTH = True
     settings.COOKIE_SECURE = False  # test client runs over http
+    # Override every cookie setting, not just the two this test cares about:
+    # a `SameSite=None` cookie without `Secure` is dropped by the client, so a
+    # stray local `.env` (COOKIE_SAMESITE=none, as the https preview needs)
+    # would silently break this test otherwise.
+    settings.COOKIE_SAMESITE = "lax"
+    settings.COOKIE_PARTITIONED = False
     try:
         client.post(
             "/api/v1/register",
@@ -153,6 +161,8 @@ def test_cookie_auth_flow(client, db_session):
     finally:
         settings.COOKIE_AUTH = original_cookie
         settings.COOKIE_SECURE = original_secure
+        settings.COOKIE_SAMESITE = original_samesite
+        settings.COOKIE_PARTITIONED = original_partitioned
 
 
 def test_login_rate_limited(client, db_session):

@@ -120,8 +120,11 @@ export interface Connector {
   id: string;
   name: string;
   category: string;
-  status: "connected" | "syncing" | "error";
-  last_sync: string;
-  assets_monitored: number;
-  latency_ms: number;
+  /** `not_connected` = no live source is wired for this connector yet. */
+  status: "connected" | "syncing" | "error" | "not_connected";
+  /** `null` until a source is actually synced — the UI shows "—", never a guess. */
+  last_sync: string | null;
+  assets_monitored: number | null;
+  latency_ms: number | null;
+  live?: boolean;
 }

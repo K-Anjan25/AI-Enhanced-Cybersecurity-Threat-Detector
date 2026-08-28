@@ -106,13 +106,22 @@ def test_connectors_status_and_sync(db_session, org):
     assert "okta" in ids
     assert "sentinel" in ids
 
-    # Sync a connector
+    # The catalogue states its own honesty: no provider is contacted, so no row
+    # may claim to be connected or display telemetry it does not have.
+    for conn in connectors:
+        assert conn["live"] is False
+        assert conn["status"] == "not_connected"
+        assert conn["assets_monitored"] is None
+        assert conn["latency_ms"] is None
+
+    # Syncing records a request — it does not claim to have synchronized.
     sync_res = analyst_service.sync_connector(db_session, "okta", actor="analyst1")
-    assert sync_res["status"] == "success"
+    assert sync_res["status"] == "recorded"
     assert "Okta Identity Cloud" in sync_res["message"]
+    assert "no data was fetched" in sync_res["message"]
 
     actions = {a.action for a in db_session.query(AuditLog).all()}
-    assert "CONNECTOR_SYNC_TRIGGERED" in actions
+    assert "CONNECTOR_SYNC_REQUESTED" in actions
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +193,7 @@ def test_analyst_http_flow_including_chat_and_connectors(client, auth_headers):
 
     sync_resp = client.post("/api/v1/analyst/connectors/sentinel/sync", headers=auth_headers)
     assert sync_resp.status_code == 200
-    assert sync_resp.json()["status"] == "success"
+    assert sync_resp.json()["status"] == "recorded"
 
     # 4. Approve
     approve = client.post(f"/api/v1/analyst/cases/{case_id}/approve", headers=auth_headers)

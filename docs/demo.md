@@ -43,9 +43,16 @@ cd dashboard && npm install && npm start        # Vite proxies /api → :8000
 | Password | `DemoPass123!` |
 | Role | `ANALYST` |
 
-Created idempotently by `backend/seed_preview.py`. Without seeding, register your
+Created idempotently by `backend/seed_preview.py` (it also creates
+`admin / admin@noctra.ai / AdminPass123!` for §7). Without seeding, register your
 own account at `/register` — the Inbox will be empty until you fire a scenario
 (§3), which is a perfectly good cold-start story.
+
+**What a fresh seed gives you** (verified 2026-08-28): 1 org · `demo` + `admin`
+users · ~49 alerts spread over 8 days · 10 entities / 9 links · 3 ABAC roles ·
+engine settings. It gives you **no** analyst cases (fire one in §3), and **no**
+playbooks, detection rules or reputation entries — those three screens show their
+empty states on a fresh seed, which is the honest state, not a bug.
 
 ### Say it right — the four language rules
 
@@ -218,29 +225,35 @@ placeholder or `NaN`/`Invalid Date` values anywhere on screen.
 All endpoints are relative to the API base `/api/v1` (`dashboard/src/api/axios.ts`);
 in compose, nginx on `:3000` proxies them to the backend on `:8000`.
 
+**Executed 2026-08-28** against the live stack (SQLite seed, `demo` + `admin`,
+Vite proxy): **40/40 checks passed**, including RBAC (an ANALYST token gets 403
+on `/admin/orgs`, `/admin/roles`, `/audit-logs`). Re-run it after any page
+change — the three rows that fail on a *fresh* seed (playbooks, rules,
+reputation) fail by design, and are labelled below.
+
 | # | Route | Source file | Endpoints | Expected state |
 | --- | --- | --- | --- | --- |
 | 1 | `/welcome` | `features/landing/pages/LandingPage.tsx` | — (static) | Hero + stats band + console demo; Start/Reset scan works; no fabricated metrics |
 | 2 | `/login`, `/register`, `/reset-password` | `features/auth/**`, `store/userActions.ts` | `POST /login`, `POST /register`, `GET /me`, `POST /refresh`, `POST /logout`, `POST /forgot-password`, `POST /reset-password` | Ink canvas, no theme toggle; login sets httpOnly cookies (`COOKIE_AUTH=true`); 401 triggers single-flight refresh then clean logout |
-| 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error |
+| 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error. Connector cards read `not_connected` + `—`; Sync returns `status: "recorded"` and the UI shows the server's message verbatim |
 | 4 | `/feed` | `features/cases/pages/FeedPage.tsx` | `GET /analyst/feed` | Paginated decision feed, newest first; pending/approved/declined/reverted badges correct |
 | 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted` |
 | 6 | `/actions` | `features/actions/pages/ActionsPage.tsx` | `GET /analyst/feed`; `POST /analyst/cases/{id}/revert` | Only `approved`/`reverted` cases; filter by action type/target/case; record-only + reversible stated |
 | 7 | `/reports` | `features/reports/pages/ReportsPage.tsx` | `GET /analyst/feed`, `/analyst/cases/{id}/report` | Report downloads as `noctra-report-case-{id}.md`; names the reasoning source |
 | 8 | `/alerts` | `features/alerts/pages/ThreatAlertsPage.tsx` → `AlertList` | `GET /alerts`, `/save-scanned-alerts` | Search + severity filter + MITRE mapping; detail modal links to any case opened from the alert |
-| 9 | `/entities` | `features/entities/pages/EntitiesPage.tsx`, `components/EntityGraphView.tsx` | `GET /entities`, `GET /entities/summary`, `GET /entities/{id}/graph`, `GET /entities/path`, `POST /entities/{id}/reputation` | Graph summary (10 nodes / 9 links when seeded); zoom/pan/select; path finder returns real hops; risk values guarded |
+| 9 | `/entities` | `features/entities/pages/EntitiesPage.tsx`, `components/EntityGraphView.tsx` | `GET /entities`, `GET /entities/summary`, `GET /entities/{id}/graph`, `GET /entities/path`, `POST /entities/{id}/reputation` | Fresh seed = **10 nodes / 9 links**; firing a scenario adds entities, so the count grows during a demo (18/15 after two scenarios) — expected, not a bug. Zoom/pan/select; path finder returns real hops; risk values guarded |
 | 10 | `/analytics` | `features/analytics/pages/AIAnalyticsPage.tsx` | `GET /analytics/overview`, `/analytics/trends`, `/analytics/top-threats`, `/ml/benchmark` | Charts render with `role="img"` + labels; no divide-by-zero bar widths |
 | 11 | `/dashboard` | `features/dashboard/pages/DashboardOverviewPage.tsx` | `GET /analytics/overview`, `/analytics/trends`, `/analytics/top-threats` | SOC Cockpit header via shared `PageHeader`; top-threats bars bounded by computed max |
 | 12 | `/incidents` | `features/incidents/pages/IncidentsPage.tsx`, `components/CreateIncidentModal.tsx` | `GET /cases`, `POST /cases`, `PATCH /cases/{id}` | Manual incident CRUD works |
 | 13 | `/logs` | `features/system/pages/LogHistoryPage.tsx` | `POST /upload-logs`, `GET /logs/history`, `GET /uploads/{batchId}` | Upload → scan → save; history lists batches |
-| 14 | `/soar` | `features/soar/pages/SoarPage.tsx` | `GET /soar/actions`, `POST /soar/evaluate`, `POST /soar/trigger/{alertId}`, `GET/POST /soar/playbooks`, `PATCH/DELETE /soar/playbooks/{id}` | Playbooks list (rule selector loads — rules capped at 100); dry-run evaluation returns matches; action records present |
+| 14 | `/soar` | `features/soar/pages/SoarPage.tsx` | `GET /soar/actions`, `POST /soar/evaluate`, `POST /soar/trigger/{alertId}`, `GET/POST /soar/playbooks`, `PATCH/DELETE /soar/playbooks/{id}` | Dry-run evaluation returns matches; action records present once a decision is approved. **Playbooks are empty on a fresh seed** — the empty state is the pass condition; create one live if you want to show CRUD |
 | 15 | `/profile`, `/account` | `features/account/pages/Profile.tsx`, `components/Account.tsx` | `GET /user/profile`, `PUT /user/profile`, `POST /user/profile/image`, `PUT /user/updatePassword` | Avatar upload + profile + password update |
 | 16 | `/admin` | `features/admin/pages/AdminDashboard.tsx` | `GET /admin/orgs`, `GET /users`, `GET /rules` | Tiles + metrics on shared components |
 | 17 | `/admin/users` | `features/admin/pages/AdminUsers.tsx` | `GET /admin/orgs`, `GET/POST /users`, `PATCH/DELETE /users/{id}` | Roster create/edit/delete |
 | 18 | `/admin/tenants` | `features/admin/pages/TenantsPage.tsx` | `GET /admin/orgs` | Tenant list |
 | 19 | `/admin/roles` | `features/admin/pages/AccessRolesPage.tsx` | `GET /admin/roles` | ABAC role × permission matrix |
-| 20 | `/admin/rules` | `features/admin/pages/RulesPage.tsx` | `GET/POST /rules`, `PUT/DELETE /rules/{id}` | Detection-rule CRUD |
-| 21 | `/admin/reputation` | `features/admin/pages/ReputationPage.tsx` | `GET/POST /reputation`, `POST /reputation/{ip}/block`, `.../unblock` | IP reputation CRUD + block/unblock |
+| 20 | `/admin/rules` | `features/admin/pages/RulesPage.tsx` | `GET/POST /rules`, `PUT/DELETE /rules/{id}` | Detection-rule CRUD. **Empty on a fresh seed** — empty state is the pass condition |
+| 21 | `/admin/reputation` | `features/admin/pages/ReputationPage.tsx` | `GET/POST /reputation`, `POST /reputation/{ip}/block`, `.../unblock` | IP reputation CRUD + block/unblock. **Empty on a fresh seed** |
 | 22 | `/admin/engine-settings` | `features/admin/pages/EngineSettingsPage.tsx` | `GET/PUT /engine/settings` | Engine settings persist |
 | 23 | `/admin/system-logs` | `features/admin/pages/SystemLogsPage.tsx` | `GET /audit-logs` | Append-only audit trail; decision + chat + error entries visible |
 | 24 | Shell (all routes) | `layouts/DashboardLayout`, `components/CommandMenu.tsx`, `Navbar`, `OnboardingChecklist` | `GET /analyst/notifications`, `GET /me` | ⌘K menu (Navigate · Cases · Actions); notification bell shows real pending count; sidebar is a drawer below `lg`; skip-link + `main#main-content` present; onboarding steps derive from real data |
@@ -266,9 +279,17 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 Honest gaps are better than surprise gaps. As of this writing:
 
-- **Connectors** are a status surface with a sync action
-  (`POST /analyst/connectors/{id}/sync`); there is no live third-party sync
-  against Okta / CrowdStrike / GuardDuty / Cloudflare yet.
+- **Connectors are a catalogue, not live integrations.** The four rows (Okta,
+  CrowdStrike/Sentinel, GuardDuty, Cloudflare) come from
+  `analyst_service.get_connectors_status()` and no provider is contacted: each
+  reports `status: "not_connected"`, `live: false`, and `null` for
+  `assets_monitored` / `latency_ms` / `last_sync` — the UI renders "—" rather
+  than a number it doesn't have. **Sync is honest by design**: it returns
+  `status: "recorded"` with the message *"Sync request recorded — live
+  connector sync is not enabled in this deployment, no data was fetched"*,
+  writes an audit entry, and the UI shows that message verbatim instead of a
+  fake "Just now". Say: *"this is the connector catalogue — wiring live sources
+  is the next integration."*
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.

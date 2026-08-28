@@ -17,6 +17,7 @@ import OnboardingChecklist, { type OnboardingStep } from "../../../components/On
 import AnalystApi from "../../../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
+import { showSuccess } from "../../../utils/showSuccess";
 
 /**
  * Home — the Analyst Inbox (spec §7, §21).
@@ -43,14 +44,20 @@ const NODE_ICON: Record<string, typeof Server> = {
   hash: AppWindow,
 };
 
-const connectorTone = (status: Connector["status"]): "success" | "warning" | "critical" => {
+/** "Not connected" is a fact about this deployment, not an error — so it
+ *  renders neutral, not red. Red is reserved for a real sync failure. */
+const connectorTone = (
+  status: Connector["status"]
+): "success" | "warning" | "critical" | "neutral" => {
   switch (status) {
     case "connected":
       return "success";
     case "syncing":
       return "warning";
-    default:
+    case "error":
       return "critical";
+    default:
+      return "neutral";
   }
 };
 
@@ -106,9 +113,15 @@ const BriefPage: React.FC = () => {
   const handleSyncConnector = async (id: string) => {
     setSyncingId(id);
     try {
-      await AnalystApi.syncConnector(id);
+      const res = await AnalystApi.syncConnector(id);
+      // Surface the server's own wording. It says what actually happened
+      // ("request recorded — no data was fetched") — we must not overwrite it
+      // with a fake "Just now" that implies a sync occurred.
+      showSuccess(res.message);
       setConnectors((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, last_sync: "Just now" } : c))
+        prev.map((c) =>
+          c.id === id && res.last_sync ? { ...c, last_sync: res.last_sync } : c
+        )
       );
     } catch (err: any) {
       setError(getApiError(err, "Connector sync failed"));
@@ -431,7 +444,8 @@ const BriefPage: React.FC = () => {
               <ShieldCheck size={16} className="text-accent-primary" /> Integrated security tooling
             </h2>
             <p className="text-xs text-content-tertiary mt-0.5">
-              Telemetry sources feeding NOCTRA's analysis.
+              Telemetry sources NOCTRA is built to ingest from. No source is
+              wired in this deployment — counts appear once one is connected.
             </p>
           </div>
         </div>
@@ -454,15 +468,24 @@ const BriefPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-content-secondary border-t border-line-subtle pt-2">
-                  <span>{conn.assets_monitored} assets</span>
+                  <span>
+                    {conn.assets_monitored != null
+                      ? `${conn.assets_monitored} assets`
+                      : "—"}
+                  </span>
                   <button
                     type="button"
                     onClick={() => handleSyncConnector(conn.id)}
                     disabled={syncingId === conn.id}
+                    title={
+                      conn.live === false
+                        ? "No live source configured — syncing records a request only"
+                        : "Sync now"
+                    }
                     className="flex items-center gap-1 text-accent-primary font-semibold hover:underline text-[11px]"
                   >
                     <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
-                    {conn.last_sync}
+                    {conn.last_sync ?? "Sync"}
                   </button>
                 </div>
               </div>
