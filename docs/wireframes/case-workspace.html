@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Case Workspace — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="feed">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Case Workspace — the decision screen</span>
+  <span style="opacity:.55">sense → reason → explain → decide → record → report</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="cases-feed.html">← Prev</a>
+    <a href="actions-log.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/case/:id</code></span>
+  <span class="chip src">Source <code>src/features/cases/pages/CasePage.tsx</code></span>
+  <span class="chip api">GET <code>/analyst/cases/:id</code> · <code>/timeline</code></span>
+  <span class="chip api">POST <code>/analyst/cases/:id/approve|decline|revert</code> · <code>/chat</code></span>
+  <span class="chip">State: pending case #41 · board A = pending, board B = post-decision</span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel">A — Case workspace (decision pending)</p>
+  <div class="wf-frame">
+    <div class="wf-shell">
+      <aside class="wf-sidebar" data-sidebar></aside>
+      <div class="wf-body">
+        <header class="wf-topbar" data-topbar></header>
+
+        <main class="wf-main">
+          <!-- PageHeader: headline as the title, crumbs back to feed -->
+          <div class="wf-pagehead">
+            <div>
+              <p class="crumbs">← Decisions / Case #41</p>
+              <h1>Credential leak detected on billing-service <span class="wf-sev critical"><i class="d"></i>CRITICAL</span><span class="wf-c">1</span></h1>
+            </div>
+            <div class="actions"><span class="wf-badge warn">Awaiting you</span></div>
+          </div>
+
+          <!-- NOCTRA's assessment (day card, inferred) -->
+          <div class="wf-card">
+            <div class="wf-row between">
+              <span class="wf-overline" style="margin:0">NOCTRA&rsquo;s assessment</span>
+              <span class="wf-mono" style="border:1px solid var(--wf-line);border-radius:6px;padding:2px 8px">INFERRED — NOT CONFIRMED FACT</span>
+            </div>
+            <p class="wf-overline" style="margin-top:14px">What happened</p>
+            <p class="wf-muted" style="margin:0;font-weight:600;color:var(--wf-ink)">A valid cloud API key for the billing service appeared in a public paste site at 09:07. The key grants read access to customer invoices.</p>
+            <p class="wf-overline" style="margin-top:12px">Why it matters</p>
+            <p class="wf-muted" style="margin:0">Invoice data is covered by PCI-DSS; exposure within the last 4 hours is still inside the abuse window.</p>
+          </div>
+
+          <!-- Evidence — night canvas -->
+          <div class="wf-night">
+            <div class="wf-row between" style="margin-bottom:12px">
+              <h3 style="font-size:13.5px;font-weight:700">Evidence</h3>
+              <span class="wf-mono">ALERT #1041</span>
+            </div>
+            <div class="wf-lines"><i class="w80"></i><i class="w60"></i><i class="w40"></i></div>
+            <p class="wf-mono" style="margin-top:10px">source alert · severity CRITICAL · type credential_leak · T1078</p>
+          </div>
+
+          <!-- Blast radius — night canvas with graph -->
+          <div class="wf-night">
+            <div class="wf-row between" style="margin-bottom:12px">
+              <h3 style="font-size:13.5px;font-weight:700">Blast radius — affected assets<span class="wf-c">2</span></h3>
+              <span class="wf-mono">4 nodes · 3 edges</span>
+            </div>
+            <div class="wf-x tall"><span class="tag">entity graph (SVG, force layout)</span></div>
+            <div class="wf-row between" style="margin-top:12px">
+              <span class="wf-legend"><span><i class="d"></i>account</span><span><i class="d"></i>ip</span><span><i class="d"></i>domain</span><span><i class="d"></i>hash</span></span>
+              <span class="wf-mono">relations: resolves_to · communicates · derives_from</span>
+            </div>
+          </div>
+
+          <div class="wf-grid cols-12-7-5">
+            <!-- Ask the analyst (chat) -->
+            <div class="wf-night">
+              <h3 style="font-size:13.5px;font-weight:700;margin-bottom:12px">Ask NOCTRA<span class="wf-c">3</span></h3>
+              <div class="wf-stack-6">
+                <div class="wf-bubble ai">The key was created 6 days ago by svc-billing. No other keys for this principal have appeared externally.</div>
+                <div class="wf-bubble user">What does revoking break?</div>
+                <div class="wf-bubble ai">Revoking interrupts the nightly invoice sync at 02:00 UTC. It re-authenticates on next run — no permanent breakage.</div>
+              </div>
+              <div class="wf-row" style="margin-top:14px">
+                <span class="wf-input" style="flex:1;border-radius:10px">Ask about this case…</span>
+                <span class="wf-btn sm primary">Send</span>
+              </div>
+              <p class="wf-mono" style="margin-top:8px">confidence 92% · fallback answers marked “rule-based”</p>
+            </div>
+
+            <!-- Proposed action card -->
+            <div class="wf-stack">
+              <div class="wf-card">
+                <span class="wf-overline">Recommended action</span>
+                <p class="wf-mono" style="font-size:16px;font-weight:700;color:var(--wf-accent);margin:6px 0 4px">REVOKE_CREDENTIALS</p>
+                <p class="wf-small">target <code>svc-billing</code> · rationale: key observed in public paste within abuse window</p>
+                <div class="wf-sep"></div>
+                <p class="wf-overline" style="margin:0">Undo</p>
+                <p class="wf-small">Re-issues the credential and restores access.</p>
+                <div class="wf-row between" style="margin-top:12px">
+                  <span class="wf-small">Reversible</span><span class="wf-toggle on"></span>
+                </div>
+              </div>
+              <div class="wf-card">
+                <span class="wf-overline">Model attribution</span>
+                <p class="wf-mono" style="margin:6px 0 0">claude-sonnet · confidence 96%<br/>analysis not fallback</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Decision gate -->
+          <div class="wf-card">
+            <div class="wf-row between wrap" style="gap:14px">
+              <div>
+                <p style="margin:0;font-weight:700;font-size:13.5px">This one&rsquo;s your call.<span class="wf-c">4</span></p>
+                <p class="wf-small">Approving records the action and generates a report. You can reverse it afterwards.</p>
+                <p class="wf-mono">Case opened 2026-08-28 09:12 · waiting on your decision</p>
+              </div>
+              <div class="wf-row">
+                <span class="wf-btn secondary">Decline</span>
+                <span class="wf-btn primary">✓ Approve Action</span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">B — Post-decision (approved) + confirm dialog</p>
+  <div class="wf-frame">
+    <div style="padding:24px;display:flex;gap:20px;flex-wrap:wrap;background:var(--wf-paper)">
+      <!-- Approve ConfirmDialog -->
+      <div class="wf-modalwrap" style="flex:1;min-width:320px">
+        <div class="wf-modal">
+          <h3 style="margin:0 0 8px;font-family:var(--wf-font-display)">Approve this action?</h3>
+          <p class="wf-muted" style="margin:0 0 14px;font-size:12.5px">NOCTRA will record <code>REVOKE_CREDENTIALS</code> on <code>svc-billing</code> and generate a report. This is <b>reversible</b> — it is <b>record-only</b>.</p>
+          <div class="wf-row" style="justify-content:flex-end"><span class="wf-btn ghost">Cancel</span><span class="wf-btn primary">Approve</span></div>
+        </div>
+      </div>
+
+      <!-- Decision gate after approval -->
+      <div class="wf-card" style="flex:1.4;min-width:320px">
+        <div class="wf-row" style="align-items:flex-start">
+          <span class="wf-avatar" style="background:rgba(76,154,120,.15);color:var(--wf-ok)">✓</span>
+          <div style="flex:1">
+            <p style="margin:0;font-weight:700;text-transform:capitalize">Approved<span class="wf-c">5</span></p>
+            <p class="wf-small">2026-08-28 09:31 · action <code>soar_action 118</code></p>
+          </div>
+          <div class="wf-row">
+            <span class="wf-btn ghost sm">View report</span>
+            <span class="wf-btn secondary sm">↩ Reverse</span>
+          </div>
+        </div>
+        <div class="wf-x" style="margin-top:14px;min-height:120px"><span class="tag">generated markdown report (mono, night scope)</span></div>
+        <div class="wf-sep"></div>
+        <p class="wf-overline" style="margin:0 0 8px">Case record<span class="wf-c">6</span></p>
+        <div class="wf-tl">
+          <div class="ev"><span class="rail"><span class="pt acc"></span><span class="bar"></span></span><span class="wf-muted" style="font-size:12px;flex:1">Case opened <span class="wf-mono">09:12</span></span></div>
+          <div class="ev"><span class="rail"><span class="pt"></span><span class="bar"></span></span><span class="wf-muted" style="font-size:12px;flex:1">Evidence linked — alert #1041 <span class="wf-mono">09:12</span></span></div>
+          <div class="ev"><span class="rail"><span class="pt ok"></span><span class="bar"></span></span><span class="wf-muted" style="font-size:12px;flex:1">Decision approved — you <span class="wf-mono">09:31</span></span></div>
+          <div class="ev"><span class="rail"><span class="pt ok"></span></span><span class="wf-muted" style="font-size:12px;flex:1">SOAR action recorded (#118) · report generated <span class="wf-mono">09:31</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>The headline is the page title</b> — <code>analysis.headline</code> (LLM) or the case title. Severity badge beside it; decision status as the header action. Crumbs: Decisions / Case #41.</div></li>
+    <li><span class="wf-c">2</span><div><b>Assessment vs. Evidence vs. Blast radius</b> — three trust tiers: the assessment card is explicitly labelled “Inferred — not confirmed fact”; evidence and blast radius sit on the <b>night canvas</b> (analyst's voice) showing observed data only.</div></li>
+    <li><span class="wf-c">3</span><div><b>Ask NOCTRA</b> — chat posts to <code>/analyst/cases/:id/chat</code>; answers carry confidence; fallback answers are labelled rule-based. Confidence is guarded (null-safe) in code.</div></li>
+    <li><span class="wf-c">4</span><div><b>Decision gate</b> — one decision, two buttons. Approve/Decline open a ConfirmDialog that spells out exactly what gets <em>recorded</em> (never “executed”).</div></li>
+    <li><span class="wf-c">5</span><div><b>After approval</b>: status + SOAR action id + “View report” toggle + “Reverse” (revert re-opens the gate; every transition is append-only audited).</div></li>
+    <li><span class="wf-c">6</span><div><b>Case record</b> — timeline composed server-side from real rows only (evidence, open, decision, recorded action, report, audit). No client-side fabrication.</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>
