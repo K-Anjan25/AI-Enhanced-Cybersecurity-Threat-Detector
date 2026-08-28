@@ -564,3 +564,59 @@ auth board is ink, hub/README rewritten for the Signal system.
 **Preview verified end-to-end:** backend venv + .env (cookie auth, CHIPS partitioned)
 restored and seeded; login 200 → Set-Cookie → /user/me 200 (7 perms) → /analyst/brief
 200 through the :3000 proxy; `tsc --noEmit && vite build` clean.
+
+## Phase 30 — Stage 4 docs: SIGNAL demo script + brand-drift sweep
+
+Docs-only pass (one code comment/token-mirror change) that finishes the Stage 4
+"demo script + verification matrix" item from spec §32 and closes the
+documentation drift the Phase-29 SIGNAL retheme left behind.
+
+**New demo script (`docs/demo.md`)** — replaces the stale AXIOM AI walkthrough
+(which also claimed "instant SOAR execution", contradicting record-only):
+- 5-minute act structure mapped to real routes: `/welcome` → `/login` → `/`
+  (Inbox) → fire a scenario → `/case/:id` → approve → `/reports` + `/actions` →
+  investigate surfaces → admin → close.
+- **Four language rules** up front: "recorded" never "executed"; name the
+  reasoning source (`Reasoned by <model>` vs "NOCTRA built-in reasoning engine"
+  when `analysis.fallback`); don't improvise a confidence number (Inbox renders
+  `n/a` for fallbacks); empty states are real states.
+- Real credentials (`demo / demo@noctra.ai / DemoPass123!`, seeded by
+  `backend/seed_preview.py`), real scenario keys (`credential_leak` T1078,
+  `phishing_outbreak` T1566, `data_exfiltration` T1048, `compromised_api_key`
+  T1098), and the real brief fields (`pending_count`, `handled_today`,
+  `watching`, `alerts_today`, `auto_recorded_today`).
+- **Verification matrix**: 24 rows, each route → source file → endpoints (all
+  re-checked against `dashboard/src/api/*.ts`, not from memory) → expected
+  state. Plus the automated gates (backend 121/2, ml 13, `tsc` + `vite build`)
+  and a `down -v` reset recipe.
+- **Known gaps** section: connectors are status-only, LLM reasoning needs
+  `ANTHROPIC_API_KEY`, scenarios are simulated, landing console-demo metrics are
+  illustrative.
+
+**Brand-drift sweep (docs now match shipped code):**
+- `docs/noctra-redesign-spec.md`: header banner + supersession banners on §9,
+  §12, §13, §15, §16, §17 (all point at the new **§40 — SIGNAL**, the shipped
+  design system: palette, type, logo/lockup, component vocabulary, geometry,
+  landing, wireframes, verification); §32 roadmap annotated with Stage-4 status.
+- `README.md`: typography DM Sans + Space Mono (was Sora/Inter/JetBrains Mono),
+  tagline "Threat intelligence, always on." (was "Your autonomous security
+  analyst."), brand block now points at SIGNAL, the wireframe kit, the design
+  source and the demo script.
+- `dashboard/src/constants/brand.ts`: the "periwinkle accent" comment → signal
+  green; `BRAND_GRADIENT` documented as flat; `BRAND_RADII`/`BRAND_SHADOWS`
+  re-mirrored to Tailwind's compressed 2–4px scale and ink-cast shadows
+  (+ the `signal` hover shadow). No page consumes these constants, so no
+  rendering change.
+- Supersession banners on the three stale frontend docs:
+  `frontend-design.md` (Slate Indigo Dark), `frontend-architecture.md`
+  (Next.js `client/` — that directory was deleted in Phase 10),
+  `frontend-commercial-redesign.md` (patterns live; landing + tokens
+  superseded). Plus `noctra-qa-report.md` (DUALITY-era contrast ratios must be
+  re-measured) and `brand-strategy.md` (naming record current; visuals §40).
+- `docs/README.md` index gained the demo, spec, brand, terminology and QA rows
+  it was missing.
+- Housekeeping: closed the stale **PR #1 "rebrand to AXIOM AI"** — superseded by
+  the NOCTRA brand and by the SIGNAL system.
+
+Verified: backend 121 passed / 2 skipped; ml-service 13 passed;
+`tsc --noEmit` + `vite build` clean.

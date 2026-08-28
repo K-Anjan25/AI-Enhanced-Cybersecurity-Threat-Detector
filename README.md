@@ -2,12 +2,15 @@
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
 
-> **NOCTRA** — *Your autonomous security analyst.*
+> **NOCTRA** — *Threat intelligence, always on.*
 > You employ an analyst; you don't operate a dashboard.
 >
 > **Brand System & Specification**:
-> - Current redesign spec (IA, Night Shift tokens, product model): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
-> - Commercial-grade frontend redesign (WordPress/WooCommerce research, token + hook + component system, landing, mini-cart drawer): [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
+> - Design system (SIGNAL — ink canvas + signal green, DM Sans + Space Mono): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md) §40 · design source [`newfile.html`](newfile.html)
+> - Current redesign spec (IA, product model, stages): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
+> - Code-accurate wireframe kit (20 boards, mapped 1:1 to routes): [`docs/wireframes/`](docs/wireframes/)
+> - Demo script + verification matrix: [`docs/demo.md`](docs/demo.md)
+> - Commercial-grade frontend redesign (WordPress/WooCommerce research, token + hook + component system, mini-cart drawer): [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
 > - Historical: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) (superseded)
 
 An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.
@@ -38,7 +41,7 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 
 - **Backend**: Python / FastAPI, SQLAlchemy, PostgreSQL (SQLite for tests), JWT auth (JTI + refresh tokens), optional Kafka streaming
 - **ML Service**: Python / FastAPI, scikit-learn (IsolationForest), TF-IDF + LogisticRegression, pandas, joblib
-- **Frontend**: React, TypeScript, Tailwind CSS, Sora / Inter / JetBrains Mono typography, Redux Toolkit, Recharts, Framer Motion
+- **Frontend**: React, TypeScript, Tailwind CSS, DM Sans / Space Mono typography (SIGNAL system), Redux Toolkit, Recharts, Framer Motion
 - **Infrastructure**: Docker, Docker Compose (Kafka, Zookeeper, PostgreSQL), Kubernetes manifests
 
 ## Project Structure
@@ -136,8 +139,13 @@ npm run build
 ## Brand Specification & Artifacts
 
 - **Brand Name**: `NOCTRA`
-- **Tagline**: *"Your autonomous security analyst."*
+- **Tagline**: *"Threat intelligence, always on."*
 - **What it is**: NOCTRA watches your telemetry, explains incidents in plain English, maps the blast radius, and drafts reversible actions — you approve, it records and reports.
-- **Typography**: Sora / Inter / JetBrains Mono
-- **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
+- **Design system**: **SIGNAL** — ink canvas `#070b0f` + signal green `#a6ff3f`, sharp 2–4px corners, HUD corner brackets, console panels, scan radar.
+- **Typography**: DM Sans (UI + display) · Space Mono (`tech-label`: eyebrows, metric labels, IDs, timestamps)
+- **Design source**: [`newfile.html`](newfile.html) (Canva export, mirrored at
+  [`docs/design/noctra-signal-reference/part-1-landing.html`](docs/design/noctra-signal-reference/part-1-landing.html))
+- **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md) — §40 documents the SIGNAL system; §12/§15–§17 record the retired predecessors
+- **Wireframes**: [`docs/wireframes/`](docs/wireframes/) — 20 code-accurate boards, SIGNAL v3, mapped 1:1 to routes
+- **Demo script**: [`docs/demo.md`](docs/demo.md) — 5-minute walkthrough + verification matrix
 - **Historical (superseded)**: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) · [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png)

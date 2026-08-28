@@ -4,6 +4,19 @@ Status: **Active** — Stage 1 implemented (see §32 roadmap). Supersedes the AX
 identity (Phase 20) and the Obsidian Ember exploration (Phase 17). NOCTRA is the
 final brand.
 
+> **⚠ Visual identity superseded — read §40 first.** The *product model*,
+> information architecture, terminology, stage roadmap and API contracts in this
+> document are current. The **visual identity is not**: §9 (color style),
+> §12–§13 (logo), §15 (color exploration) and §16–§17 (DUALITY palette +
+> Inter/Sora/JetBrains Mono type) describe the retired DUALITY system.
+>
+> The shipped system is **SIGNAL** (Phase 29) — ink canvas + signal green, DM
+> Sans + Space Mono, sharp corners, HUD brackets, console panels. It is
+> specified in **[§40](#40-signal--the-shipped-design-system-phase-29)** and its
+> source of truth in code is `dashboard/tailwind.config.js`,
+> `dashboard/src/styles/globals.css` and `dashboard/src/constants/brand.ts`.
+> Superseded sections are kept deliberately as decision records.
+
 ---
 
 ## 1. Executive Summary
@@ -209,6 +222,11 @@ legacy overview's honest name.
 
 ## 9. NOCTRA Brand Strategy
 
+> **⚠ Superseded for build (kept as a decision record).** This user-locked
+> style brief — violet gradient family, Sora SemiBold wordmark, crescent mark —
+> describes the DUALITY identity and was retired by **SIGNAL** (§40). The
+> *positioning* paragraph at the end of this section is still current.
+
 **Brand style system (user-locked, 2026-08-27).**
 
 | Attribute | Value |
@@ -275,6 +293,12 @@ Do / don't:
 
 ## 12. Logo Concept — "The Night Crescent" (exact brand spec, 2026-08-27)
 
+> **⚠ Superseded — not the shipped mark.** The shipped `BrandLogo` is the
+> **SIGNAL** lockup: a pulsing `signal-dot` + the wordmark "NOCTRA" in DM Sans,
+> uppercase, tracking `.22em` (see §40.3 and
+> `dashboard/src/components/BrandLogo.tsx`). The crescent + violet gradient +
+> sparkle below is retained as the record of a superseded direction.
+
 A **crescent moon** — the night watch — carrying a 4-pointed **insight
 sparkle** at its upper tip. Reads as: moon = the analyst who never sleeps,
 crescent = watchful coverage, sparkle = the finding/insight. Confirmed by
@@ -287,6 +311,8 @@ hand-drawn arcs). Diagonal gradient `#6C5CE7` (top-left) → `#9D7CFF`
 Sparkle `#B18CFF` above the crescent's upper tip.
 
 ## 13. SVG Logo Specification
+
+> **⚠ Superseded — see §40.3 for the shipped SIGNAL lockup.**
 
 - **Icon:** crescent moon (disc r=12 @ (16,16), bite r=9 @ (21,11) via mask),
   gradient `#6C5CE7→#9D7CFF` diagonal, sparkle `#B18CFF` at the upper tip.
@@ -316,6 +342,13 @@ label** (never icon-only); AI moments use `Sparkles` sparingly; system status
 uses `Activity`. No mixed icon styles, no decorative icon walls.
 
 ## 15. Color Exploration
+
+> **⚠ Superseded — decision record only.** This section argues for the violet /
+> periwinkle family. That conclusion was retired when the design source
+> (`newfile.html`) moved the brand to **signal green `#a6ff3f` on ink** (§40);
+> note that the hard **avoid list** in §9 already banned "generic AI purple".
+> The *method* here — semantic headroom, category differentiation, severity
+> non-collision, verified WCAG pairs — still governs; the *hue* does not.
 
 Round 1 (direction) and Round 2 (accent audit — "is violet actually the
 strongest NOCTRA-owned accent?", researched 2026-08-27):
@@ -365,6 +398,12 @@ first categorical dataviz color, where it earns its keep.
 
 ## 16. Final Color System (DUALITY: day workspace + night canvas)
 
+> **⚠ Superseded — see §40.1 for the shipped SIGNAL palette.** DUALITY's *idea*
+> survives: the analyst's voice still renders on ink (`console-panel`, the
+> `.night` treatment). What changed is the palette (ink + signal green, not
+> paper + periwinkle), the default scope (dark-first, not day-first), and the
+> surfaces that go dark.
+
 Structural dual scopes, not a toggle. Day workspace (`:root`): paper
 `#F7F7F5`, white surfaces, ink text — lists, tables, settings, admin.
 Night canvas (`.night` scope): ink surfaces — AI briefs, reasoning, evidence,
@@ -403,6 +442,11 @@ Light theme: defined for future (paper `#F7F7F5`, ink text, same accents
 darkened); not shipped in Stage 1 — documented, reversible.
 
 ## 17. Typography System
+
+> **⚠ Superseded — see §40.2 for the shipped SIGNAL type.** Inter / Sora /
+> JetBrains Mono were replaced by **DM Sans** (UI + display) and **Space Mono**
+> (`tech-label`). Two rules below survive verbatim: *one display headline per
+> screen*, and the `xxs` (0.6875rem) dense-meta step.
 
 - **Wordmark:** Inter (precision neo-grotesk) — semibold, wide uppercase
   tracking. Infrastructure-grade; the mark is abstract, the wordmark is
@@ -672,6 +716,14 @@ decorative KPI cards on primary surfaces. Palette per §16.
   script + verification matrix.
 - After each stage: `pytest` (backend+ml), `tsc --noEmit`, `vite build`.
 
+**Status (2026-08-28):** Stages 1–3 shipped. Stage 4 is mostly shipped —
+responsive hardening (mobile nav drawer, responsive topbar) and the a11y slice
+(skip link, dialog semantics, outside-click/Escape dismissal, chart
+`role="img"` labels) are done, and the **demo script + verification matrix now
+live in [`docs/demo.md`](demo.md)**. Still open: the motion polish pass. The
+visual identity has since moved to SIGNAL (§40) — Stages 1–3 are documented
+against the retired DUALITY system.
+
 ## 33–36. Files Add / Modify / Deprecate / Preserved
 
 **Added:** this spec; `public/favicon.svg` (new mark); Stage 2–3 items per §24/25.
@@ -886,3 +938,104 @@ Three new analyst capabilities, all composed from real rows only:
   docs; copy states what the product *is* (your autonomous security analyst).
 - Re-verified after changes: `tsc --noEmit` + `vite build` clean; built CSS
   carries the new accent (`rgb(168 162 255)`); no glow shadows in built CSS.
+
+---
+
+## 40. SIGNAL — the shipped design system (Phase 29)
+
+**Status: current.** This section is the source of truth for how NOCTRA looks
+today. It supersedes §9 (color style), §12–§13 (logo), §15 (color exploration)
+and §16–§17 (DUALITY palette + type), which remain as decision records.
+
+**Design source.** `newfile.html` — the Canva export of the NOCTRA landing
+(mirrored at `docs/design/noctra-signal-reference/part-1-landing.html`). SIGNAL
+is a *port* of that source, not an interpretation of it.
+
+**Verdict on the two predecessor systems:** the violet DUALITY identity is
+retired in full; only its structural idea survives (the analyst's voice renders
+on ink — now as `console-panel`).
+
+### 40.1 Palette
+
+| Role | Token | Value |
+| --- | --- | --- |
+| Ink canvas (deepest) | `app-void` | `#070b0f` |
+| Panel / console base | `app-navy` | `#0d151b` (`raised #131d24`, `subtle #1a262e`) |
+| Signal (brand + primary action) | `brand` / `accent-primary` | `#a6ff3f` |
+| Signal dark (accent text on light) | `accentDeep` | `#73bf19` |
+| Ink on signal fills | `brand-ink` | `#071006` |
+| Content ramp | `content-primary/secondary/tertiary` | `#e8f0ed` / `#aebdc0` / `#8fa2a8` |
+| Hairlines | `line-subtle` / `line-bright` | ≈ `rgba(162,193,198,.16)` |
+
+- **The accent is flat.** `brand-gradient` resolves to solid `#a6ff3f → #a6ff3f`
+  (kept for token compatibility). No gradient carries brand meaning.
+- **Severity ramp is unchanged in role** — `severity-*` (`#52b788` / `#e5a54b` /
+  `#f0824f` / `#f26d6d`), always rendered **dot + label**, never color alone.
+- **Dataviz** categorical palette: `#a6ff3f`, `#4fb8a8`, `#e5a54b`, `#e77a8b`,
+  `#7e87a3`.
+- **Scopes.** `:root` (and `html.dark`) = signal dark, the default;
+  `html.light` = "day ops" paper variant; `.night` = console panels, always ink.
+  The `ThemeProvider` is dark-first; a stored preference still wins.
+
+### 40.2 Type
+
+| Role | Face | Usage |
+| --- | --- | --- |
+| UI + display | **DM Sans** (Variable) | Body, tables, controls, page titles, hero — bold with tight tracking |
+| Mono | **Space Mono** | `tech-label` (.68rem, uppercase, tracking .13em): eyebrows, metric labels, tags, IDs, timestamps |
+
+- Fluid display scale `display-2xl → display-sm` (clamp, letter-spacing
+  `-0.045em → -0.015em`). One display headline per view.
+- `@fontsource` packages; the Inter / Sora / JetBrains Mono dependencies were
+  **removed**, not merely unused.
+
+### 40.3 Logo & lockup
+
+`BrandLogo` = pulsing **`signal-dot`** + wordmark **NOCTRA** in DM Sans,
+uppercase, tracking `.22em` (`public/favicon.svg` matches). The crescent,
+violet gradient and sparkle of §12–§13 are gone.
+
+### 40.4 Component vocabulary
+
+| Class | Purpose |
+| --- | --- |
+| `.noctra-canvas` | Ink shell: 56px signal grid fading down + two radial glows |
+| `.tech-label` | Space Mono eyebrow / metric label / tag |
+| `.signal-dot` | Pulsing live mark (used in the logo and status rows) |
+| `.hud-corners` | HUD corner brackets on hero and lead cards |
+| `.console-panel` | Ink gradient + green hairline — **the analyst's voice** (narrative, evidence, blast radius, chat, report previews) |
+| `.metric-card` | `tech-label` + bold value (the `StatCard` component) |
+| `.threat-item` | Green-left-border event row |
+| `.scan-ring` / `.scan-line` / `.scan-core` + `.is-scanning` | Landing scan radar |
+| `wf-*` keyframes | `pulse` / `spin` / `sweep` / `reveal` — state communication only, `prefers-reduced-motion` honored |
+
+**Geometry.** Radius scale compressed to **2–4px** (sharp); `rounded-full`
+stays for tags and avatars. Buttons: solid signal primary with lift + the single
+`shadow-signal` glow on hover; hairline secondary that turns green on hover.
+
+### 40.5 Landing
+
+Rebuilt as a 1:1 port of `newfile.html` (`LandingNav` → `LandingHero` →
+`TrustBar` → `ConsoleDemo` → `FeatureGrid` → `FinalCTA`): blur header, HUD-
+bracketed SVG topology frame, stats band (**24/7 · < 5 min · 360° · 1 view** —
+capability claims only, no fabricated metrics), interactive console demo with a
+working scan radar, three feature cards, access panel, footer. The auth surface
+is forced to the ink canvas (no theme toggle).
+
+### 40.6 Wireframe kit v3 · SIGNAL
+
+`docs/wireframes/` — 20 boards retokened through the shared `wf-*` classes;
+every board maps 1:1 to a route in `dashboard/src/App.tsx` and carries a spec
+strip (route · source file · endpoints). **Maintenance rule:** wireframes are
+derived artifacts — update the matching board in the same PR that changes a
+route, nav item or page section.
+
+### 40.7 Verification (Phase 29)
+
+- `tsc --noEmit` clean · `vite build` clean.
+- Backend **121 passed / 2 skipped** · ml-service **13 passed** (unchanged by
+  the retheme — no backend surface moved).
+- Live: login 200 → `Set-Cookie` → `/me` 200 → `/analyst/brief` 200 through the
+  `:3000` proxy.
+- Route-by-route pass criteria: see the **verification matrix** in
+  [`docs/demo.md`](demo.md).

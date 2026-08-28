@@ -7,6 +7,11 @@ Software-engineering documentation for the **AI-Enhanced Cybersecurity Threat De
 
 | Document | Type | Contents |
 | --- | --- | --- |
+| [`demo.md`](demo.md) | Demo | 5-minute walkthrough script + route-by-route **verification matrix** (route → source file → endpoints → expected state) |
+| [`noctra-redesign-spec.md`](noctra-redesign-spec.md) | Spec | Product model, IA, terminology, roadmap — **§40 is the current SIGNAL design system**; §9/§12–§17 are retired predecessors |
+| [`brand-strategy.md`](brand-strategy.md) | Brand | Naming research + shortlist (NOCTRA decision record) |
+| [`terminology-playbook.md`](terminology-playbook.md) | UX Writing | Jargon dogfooding rules + the term dictionary |
+| [`noctra-qa-report.md`](noctra-qa-report.md) | QA | Full-route frontend audit findings |
 | [`wireframes/`](wireframes/) | Wireframes | Code-accurate HTML wireframe kit — every route in the dashboard mapped 1:1 (open `wireframes/index.html`) |
 | [`functional-requirements.md`](functional-requirements.md) | FRS | Functional requirements (FR-xx) by module, MoSCoW priorities |
 | [`non-functional-requirements.md`](non-functional-requirements.md) | NFRS | Non-functional requirements (NFR-xx) with measurable targets + verification |
