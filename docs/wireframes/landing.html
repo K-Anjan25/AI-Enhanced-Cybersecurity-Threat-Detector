@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Landing — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Landing (/welcome)</span>
+  <span style="opacity:.55">marketing surface — every claim is true of the product</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="app-shell.html">← Prev</a>
+    <a href="auth.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Route <code>/welcome</code></span>
+  <span class="chip src">Source <code>LandingPage.tsx</code> → <code>components/landing/*</code></span>
+  <span class="chip">Flow: nav → hero (product preview) → proof → features → how-it-works → final CTA</span>
+</div>
+
+<div class="wf-canvas">
+  <div class="wf-frame">
+
+    <!-- LandingNav: floating pill, hides on scroll-down -->
+    <div style="position:sticky;top:0;padding:12px;display:flex;justify-content:center;background:var(--wf-paper);border-bottom:1px solid var(--wf-line)">
+      <div class="wf-row" style="background:var(--wf-surface);border:1px solid var(--wf-line);border-radius:999px;padding:6px 14px;box-shadow:0 10px 30px rgba(20,21,26,.10);gap:18px">
+        <svg width="22" height="22" viewBox="0 0 24 24"><path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/></svg>
+        <span class="wf-row" style="gap:14px;font-size:12.5px;color:var(--wf-ink-2)">
+          <a style="text-decoration:none">Product</a><a style="text-decoration:none">How it works</a><a style="text-decoration:none">Proof</a><a style="text-decoration:none">Docs</a>
+        </span>
+        <span class="wf-btn ghost sm">Sign in</span>
+        <span class="wf-btn primary sm">Try the demo</span>
+      </div>
+    </div>
+
+    <!-- Hero: headline + product preview (CSS-built, not stock art) -->
+    <div class="wf-grid" style="grid-template-columns:6fr 6fr;gap:32px;padding:56px 40px;align-items:center">
+      <div class="wf-stack">
+        <span class="wf-mono" style="letter-spacing:.22em;text-transform:uppercase;color:var(--wf-accent)">Your autonomous security analyst</span>
+        <h1 style="font-family:var(--wf-font-display);font-size:40px;line-height:1.05;letter-spacing:-.02em;margin:0">The analyst your team doesn&rsquo;t have.<span class="wf-c">1</span></h1>
+        <p class="wf-muted" style="margin:0;max-width:420px">NOCTRA watches continuously, explains plainly, proposes one reversible action, and records every decision.</p>
+        <div class="wf-row" style="gap:10px;margin-top:6px">
+          <span class="wf-btn primary">Start the open-loop demo</span>
+          <span class="wf-btn secondary">Sign in</span>
+        </div>
+        <span class="wf-mono">no demo credentials required · record-only</span>
+      </div>
+      <!-- product preview = the inbox lead card, rebuilt in CSS -->
+      <div class="wf-night" style="min-height:280px">
+        <div class="wf-row between"><p class="overline" style="margin:0">Needs your decision</p><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></div>
+        <h3 style="font-family:var(--wf-font-display);font-size:16px;margin-top:10px">Credential leak detected on billing-service</h3>
+        <p class="muted" style="font-size:12px">A valid cloud API key appeared in a public paste site…</p>
+        <div class="wf-grid cols-4" style="margin-top:14px;gap:10px">
+          <div><p class="overline" style="margin:0">Affected</p><span class="wf-mono" style="color:var(--wf-night-ink);font-weight:700">4 systems</span></div>
+          <div><p class="overline" style="margin:0">Confidence</p><span class="wf-mono" style="color:var(--wf-night-ink);font-weight:700">96%</span></div>
+          <div><p class="overline" style="margin:0">Recommends</p><span class="wf-mono" style="color:var(--wf-accent);font-weight:700">REVOKE_…</span></div>
+          <div><p class="overline" style="margin:0">Reversible</p><span class="wf-mono" style="color:var(--wf-night-ink);font-weight:700">Yes</span></div>
+        </div>
+        <div class="wf-row" style="justify-content:flex-end;margin-top:16px"><span class="wf-btn primary sm">Review case #41</span></div>
+      </div>
+    </div>
+
+    <!-- TrustBar: real proof numbers -->
+    <div class="wf-card" style="border-radius:0;border-left:0;border-right:0;background:var(--wf-surface)">
+      <div class="wf-grid cols-4">
+        <div><p class="val" style="margin:0;font-size:26px">114</p><p class="wf-small" style="max-width:180px">Backend tests passing</p></div>
+        <div><p class="val" style="margin:0;font-size:26px">13</p><p class="wf-small" style="max-width:180px">ML service tests passing</p></div>
+        <div><p class="val" style="margin:0;font-size:26px">4</p><p class="wf-small" style="max-width:180px">Connectors (Okta, EDR, GuardDuty, WAF)</p></div>
+        <div><p class="val" style="margin:0;font-size:26px">2</p><p class="wf-small" style="max-width:180px">Run modes — REST or Kafka streaming</p></div>
+      </div>
+    </div>
+
+    <!-- Feature bento -->
+    <div style="padding:48px 40px">
+      <p class="wf-mono" style="letter-spacing:.25em;text-transform:uppercase">Why teams keep NOCTRA</p>
+      <h2 style="font-family:var(--wf-font-display);font-size:26px;margin:8px 0 24px">An employee, not a dashboard</h2>
+      <div class="wf-grid cols-3">
+        <div class="wf-card"><h3 style="margin:0 0 6px;font-size:14px">Plain-English briefs</h3><p class="wf-small">Every case opens with what happened and why it matters — no decoding required.</p></div>
+        <div class="wf-card"><h3 style="margin:0 0 6px;font-size:14px">Blast-radius graph</h3><p class="wf-small">The affected assets, mapped from real observed indicators.</p></div>
+        <div class="wf-card"><h3 style="margin:0 0 6px;font-size:14px">One reversible action</h3><p class="wf-small">A single recommendation with an explicit undo path and stated confidence.</p></div>
+        <div class="wf-card"><h3 style="margin:0 0 6px;font-size:14px">Record-only SOAR</h3><p class="wf-small">Actions are recorded, never executed. You stay in control.</p></div>
+        <div class="wf-card"><h3 style="margin:0 0 6px;font-size:14px">Append-only audit trail</h3><p class="wf-small">Who decided, when, and what was recorded — immutable.</p></div>
+        <div class="wf-card"><h3 style="margin:0 0 6px;font-size:14px">Case reports</h3><p class="wf-small">Markdown report per decision, downloadable.</p></div>
+      </div>
+    </div>
+
+    <!-- How it works: 8 numbered steps -->
+    <div class="wf-card" style="border-radius:0;border-left:0;border-right:0">
+      <div style="text-align:center;max-width:560px;margin:0 auto 28px">
+        <p class="wf-mono" style="letter-spacing:.25em;text-transform:uppercase">How it works</p>
+        <h2 style="font-family:var(--wf-font-display);font-size:26px;margin:8px 0">The loop, end to end</h2>
+      </div>
+      <div class="wf-grid cols-4">
+        <div><span class="wf-mono" style="color:var(--wf-accent)">01</span><h3 style="margin:6px 0 4px;font-size:14px">Sense</h3><p class="wf-small">Telemetry becomes one stream of observable events.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">02</span><h3 style="margin:6px 0 4px;font-size:14px">Reason</h3><p class="wf-small">ML + heuristics flag anomalies; a real blast-radius graph is built.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">03</span><h3 style="margin:6px 0 4px;font-size:14px">Explain</h3><p class="wf-small">The case is written in plain English.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">04</span><h3 style="margin:6px 0 4px;font-size:14px">Propose</h3><p class="wf-small">One reversible action, explicit undo, stated confidence.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">05</span><h3 style="margin:6px 0 4px;font-size:14px">Approve</h3><p class="wf-small">You approve, decline or reverse. NOCTRA never acts alone.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">06</span><h3 style="margin:6px 0 4px;font-size:14px">Record</h3><p class="wf-small">Approved actions are record-only — nothing is executed.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">07</span><h3 style="margin:6px 0 4px;font-size:14px">Audit</h3><p class="wf-small">Every transition is appended to the audit trail.</p></div>
+        <div><span class="wf-mono" style="color:var(--wf-accent)">08</span><h3 style="margin:6px 0 4px;font-size:14px">Report</h3><p class="wf-small">A markdown report captures the outcome and undo steps.</p></div>
+      </div>
+    </div>
+
+    <!-- Final CTA: night panel + footer -->
+    <div style="padding:40px">
+      <div class="wf-night" style="text-align:center;padding:56px 24px">
+        <p class="overline">Start in minutes</p>
+        <h2 style="font-family:var(--wf-font-display);font-size:28px;margin:10px 0">Employ your first analyst today</h2>
+        <div class="wf-row" style="justify-content:center;margin-top:16px">
+          <span class="wf-btn primary">Create an account</span>
+          <span class="wf-btn secondary">Sign in</span>
+        </div>
+        <p class="wf-mono" style="margin-top:16px">self-hostable · open-source loop · record-only</p>
+      </div>
+      <!-- Footer columns -->
+      <div class="wf-grid cols-4" style="margin-top:32px;gap:24px">
+        <div><p class="wf-overline" style="margin:0 0 8px">Product</p><div class="wf-stack-6"><span class="wf-small">Overview</span><span class="wf-small">How it works</span><span class="wf-small">Demo</span></div></div>
+        <div><p class="wf-overline" style="margin:0 0 8px">Trust</p><div class="wf-stack-6"><span class="wf-small">Record-only design</span><span class="wf-small">Audit trail</span><span class="wf-small">Reversible actions</span></div></div>
+        <div><p class="wf-overline" style="margin:0 0 8px">Docs</p><div class="wf-stack-6"><span class="wf-small">API</span><span class="wf-small">Self-hosting</span><span class="wf-small">Terminology</span></div></div>
+        <div><p class="wf-overline" style="margin:0 0 8px">Account</p><div class="wf-stack-6"><span class="wf-small">Sign in</span><span class="wf-small">Register</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Hero shows the product, not art</b> — the preview is the real inbox lead-card pattern rebuilt in CSS (no stock imagery, no fabricated screenshots).</div></li>
+    <li><span class="wf-c">2</span><div><b>Proof strip is verifiable</b> — the four numbers are the real test counts / connector count / run modes from the repo. No invented customers or logos.</div></li>
+    <li><span class="wf-c">3</span><div><b>Nav pill</b> hides on scroll-down and returns on scroll-up (useScrollDirection); anchors scroll to sections.</div></li>
+    <li><span class="wf-c">4</span><div><b>Final CTA + footer</b> on the night canvas — the one gradient moment is reserved for the primary CTA.</div></li>
+  </ol>
+</section>
+
+</body>
+</html>

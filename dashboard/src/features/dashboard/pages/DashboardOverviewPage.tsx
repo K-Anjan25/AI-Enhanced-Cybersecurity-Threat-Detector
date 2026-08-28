@@ -25,6 +25,8 @@ import {
   SkeletonChart,
   SkeletonStatCard,
   EmptyState,
+  PageHeader,
+  Button,
   Term,
 } from "../../../components/ui";
 import type { OverviewStats, TopThreat, TrendPoint } from "../../../types/analytics";
@@ -173,34 +175,22 @@ const DashboardOverviewPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">SOC Overview</h1>
-            <StatusBadge tone="success" label="Operational" />
-          </div>
-          <p className="text-sm text-content-secondary mt-1">
-            Live security posture across the organization. Data refreshes automatically.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => navigate("/logs")}
-            className="rounded-lg bg-app-subtle px-4 py-2 text-sm text-content-primary border border-line-subtle hover:bg-line-bright transition"
-          >
-            Upload Logs
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/incidents")}
-            className="rounded-full bg-brand-gradient px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90 transition shadow-float"
-          >
-            New Incident
-          </button>
-        </div>
-      </div>
+      {/* Page header — shared PageHeader component (system conformance pass) */}
+      <PageHeader
+        title="SOC Cockpit"
+        badge={<StatusBadge tone="success" label="Operational" />}
+        description="Live security posture across the organization. Data refreshes automatically."
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => navigate("/logs")}>
+              Upload Logs
+            </Button>
+            <Button variant="primary" onClick={() => navigate("/incidents")}>
+              New Incident
+            </Button>
+          </>
+        }
+      />
 
       {error && (
         <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import EngineApi from "../../../api/engineApi";
 import type { EngineSettings } from "../../../types/engine";
-import { BackButton, NumberInput } from "../../../components/ui";
+import { NumberInput, PageHeader } from "../../../components/ui";
 
 const DEFAULT_SETTINGS: EngineSettings = {
   detectionSensitivity: "MEDIUM",
@@ -62,15 +62,12 @@ const EngineSettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <header>
-        <div className="mb-1.5">
-          <BackButton to="/admin" label="Back to Admin" />
-        </div>
-        <h1 className="text-2xl font-semibold text-content-primary">Engine Settings</h1>
-        <p className="text-sm text-content-secondary mt-1">
-          Configure the AI threat detection engine. Changes are persisted and audited.
-        </p>
-      </header>
+      <PageHeader
+        title="Engine Settings"
+        backTo="/admin"
+        crumbs={[{ label: "Administration", to: "/admin" }, { label: "Engine Settings" }]}
+        description="Configure the AI threat detection engine. Changes are persisted and audited."
+      />
 
       {error && (
         <div className="px-4 py-3 rounded-lg bg-status-critical/10 border border-status-critical/30 text-sm text-status-critical">

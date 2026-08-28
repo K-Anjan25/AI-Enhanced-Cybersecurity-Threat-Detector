@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Auth — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Auth — Sign in / Register / Reset</span>
+  <span style="opacity:.55">split brand panel + form card</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="landing.html">← Prev</a>
+    <a href="mobile.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Routes <code>/login</code> · <code>/register</code> · <code>/reset-password</code></span>
+  <span class="chip src">Source <code>AuthLayout.tsx</code> · <code>Login.tsx</code> · <code>Register.tsx</code> · <code>ResetPassword.tsx</code></span>
+  <span class="chip api">POST <code>/auth/login</code> · <code>/auth/register</code> · <code>/auth/forgot-password</code> · <code>/auth/reset-password</code></span>
+  <span class="chip">COOKIE_AUTH=true → httpOnly cookie session (SameSite=None; Partitioned in the preview)</span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel">A — Sign in</p>
+  <div class="wf-frame">
+    <div style="display:grid;grid-template-columns:1fr 1fr;min-height:560px">
+      <!-- Brand panel -->
+      <div style="background:var(--wf-surface);border-right:1px solid var(--wf-line);padding:36px;display:flex;flex-direction:column;justify-content:space-between">
+        <span class="wf-row" style="gap:10px"><svg width="30" height="30" viewBox="0 0 24 24"><path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/></svg><b style="font-family:var(--wf-font-display);letter-spacing:.1em">NOCTRA</b></span>
+        <div>
+          <p class="wf-mono" style="letter-spacing:.22em;text-transform:uppercase;color:var(--wf-accent)">Your autonomous security analyst</p>
+          <h1 style="font-family:var(--wf-font-display);font-size:32px;line-height:1.1;margin:14px 0">Sign in to your analyst.</h1>
+          <p class="wf-muted" style="max-width:380px">Cases waiting on a decision, with a recommended reversible action each.</p>
+          <div class="wf-stack-6" style="margin-top:20px">
+            <div class="wf-card" style="padding:12px 16px"><b style="font-size:12.5px">Review decisions</b><p class="wf-small" style="margin:2px 0 0">One reversible action per case, explained in plain English.</p></div>
+            <div class="wf-card" style="padding:12px 16px"><b style="font-size:12.5px">Investigate cases</b><p class="wf-small" style="margin:2px 0 0">Blast radius, affected systems, stated confidence — not alarms.</p></div>
+            <div class="wf-card" style="padding:12px 16px"><b style="font-size:12.5px">Record every step</b><p class="wf-small" style="margin:2px 0 0">Append-only audit trail. NOCTRA records actions, never executes them.</p></div>
+          </div>
+        </div>
+        <span class="wf-mono">NOCTRA — your autonomous security analyst · noctra.ai</span>
+      </div>
+
+      <!-- Form panel -->
+      <div style="background:var(--wf-paper);display:flex;align-items:center;justify-content:center;padding:32px;position:relative">
+        <span class="wf-toggle on" style="position:absolute;top:16px;right:16px"></span>
+        <div class="wf-card" style="width:100%;max-width:380px">
+          <h2 style="font-family:var(--wf-font-display);margin:0 0 4px;font-size:20px">Welcome back</h2>
+          <p class="wf-small" style="margin:0 0 18px">Sign in to open your analyst inbox.</p>
+          <div class="wf-stack">
+            <div class="wf-field"><label>Email or Username</label><span class="wf-input" style="display:block">Enter your email or username</span></div>
+            <div class="wf-field"><label>Password</label><span class="wf-input" style="display:block">••••••••</span></div>
+            <div class="wf-row between"><span class="wf-row wf-small" style="gap:6px"><span class="wf-toggle"></span>Keep me signed in</span><span class="wf-small" style="color:var(--wf-accent);font-weight:700">Forgot Password?</span><span class="wf-c">1</span></div>
+            <span class="wf-btn primary" style="justify-content:center">Sign in</span>
+            <p class="wf-small" style="text-align:center;margin:0">No account? <b style="color:var(--wf-accent)">Create one</b></p>
+            <p class="wf-mono" style="text-align:center;margin:0">demo / DemoPass123! · admin / AdminPass123!<span class="wf-c">2</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">B — Register (same shell, more fields)</p>
+  <div class="wf-frame" style="padding:28px;display:flex;justify-content:center">
+    <div class="wf-card" style="width:100%;max-width:420px">
+      <h2 style="font-family:var(--wf-font-display);margin:0 0 4px;font-size:20px">Create your account</h2>
+      <p class="wf-small" style="margin:0 0 18px">New accounts join as USER role; admins are provisioned, never self-registered.<span class="wf-c">3</span></p>
+      <div class="wf-stack">
+        <div class="wf-grid cols-2" style="gap:12px">
+          <div class="wf-field"><label>Full name</label><span class="wf-input" style="display:block">Jane Analyst</span></div>
+          <div class="wf-field"><label>Username</label><span class="wf-input" style="display:block">jane</span></div>
+        </div>
+        <div class="wf-field"><label>Email</label><span class="wf-input" style="display:block">jane@noctra.ai</span></div>
+        <div class="wf-field"><label>Password</label><span class="wf-input" style="display:block">••••••••</span><span class="wf-small">Yup validator: length, complexity — errors inline</span></div>
+        <div class="wf-field"><label>Confirm password</label><span class="wf-input" style="display:block">••••••••</span></div>
+        <span class="wf-btn primary" style="justify-content:center">Create account</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel">C — Forgot / Reset password</p>
+  <div class="wf-frame" style="padding:28px;display:flex;gap:24px;flex-wrap:wrap">
+    <div class="wf-card" style="flex:1;min-width:280px">
+      <b style="font-size:14px">Forgot password (modal on /login)</b>
+      <div class="wf-field" style="margin-top:12px"><label>Email</label><span class="wf-input" style="display:block">you@company.com</span></div>
+      <p class="wf-small" style="margin:8px 0 10px">Sends a reset link (email_utils). If mail isn&rsquo;t configured, the response says so honestly.</p>
+      <span class="wf-btn primary sm">Send reset link</span>
+    </div>
+    <div class="wf-card" style="flex:1;min-width:280px">
+      <b style="font-size:14px">Reset password (/reset-password?token=…)</b>
+      <div class="wf-stack" style="margin-top:12px">
+        <div class="wf-field"><label>New password</label><span class="wf-input" style="display:block">••••••••</span></div>
+        <div class="wf-field"><label>Confirm</label><span class="wf-input" style="display:block">••••••••</span></div>
+        <span class="wf-btn primary sm">Reset password</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Forgot password</b> opens as a modal over the login card; reset lands on <code>/reset-password?token=…</code> with the token from the email link.</div></li>
+    <li><span class="wf-c">2</span><div><b>Cookie sessions</b> — with <code>COOKIE_AUTH=true</code> the tokens live in httpOnly cookies (SameSite=None; Partitioned for the embedded preview); the frontend keeps only an <code>auth_status</code> flag. The demo credentials come from <code>backend/seed_preview.py</code>.</div></li>
+    <li><span class="wf-c">3</span><div><b>Privilege hardening</b> — self-registration always creates USER; ADMIN is provisioned by an existing admin.</div></li>
+  </ol>
+</section>
+
+</body>
+</html>

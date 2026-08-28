@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WF · Admin — Rules, Reputation, Engine, Audit — NOCTRA Wireframe Kit</title>
+<link rel="stylesheet" href="assets/wireframes.css" />
+</head>
+<body class="wf-doc" data-active="rules">
+
+<header class="wf-docbar">
+  <span class="wf-docbar-brand">NOCTRA · WF</span>
+  <span class="wf-docbar-title">Admin — Rules · Reputation · Engine · Audit</span>
+  <span style="opacity:.55">detection config &amp; immutable logs</span>
+  <nav class="wf-docbar-links">
+    <a href="index.html">Index</a>
+    <a href="admin-users.html">← Prev</a>
+    <a href="app-shell.html">Next →</a>
+  </nav>
+</header>
+
+<div class="wf-spec">
+  <span class="chip route">Routes <code>/admin/rules</code> · <code>/admin/reputation</code> · <code>/admin/engine-settings</code> · <code>/admin/system-logs</code></span>
+  <span class="chip src">Source <code>RulesPage.tsx</code> · <code>ReputationPage.tsx</code> · <code>EngineSettingsPage.tsx</code> · <code>SystemLogsPage.tsx</code></span>
+  <span class="chip api">CRUD <code>/rules</code> · <code>/reputation</code> · GET/PUT <code>/engine/settings</code> · GET <code>/audit</code></span>
+</div>
+
+<div class="wf-canvas">
+
+  <p class="wf-boardlabel" id="rules">A — Detection rules</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-card bare">
+      <div class="wf-row between" style="padding:16px 18px;border-bottom:1px solid var(--wf-line)">
+        <div><h3 style="margin:0;font-size:15px">Detection rules</h3><p class="wf-small" style="margin:2px 0 0">Signature + heuristic rules driving detections.</p></div>
+        <span class="wf-btn primary sm">+ New rule</span>
+      </div>
+      <table class="wf-table">
+        <thead><tr><th>Rule</th><th>Type</th><th>Pattern / threshold</th><th>Severity</th><th>Active</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="strong">#12 credential leak</td><td><span class="wf-badge">signature</span></td><td class="mono">api_key regex</td><td><span class="wf-sev critical"><i class="d"></i>CRITICAL</span></td><td><span class="wf-toggle on"></span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+          <tr><td class="strong">#07 repeated failures</td><td><span class="wf-badge">heuristic</span></td><td class="mono">≥ 5 / 5 min</td><td><span class="wf-sev high"><i class="d"></i>HIGH</span></td><td><span class="wf-toggle on"></span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+          <tr><td class="strong">#03 oversized upload</td><td><span class="wf-badge">heuristic</span></td><td class="mono">&gt; 500 MB egress</td><td><span class="wf-sev medium"><i class="d"></i>MEDIUM</span></td><td><span class="wf-toggle"></span></td><td style="text-align:right"><span class="wf-btn ghost sm">Edit</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel" id="reputation">B — IP reputation</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-card bare">
+      <div class="wf-row between" style="padding:16px 18px;border-bottom:1px solid var(--wf-line)">
+        <div><h3 style="margin:0;font-size:15px">IP reputation</h3><p class="wf-small" style="margin:2px 0 0">Scores and blocklist entries feeding threat-intel enrichment.</p></div>
+        <span class="wf-btn primary sm">+ Add entry</span>
+      </div>
+      <table class="wf-table">
+        <thead><tr><th>IP</th><th>Score</th><th>Category</th><th>Source</th><th style="text-align:right">Status</th></tr></thead>
+        <tbody>
+          <tr><td class="mono strong">203.0.113.10</td><td><div class="wf-row" style="gap:8px"><span class="wf-risk" style="width:80px"><i style="width:92%"></i></span><span class="wf-mono">0.92</span></div></td><td class="mono">abuse</td><td class="mono">manual</td><td style="text-align:right"><span class="wf-badge crit">blacklisted</span></td></tr>
+          <tr><td class="mono strong">198.51.100.7</td><td><div class="wf-row" style="gap:8px"><span class="wf-risk" style="width:80px"><i style="width:64%;background:var(--wf-accent)"></i></span><span class="wf-mono">0.64</span></div></td><td class="mono">brute_force</td><td class="mono">feed</td><td style="text-align:right"><span class="wf-badge warn">watch</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel" id="engine">C — Engine settings</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-stack">
+      <div class="wf-pagehead" style="align-items:flex-end">
+        <div>
+          <p class="crumbs">← Administration / Engine Settings</p>
+          <h1>Engine Settings</h1>
+          <p class="desc">Configure the AI threat detection engine. Changes are persisted and audited.</p>
+        </div>
+        <div class="actions"><span class="wf-btn primary">Save settings</span></div>
+      </div>
+      <div class="wf-grid cols-2">
+        <div class="wf-card">
+          <div class="wf-cardhead" style="margin-bottom:10px"><div><h3>Detection sensitivity</h3><p>Higher sensitivity flags more events as suspicious, increasing false positives.</p></div></div>
+          <div class="wf-seg"><span>LOW</span><span class="on">MEDIUM</span><span>HIGH</span></div>
+        </div>
+        <div class="wf-card">
+          <div class="wf-cardhead" style="margin-bottom:10px"><div><h3>Confidence threshold</h3><p>Alerts below this model confidence are recorded as LOW severity.</p></div></div>
+          <div class="wf-row" style="gap:10px"><span class="wf-input" style="width:90px;border-radius:8px">0.75</span><span class="wf-small">range 0.10 – 0.95</span></div>
+        </div>
+      </div>
+      <p class="wf-mono" style="text-align:center">GET /engine/settings on load · PUT on save · every change audited</p>
+    </div>
+  </div>
+
+  <p class="wf-boardlabel" id="system-logs">D — Audit logs (System logs)</p>
+  <div class="wf-frame" style="padding:20px">
+    <div class="wf-card bare">
+      <div class="wf-row between" style="padding:16px 18px;border-bottom:1px solid var(--wf-line)">
+        <div><h3 style="margin:0;font-size:15px">Audit logs</h3><p class="wf-small" style="margin:2px 0 0">Append-only trail — decisions, reverts, user changes, settings changes.</p></div>
+        <span class="wf-input" style="min-width:200px">⌕ Filter by actor or action…</span>
+      </div>
+      <table class="wf-table">
+        <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Object</th><th>Org</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">09:31:04</td><td class="mono">demo</td><td class="strong">CASE_APPROVED</td><td class="mono">case 41 · soar 118</td><td class="mono">acme</td></tr>
+          <tr><td class="mono">09:28:51</td><td class="mono">demo</td><td class="strong">CASE_REVIEWED</td><td class="mono">case 41</td><td class="mono">acme</td></tr>
+          <tr><td class="mono">08:12:19</td><td class="mono">admin</td><td class="strong">USER_UPDATED</td><td class="mono">user 3</td><td class="mono">acme</td></tr>
+          <tr><td class="mono">Aug 27 17:02</td><td class="mono">demo</td><td class="strong">CASE_REVERTED</td><td class="mono">case 37 · soar 104</td><td class="mono">acme</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<section class="wf-notes">
+  <h2>Notes</h2>
+  <ol>
+    <li><span class="wf-c">1</span><div><b>Rules</b> — full CRUD; toggling a rule changes detection immediately (the engine reads active rules per event).</div></li>
+    <li><span class="wf-c">2</span><div><b>Reputation</b> — manual entries merge with feeds; scores enrich entities/alerts (0–1 bar + mono number).</div></li>
+    <li><span class="wf-c">3</span><div><b>Engine settings</b> — redesign change: header now uses <code>PageHeader</code> with crumbs back to /admin (was a hand-rolled BackButton + h1).</div></li>
+    <li><span class="wf-c">4</span><div><b>Audit</b> — immutable, append-only; the audit vocabulary matches the decision flow (CASE_APPROVED / CASE_REVERTED / USER_UPDATED…).</div></li>
+  </ol>
+</section>
+
+<script src="assets/shell.js"></script>
+</body>
+</html>

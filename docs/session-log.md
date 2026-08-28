@@ -486,3 +486,33 @@ LogHistoryPage, LandingPage + all landing components (static data), the
 earlier-audited admin/soar/analytics/entities pages.
 
 Verified: tsc --noEmit && vite build clean.
+
+## Phase 28 — Code-accurate wireframe kit + system-conformance redesign pass
+
+**Wireframe kit (`docs/wireframes/`)** — replaces direction-finding with documentation:
+- 20 mid-fi HTML boards + clickable hub (`index.html`) + shared CSS/JS, no build step.
+- Every board maps 1:1 to a route in `dashboard/src/App.tsx`: real nav IA (Main /
+  Investigate / Automate / System), real copy, spec strip per board (route · source
+  file · API endpoints), numbered annotations, X-box placeholders for dynamic regions
+  (charts/graphs/reports — never fake data), night-canvas panels shown dark, severity
+  as dot + label. Boards: inbox, feed, case workspace (+post-decision + confirm
+  dialogs), actions, reports, SOC cockpit, alerts (+detail modal), analytics,
+  entities (+graph explorer), SOAR, incidents, logs, profile/account, admin hub,
+  admin people, admin config, app shell (⌘K menu + pending drawer + notifications),
+  landing, auth, mobile patterns.
+- Supersedes the exploratory boards in `docs/ui-concepts/` (kept for history).
+- Maintenance rule: wireframes are derived artifacts — update the matching board in
+  the same PR that changes a route/nav/page section.
+
+**Frontend conformance pass (make the app match its own system):**
+- DashboardOverviewPage: hand-rolled header → shared `PageHeader` (title "SOC
+  Cockpit" to match nav + doc title, "Operational" badge, real `Button` secondary/
+  primary actions instead of bespoke buttons).
+- AdminDashboard: full restructure — `PageHeader`, metrics on `StatCard` (tone
+  system, icons), link tiles via the shared `Card` component with arrow-hover
+  affordance; removed the bespoke `text-3xl tracking-wide` header and tile classes.
+- EngineSettingsPage: hand-rolled BackButton + h1 → `PageHeader` with crumbs
+  (Administration / Engine Settings).
+- Profile + Account(/account): hand-rolled h1/h2 → `PageHeader`; Account now reads
+  as a proper page (header + card) instead of a floating form.
+- Verified: `tsc --noEmit && vite build` clean.
