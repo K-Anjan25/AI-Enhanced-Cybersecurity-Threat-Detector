@@ -216,15 +216,15 @@ const DashboardOverviewPage: React.FC = () => {
               <AreaChart data={trend} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#9d7cff" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#9d7cff" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#a6ff3f" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#a6ff3f" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgb(var(--c-line-subtle))" strokeDasharray="3 3" />
                 <XAxis dataKey="date" tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} />
                 <YAxis tick={{ fill: "rgb(var(--c-content-tertiary))", fontSize: 11 }} allowDecimals={false} />
                 <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                <Area type="monotone" dataKey="total" stroke="#9d7cff" strokeWidth={2} fill="url(#gTotal)" />
+                <Area type="monotone" dataKey="total" stroke="#a6ff3f" strokeWidth={2} fill="url(#gTotal)" />
                 <Line type="monotone" dataKey="critical" stroke="#f26d6d" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>

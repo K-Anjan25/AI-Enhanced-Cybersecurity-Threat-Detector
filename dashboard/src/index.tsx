@@ -7,9 +7,9 @@ import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./utils/toastBridge";
 import { ThemeProvider } from "./theme/ThemeProvider";
-import "@fontsource-variable/inter";
-import "@fontsource-variable/sora";
-import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/dm-sans";
+import "@fontsource/space-mono/400.css";
+import "@fontsource/space-mono/700.css";
 import "./index.css";
 
 // 1. Create a QueryClient instance

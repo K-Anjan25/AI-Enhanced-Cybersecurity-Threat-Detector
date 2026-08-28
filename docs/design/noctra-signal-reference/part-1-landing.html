@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <script>window["__codeletBootstrap__"] = JSON.parse('{"A":"A","B":"20260828-01-9484fa7","C":{"Abril Fatface":"YACgEZbkUVE,0","Alfa Slab One":"YACgEYS9sJU,0","Anton":"YACgEcYqQ-A,0","Archivo":"YAHO2-t-jNE,0","Arial":"YAGyDvJ_4Ts,0","Bebas Neue":"YACgESME5ew,0","Bricolage Grotesque":"YAFyMcdwzpc,0","Canva Sans":"YAFLd8sKbwc,2","Caveat":"YALBs2ploWQ,0","Comic Sans MS":"YAHO2VMiyZo,0","Cormorant Garamond":"YAFdJhX-538,0","Courier New":"YAGzXiGs0_8,0","DM Sans":"YAD1aU3sLnI,0","DM Serif Display":"YAD1aYG82rc,0","Forum":"YACgEcnnqB4,0","Fraunces":"YAEul-FRQw4,0","Georgia":"YAGzXkO0pEM,0","Helvetica Neue":"YAFcf6CtJfI,0","Impact":"YAFcfnjI7Vk,0","Inter":"YAFdJvSyp_k,3","Iowan Old Style":"YAGNIFa8j9o,0","Jacques Francois":"YAHO2a5g66Q,0","JetBrains Mono":"YAFdJksXcAk,0","Libre Baskerville":"YACgEUFdPdA,0","Manrope":"YAHO2b2feC4,0","Merriweather":"YACgEXvHxxs,0","Montserrat":"YADLjI9qxTA,0","Nunito":"YACgEX8C5Gg,0","Oleo Script":"YACgEQQ14jI,0","Phantom Sans":"YAHO2E8Pb88,0","Playfair Display":"YACgEYmuCJE,0","Poppins":"YAFdJjbTu24,1","Press Start 2P":"YAFyGr-8pmQ,0","Quicksand":"YADWjpfPmdk,0","Raleway":"YACgEVg3xZg,0","Segoe UI":"YAHNdRD1Klw,0","Source Sans 3":"YAG4lO1Mj10,0","Spectral":"YAHO2rVUHIM,0","Times New Roman":"YAGzXW3gftg,0","Times":"YAGzXW3gftg,0","Ubuntu":"YACgERDU--Q,0","Work Sans":"YAGXhLOKv44,0","Yellowtail":"YACgEYG4kG4,0","ui-monospace":"YADlN8CFZ8Q,0","ui-sans-serif":"YACkoN-xg4g,0"}}');</script>
+    <script src="/_sdk/50d846425a1e5082.telemetry_sdk.js"
+        integrity="sha512-Otbex+ztlVbcEGql0rXGd/3E3ee/hqAntg6DeuUEMG6pIPbXGOSvZbFZVzknAXi1tH/itQ+ijEhOTr2aWj6CXg=="></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOCTRA — Threat intelligence, always on</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --ink: #070b0f;
+            --panel: #0d151b;
+            --line: rgba(162, 193, 198, .16);
+            --muted: #8fa2a8;
+            --signal: #a6ff3f;
+            --signal-dark: #73bf19;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            width: 100%;
+            font-family: "DM Sans", sans-serif;
+            color: #e8f0ed;
+            overflow-x: hidden;
+        }
+
+        .noctra-shell {
+            width: 100%;
+            min-height: calc(100 * min(var(--vh, 1vh), 1vh));
+            position: relative;
+            isolation: isolate;
+            background-color: var(--ink);
+            background-image:
+                radial-gradient(circle at 76% 13%, rgba(81, 190, 100, .18), transparent 28rem),
+                radial-gradient(circle at 12% 64%, rgba(12, 79, 83, .18), transparent 25rem);
+        }
+
+        .noctra-shell::before {
+            content: "";
+            position: fixed;
+            z-index: -1;
+            inset: 0;
+            pointer-events: none;
+            opacity: .21;
+            background-image:
+                linear-gradient(rgba(169, 255, 93, .11) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(169, 255, 93, .11) 1px, transparent 1px);
+            background-size: 56px 56px;
+            mask-image: linear-gradient(to bottom, black, transparent 86%);
+        }
+
+        .tech-label {
+            font-family: "Space Mono", monospace;
+            font-size: .68rem;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+        }
+
+        .nav-link {
+            color: #aebdc0;
+            font-size: .88rem;
+            transition: color .2s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--signal);
+        }
+
+        .signal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--signal);
+            box-shadow: 0 0 0 5px rgba(166, 255, 63, .11), 0 0 16px rgba(166, 255, 63, .9);
+            animation: pulse 2s infinite;
+        }
+
+        .hero-line {
+            width: 88px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--signal), transparent);
+        }
+
+        .hero-image-wrap {
+            position: relative;
+            min-height: 320px;
+            overflow: hidden;
+            border: 1px solid rgba(166, 255, 63, .24);
+            border-radius: 2px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, .35);
+        }
+
+        .hero-image-wrap::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(4, 12, 12, .14), rgba(4, 12, 12, .82));
+            pointer-events: none;
+        }
+
+        .corner {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            z-index: 2;
+        }
+
+        .corner-tl {
+            top: -1px;
+            left: -1px;
+            border-top: 2px solid var(--signal);
+            border-left: 2px solid var(--signal);
+        }
+
+        .corner-br {
+            right: -1px;
+            bottom: -1px;
+            border-right: 2px solid var(--signal);
+            border-bottom: 2px solid var(--signal);
+        }
+
+        .console-panel {
+            background: linear-gradient(145deg, rgba(17, 28, 35, .97), rgba(8, 14, 18, .98));
+            border: 1px solid var(--line);
+            box-shadow: 0 26px 80px rgba(0, 0, 0, .3);
+        }
+
+        .metric-card {
+            background: rgba(3, 8, 10, .55);
+            border: 1px solid rgba(162, 193, 198, .12);
+        }
+
+        .threat-item {
+            border-left: 2px solid var(--signal);
+            background: rgba(166, 255, 63, .045);
+        }
+
+        .feature-card {
+            border-top: 1px solid rgba(166, 255, 63, .55);
+            background: rgba(13, 21, 27, .72);
+            transition: transform .25s ease, background .25s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(20, 33, 39, .94);
+        }
+
+        .scan-ring {
+            width: 68px;
+            height: 68px;
+            border: 1px solid rgba(166, 255, 63, .3);
+            border-radius: 999px;
+            position: relative;
+            display: grid;
+            place-items: center;
+        }
+
+        .scan-ring::before {
+            content: "";
+            position: absolute;
+            inset: 7px;
+            border-radius: inherit;
+            border: 1px dashed rgba(166, 255, 63, .48);
+        }
+
+        .is-scanning .scan-ring::before {
+            animation: spin 1.8s linear infinite;
+        }
+
+        .scan-core {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #829398;
+        }
+
+        .is-scanning .scan-core {
+            background: var(--signal);
+            box-shadow: 0 0 16px var(--signal);
+            animation: pulse 1s infinite;
+        }
+
+        .scan-line {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--signal), transparent);
+            opacity: 0;
+            transform: translateX(-100%);
+        }
+
+        .is-scanning .scan-line {
+            opacity: 1;
+            animation: sweep 2.2s ease-in-out infinite;
+        }
+
+        .action-button {
+            background: #a6ff3f;
+            color: #071006;
+            font-weight: 700;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(166, 255, 63, .2);
+        }
+
+        .secondary-button {
+            border: 1px solid rgba(190, 216, 218, .28);
+            color: #d9e5e1;
+            transition: border-color .2s ease, color .2s ease;
+        }
+
+        .secondary-button:hover {
+            border-color: var(--signal);
+            color: var(--signal);
+        }
+
+        .reveal {
+            animation: reveal .7s both;
+        }
+
+        .delay-1 {
+            animation-delay: .12s;
+        }
+
+        .delay-2 {
+            animation-delay: .22s;
+        }
+
+        .delay-3 {
+            animation-delay: .32s;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--signal);
+            outline-offset: 4px;
+        }
+
+        @keyframes pulse {
+            50% {
+                opacity: .45;
+                transform: scale(.82);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes sweep {
+            50% {
+                transform: translateX(100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        @keyframes reveal {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 767px) {
+            .hero-image-wrap {
+                min-height: 240px;
+            }
+        }
+    </style>
+    <script src="/_sdk/b3bf9e8ac58e6ad6.data_sdk.js" type="text/javascript"
+        integrity="sha512-otc1u9NYq9Ms5Jt//7vmhrrqR5CLPr8Jdgs6741gqniClfLMcfmC+jK/cKuQdhLv6G0esJ/FzaMS9tv0T/vj/Q=="></script>
+    <script src="/_sdk/a6de989e8af05ea5.resizing_sdk.js" type="text/javascript"
+        integrity="sha512-cceAQMIleYr/3eg7o5WzN46w0HpgI1sxi+5kDUb7CmTjHEpgBtINDxtOpnNeUtujjui8NG0OSDgUMl0/E2lT2A=="></script>
+</head>
+
+<body data-template-id="__page-root">
+    <div class="noctra-shell">
+        <header class="w-full border-b border-white/10 bg-[#070b0f]/85 backdrop-blur-md">
+            <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8"
+                aria-label="Main navigation"><a href="#top" class="flex items-center gap-3" aria-label="NOCTRA home">
+                    <span class="signal-dot" aria-hidden="true"></span> <span data-template-id="brand-name"
+                        class="canva-text font-bold tracking-[0.22em]"></span> </a>
+                <div class="hidden items-center gap-8 md:flex"><a class="nav-link" href="#platform">Platform</a> <a
+                        class="nav-link" href="#console">Console</a> <a class="nav-link"
+                        href="#intelligence">Intelligence</a>
+                </div><button data-template-id="nav-access-button"
+                    class="canva-button action-button rounded-sm px-4 py-2.5 text-sm" type="button"
+                    data-scroll-target="access"></button>
+            </nav>
+        </header>
+        <main id="top">
+            <section
+                class="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:px-8 lg:pb-28 lg:pt-24">
+                <div>
+                    <div class="reveal flex items-center gap-3"><span class="hero-line"></span>
+                        <p data-template-id="hero-eyebrow" class="canva-text tech-label"></p>
+                    </div>
+                    <h1 data-template-id="hero-title"
+                        class="canva-text reveal delay-1 mt-7 max-w-3xl font-bold leading-[.96] tracking-[-.055em]">
+                    </h1>
+                    <p data-template-id="hero-description"
+                        class="canva-text reveal delay-2 mt-7 max-w-xl text-base leading-7 text-[#aebdc0] sm:text-lg">
+                    </p>
+                    <div class="reveal delay-3 mt-9 flex flex-wrap gap-3"><button data-template-id="hero-console-button"
+                            class="canva-button action-button rounded-sm px-5 py-3.5 text-sm" type="button"
+                            data-scroll-target="console"></button> <button data-template-id="hero-access-button"
+                            class="canva-button secondary-button rounded-sm px-5 py-3.5 text-sm" type="button"
+                            data-scroll-target="access"></button>
+                    </div>
+                    <div class="mt-12 flex flex-wrap gap-x-8 gap-y-4 text-[#aebdc0]">
+                        <div class="flex items-center gap-2"><i data-lucide="shield-check"
+                                class="h-4 w-4 text-[#a6ff3f]" aria-hidden="true"></i> <span
+                                data-template-id="hero-proof-one" class="canva-text text-sm"></span>
+                        </div>
+                        <div class="flex items-center gap-2"><i data-lucide="activity" class="h-4 w-4 text-[#a6ff3f]"
+                                aria-hidden="true"></i> <span data-template-id="hero-proof-two"
+                                class="canva-text text-sm"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image-wrap reveal delay-2"><span class="corner corner-tl"></span> <span
+                        class="corner corner-br"></span> <img data-template-id="hero-image"
+                        class="canva-image h-full w-full object-cover" loading="lazy">
+                    <div class="absolute bottom-0 left-0 z-[3] p-6">
+                        <p data-template-id="hero-image-label" class="canva-text tech-label text-[#a6ff3f]"></p>
+                        <p data-template-id="hero-image-caption" class="canva-text mt-2 max-w-xs text-sm text-white">
+                        </p>
+                    </div>
+                </div>
+            </section>
+            <section id="platform" class="border-y border-white/10 bg-[#0b1217]/70">
+                <div
+                    class="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-white/10 px-5 md:grid-cols-4 md:divide-y-0 lg:px-8">
+                    <div class="py-7 text-center">
+                        <p data-template-id="trust-one-value" class="canva-text font-bold text-[#a6ff3f]"></p>
+                        <p data-template-id="trust-one-label" class="canva-text mt-1 text-xs text-[#8fa2a8]"></p>
+                    </div>
+                    <div class="py-7 text-center">
+                        <p data-template-id="trust-two-value" class="canva-text font-bold text-[#a6ff3f]"></p>
+                        <p data-template-id="trust-two-label" class="canva-text mt-1 text-xs text-[#8fa2a8]"></p>
+                    </div>
+                    <div class="py-7 text-center">
+                        <p data-template-id="trust-three-value" class="canva-text font-bold text-[#a6ff3f]"></p>
+                        <p data-template-id="trust-three-label" class="canva-text mt-1 text-xs text-[#8fa2a8]"></p>
+                    </div>
+                    <div class="py-7 text-center">
+                        <p data-template-id="trust-four-value" class="canva-text font-bold text-[#a6ff3f]"></p>
+                        <p data-template-id="trust-four-label" class="canva-text mt-1 text-xs text-[#8fa2a8]"></p>
+                    </div>
+                </div>
+            </section>
+            <section id="console" class="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
+                <div class="mb-10 max-w-2xl">
+                    <p data-template-id="console-eyebrow" class="canva-text tech-label text-[#a6ff3f]"></p>
+                    <h2 data-template-id="console-title" class="canva-text mt-4 font-bold tracking-[-.04em]"></h2>
+                    <p data-template-id="console-description" class="canva-text mt-4 leading-7 text-[#aebdc0]"></p>
+                </div>
+                <div id="dashboard-demo" class="console-panel overflow-hidden rounded-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+                        <div class="flex items-center gap-3"><span class="signal-dot" aria-hidden="true"></span>
+                            <p data-template-id="dashboard-title" class="canva-text tech-label text-[#dbe7e3]"></p>
+                        </div>
+                        <p data-template-id="dashboard-status"
+                            class="canva-tag rounded-full border border-[#a6ff3f]/30 bg-[#a6ff3f]/10 px-3 py-1 tech-label text-[#a6ff3f]">
+                        </p>
+                    </div>
+                    <div class="grid gap-4 p-5 lg:grid-cols-[1.2fr_.8fr]">
+                        <section aria-label="Threat overview">
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                <div class="metric-card p-4">
+                                    <p data-template-id="metric-one-label" class="canva-text tech-label text-[#8fa2a8]">
+                                    </p>
+                                    <p data-template-id="metric-one-value"
+                                        class="canva-text mt-3 font-bold text-[#e8f0ed]"></p>
+                                </div>
+                                <div class="metric-card p-4">
+                                    <p data-template-id="metric-two-label" class="canva-text tech-label text-[#8fa2a8]">
+                                    </p>
+                                    <p data-template-id="metric-two-value"
+                                        class="canva-text mt-3 font-bold text-[#e8f0ed]"></p>
+                                </div>
+                                <div class="metric-card p-4">
+                                    <p data-template-id="metric-three-label"
+                                        class="canva-text tech-label text-[#8fa2a8]"></p>
+                                    <p data-template-id="metric-three-value"
+                                        class="canva-text mt-3 font-bold text-[#e8f0ed]"></p>
+                                </div>
+                                <div class="metric-card p-4">
+                                    <p data-template-id="metric-four-label"
+                                        class="canva-text tech-label text-[#8fa2a8]"></p>
+                                    <p data-template-id="metric-four-value"
+                                        class="canva-text mt-3 font-bold text-[#e8f0ed]"></p>
+                                </div>
+                            </div>
+                            <div class="mt-4 border border-white/10 bg-black/20 p-5">
+                                <div class="flex items-center justify-between gap-4">
+                                    <p data-template-id="events-title" class="canva-text tech-label text-[#dbe7e3]"></p>
+                                    <p data-template-id="events-period" class="canva-text tech-label text-[#71858a]">
+                                    </p>
+                                </div>
+                                <div class="mt-4 space-y-3">
+                                    <div class="threat-item flex items-center justify-between gap-3 px-4 py-3">
+                                        <div>
+                                            <p data-template-id="event-one-title"
+                                                class="canva-text text-sm font-semibold"></p>
+                                            <p data-template-id="event-one-meta"
+                                                class="canva-text mt-1 tech-label text-[#8fa2a8]"></p>
+                                        </div><span data-template-id="event-one-tag"
+                                            class="canva-tag whitespace-nowrap tech-label text-[#a6ff3f]"></span>
+                                    </div>
+                                    <div class="threat-item flex items-center justify-between gap-3 px-4 py-3">
+                                        <div>
+                                            <p data-template-id="event-two-title"
+                                                class="canva-text text-sm font-semibold"></p>
+                                            <p data-template-id="event-two-meta"
+                                                class="canva-text mt-1 tech-label text-[#8fa2a8]"></p>
+                                        </div><span data-template-id="event-two-tag"
+                                            class="canva-tag whitespace-nowrap tech-label text-[#a6ff3f]"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <aside class="border border-white/10 bg-black/20 p-5" aria-label="Scan controls">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p data-template-id="scan-panel-label" class="canva-text tech-label text-[#8fa2a8]">
+                                    </p>
+                                    <p data-template-id="scan-panel-title" class="canva-text mt-2 font-bold"></p>
+                                </div><i data-lucide="radar" class="h-5 w-5 text-[#a6ff3f]" aria-hidden="true"></i>
+                            </div>
+                            <div
+                                class="relative mt-8 grid min-h-40 place-items-center overflow-hidden border border-[#a6ff3f]/15 bg-[#07100c]">
+                                <div class="scan-line absolute inset-y-0 w-1/2"></div>
+                                <div class="scan-ring">
+                                    <span class="scan-core"></span>
+                                </div>
+                            </div>
+                            <div class="mt-5">
+                                <p data-template-id="scan-ready-copy"
+                                    class="canva-text scan-ready text-sm leading-6 text-[#aebdc0]"></p>
+                                <p data-template-id="scan-active-copy"
+                                    class="canva-text scan-active hidden text-sm leading-6 text-[#aebdc0]"></p>
+                            </div><button data-template-id="scan-start-button"
+                                class="canva-button scan-start action-button mt-6 w-full rounded-sm px-4 py-3 text-sm"
+                                type="button"></button> <button data-template-id="scan-reset-button"
+                                class="canva-button scan-reset secondary-button mt-6 hidden w-full rounded-sm px-4 py-3 text-sm"
+                                type="button"></button>
+                        </aside>
+                    </div>
+                </div>
+            </section>
+            <section id="intelligence" class="border-y border-white/10 bg-[#0a1115]">
+                <div class="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
+                    <div class="max-w-xl">
+                        <p data-template-id="features-eyebrow" class="canva-text tech-label text-[#a6ff3f]"></p>
+                        <h2 data-template-id="features-title" class="canva-text mt-4 font-bold tracking-[-.04em]"></h2>
+                    </div>
+                    <div class="mt-10 grid gap-4 md:grid-cols-3">
+                        <article class="feature-card p-7"><i data-lucide="network" class="h-6 w-6 text-[#a6ff3f]"
+                                aria-hidden="true"></i>
+                            <h3 data-template-id="feature-one-title" class="canva-text mt-8 font-bold"></h3>
+                            <p data-template-id="feature-one-description"
+                                class="canva-text mt-3 leading-7 text-[#aebdc0]"></p>
+                        </article>
+                        <article class="feature-card p-7"><i data-lucide="scan-search" class="h-6 w-6 text-[#a6ff3f]"
+                                aria-hidden="true"></i>
+                            <h3 data-template-id="feature-two-title" class="canva-text mt-8 font-bold"></h3>
+                            <p data-template-id="feature-two-description"
+                                class="canva-text mt-3 leading-7 text-[#aebdc0]"></p>
+                        </article>
+                        <article class="feature-card p-7"><i data-lucide="bot" class="h-6 w-6 text-[#a6ff3f]"
+                                aria-hidden="true"></i>
+                            <h3 data-template-id="feature-three-title" class="canva-text mt-8 font-bold"></h3>
+                            <p data-template-id="feature-three-description"
+                                class="canva-text mt-3 leading-7 text-[#aebdc0]"></p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+            <section id="access" class="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
+                <div data-template-id="access-panel"
+                    class="canva-panel relative overflow-hidden border border-[#a6ff3f]/30 p-8 sm:p-12">
+                    <div class="absolute right-0 top-0 h-40 w-40 bg-[#a6ff3f]/10 blur-3xl"></div>
+                    <p data-template-id="access-eyebrow" class="canva-text tech-label text-[#a6ff3f]"></p>
+                    <h2 data-template-id="access-title"
+                        class="canva-text relative mt-4 max-w-2xl font-bold tracking-[-.045em]"></h2>
+                    <p data-template-id="access-description"
+                        class="canva-text relative mt-5 max-w-xl leading-7 text-[#aebdc0]"></p><button
+                        data-template-id="access-button"
+                        class="canva-button action-button relative mt-8 rounded-sm px-5 py-3.5 text-sm" type="button"
+                        data-scroll-target="top"></button>
+                </div>
+            </section>
+        </main>
+        <footer class="border-t border-white/10">
+            <div
+                class="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-5 py-7 text-sm text-[#71858a] sm:flex-row lg:px-8">
+                <p data-template-id="footer-copy" class="canva-text"></p>
+                <p data-template-id="footer-status" class="canva-text tech-label text-[#a6ff3f]"></p>
+            </div>
+        </footer>
+    </div>
+    <script src="/_sdk/32b5df5c9e791b84.editing_sdk.js"
+        integrity="sha512-GR6onBO6a4OXCEWjJr3J5SnC5JY67X7RCAiMRpOa2PonluOQlBKrbHUWMck4+e73st/dspPngOjAjH//UV4K2Q=="></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            lucide.createIcons();
+
+            document.querySelectorAll("[data-scroll-target]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    const target = document.getElementById(button.dataset.scrollTarget);
+                    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+            });
+
+            const dashboard = document.getElementById("dashboard-demo");
+            const startButton = dashboard.querySelector(".scan-start");
+            const resetButton = dashboard.querySelector(".scan-reset");
+            const readyCopy = dashboard.querySelector(".scan-ready");
+            const activeCopy = dashboard.querySelector(".scan-active");
+
+            startButton.addEventListener("click", function () {
+                dashboard.classList.add("is-scanning");
+                startButton.classList.add("hidden");
+                resetButton.classList.remove("hidden");
+                readyCopy.classList.add("hidden");
+                activeCopy.classList.remove("hidden");
+            });
+
+            resetButton.addEventListener("click", function () {
+                dashboard.classList.remove("is-scanning");
+                resetButton.classList.add("hidden");
+                startButton.classList.remove("hidden");
+                activeCopy.classList.add("hidden");
+                readyCopy.classList.remove("hidden");
+            });
+        });
+    </script>
+</body>
+
+</html>

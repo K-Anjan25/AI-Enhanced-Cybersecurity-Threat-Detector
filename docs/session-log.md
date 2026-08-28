@@ -516,3 +516,51 @@ Verified: tsc --noEmit && vite build clean.
 - Profile + Account(/account): hand-rolled h1/h2 → `PageHeader`; Account now reads
   as a proper page (header + card) instead of a floating form.
 - Verified: `tsc --noEmit && vite build` clean.
+
+## Phase 29 — NOCTRA SIGNAL retheme (design source: newfile.html)
+
+The Canva export `newfile.html` (pushed to main, mirrored at
+`docs/design/noctra-signal-reference/part-1-landing.html` + noctradesign.my.canva.site)
+defines the new brand: ink canvas + signal green, DM Sans + Space Mono, sharp corners,
+HUD corner brackets, console panels, tech labels, scan radar. The violet DUALITY
+identity is retired.
+
+**Token system (`styles/globals.css` + `tailwind.config.js`):**
+- `:root` (and `html.dark`) = signal dark (ink #070b0f, panel #0d151b, signal #a6ff3f);
+  `html.light` = new "day ops" paper variant; `.night` = console panels (always ink).
+  ThemeProvider is now dark-first (stored preference still wins).
+- Fonts swapped to DM Sans (+ display) and Space Mono (@fontsource packages; old
+  Inter/Sora/JetBrains Mono fontsource deps removed).
+- Radius scale compressed to 2–4px (sharp); shadows retuned for ink; brand-gradient
+  token is now flat signal green; chart-1 = signal; severity ramp unchanged
+  (dot + label rule intact).
+- New utilities: `.noctra-canvas` (ink shell + 56px signal grid fading down + two
+  radial glows), `.tech-label`, `.signal-dot` (pulsing), `.hud-corners`,
+  `.threat-item`, `.console-panel`, `.scan-ring/.scan-line/.scan-core` with
+  `is-scanning`, `wf-pulse/spin/sweep/reveal` keyframes.
+
+**Components:** Button primary/secondary now match action-button/secondary-button
+(solid green + lift/glow hover; hairline secondary with green hover); StatCard is the
+metric-card (tech-label + bold value); BrandLogo is the signal-dot + "NOCTRA"
+wordmark (tracking .22em) + favicon refreshed; sidebar active item = green left
+border; analyst-voice panels (inbox lead card with HUD corners, case evidence/blast
+radius/chat, report previews) use the console-panel treatment; ~27 hand-rolled
+gradient buttons across pages converted to sharp signal actions; entity-graph node
+colors + cockpit chart strokes de-violetted.
+
+**Landing fully rewritten from newfile.html** (`LandingNav/Hero/TrustBar/
+ConsoleDemo/FeatureGrid/FinalCTA`): blur header, hero with HUD-bracketed SVG topology
+("Threat topology / live"), stats band (24/7 · <5 min · 360° · 1 view), interactive
+console demo (metrics 1,284/48.7k/03/92%, prioritized-event threat items, scan radar
+with working Start/Reset scan state), 3 feature cards, access panel, footer. Auth
+surface forced to the ink canvas (no theme toggle). index.html meta/favicon text
+updated to "Threat intelligence, always on".
+
+**Wireframe kit v3 · SIGNAL** (`docs/wireframes/`): shared CSS retokened to the
+signal system (all 20 boards restyle through the wf-* classes), shell chrome updated
+(signal-dot brand, green active nav), landing board is a 1:1 port of newfile.html,
+auth board is ink, hub/README rewritten for the Signal system.
+
+**Preview verified end-to-end:** backend venv + .env (cookie auth, CHIPS partitioned)
+restored and seeded; login 200 → Set-Cookie → /user/me 200 (7 perms) → /analyst/brief
+200 through the :3000 proxy; `tsc --noEmit && vite build` clean.

@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 /**
- * ThemeProvider — whole-app light/dark mode.
+ * ThemeProvider — whole-app theme.
  *
- * Applies the `dark` class on <html>, which flips every semantic token in
- * globals.css (the DUALITY system). Persists the choice in localStorage
- * (`td_theme`); falls back to the OS preference on first visit; listens for
- * OS changes only while the user hasn't made an explicit choice.
+ * NOCTRA is dark-first (the SIGNAL system): the default is the signal-dark
+ * ink canvas; `light` selects the "day ops" paper variant. The provider
+ * toggles `dark`/`light` classes on <html>` (globals.css maps them), persists
+ * the choice in localStorage (`td_theme`) and defaults to dark.
  */
 
 export type Theme = "light" | "dark";
@@ -21,11 +21,6 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const systemTheme = (): Theme =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-
 const readStored = (): Theme | null => {
   try {
     const raw = window.localStorage.getItem(THEME_KEY);
@@ -36,25 +31,18 @@ const readStored = (): Theme | null => {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => readStored() ?? systemTheme());
+  // Dark-first: the brand is the ink canvas; stored preference wins.
+  const [theme, setThemeState] = useState<Theme>(() => readStored() ?? "dark");
 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
+    root.classList.toggle("light", theme === "light");
     root.style.colorScheme = theme;
-    // Keep the app background in sync so overscroll never flashes light.
+    // Keep the app background in sync so overscroll never flashes.
     document.body.style.backgroundColor =
-      theme === "dark" ? "rgb(12 14 20)" : "rgb(247 247 245)";
+      theme === "dark" ? "rgb(7 11 15)" : "rgb(238 241 236)";
   }, [theme]);
-
-  // Follow the OS only until the user makes an explicit choice.
-  useEffect(() => {
-    if (readStored()) return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e: MediaQueryListEvent) => setThemeState(e.matches ? "dark" : "light");
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
 
   const setTheme = useCallback((t: Theme) => {
     try {

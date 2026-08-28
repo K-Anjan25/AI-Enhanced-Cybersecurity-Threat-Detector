@@ -35,8 +35,7 @@
         <main class="wf-main">
           <div class="wf-empty" style="min-height:300px">
             <b>Page content slot</b>
-            <code>main</code> — every screen in this kit renders here. Density toggle (comfortable / compact) rescales
-            the shell padding + card gaps; collapse button shrinks the sidebar to a 68px icon rail.
+            <code>main</code> — every screen in this kit renders here. Density toggle (comfortable / compact) rescales the shell padding + card gaps; collapse button shrinks the sidebar to a 68px icon rail. The shell sits on the ink canvas with the signal grid texture (noctra-canvas).
           </div>
         </main>
       </div>
@@ -120,7 +119,7 @@
 <section class="wf-notes">
   <h2>Notes</h2>
   <ol>
-    <li><span class="wf-c">1</span><div><b>Command menu</b> — fuzzy filter over Navigate (11 routes) / Cases (live feed) / Actions (4 simulate scenarios). ⌘K opens from anywhere; also opened from the topbar search chip.</div></li>
+    <li><span class="wf-c">1</span><div><b>Command menu</b> (⌘K) — fuzzy filter over Navigate (11 routes) / Cases (live feed) / Actions (4 simulate scenarios). ⌘K opens from anywhere; also opened from the topbar search chip.</div></li>
     <li><span class="wf-c">2</span><div><b>Pending drawer</b> — the WooCommerce mini-cart pattern: always-visible count pill on the “Review decisions” button, slide-out drawer with quick approve/decline and a single “open the case” CTA. Count stays in sync via the <code>noctra:pending-changed</code> event bus.</div></li>
     <li><span class="wf-c">3</span><div><b>Honest empty states</b> are a system rule: “Nothing needs you right now.” — never “NO DATA”.</div></li>
     <li><span class="wf-c">4</span><div><b>Accessibility</b> — skip-to-content link, aria-current on the active nav item, Escape closes overlays, focus-visible ring everywhere, reduced-motion respected.</div></li>

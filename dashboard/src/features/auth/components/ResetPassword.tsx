@@ -49,7 +49,7 @@ export default function ResetPassword() {
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="mt-1 w-full py-2.5 bg-brand-gradient hover:opacity-90 rounded-full font-semibold text-brand-ink transition cursor-pointer text-sm"
+            className="mt-1 w-full py-2.5 bg-brand-gradient hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 rounded-sm font-semibold text-brand-ink transition cursor-pointer text-sm"
           >
             Back to Sign In
           </button>
@@ -102,7 +102,7 @@ export default function ResetPassword() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-brand-gradient hover:opacity-90 rounded-full font-semibold text-brand-ink transition disabled:opacity-50 cursor-pointer text-sm flex items-center justify-center shadow-float"
+            className="w-full py-3 bg-brand-gradient hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 rounded-sm font-semibold text-brand-ink transition disabled:opacity-50 cursor-pointer text-sm flex items-center justify-center shadow-float"
           >
             {loading ? (
               <>

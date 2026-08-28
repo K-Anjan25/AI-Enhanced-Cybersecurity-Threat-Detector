@@ -1,24 +1,28 @@
-# NOCTRA — UI Wireframe Kit v2 (code-accurate)
+# NOCTRA — UI Wireframe Kit v3 · SIGNAL (code-accurate)
 
 Open **`index.html`** in a browser (or `python3 -m http.server` from this folder) for the
 clickable hub. Every board is a standalone HTML file — no build step, no dependencies.
 
 ## What this is
 
-Wireframes generated **from the code**, not from imagination:
+Wireframes in the **NOCTRA SIGNAL system**, whose design source is `newfile.html`
+(the Canva export of noctradesign.my.canva.site) and which is now implemented in the
+dashboard itself:
 
-- Every board maps 1:1 to a route in `dashboard/src/App.tsx`.
-- Navigation IA is the real one (`DashboardLayout`): **Main** (Home / Cases / Actions /
-  Reports = the analyst loop) with **Investigate / Automate / System** as progressive
-  disclosure.
-- Copy is the real copy from the components (page titles, descriptions, empty states,
-  button labels).
-- Data contracts match the API clients (`api/*.ts`) — the spec strip on each board lists
-  route, source file, and endpoints.
-- The DUALITY system is preserved: day workspace surfaces, **night canvas** panels for
-  the analyst's voice (briefs, evidence, blast radius, reports).
-- Type stack, spacing rhythm (16px gutters / 20px card padding / 16px radius) and
-  severity dot+label rules mirror `tailwind.config.js` + `styles/globals.css`.
+- **Tokens** — ink canvas `#070b0f`, panel `#0d151b`, signal green `#a6ff3f`
+  (`--signal-dark: #73bf19`), text ramp `#e8f0ed / #aebdc0 / #8fa2a8 / #71858a`,
+  hairlines ≈ `rgba(162,193,198,.16)`, signal grid texture (56px, fading) + two
+  radial glows. Sharp corners (2–4px); tags/avatars stay round.
+- **Type** — DM Sans (UI + display, bold with tight tracking) and Space Mono
+  (`tech-label`: .68rem, uppercase, tracking .13em — eyebrows, metric labels, tags).
+- **Component vocabulary** — `signal-dot` (pulsing live mark), HUD corner brackets,
+  `console-panel` (ink gradient + green hairline — the analyst's voice),
+  `metric-card`, `threat-item` (green left border event row), `scan-ring`/`scan-line`
+  radar, action/secondary buttons, feature cards (green top border, hover lift).
+- **Boards** map 1:1 to routes in `dashboard/src/App.tsx` with the real IA, real copy
+  and real data contracts (spec strip per board: route · source file · endpoints).
+- The landing board is a 1:1 port of `newfile.html` (header → hero + HUD frame →
+  stats band → interactive console demo with scan radar → features → access → footer).
 
 ## Conventions
 
@@ -26,9 +30,9 @@ Wireframes generated **from the code**, not from imagination:
 | --- | --- |
 | Numbered blue dot | Annotation — explained in the Notes list under each board |
 | X-box (dashed, crossed) | Dynamic region (chart / graph / report body / avatar) — never fake data |
-| Dark panel | Night canvas — stays dark in both themes |
-| Violet | The only brand accent: mark, active nav, primary actions |
-| Mono text | Identifiers, numbers, timestamps, machine values |
+| Green-hairline panel | Console panel — the analyst's voice (briefs, evidence, blast radius, reports) |
+| Signal green | The only accent: mark, active nav, actions, live status, event markers |
+| Space Mono / tech-label | Eyebrows, metric labels, tags, telemetry, identifiers |
 | Dot + label | Severity — never color alone |
 
 ## Maintenance rule
@@ -37,10 +41,8 @@ These wireframes are **derived artifacts**. When a route, nav group, or major pa
 section changes in `dashboard/src`, update the matching board in the same PR. The
 screen-inventory table in `index.html` is the map (route → board → source file → APIs).
 
-This kit **supersedes** the exploratory direction boards in `docs/ui-concepts/`
-(concepts 01–36, directions A–L, and `new3/wireframe-L*.png`). Those were
-direction-finding artifacts; this kit documents the product as built (plus the
-redesign deltas noted on the SOC Cockpit, Admin, Engine Settings and Profile boards).
+This kit supersedes the exploratory direction boards in `docs/ui-concepts/`
+(concepts 01–36, directions A–L) and wireframe kit v2 (violet DUALITY).
 
 ## Boards
 
@@ -63,6 +65,6 @@ redesign deltas noted on the SOC Cockpit, Admin, Engine Settings and Profile boa
 | `admin-users.html` | `/admin/users·tenants·roles` | `AdminUsers/TenantsPage/AccessRolesPage` |
 | `admin-config.html` | `/admin/rules·reputation·engine-settings·system-logs` | corresponding admin pages |
 | `app-shell.html` | shell | `DashboardLayout` · `Navbar` · `CommandMenu` · `PendingDecisionsDrawer` |
-| `landing.html` | `/welcome` | `LandingPage.tsx` → `components/landing/*` |
+| `landing.html` | `/welcome` | `newfile.html` → `LandingPage.tsx` → `components/landing/*` |
 | `auth.html` | `/login` `/register` `/reset-password` | `auth/*` + `AuthLayout.tsx` |
 | `mobile.html` | responsive | all pages |

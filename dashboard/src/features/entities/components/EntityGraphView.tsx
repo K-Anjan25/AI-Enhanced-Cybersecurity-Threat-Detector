@@ -25,8 +25,8 @@ const typeColor: Record<string, string> = {
   hash: "#7e87a3",
   email: "#4fb8a8",
   file: "#f26d6d",
-  account: "#8b7cf6",
-  host: "#9d7cff",
+  account: "#a6ff3f",
+  host: "#4fb8a8",
 };
 
 const typeLabel: Record<string, string> = {
@@ -537,7 +537,7 @@ const EntityGraphView: React.FC<Props> = ({ root, onPivot, onClose }) => {
                     <button
                       type="button"
                       onClick={() => onPivot(detailsEntity)}
-                      className="mt-3 w-full px-3 py-1.5 rounded-full bg-brand-gradient text-brand-ink text-xs font-semibold hover:opacity-90 transition"
+                      className="mt-3 w-full px-3 py-1.5 rounded-sm bg-brand-gradient text-brand-ink text-xs font-semibold hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 transition"
                     >
                       Pivot to this node
                     </button>

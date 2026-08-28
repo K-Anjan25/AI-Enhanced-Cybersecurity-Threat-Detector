@@ -3,28 +3,60 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
-   NOCTRA — DUALITY theming.
-   Two structural scopes, not a toggle:
-   - DAY workspace (:root): navigation, inbox, case lists, tables, settings —
-     the everyday working surface.
-   - NIGHT canvas (.night): where the analyst speaks — AI briefs, reasoning,
-     evidence, blast radius, reports. Panels opt in by adding class "night".
+   NOCTRA — SIGNAL theming (design source: newfile.html, the Canva export).
+   Ink canvas + signal green. Dark-first: `:root` (and `html.dark`) carry the
+   signal-dark palette; `html.light` is the "day ops" paper variant. The
+   `.night` scope keeps the analyst-voice panels on the deep ink canvas with
+   the console-panel treatment (green hairline + HUD corners available).
    Components use semantic tokens only; the scope flips the values.
    --------------------------------------------------------------------------- */
 :root {
+  color-scheme: dark;
+  /* Signal dark — the default (newfile.html tokens) */
+  --c-app-bg: 7 11 15; /* #070b0f ink */
+  --c-app-surface: 13 21 27; /* #0d151b panel */
+  --c-app-surface-raised: 18 29 36; /* #121d24 */
+  --c-app-subtle: 11 18 23; /* #0b1217 */
+  --c-content-primary: 232 240 237; /* #e8f0ed */
+  --c-content-secondary: 174 189 192; /* #aebdc0 */
+  --c-content-tertiary: 143 162 168; /* #8fa2a8 */
+  /* Lines are pre-blended dim hues (≈ rgba(162,193,198,.16/.28) over ink). */
+  --c-line-subtle: 32 40 44; /* #202830 */
+  --c-line-bright: 44 58 66; /* #2c3a42 */
+  --c-accent-primary: 166 255 63; /* #a6ff3f signal green */
+  --c-accent-secondary: 214 255 140; /* bright green hover */
+  --c-status-success: 76 195 138;
+  --c-status-warning: 229 165 75;
+  --c-status-critical: 242 109 109;
+  --c-severity-low: 82 183 136;
+  --c-severity-medium: 229 165 75;
+  --c-severity-high: 240 130 79;
+  --c-severity-critical: 242 109 109;
+  /* texture colors (grid + glows) */
+  --grid-line: rgba(166, 255, 63, 0.11);
+  --glow-a: rgba(81, 190, 100, 0.18);
+  --glow-b: rgba(12, 79, 83, 0.18);
+}
+
+html.dark {
+  /* same signal dark — keeps older stored preferences working */
+  color-scheme: dark;
+}
+
+/* Day-ops light variant — paper console with the signal identity. */
+html.light {
   color-scheme: light;
-  /* Day workspace */
-  --c-app-bg: 247 247 245; /* paper */
+  --c-app-bg: 238 241 236;
   --c-app-surface: 255 255 255;
-  --c-app-surface-raised: 241 241 238;
-  --c-app-subtle: 237 237 234;
-  --c-content-primary: 25 27 34;
-  --c-content-secondary: 86 92 107;
-  --c-content-tertiary: 103 112 127;
-  --c-line-subtle: 229 229 225;
-  --c-line-bright: 214 214 208;
-  --c-accent-primary: 157 124 255; /* lavender #9D7CFF — fills, marks */
-  --c-accent-secondary: 108 92 231; /* deep violet #6C5CE7 — accent text/links on light */
+  --c-app-surface-raised: 227 232 225;
+  --c-app-subtle: 232 236 230;
+  --c-content-primary: 15 20 16;
+  --c-content-secondary: 74 85 78;
+  --c-content-tertiary: 105 118 110;
+  --c-line-subtle: 207 210 207;
+  --c-line-bright: 196 199 200;
+  --c-accent-primary: 92 156 30; /* signal green, ink-safe on paper */
+  --c-accent-secondary: 63 108 18;
   --c-status-success: 35 122 87;
   --c-status-warning: 156 98 12;
   --c-status-critical: 199 53 74;
@@ -32,21 +64,24 @@
   --c-severity-medium: 156 98 12;
   --c-severity-high: 180 85 29;
   --c-severity-critical: 199 53 74;
+  --grid-line: rgba(63, 108, 18, 0.08);
+  --glow-a: rgba(113, 191, 25, 0.1);
+  --glow-b: rgba(12, 79, 83, 0.08);
 }
 
+/* ── The analyst's voice — console panels. Always ink, both themes. ────── */
 .night {
-  /* Night canvas — the analyst's voice on ink */
-  --c-app-bg: 12 14 20;
-  --c-app-surface: 20 22 29;
-  --c-app-surface-raised: 26 29 38;
-  --c-app-subtle: 27 30 40;
-  --c-content-primary: 236 238 244;
-  --c-content-secondary: 166 172 191;
-  --c-content-tertiary: 122 128 147;
-  --c-line-subtle: 35 39 53;
-  --c-line-bright: 50 56 80;
-  --c-accent-primary: 157 124 255;
-  --c-accent-secondary: 201 196 255; /* bright lavender on ink */
+  --c-app-bg: 7 11 15;
+  --c-app-surface: 13 21 27;
+  --c-app-surface-raised: 18 29 36;
+  --c-app-subtle: 11 18 23;
+  --c-content-primary: 232 240 237;
+  --c-content-secondary: 174 189 192;
+  --c-content-tertiary: 143 162 168;
+  --c-line-subtle: 32 40 44;
+  --c-line-bright: 44 58 66;
+  --c-accent-primary: 166 255 63;
+  --c-accent-secondary: 214 255 140;
   --c-status-success: 76 195 138;
   --c-status-warning: 229 165 75;
   --c-status-critical: 242 109 109;
@@ -54,34 +89,10 @@
   --c-severity-medium: 229 165 75;
   --c-severity-high: 240 130 79;
   --c-severity-critical: 242 109 109;
-}
-
-/* ── Whole-app DARK MODE ─────────────────────────────────────────────
-   `html.dark` flips every semantic token to the night values (the same
-   ink family as the analyst's night canvas). Components use tokens only,
-   so a single class on <html> themes the entire product. The `.night`
-   panels remain dark in both themes — the analyst's voice never goes
-   light-on-light. */
-html.dark {
+  --grid-line: rgba(166, 255, 63, 0.11);
+  --glow-a: rgba(81, 190, 100, 0.18);
+  --glow-b: rgba(12, 79, 83, 0.18);
   color-scheme: dark;
-  --c-app-bg: 12 14 20;
-  --c-app-surface: 20 22 29;
-  --c-app-surface-raised: 26 29 38;
-  --c-app-subtle: 27 30 40;
-  --c-content-primary: 236 238 244;
-  --c-content-secondary: 166 172 191;
-  --c-content-tertiary: 122 128 147;
-  --c-line-subtle: 35 39 53;
-  --c-line-bright: 50 56 80;
-  --c-accent-primary: 157 124 255;
-  --c-accent-secondary: 201 196 255;
-  --c-status-success: 76 195 138;
-  --c-status-warning: 229 165 75;
-  --c-status-critical: 242 109 109;
-  --c-severity-low: 82 183 136;
-  --c-severity-medium: 229 165 75;
-  --c-severity-high: 240 130 79;
-  --c-severity-critical: 242 109 109;
 }
 
 @layer base {
@@ -89,23 +100,22 @@ html.dark {
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Sora display face for page titles — geometric, confident, rare. */
   h1,
   h2,
   h3 {
     @apply font-display;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
   body {
     @apply bg-app-bg text-content-primary font-sans antialiased selection:bg-accent-primary selection:text-brand-ink;
   }
 
-  /* Keyboard focus ring — flips with scope (deep on light, bright on ink). */
+  /* Keyboard focus ring — signal green, always visible. */
   :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline: 2px solid rgb(var(--c-accent-secondary));
-    outline-offset: 2px;
-    border-radius: 4px;
+    outline: 2px solid rgb(var(--c-accent-primary));
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 
   /* Reduced-motion users get instant transitions. */
@@ -121,8 +131,137 @@ html.dark {
 }
 
 @layer components {
-  /* Scrollbars resolve per scope (custom properties inherit into the
-     pseudo-element), so day surfaces get light rails and night panels dark. */
+  /* ── Noctra canvas — the ink shell with the signal grid + glows ──────
+     Ported from .noctra-shell in newfile.html. Apply to page roots:
+     dashboard shell, landing, auth. The grid is a fixed overlay that
+     fades toward the bottom; the glows sit at the top-right / mid-left. */
+  .noctra-canvas {
+    position: relative;
+    isolation: isolate;
+    background-color: rgb(var(--c-app-bg));
+    background-image:
+      radial-gradient(circle at 76% 13%, var(--glow-a), transparent 28rem),
+      radial-gradient(circle at 12% 64%, var(--glow-b), transparent 25rem);
+  }
+
+  .noctra-canvas::before {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.85;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 86%);
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent 86%);
+  }
+
+  /* ── Tech label — Space Mono eyebrow/label (newfile .tech-label) ───── */
+  .tech-label {
+    font-family: "Space Mono", ui-monospace, monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  /* ── Signal dot — the live brand mark (newfile .signal-dot) ────────── */
+  .signal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgb(var(--c-accent-primary));
+    box-shadow:
+      0 0 0 5px rgba(166, 255, 63, 0.11),
+      0 0 16px rgba(166, 255, 63, 0.9);
+    animation: wf-pulse 2s infinite;
+  }
+
+  /* ── HUD corner brackets — tactical frame (newfile .corner) ────────── */
+  .hud-corners {
+    position: relative;
+  }
+  .hud-corners::before,
+  .hud-corners::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .hud-corners::before {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid rgb(var(--c-accent-primary));
+    border-left: 2px solid rgb(var(--c-accent-primary));
+  }
+  .hud-corners::after {
+    right: -1px;
+    bottom: -1px;
+    border-right: 2px solid rgb(var(--c-accent-primary));
+    border-bottom: 2px solid rgb(var(--c-accent-primary));
+  }
+
+  /* ── Threat item — prioritized event row (newfile .threat-item) ────── */
+  .threat-item {
+    border-left: 2px solid rgb(var(--c-accent-primary));
+    background: rgba(166, 255, 63, 0.045);
+  }
+
+  /* ── Console panel — the analyst-voice surface (newfile .console-panel) */
+  .night.console-panel,
+  .console-panel {
+    background: linear-gradient(145deg, rgba(17, 28, 35, 0.97), rgba(8, 14, 18, 0.98));
+    border: 1px solid rgba(166, 255, 63, 0.24);
+    box-shadow: 0 26px 80px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ── Scan radar (newfile .scan-ring / .scan-line / .scan-core) ─────── */
+  .scan-ring {
+    width: 68px;
+    height: 68px;
+    border: 1px solid rgba(166, 255, 63, 0.3);
+    border-radius: 999px;
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  .scan-ring::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border-radius: inherit;
+    border: 1px dashed rgba(166, 255, 63, 0.48);
+  }
+  .is-scanning .scan-ring::before {
+    animation: wf-spin 1.8s linear infinite;
+  }
+  .scan-core {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #829398;
+  }
+  .is-scanning .scan-core {
+    background: #a6ff3f;
+    box-shadow: 0 0 16px #a6ff3f;
+    animation: wf-pulse 1s infinite;
+  }
+  .scan-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #a6ff3f, transparent);
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  .is-scanning .scan-line {
+    opacity: 1;
+    animation: wf-sweep 2.2s ease-in-out infinite;
+  }
+
+  /* ── Scrollbar (ink rails) ──────────────────────────────────────────── */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -133,7 +272,7 @@ html.dark {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--c-line-bright));
+    background: rgb(var(--c-line-bright) / 0.3);
     border-radius: 4px;
   }
 
@@ -148,80 +287,54 @@ html.dark {
   [data-density="compact"] main [class*="space-y-"] > * + * {
     margin-top: 0.875rem;
   }
-  [data-density="compact"] main .p-6 {
-    padding: 1.125rem;
-  }
-  [data-density="compact"] main .px-5 {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-  [data-density="compact"] main .py-3 {
-    padding-top: 0.625rem;
-    padding-bottom: 0.625rem;
-  }
-
-  /* Subtle 60 ms staggered entrance for sibling lists (e.g. case rows). */
-  .list-stagger > * {
-    animation: fade-in 180ms ease-out both;
-  }
-  .list-stagger > *:nth-child(1) { animation-delay: 0ms; }
-  .list-stagger > *:nth-child(2) { animation-delay: 60ms; }
-  .list-stagger > *:nth-child(3) { animation-delay: 120ms; }
-  .list-stagger > *:nth-child(4) { animation-delay: 180ms; }
-  .list-stagger > *:nth-child(5) { animation-delay: 240ms; }
-  .list-stagger > *:nth-child(n + 6) { animation-delay: 300ms; }
 }
 
+/* ── Motion (ported from newfile.html) ─────────────────────────────────── */
+@keyframes wf-pulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes wf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wf-sweep {
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes wf-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Utilities used across pages ───────────────────────────────────────── */
 @layer utilities {
-  /* Hide scrollbars on horizontal strips (feature rails, chip rows). */
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  .animate-reveal {
+    animation: wf-reveal 0.7s both;
   }
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
+  .animate-delay-1 {
+    animation-delay: 0.12s;
   }
-
-  /* Smooth in-page anchor scrolling (landing sections). */
-  html {
-    scroll-behavior: smooth;
+  .animate-delay-2 {
+    animation-delay: 0.22s;
   }
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Motion — shared entrance animations.
-   (These keyframes were referenced by .animate-* classes but never defined;
-   pages, modals and menus now actually fade/scale in.)
-   --------------------------------------------------------------------------- */
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.animate-fade-in { animation: fade-in 300ms ease-out both; }
-.animate-fade-up { animation: fade-up 500ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-.animate-scale-in { animation: scale-in 180ms ease-out both; }
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-in,
-  .animate-fade-up,
-  .animate-scale-in,
-  .list-stagger > * {
-    animation: none;
+  .animate-delay-3 {
+    animation-delay: 0.32s;
   }
 }

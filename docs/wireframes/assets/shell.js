@@ -6,7 +6,7 @@
 
    Usage: <body class="wf-doc" data-active="inbox"> with elements
    <aside data-sidebar></aside> and <header data-topbar></header>.
-   The active nav item is highlighted by data-active.
+   The active nav item carries the signal-green left border (tactical active state).
    ========================================================================= */
 
 (function () {
@@ -66,11 +66,9 @@
     brand.className = "wf-brand";
     brand.innerHTML =
       '<span class="wf-brand-name">' +
-      '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/>' +
-      "</svg>" +
+      '<span class="wf-dot"></span>' +
       "<span>NOCTRA</span></span>" +
-      '<i class="ico" style="width:18px;height:18px;border-radius:999px"></i>';
+      '<i class="ico" style="width:18px;height:18px;border-radius:3px"></i>';
 
     var nav = document.createElement("nav");
     nav.setAttribute("aria-label", "Primary");
@@ -113,15 +111,14 @@
 
   function renderTopbar(host) {
     host.innerHTML =
-      '<i class="ico" style="width:18px;height:18px;border-radius:5px;display:inline-block;border:1.4px solid #c4c4bc"></i>' + // mobile menu
-      '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M20.4 14.2A8.6 8.6 0 0 1 9.8 3.6a.7.7 0 0 0-.9-.86 10 10 0 1 0 12.36 12.36.7.7 0 0 0-.86-.9z" fill="#7163d2"/></svg>' +
-      '<span class="wf-tagline">Your autonomous security analyst.</span>' +
+      '<i class="ico" style="width:18px;height:18px;border-radius:3px;display:inline-block;border:1.4px solid #2c3a42"></i>' + // mobile menu
+      '<span class="wf-dot"></span>' +
+      '<span class="wf-tagline">Threat intelligence, always on.</span>' +
       '<span class="wf-search">Search IP, threat, hash… <span class="kbd">⌘K</span></span>' +
       '<span class="wf-top-actions">' +
       '<i class="ico" style="width:15px;height:15px;border-radius:999px;display:inline-block;border:1.4px solid #c4c4bc"></i>' + // theme toggle
       '<span class="wf-reviewpill">Review decisions <span class="count">2</span></span>' +
-      '<span class="wf-iconbtn"><i class="ico" style="width:14px;height:14px;border-radius:4px;display:inline-block;border:1.4px solid currentColor;opacity:.6"></i><span class="dotbadge">3</span></span>' +
+      '<span class="wf-iconbtn"><i class="ico" style="width:14px;height:14px;border-radius:3px;display:inline-block;border:1.4px solid currentColor;opacity:.6"></i><span class="dotbadge">3</span></span>' +
       '<span class="wf-avatar">D</span>' +
       "</span>";
   }

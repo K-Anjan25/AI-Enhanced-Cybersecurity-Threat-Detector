@@ -179,7 +179,7 @@
   <h2>Notes</h2>
   <ol>
     <li><span class="wf-c">1</span><div><b>The headline is the page title</b> — <code>analysis.headline</code> (LLM) or the case title. Severity badge beside it; decision status as the header action. Crumbs: Decisions / Case #41.</div></li>
-    <li><span class="wf-c">2</span><div><b>Assessment vs. Evidence vs. Blast radius</b> — three trust tiers: the assessment card is explicitly labelled “Inferred — not confirmed fact”; evidence and blast radius sit on the <b>night canvas</b> (analyst's voice) showing observed data only.</div></li>
+    <li><span class="wf-c">2</span><div><b>Assessment vs. Evidence vs. Blast radius</b> — three trust tiers: the assessment card is explicitly labelled “Inferred — not confirmed fact”; evidence and blast radius sit on <b>console panels</b> (green hairline, analyst's voice) showing observed data only.</div></li>
     <li><span class="wf-c">3</span><div><b>Ask NOCTRA</b> — chat posts to <code>/analyst/cases/:id/chat</code>; answers carry confidence; fallback answers are labelled rule-based. Confidence is guarded (null-safe) in code.</div></li>
     <li><span class="wf-c">4</span><div><b>Decision gate</b> — one decision, two buttons. Approve/Decline open a ConfirmDialog that spells out exactly what gets <em>recorded</em> (never “executed”).</div></li>
     <li><span class="wf-c">5</span><div><b>After approval</b>: status + SOAR action id + “View report” toggle + “Reverse” (revert re-opens the gate; every transition is append-only audited).</div></li>

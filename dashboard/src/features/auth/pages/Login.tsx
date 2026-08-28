@@ -119,7 +119,7 @@ export default function Login(): React.ReactElement {
             <button
               type="submit"
               disabled={form.isSubmitting || loading}
-              className="w-full py-3 bg-brand-gradient hover:opacity-90 disabled:opacity-60 text-brand-ink rounded-full text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 shadow-float cursor-pointer"
+              className="w-full py-3 bg-brand-gradient hover:-translate-y-0.5 hover:shadow-signal hover:opacity-95 disabled:opacity-60 text-brand-ink rounded-sm text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 shadow-float cursor-pointer"
             >
               {form.isSubmitting || loading ? (
                 <>
