@@ -135,6 +135,8 @@ cd dashboard
 npm test          # watch mode
 npm run test:ci   # single run, as CI does
 
+# jsdom is pinned to ^29: ^30 requires Node >=22.22, CI runs Node 20.
+
 # Typecheck + build dashboard frontend
 cd dashboard
 npm run build
