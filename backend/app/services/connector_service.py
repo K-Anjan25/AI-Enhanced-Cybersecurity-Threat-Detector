@@ -64,10 +64,10 @@ def _is_internal_address(raw: str) -> bool:
 def _guard_endpoint(url: str | None) -> None:
     """Refuse endpoints that would turn a poll into an SSRF.
 
-    Inactive in dev/test environments on purpose: the local walkthrough in
-    docs/demo.md points a connector at http://127.0.0.1, which is precisely
-    the address a deployed instance must refuse. `ENVIRONMENT` is
-    "development" by default and "production" in k8s/configmap.yaml.
+    Inactive in dev/test environments on purpose: a dev checkout defaults to
+    ENVIRONMENT="development", and docs/demo.md §3a's local mock endpoint
+    (http://127.0.0.1) depends on that — while a deployed instance must refuse
+    exactly that address. k8s/configmap.yaml sets ENVIRONMENT="production".
 
     Two honest limits:
     * A name this process cannot resolve cannot be judged here, so it is

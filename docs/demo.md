@@ -151,7 +151,18 @@ from outside. Do it if the audience asks "but where does the data come from?".
   ```
 
 - **Poll mode** — point it at any URL returning a JSON array of events (or
-  `{"events": [...]}`), then hit **Sync**.
+  `{"events": [...]}`), then hit **Sync**. For a rehearsal, serve one from your
+  own machine:
+
+  ```bash
+  printf '[{"message":"Impossible travel for jdoe@acme.com","severity":"HIGH","source_ip":"203.0.113.24"}]' > /tmp/events.json
+  python3 -m http.server 8099 --directory /tmp
+  # endpoint: http://127.0.0.1:8099/events.json
+  ```
+
+  Loopback works because a dev checkout defaults to `ENVIRONMENT=development`.
+  A deployed instance refuses loopback and private addresses on purpose — see
+  Known gaps.
 
 What to point at: the events land as real `SecurityAlert` rows (MITRE-mapped,
 deduped for 24h), so they show up in **Alerts**, **Analytics** and the Inbox
@@ -327,8 +338,9 @@ Honest gaps are better than surprise gaps. As of this writing:
   throttling the ingest endpoint is not done yet.
 - **The SSRF guard on polling is defence in depth, not a sealed boundary.**
   Poll endpoints resolving to private, loopback or link-local addresses are
-  refused — but only when `ENVIRONMENT` is not a dev/test value (the local
-  walkthrough in §3a deliberately uses `127.0.0.1`), a name this process
+  refused — but only when `ENVIRONMENT` is not a dev/test value (a dev checkout
+  defaults to `development`, and §3a's local mock endpoint relies on that), a
+  name this process
   cannot resolve cannot be judged, and DNS rebinding between the check and the
   request is not covered. Don't describe it as "SSRF-proof".
 - **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
