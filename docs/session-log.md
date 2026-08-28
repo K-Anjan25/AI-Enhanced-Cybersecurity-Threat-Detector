@@ -745,8 +745,10 @@ all (§40.4 claimed StatCard "is" it — corrected; the component is the token).
 every page-level regression in Phases 27–32 (NaN widths, "Invalid Date", the
 connector "success" lie) was invisible to automation.
 - Vitest 4 (matching Vite 8 — Vitest 2 bundles an older Vite that cannot load
-  the ESM-only React plugin) + jsdom + React Testing Library, configured in
-  `vite.config.ts` with `src/test/setup.ts` stubbing what jsdom lacks
+  the ESM-only React plugin) + jsdom + React Testing Library. The `test` block
+  lives in the existing `vite.config.mjs`: Vite resolves `.ts` before `.mjs`,
+  so adding a separate `vite.config.ts` silently won and forked dev/build away
+  from test. `src/test/setup.ts` stubs what jsdom lacks
   (`ResizeObserver` for Recharts, `matchMedia` for framer-motion/reduced
   motion, `scrollIntoView`).
 - 14 tests: ThinkingDots (three dots, staggered, `aria-hidden` + status role),
@@ -756,8 +758,20 @@ connector "success" lie) was invisible to automation.
   does not have vs. real counts it does, no fake "just now" for an un-synced
   connector, Configure gated on `alerts:write`, and the connector list being
   re-read after sync rather than patched client-side.
-- `npm test` / `npm run test:ci` / `npm run test:coverage` scripts; the CI
-  dashboard job now runs tests before the build.
+- `npm test` / `npm run test:ci` / `npm run test:coverage` scripts.
+
+**The CI step had to be applied by hand.** This session's GitHub App token has
+no `workflows` scope, so the push carrying the workflow change was rejected;
+the maintainer added the `Unit tests (Vitest)` step directly on `main`
+(`4cb92ec`), which was then merged back into this branch.
+
+**That first CI run failed, and the failure was worth having.** The suite passed
+on Node 22 locally but failed on the runner: jsdom 30 declares engines
+`^22.22.2 || ^24.15.0 || >=26.0.0` while CI runs Node 20, and npm only *warns*
+on EBADENGINE. jsdom is pinned to `^29` — the newest release still supporting
+Node 20.19, matching Vite 8's own floor — verified with a clean `npm ci` on
+Node 20.19.5 (14 tests pass, `npm run build` succeeds). Noted in README so it
+is not bumped back to `^30` without also bumping the workflow's Node.
 
 One test caught a mistake in itself rather than in the code — asserting "2
 decisions by you" when `handled_today` is 1; the component's singular copy was
