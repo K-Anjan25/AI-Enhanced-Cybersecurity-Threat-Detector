@@ -1004,7 +1004,7 @@ violet gradient and sparkle of §12–§13 are gone.
 | `.signal-dot` | Pulsing live mark (used in the logo and status rows) |
 | `.hud-corners` | HUD corner brackets on hero and lead cards |
 | `.console-panel` | Ink gradient + green hairline — **the analyst's voice** (narrative, evidence, blast radius, chat, report previews) |
-| `.metric-card` | `tech-label` + bold value (the `StatCard` component) |
+| `StatCard` (`components/ui/StatCard.tsx`) | The React form of the landing's `.metric-card` — `tech-label` + bold tabular value + tone system. (`.metric-card` itself is a landing-only class in `ConsoleDemo.tsx`; there is no shared CSS class, the component is the token.) |
 | `.threat-item` | Green-left-border event row |
 | `.scan-ring` / `.scan-line` / `.scan-core` + `.is-scanning` | Landing scan radar |
 | `wf-*` keyframes | `pulse` / `spin` / `sweep` / `reveal` — state communication only, `prefers-reduced-motion` honored |
@@ -1012,6 +1012,18 @@ violet gradient and sparkle of §12–§13 are gone.
 **Geometry.** Radius scale compressed to **2–4px** (sharp); `rounded-full`
 stays for tags and avatars. Buttons: solid signal primary with lift + the single
 `shadow-signal` glow on hover; hairline secondary that turns green on hover.
+
+**Where the vocabulary is allowed.** SIGNAL is not decoration, so each element
+has a rule. As of the Phase-33 pass:
+- `threat-item` (signal left edge + faint green tint) marks **the rows that need
+  attention now** — HIGH/CRITICAL alerts, and pending decisions in the Cases
+  feed. It is deliberately *not* applied to every row: a list where everything
+  is highlighted is a list with no signal.
+- `hud-corners` marks **the focal element of a view** — the landing hero frame,
+  the Inbox lead case, the case page's recommended action. One per view.
+- `console-panel` is **the analyst's voice only** — narrative, evidence, blast
+  radius, chat, report previews, the connector webhook block. Never a
+  settings form or a data table.
 
 ### 40.5 Landing
 

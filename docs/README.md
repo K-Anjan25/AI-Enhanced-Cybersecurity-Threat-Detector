@@ -34,3 +34,14 @@ Software-engineering documentation for the **AI-Enhanced Cybersecurity Threat De
 - Requirement IDs are stable and referenced from tests/comments (`FR-AUTH-07`, `NFR-SEC-04`, …).
 - Every new feature should add: an FR (or map to an existing one), a test reference in the
   traceability matrix, and a diagram update if the API surface or models change.
+
+## Test suites
+
+| Suite | Command | Count |
+| --- | --- | --- |
+| Backend (pytest) | `cd backend && pytest tests` | 136 passed, 2 skipped |
+| ML service (pytest) | `cd ml-service && pytest tests` | 13 passed |
+| Dashboard (Vitest) | `cd dashboard && npm run test:ci` | 14 passed |
+
+CI runs all three on every push, plus `tsc --noEmit` + `vite build` for the
+dashboard and the k6 load-test suite.

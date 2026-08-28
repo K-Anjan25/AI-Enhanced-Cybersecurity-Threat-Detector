@@ -130,7 +130,12 @@ pytest tests
 cd ml-service
 pytest tests
 
-# Build dashboard frontend
+# Run dashboard unit tests (Vitest + React Testing Library)
+cd dashboard
+npm test          # watch mode
+npm run test:ci   # single run, as CI does
+
+# Typecheck + build dashboard frontend
 cd dashboard
 npm run build
 ```

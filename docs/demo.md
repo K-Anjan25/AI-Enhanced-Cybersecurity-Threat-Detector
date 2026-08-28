@@ -288,6 +288,7 @@ reputation) fail by design, and are labelled below.
 ```bash
 cd backend   && pytest tests      # 136 passed, 2 skipped
 cd ml-service&& pytest tests      # 13 passed
+cd dashboard && npm run test:ci   # 14 passed (Vitest)
 cd dashboard && npx tsc --noEmit && npm run build
 ```
 

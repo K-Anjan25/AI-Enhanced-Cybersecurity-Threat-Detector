@@ -724,3 +724,41 @@ with a bad token, 201 with the right one (1 ingested, 1 duplicate skipped) →
 `synced` 3 events, latency 12ms, assets 3 → re-sync 0 ingested / 3 skipped →
 poll a dead port → `error` with the real connection error → push-mode sync
 returns `recorded`, not a fake success.
+
+## Phase 33 — SIGNAL surfaces + the dashboard's first test suite
+
+**SIGNAL vocabulary, applied where it means something (spec §40.4).**
+Auditing class usage showed the vocabulary was landing-only: `threat-item`
+appeared solely in `ConsoleDemo.tsx` and `metric-card` did not exist in CSS at
+all (§40.4 claimed StatCard "is" it — corrected; the component is the token).
+- `threat-item` (signal left edge + faint tint) now marks **the rows that need
+  attention**: HIGH/CRITICAL alerts in `AlertList`, and `pending` decisions in
+  the Cases feed. Deliberately not every row — a list where everything is
+  highlighted carries no signal.
+- `hud-corners` now marks **the focal element** of the case view: the
+  recommended-action card. Rule recorded in §40.4: one bracketed element per
+  view.
+- §40.4 gained explicit "where the vocabulary is allowed" rules so the next
+  pass cannot dilute it by decoration.
+
+**Frontend tests — the dashboard had none.** CI only typechecked and built, so
+every page-level regression in Phases 27–32 (NaN widths, "Invalid Date", the
+connector "success" lie) was invisible to automation.
+- Vitest 4 (matching Vite 8 — Vitest 2 bundles an older Vite that cannot load
+  the ESM-only React plugin) + jsdom + React Testing Library, configured in
+  `vite.config.ts` with `src/test/setup.ts` stubbing what jsdom lacks
+  (`ResizeObserver` for Recharts, `matchMedia` for framer-motion/reduced
+  motion, `scrollIntoView`).
+- 14 tests: ThinkingDots (three dots, staggered, `aria-hidden` + status role),
+  Badge (severity never colour-alone, unknown/null severity survives), and six
+  BriefPage tests against a mocked API module — real counts rendered,
+  pluralisation ("1 decision" not "1 decisions"), "—" for telemetry the app
+  does not have vs. real counts it does, no fake "just now" for an un-synced
+  connector, Configure gated on `alerts:write`, and the connector list being
+  re-read after sync rather than patched client-side.
+- `npm test` / `npm run test:ci` / `npm run test:coverage` scripts; the CI
+  dashboard job now runs tests before the build.
+
+One test caught a mistake in itself rather than in the code — asserting "2
+decisions by you" when `handled_today` is 1; the component's singular copy was
+right and the assertion was wrong. Worth keeping it as an explicit assertion.

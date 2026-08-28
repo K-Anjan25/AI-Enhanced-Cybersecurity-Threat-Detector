@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchAlerts } from "../../../api/alertApi";
 import AlertDetailModal from "./AlertDetailModal";
+import { cn } from "../../../components/ui/Button";
 import { SeverityBadge, SkeletonTable, EmptyState } from "../../../components/ui";
 import { Select } from "../../../components/ui/Select";
 
@@ -148,7 +149,12 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
                     <tr
                       key={alert.id || startIndex + index}
                       onClick={() => handleRowClick(alert)}
-                      className="hover:bg-app-subtle/50 cursor-pointer transition-colors group"
+                      className={cn(
+                        "hover:bg-app-subtle/50 cursor-pointer transition-colors group",
+                        // SIGNAL: the signal left edge marks the alerts that
+                        // actually need attention — not every row.
+                        (alert.severity === "CRITICAL" || alert.severity === "HIGH") && "threat-item"
+                      )}
                     >
                       <td className="px-5 py-4 font-mono text-xs text-content-tertiary whitespace-nowrap">
                         {alert.created_at || alert.timestamp || "N/A"}
