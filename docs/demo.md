@@ -135,6 +135,30 @@ Then **fire a scenario** — this is the moment the demo becomes real:
   a `pending` analyst case is opened → `ANALYST_CASE_OPENED` is appended to the
   audit trail. You land on the new case.
 
+## 3a. Make a connector real (optional, +60s)
+
+This is the moment the demo stops being a closed loop and ingests something
+from outside. Do it if the audience asks "but where does the data come from?".
+
+- On a connector card click **Configure** (needs `alerts:write`).
+- **Push mode** — set a shared secret, then post events to the shown webhook:
+
+  ```bash
+  curl -X POST http://localhost:3000/api/v1/connectors/ingest/okta \
+    -H "X-Connector-Token: <your-secret>" \
+    -H "Content-Type: application/json" \
+    -d '{"events":[{"message":"Impossible travel for jdoe@acme.com","severity":"HIGH","source_ip":"203.0.113.24"}]}'
+  ```
+
+- **Poll mode** — point it at any URL returning a JSON array of events (or
+  `{"events": [...]}`), then hit **Sync**.
+
+What to point at: the events land as real `SecurityAlert` rows (MITRE-mapped,
+deduped for 24h), so they show up in **Alerts**, **Analytics** and the Inbox
+counts immediately. The card flips to `connected` with a real asset count and
+the measured request latency; a failed poll shows `error` and the reason
+instead of a cheerful "success".
+
 ## 4. Case workspace — the reasoning (1:45–3:00) · `/case/:id`
 
 `CasePage.tsx` → `GET /analyst/cases/{id}` + `GET /analyst/cases/{id}/timeline`.
@@ -226,7 +250,7 @@ All endpoints are relative to the API base `/api/v1` (`dashboard/src/api/axios.t
 in compose, nginx on `:3000` proxies them to the backend on `:8000`.
 
 **Executed 2026-08-28** against the live stack (SQLite seed, `demo` + `admin`,
-Vite proxy): **40/40 checks passed**, including RBAC (an ANALYST token gets 403
+Vite proxy): **all endpoint checks passed**, including RBAC (an ANALYST token gets 403
 on `/admin/orgs`, `/admin/roles`, `/audit-logs`). Re-run it after any page
 change — the three rows that fail on a *fresh* seed (playbooks, rules,
 reputation) fail by design, and are labelled below.
@@ -235,7 +259,8 @@ reputation) fail by design, and are labelled below.
 | --- | --- | --- | --- | --- |
 | 1 | `/welcome` | `features/landing/pages/LandingPage.tsx` | — (static) | Hero + stats band + console demo; Start/Reset scan works; no fabricated metrics |
 | 2 | `/login`, `/register`, `/reset-password` | `features/auth/**`, `store/userActions.ts` | `POST /login`, `POST /register`, `GET /me`, `POST /refresh`, `POST /logout`, `POST /forgot-password`, `POST /reset-password` | Ink canvas, no theme toggle; login sets httpOnly cookies (`COOKIE_AUTH=true`); 401 triggers single-flight refresh then clean logout |
-| 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error. Connector cards read `not_connected` + `—`; Sync returns `status: "recorded"` and the UI shows the server's message verbatim |
+| 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error. Unconfigured connector cards read `not_connected` + `—`; Sync returns `synced` / `recorded` / `error` and the UI shows the server's message verbatim |
+| 3a | Connector config modal | `components/connectors/ConnectorConfigModal.tsx` | `GET/PUT/DELETE /connectors/{id}/config`, `POST /connectors/ingest/{id}` | Secrets never returned (`has_*_token` flags only); push webhook ingests real alerts (401 on a bad token); poll sync records real counts + measured latency; duplicates skipped; a failing endpoint reports `error` with the reason |
 | 4 | `/feed` | `features/cases/pages/FeedPage.tsx` | `GET /analyst/feed` | Paginated decision feed, newest first; pending/approved/declined/reverted badges correct |
 | 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted` |
 | 6 | `/actions` | `features/actions/pages/ActionsPage.tsx` | `GET /analyst/feed`; `POST /analyst/cases/{id}/revert` | Only `approved`/`reverted` cases; filter by action type/target/case; record-only + reversible stated |
@@ -261,7 +286,7 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 121 passed, 2 skipped
+cd backend   && pytest tests      # 136 passed, 2 skipped
 cd ml-service&& pytest tests      # 13 passed
 cd dashboard && npx tsc --noEmit && npm run build
 ```
@@ -279,17 +304,15 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 Honest gaps are better than surprise gaps. As of this writing:
 
-- **Connectors are a catalogue, not live integrations.** The four rows (Okta,
-  CrowdStrike/Sentinel, GuardDuty, Cloudflare) come from
-  `analyst_service.get_connectors_status()` and no provider is contacted: each
-  reports `status: "not_connected"`, `live: false`, and `null` for
-  `assets_monitored` / `latency_ms` / `last_sync` — the UI renders "—" rather
-  than a number it doesn't have. **Sync is honest by design**: it returns
-  `status: "recorded"` with the message *"Sync request recorded — live
-  connector sync is not enabled in this deployment, no data was fetched"*,
-  writes an audit entry, and the UI shows that message verbatim instead of a
-  fake "Just now". Say: *"this is the connector catalogue — wiring live sources
-  is the next integration."*
+- **No connector is wired by default.** Out of the box all four report
+  `not_connected` with `—` for counts — the honest state. You can make one real
+  in about a minute: **Configure → push → set a shared secret → POST events to
+  the shown webhook** (or **poll** → point it at a JSON events URL). Then it
+  reports `connected` with counts derived from rows actually ingested. Sync has
+  three honest outcomes and the UI shows the server's wording verbatim:
+  `synced` (a real poll fetched events), `recorded` (nothing to fetch — no
+  config / disabled / push mode), `error` (a poll was attempted and failed,
+  with the reason). See §3a.
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.

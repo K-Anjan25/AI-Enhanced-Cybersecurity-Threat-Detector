@@ -116,15 +116,55 @@ export interface ChatMessage {
   confidence?: number;
 }
 
+export type ConnectorStatus =
+  | "connected" // configured, enabled, last sync succeeded
+  | "configured" // source set up but never synced yet
+  | "disabled" // configured but switched off
+  | "syncing"
+  | "error" // last sync failed — `last_error` carries the reason
+  | "not_connected"; // no source configured
+
 export interface Connector {
   id: string;
   name: string;
   category: string;
-  /** `not_connected` = no live source is wired for this connector yet. */
-  status: "connected" | "syncing" | "error" | "not_connected";
-  /** `null` until a source is actually synced — the UI shows "—", never a guess. */
+  status: ConnectorStatus;
+  /** `null` until a source actually syncs — the UI shows "—", never a guess. */
   last_sync: string | null;
+  /** Distinct source IPs this connector has delivered. Real rows only. */
   assets_monitored: number | null;
+  /** Measured duration of the last request, not a fabricatd figure. */
   latency_ms: number | null;
   live?: boolean;
+  mode?: "poll" | "push" | null;
+  last_error?: string | null;
+  events_ingested?: number;
+}
+
+/** Write model for `PUT /connectors/{id}/config`. */
+export interface ConnectorConfigInput {
+  mode: "poll" | "push";
+  endpoint?: string;
+  auth_header?: string;
+  auth_token?: string;
+  ingest_token?: string;
+  enabled?: boolean;
+}
+
+/** Read model returned by the config endpoints — secrets are never included. */
+export interface ConnectorConfig {
+  connector_id: string;
+  name: string;
+  category: string;
+  mode: "poll" | "push";
+  endpoint: string | null;
+  auth_header: string | null;
+  has_auth_token: boolean;
+  has_ingest_token: boolean;
+  enabled: boolean;
+  last_sync: string | null;
+  last_status: string | null;
+  last_error: string | null;
+  last_count: number | null;
+  events_ingested: number;
 }

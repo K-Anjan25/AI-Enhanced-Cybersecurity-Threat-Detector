@@ -18,6 +18,7 @@ import AnalystApi from "../../../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
 import { showSuccess } from "../../../utils/showSuccess";
+import ConnectorConfigModal from "../../../components/connectors/ConnectorConfigModal";
 
 /**
  * Home — the Analyst Inbox (spec §7, §21).
@@ -74,6 +75,19 @@ const BriefPage: React.FC = () => {
   const [simulating, setSimulating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState("credential_leak");
+  const [configFor, setConfigFor] = useState<Connector | null>(null);
+
+  /** Configuring a source writes alerts — gate it on the same permission the
+   *  API enforces, so the button never promises a request that would 403. */
+  const canConfigure = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user_permissions") || "[]").includes(
+        "alerts:write"
+      );
+    } catch {
+      return false;
+    }
+  })();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -115,14 +129,12 @@ const BriefPage: React.FC = () => {
     try {
       const res = await AnalystApi.syncConnector(id);
       // Surface the server's own wording. It says what actually happened
-      // ("request recorded — no data was fetched") — we must not overwrite it
-      // with a fake "Just now" that implies a sync occurred.
+      // ("synced 3 events" / "request recorded — nothing to fetch" / the real
+      // error) — we must not overwrite it with a fake "Just now".
       showSuccess(res.message);
-      setConnectors((prev) =>
-        prev.map((c) =>
-          c.id === id && res.last_sync ? { ...c, last_sync: res.last_sync } : c
-        )
-      );
+      // Re-read real state: a genuine poll changes status, counts and timing.
+      const fresh = await AnalystApi.fetchConnectors().catch(() => null);
+      if (fresh) setConnectors(fresh);
     } catch (err: any) {
       setError(getApiError(err, "Connector sync failed"));
     } finally {
@@ -462,31 +474,54 @@ const BriefPage: React.FC = () => {
                     <span className="text-xs font-bold text-content-primary truncate">
                       {conn.name}
                     </span>
-                    <StatusBadge tone={connectorTone(conn.status)} label={conn.status} />
+                    <StatusBadge
+                      tone={connectorTone(conn.status)}
+                      label={conn.status.replace("_", " ")}
+                    />
                   </div>
                   <p className="text-[11px] text-content-tertiary">{conn.category}</p>
+                  {/* A failed sync says why. Silence here would hide the one
+                      thing the operator needs to know. */}
+                  {conn.status === "error" && conn.last_error && (
+                    <p className="text-[10px] text-status-critical mt-1 line-clamp-2">
+                      {conn.last_error}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-content-secondary border-t border-line-subtle pt-2">
-                  <span>
+                  <span title="Distinct source IPs this connector has delivered">
                     {conn.assets_monitored != null
-                      ? `${conn.assets_monitored} assets`
+                      ? `${conn.assets_monitored} asset${conn.assets_monitored === 1 ? "" : "s"}`
                       : "—"}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleSyncConnector(conn.id)}
-                    disabled={syncingId === conn.id}
-                    title={
-                      conn.live === false
-                        ? "No live source configured — syncing records a request only"
-                        : "Sync now"
-                    }
-                    className="flex items-center gap-1 text-accent-primary font-semibold hover:underline text-[11px]"
-                  >
-                    <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
-                    {conn.last_sync ?? "Sync"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {canConfigure && (
+                      <button
+                        type="button"
+                        onClick={() => setConfigFor(conn)}
+                        className="text-content-secondary hover:text-accent-primary font-semibold transition-colors text-[11px]"
+                      >
+                        Configure
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSyncConnector(conn.id)}
+                      disabled={syncingId === conn.id}
+                      title={
+                        conn.mode === "poll"
+                          ? "Fetch events now"
+                          : conn.live
+                            ? "Sync now"
+                            : "No live source configured — syncing records a request only"
+                      }
+                      className="flex items-center gap-1 text-accent-primary font-semibold hover:underline text-[11px]"
+                    >
+                      <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
+                      {conn.last_sync ?? "Sync"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -496,6 +531,13 @@ const BriefPage: React.FC = () => {
             No connector telemetry configured for this environment.
           </p>
         )}
+
+      <ConnectorConfigModal
+        open={configFor !== null}
+        connector={configFor}
+        onClose={() => setConfigFor(null)}
+        onSaved={loadData}
+      />
       </div>
     </div>
   );

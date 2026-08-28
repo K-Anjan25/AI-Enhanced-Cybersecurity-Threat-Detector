@@ -668,3 +668,59 @@ model. Every claim in `docs/demo.md` now has a live pass behind it.
 
 Verified: `tsc --noEmit` + `vite build` clean; backend 121/2 and ml 13
 unchanged (no backend code touched).
+
+## Phase 32 — Real connector ingest (replacing the mock)
+
+Follow-on to Phase 31's honesty fix. The catalogue was honest but inert, so the
+panel now ingests real events and every number is measured.
+
+**Model** — `app/models/connector.py` `ConnectorSource` (tenant-scoped, unique
+per org+connector): mode (`poll` | `push`), endpoint, auth header/token
+(outbound, write-only), `ingest_token` (inbound shared secret), enabled, plus
+real sync state: `last_sync_at`, `last_status`, `last_error`,
+`last_duration_ms`, `last_count`, `events_ingested`.
+
+**Service** — `app/services/connector_service.py`:
+- `list_connectors()` merges the 4-entry catalogue with real config:
+  `not_connected` (no config) → `configured` (config, never synced) →
+  `connected` (last sync ok, with real counts) → `error` (last sync failed,
+  reason shown). `assets_monitored` = distinct source IPs actually delivered;
+  `latency_ms` = measured request duration.
+- `sync()` has three honest outcomes: `synced` (real poll), `recorded` (no
+  config / disabled / push mode — nothing to fetch), `error` (poll attempted,
+  failed, reason returned and persisted).
+- `ingest_push()` authenticates by `X-Connector-Token` and writes real
+  `SecurityAlert` rows, MITRE-mapped via the existing `mitre.map_alert`.
+- `_normalize_event()` tolerates provider field drift (`message`/`summary`/
+  `displayMessage`, `source_ip`/`src_ip`/`client_ip`, numeric 1–10 severities)
+  and **drops** events it cannot describe rather than inventing content.
+- Dedupe: within a payload, and against the same connector's last 24h.
+- Config changes are audited (`CONNECTOR_CONFIGURED` / `_UPDATED` /
+  `_REMOVED`); secrets are never serialized.
+
+**API** — new `endpoints/connectors.py`: `GET /connectors`,
+`GET/PUT/DELETE /connectors/{id}/config` (gated on `alerts:write`),
+`POST /connectors/ingest/{id}` (webhook, token-authenticated, no session).
+`/analyst/connectors` + `/analyst/connectors/{id}/sync` now delegate here; the
+dead `analyst_service.get_connectors_status` / `sync_connector` were deleted.
+
+**Frontend** — `api/connectorApi.ts`, `components/connectors/
+ConnectorConfigModal.tsx` (mode switch, poll endpoint + auth, push secret +
+copyable webhook URL + sample body, enable toggle, remove) and Inbox wiring:
+Configure button gated on the same `alerts:write` permission the API enforces,
+real counts with `—` when unknown, error reason surfaced on the card, and the
+connector list re-read after sync instead of a client-side fake "Just now".
+
+**Tests** — `tests/test_connectors.py`, 15 cases: honesty of each status
+transition, tenant scoping, tenant-scoped sync, success/failure paths (mocked
+HTTP), push auth + dedupe + numeric-severity mapping, secret non-leakage,
+validation, auditing, and a full HTTP config → ingest → connected flow.
+Suite: backend **136 passed / 2 skipped** (was 121).
+
+**Live-verified end to end** (backend + Vite + a real local HTTP source):
+unconfigured `not_connected`/null → configure push → `configured` → webhook 401
+with a bad token, 201 with the right one (1 ingested, 1 duplicate skipped) →
+`connected` / live / assets 1 → configure poll against a live JSON endpoint →
+`synced` 3 events, latency 12ms, assets 3 → re-sync 0 ingested / 3 skipped →
+poll a dead port → `error` with the real connection error → push-mode sync
+returns `recorded`, not a fake success.
