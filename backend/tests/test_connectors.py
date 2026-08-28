@@ -181,6 +181,18 @@ def test_push_ingest_requires_the_shared_secret(db_session, org):
     assert alert.mitre_technique_id
 
 
+def test_push_ingest_rejects_a_non_ascii_token_instead_of_crashing(db_session, org):
+    """hmac.compare_digest() refuses non-ASCII str outright. Comparing bytes
+    keeps a wrong token a wrong token: 401, not a 500 from a TypeError."""
+    connector_service.upsert_config(
+        db_session, org.id, "okta", {"mode": "push", "ingest_token": "s3cret"}, actor="admin"
+    )
+    with pytest.raises(PermissionError):
+        connector_service.ingest_push(
+            db_session, "okta", "s3crét", [{"message": "Impossible travel"}]
+        )
+
+
 def test_push_ingest_skips_duplicates_and_unmappable_events(db_session, org):
     connector_service.upsert_config(
         db_session, org.id, "sentinel", {"mode": "push", "ingest_token": "t"}, actor="admin"

@@ -805,4 +805,9 @@ Also documented as known gaps rather than quietly shipped: connector
 credentials are stored in plaintext (never returned by the API — only
 `has_*_token` booleans), and the ingest webhook has no rate limit.
 
-Backend suite now 145 passed, 2 skipped (was 136; +9 guard tests).
+Backend suite now 146 passed, 2 skipped (was 136; +10 guard tests).
+
+The constant-time fix needed a second pass of its own: `hmac.compare_digest()`
+rejects non-ASCII `str` with a TypeError, so a wrong token containing an accent
+would have returned 500 instead of 401. Comparing UTF-8 bytes keeps a wrong
+token a wrong token, with a test pinning it.

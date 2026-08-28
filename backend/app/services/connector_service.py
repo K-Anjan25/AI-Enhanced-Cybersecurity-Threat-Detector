@@ -463,8 +463,11 @@ def ingest_push(
         )
         .first()
     )
+    # Compared as bytes: hmac.compare_digest() rejects str with non-ASCII
+    # characters outright, which would turn a wrong token containing an accent
+    # into a TypeError (500) instead of a rejection (401).
     if cfg is None or not token or not hmac.compare_digest(
-        token, cfg.ingest_token or ""
+        token.encode("utf-8"), (cfg.ingest_token or "").encode("utf-8")
     ):
         raise PermissionError("Unknown connector ID or invalid ingest token")
 

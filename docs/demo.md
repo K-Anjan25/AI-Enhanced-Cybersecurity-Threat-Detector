@@ -297,7 +297,7 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 145 passed, 2 skipped
+cd backend   && pytest tests      # 146 passed, 2 skipped
 cd ml-service&& pytest tests      # 13 passed
 cd dashboard && npm run test:ci   # 14 passed (Vitest)
 cd dashboard && npx tsc --noEmit && npm run build
