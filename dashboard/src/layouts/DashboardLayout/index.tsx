@@ -131,6 +131,17 @@ const NAV_SECTIONS: NavSection[] = [
       { name: "Risk-Based P77", path: "/risk-based", icon: ShieldAlert, badge: "P77" },
       { name: "Purple Team P78-79", path: "/purple-team", icon: Swords, badge: "P78" },
       { name: "PDF Export P80", path: "/pdf-export", icon: FileDown, badge: "P80" },
+      { name: "Advanced 73-80", path: "/advanced-phases", icon: Layers, badge: "P73-80" },
+    ],
+  },
+  {
+    label: "Governance & Coverage",
+    items: [
+      { name: "Retention P81", path: "/data-lifecycle", icon: FileDown, badge: "P81" },
+      { name: "ATT&CK Coverage P82", path: "/attack-coverage", icon: Shield, badge: "P82" },
+      { name: "Agent Collab P83", path: "/agent-collab", icon: ShieldAlert, badge: "P83" },
+      { name: "SOC TV Wall P84", path: "/soc-tv-wall", icon: Shield, badge: "P84" },
+      { name: "Final 81-84", path: "/final-phases", icon: Layers, badge: "P81-84" },
     ],
   },
   {
