@@ -31,7 +31,12 @@ const TenantsPage = React.lazy(() => import("./features/admin/pages/TenantsPage"
 const AccessRolesPage = React.lazy(() => import("./features/admin/pages/AccessRolesPage"));
 const RulesPage = React.lazy(() => import("./features/admin/pages/RulesPage"));
 const ReputationPage = React.lazy(() => import("./features/admin/pages/ReputationPage"));
+const SsoScimPage = React.lazy(() => import("./features/admin/pages/SsoScimPage"));
+const ApiKeysPage = React.lazy(() => import("./features/admin/pages/ApiKeysPage"));
+const CompliancePage = React.lazy(() => import("./features/admin/pages/CompliancePage"));
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
+const AdvancedHubPage = React.lazy(() => import("./features/advanced/pages/AdvancedHubPage"));
+const NextPhasesPage = React.lazy(() => import("./features/advanced/pages/NextPhasesPage"));
 
 const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
@@ -43,8 +48,6 @@ const FallbackLoader: React.FC = () => (
 );
 
 export default function App(): JSX.Element {
-  // Use the RootState exported from the store (not a local redefinition).
-  // userSlice state shape: { user, isLoggedIn, loading, error }
   const { user, loading } = useSelector((state: RootState) => state.user);
 
   if (loading) {
@@ -73,13 +76,11 @@ export default function App(): JSX.Element {
     <Router>
       <Suspense fallback={<FallbackLoader />}>
         <Routes>
-          {/* Public Routes */}
           <Route path="/welcome" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Protected SOC Dashboard Shell */}
           <Route
             path="/"
             element={
@@ -103,6 +104,8 @@ export default function App(): JSX.Element {
               <Route path="incidents" element={<IncidentsPage />} />
               <Route path="entities" element={<EntitiesPage />} />
               <Route path="soar" element={<SoarPage />} />
+              <Route path="advanced" element={<AdvancedHubPage />} />
+              <Route path="next" element={<NextPhasesPage />} />
               <Route path="profile" element={<Profile />} />
               <Route path="account" element={<Account />} />
               <Route
@@ -124,11 +127,13 @@ export default function App(): JSX.Element {
                 <Route path="reputation" element={<ReputationPage />} />
                 <Route path="engine-settings" element={<AdminEngineSettings />} />
                 <Route path="system-logs" element={<AdminAuditLogs />} />
+                <Route path="sso" element={<SsoScimPage />} />
+                <Route path="apikeys" element={<ApiKeysPage />} />
+                <Route path="compliance" element={<CompliancePage />} />
               </Route>
             </Route>
           </Route>
 
-          {/* Fallback Catch-All */}
           <Route path="/unauthorized" element={<Navigate to="/alerts" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
