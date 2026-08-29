@@ -24,6 +24,7 @@ from app.api.v1.endpoints import (
     connector_oauth,
     ocsf,
     compliance,
+    apikeys,
 )
 
 api_router = APIRouter()
@@ -53,3 +54,4 @@ api_router.include_router(connectors.router, tags=["Connectors"])
 api_router.include_router(stream.router)
 api_router.include_router(ocsf.router)
 api_router.include_router(compliance.router)
+api_router.include_router(apikeys.router)

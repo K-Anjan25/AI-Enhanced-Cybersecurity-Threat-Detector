@@ -28,6 +28,9 @@ class User(Base):
     is_sso_user = Column(Boolean, default=False, nullable=False)
     scim_external_id = Column(String(255), nullable=True, index=True)  # SCIM externalId
 
+    # Phase 47: service accounts
+    is_service_account = Column(Boolean, default=False, nullable=False)
+
     alerts = relationship("SecurityAlert", back_populates="user")
     scanned_alerts = relationship("ScannedAlert", back_populates="user")
     scan_batches = relationship("ScanBatch", back_populates="user")

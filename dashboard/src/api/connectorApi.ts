@@ -56,6 +56,11 @@ export const disconnectOAuth = async (connectorId: string): Promise<{ disconnect
   return data;
 };
 
+export const rotateSecret = async (connectorId: string): Promise<{ connector_id: string; ingest_token: string; rotated_at: string; warning: string }> => {
+  const { data } = await api.post(`/connectors/${connectorId}/rotate-secret`);
+  return data;
+};
+
 export const ConnectorApi = {
   fetchConfigs,
   fetchConfig,
@@ -65,6 +70,7 @@ export const ConnectorApi = {
   fetchOAuthStatus,
   oauthStartUrl,
   disconnectOAuth,
+  rotateSecret,
 };
 
 export default ConnectorApi;

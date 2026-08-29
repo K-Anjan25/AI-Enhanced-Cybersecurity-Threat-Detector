@@ -32,6 +32,8 @@ const AccessRolesPage = React.lazy(() => import("./features/admin/pages/AccessRo
 const RulesPage = React.lazy(() => import("./features/admin/pages/RulesPage"));
 const ReputationPage = React.lazy(() => import("./features/admin/pages/ReputationPage"));
 const SsoScimPage = React.lazy(() => import("./features/admin/pages/SsoScimPage"));
+const ApiKeysPage = React.lazy(() => import("./features/admin/pages/ApiKeysPage"));
+const CompliancePage = React.lazy(() => import("./features/admin/pages/CompliancePage"));
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
 
 const FallbackLoader: React.FC = () => (
@@ -126,6 +128,8 @@ export default function App(): JSX.Element {
                 <Route path="engine-settings" element={<AdminEngineSettings />} />
                 <Route path="system-logs" element={<AdminAuditLogs />} />
                 <Route path="sso" element={<SsoScimPage />} />
+                <Route path="apikeys" element={<ApiKeysPage />} />
+                <Route path="compliance" element={<CompliancePage />} />
               </Route>
             </Route>
           </Route>

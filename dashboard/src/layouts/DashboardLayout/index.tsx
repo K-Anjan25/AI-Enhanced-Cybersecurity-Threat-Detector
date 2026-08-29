@@ -72,6 +72,9 @@ const SYSTEM_NAV_ITEMS: NavItem[] = [
   { name: "Users", path: "/admin/users", icon: KeyRound },
   { name: "Tenants", path: "/admin/tenants", icon: Building2 },
   { name: "Roles", path: "/admin/roles", icon: ShieldCheck },
+  { name: "SSO & SCIM", path: "/admin/sso", icon: KeyRound },
+  { name: "API Keys", path: "/admin/apikeys", icon: KeyRound },
+  { name: "Compliance", path: "/admin/compliance", icon: ShieldCheck },
 ];
 
 type Density = "comfortable" | "compact";

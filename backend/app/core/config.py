@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     GITHUB_OAUTH_CLIENT_SECRET: str | None = None
     SLACK_OAUTH_CLIENT_ID: str | None = None
     SLACK_OAUTH_CLIENT_SECRET: str | None = None
+    # Phase 46 — Google Workspace + AzureAD
+    GOOGLE_OAUTH_CLIENT_ID: str | None = None
+    GOOGLE_OAUTH_CLIENT_SECRET: str | None = None
+    AZUREAD_OAUTH_CLIENT_ID: str | None = None
+    AZUREAD_OAUTH_CLIENT_SECRET: str | None = None
+    AZUREAD_OAUTH_TENANT_ID: str | None = None  # e.g. common or tenant GUID
     CONNECTOR_OAUTH_REDIRECT_BASE: str | None = None  # e.g. http://localhost:8000 or frontend URL
 
     # CORS
@@ -130,6 +136,13 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_SCANS: int = 10
     AUTO_QUARANTINE: bool = False
     LOG_RETENTION_DAYS: int = 30
+
+    # Phase 47: org isolation + API keys + rate limiting
+    REDIS_URL: str | None = None  # e.g. redis://localhost:6379/0
+    ORG_RATE_LIMIT_ENABLED: bool = True
+    ORG_RATE_LIMIT_RPS: int = 100
+    ORG_RATE_LIMIT_BURST: int = 200
+    API_KEY_ENABLED: bool = True
 
 
 settings = Settings()

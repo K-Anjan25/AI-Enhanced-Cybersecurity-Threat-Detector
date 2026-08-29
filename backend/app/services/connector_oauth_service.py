@@ -1,17 +1,13 @@
-"""Connector OAuth — GitHub App + Slack OAuth for real API tokens.
+"""Connector OAuth — GitHub App + Slack OAuth + Google Workspace + AzureAD for real API tokens.
 
-Phase 41: small teams use GitHub and Slack, they want NOCTRA to ingest directly
-from those APIs using OAuth, not just push webhooks.
-
-- GitHub: OAuth App flow (or GitHub App installation) to get token for Advanced Security alerts
-- Slack: OAuth v2 flow to get token for Audit Logs API
+Phase 41: GitHub and Slack
+Phase 46: Google Workspace, AzureAD (Entra ID) + refresh + secret rotation
 
 Honest scope:
 - Tokens encrypted at rest via existing connector encryption helper
 - State stored in-memory TTL 10 min per-process (like SSO)
-- No automatic refresh yet for GitHub (GitHub tokens don't expire, but we store expiry if provided)
-- Slack tokens may need refresh — we attempt refresh if refresh_token present
-- Provider discovery via env vars GITHUB_OAUTH_CLIENT_ID/SECRET, SLACK_OAUTH_CLIENT_ID/SECRET
+- Refresh implemented for providers that support refresh_token (Google, AzureAD, Slack if provided)
+- Provider discovery via env vars *_OAUTH_CLIENT_ID/SECRET
 """
 
 from __future__ import annotations
@@ -73,6 +69,29 @@ def _get_oauth_config(connector_id: str) -> dict | None:
             "scopes": "auditlogs:read",
             "provider": "slack",
         }
+    elif connector_id == "gworkspace":
+        if not settings.GOOGLE_OAUTH_CLIENT_ID:
+            return None
+        return {
+            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+            "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
+            "token_url": "https://oauth2.googleapis.com/token",
+            "scopes": "https://www.googleapis.com/auth/admin.reports.audit.readonly https://www.googleapis.com/auth/admin.directory.user.readonly",
+            "provider": "gworkspace",
+        }
+    elif connector_id == "azuread":
+        if not settings.AZUREAD_OAUTH_CLIENT_ID:
+            return None
+        tenant = settings.AZUREAD_OAUTH_TENANT_ID or "common"
+        return {
+            "client_id": settings.AZUREAD_OAUTH_CLIENT_ID,
+            "client_secret": settings.AZUREAD_OAUTH_CLIENT_SECRET,
+            "authorize_url": f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
+            "token_url": f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+            "scopes": "https://graph.microsoft.com/AuditLog.Read.All https://graph.microsoft.com/User.Read.All offline_access",
+            "provider": "azuread",
+        }
     return None
 
 
@@ -101,6 +120,7 @@ def get_connector_oauth_status(db: Session, org_id: int | None, connector_id: st
         "scopes": row.scopes,
         "expires_at": row.expires_at.isoformat() if row.expires_at else None,
         "created_at": row.created_at.isoformat() if row.created_at else None,
+        "has_refresh_token": bool(row.refresh_token_encrypted),
     }
 
 
@@ -131,12 +151,21 @@ def create_oauth_authorization_url(
         "redirect_uri": redirect_uri,
         "state": state,
         "scope": cfg["scopes"],
+        "response_type": "code",
+        "access_type": "offline" if connector_id in ("gworkspace", "azuread") else "online",
+        "prompt": "consent" if connector_id in ("gworkspace", "azuread") else "consent",
     }
 
     # GitHub needs no extra, Slack needs user_scope maybe
     if connector_id == "slack":
         # Slack v2 uses scope, not user_scope for bot
-        pass
+        params.pop("response_type", None)
+        params.pop("access_type", None)
+        params.pop("prompt", None)
+    elif connector_id == "github":
+        params.pop("response_type", None)
+        params.pop("access_type", None)
+        params.pop("prompt", None)
 
     return f"{cfg['authorize_url']}?{urlencode(params)}", state
 
@@ -169,9 +198,14 @@ def exchange_oauth_code(
         "client_secret": cfg["client_secret"],
         "code": code,
         "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
     }
 
     headers = {"Accept": "application/json"}
+
+    # For Google and AzureAD, token endpoint expects form-encoded
+    if connector_id in ("gworkspace", "azuread"):
+        headers = {}
 
     resp = requests.post(cfg["token_url"], data=data, headers=headers, timeout=10)
     resp.raise_for_status()
@@ -214,6 +248,35 @@ def exchange_oauth_code(
         account_id = team.get("id") or token_data.get("team_id")
         account_name = team.get("name")
 
+    elif connector_id == "gworkspace":
+        try:
+            # Get user info via Google
+            user_resp = requests.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10,
+            )
+            if user_resp.status_code == 200:
+                user_info = user_resp.json()
+                account_id = user_info.get("id")
+                account_name = user_info.get("email")
+        except Exception as exc:
+            _LOGGER.warning("Failed to fetch Google user info: %s", exc)
+
+    elif connector_id == "azuread":
+        try:
+            user_resp = requests.get(
+                "https://graph.microsoft.com/v1.0/me",
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10,
+            )
+            if user_resp.status_code == 200:
+                user_info = user_resp.json()
+                account_id = user_info.get("id")
+                account_name = user_info.get("userPrincipalName") or user_info.get("mail")
+        except Exception as exc:
+            _LOGGER.warning("Failed to fetch AzureAD user info: %s", exc)
+
     # Upsert
     existing = (
         db.query(ConnectorOAuth)
@@ -240,6 +303,10 @@ def exchange_oauth_code(
             row.expires_at = _now() + timedelta(seconds=int(expires_in))
         except Exception:
             row.expires_at = None
+    else:
+        # For providers that don't return expires_in, set default 1h for refreshable tokens
+        if refresh_token:
+            row.expires_at = _now() + timedelta(seconds=3600)
     row.scopes = scope
     row.account_id = account_id
     row.account_name = account_name
@@ -251,8 +318,65 @@ def exchange_oauth_code(
     return row
 
 
+def _refresh_oauth_token(db: Session, row: ConnectorOAuth) -> str | None:
+    """Refresh an expired OAuth token using refresh_token. Returns new access token or None."""
+    if not row.refresh_token_encrypted:
+        return None
+
+    cfg = _get_oauth_config(row.connector_id)
+    if not cfg:
+        return None
+
+    try:
+        refresh_token = decrypt_secret(row.refresh_token_encrypted)
+    except Exception:
+        _LOGGER.error("Failed to decrypt refresh token for %s", row.connector_id)
+        return None
+
+    data = {
+        "client_id": cfg["client_id"],
+        "client_secret": cfg["client_secret"],
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    }
+
+    try:
+        resp = requests.post(cfg["token_url"], data=data, timeout=10)
+        resp.raise_for_status()
+        token_data = resp.json()
+
+        if "error" in token_data:
+            _LOGGER.warning("OAuth refresh error for %s: %s", row.connector_id, token_data.get("error"))
+            return None
+
+        new_access = token_data.get("access_token")
+        if not new_access:
+            return None
+
+        new_refresh = token_data.get("refresh_token")
+        expires_in = token_data.get("expires_in")
+
+        row.access_token_encrypted = encrypt_secret(new_access)
+        if new_refresh:
+            row.refresh_token_encrypted = encrypt_secret(new_refresh)
+        if expires_in:
+            try:
+                row.expires_at = _now() + timedelta(seconds=int(expires_in))
+            except Exception:
+                pass
+        else:
+            row.expires_at = _now() + timedelta(seconds=3600)
+
+        db.commit()
+        _LOGGER.info("OAuth token refreshed for %s (org %s)", row.connector_id, row.org_id)
+        return new_access
+    except Exception as exc:
+        _LOGGER.warning("OAuth refresh failed for %s: %s", row.connector_id, exc)
+        return None
+
+
 def get_oauth_token(db: Session, org_id: int | None, connector_id: str) -> str | None:
-    """Get decrypted access token for connector, if available and not expired."""
+    """Get decrypted access token for connector, refresh if expired and possible."""
     row = (
         db.query(ConnectorOAuth)
         .filter(ConnectorOAuth.org_id == org_id, ConnectorOAuth.connector_id == connector_id)
@@ -267,19 +391,30 @@ def get_oauth_token(db: Session, org_id: int | None, connector_id: str) -> str |
     if not row or not row.access_token_encrypted:
         return None
 
-    # Check expiry
-    if row.expires_at and row.expires_at < _now():
-        # Try refresh if possible
-        if row.refresh_token_encrypted:
-            try:
-                refresh_token = decrypt_secret(row.refresh_token_encrypted)
-                # Refresh logic depends on provider — for now log and return None
-                _LOGGER.warning("OAuth token expired for %s, refresh not implemented yet", connector_id)
+    # Check expiry — if expired, try refresh (handle naive vs aware)
+    if row.expires_at:
+        exp = row.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp < _now():
+            if row.refresh_token_encrypted:
+                refreshed = _refresh_oauth_token(db, row)
+                if refreshed:
+                    return refreshed
+                _LOGGER.warning("OAuth token expired for %s and refresh failed", connector_id)
                 return None
-            except Exception:
+            else:
+                # No refresh token — for GitHub tokens that don't expire, we still return if no refresh
+                # But if expires_at is set and no refresh, treat as expired
+                if row.connector_id in ("github", "slack") and not row.refresh_token_encrypted:
+                    # GitHub/Slack tokens often don't expire — allow if no refresh but expired_at past
+                    # For safety, still try to return decrypted token if it's GitHub (they don't expire)
+                    if row.connector_id == "github":
+                        try:
+                            return decrypt_secret(row.access_token_encrypted)
+                        except Exception:
+                            return None
                 return None
-        else:
-            return None
 
     try:
         return decrypt_secret(row.access_token_encrypted)
@@ -307,3 +442,4 @@ def disconnect_oauth(db: Session, org_id: int | None, connector_id: str) -> dict
 def reset_state_store():
     with _STATE_LOCK:
         _STATE_STORE.clear()
+

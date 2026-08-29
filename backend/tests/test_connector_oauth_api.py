@@ -19,7 +19,10 @@ def test_connector_oauth_status_not_connected(client, auth_headers, db_session):
 def test_connector_oauth_only_github_slack(client, auth_headers):
     r = client.get("/api/v1/connectors/okta/oauth/start", headers=auth_headers)
     assert r.status_code == 400
-    assert "only supported for github and slack" in r.json()["detail"].lower()
+    # Phase 46 now supports github/slack/gworkspace/azuread
+    detail_lower = r.json()["detail"].lower()
+    assert "only supported for" in detail_lower
+    assert "okta" in detail_lower or "github" in detail_lower
 
 
 def test_connector_oauth_disconnect_not_found(client, auth_headers):
