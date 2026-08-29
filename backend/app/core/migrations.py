@@ -45,6 +45,12 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider VARCHAR(50)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_sso_user BOOLEAN DEFAULT FALSE",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS scim_external_id VARCHAR(255)",
+    # Phase 41: SAML columns on sso_providers + SCIM Groups + Connector OAuth handled by create_all
+    "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_entity_id TEXT",
+    "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_acs_url TEXT",
+    "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_sso_url TEXT",
+    "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_certificate TEXT",
+    "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_nameid_format VARCHAR(255)",
 ]
 
 

@@ -95,17 +95,43 @@ export default function Login(): React.ReactElement {
             </div>
           )}
 
-          {ssoConfig?.enabled && (
+          {(ssoConfig?.enabled || ssoConfig?.oidc?.enabled || ssoConfig?.saml?.enabled) && (
             <div className="space-y-3">
-              <a
-                href={getSsoLoginUrl()}
-                className="w-full py-3 bg-app-subtle border border-line-bright hover:border-accent-primary/50 text-content-primary rounded-sm text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 cursor-pointer"
-              >
-                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-                Sign in with {ssoConfig.display_name || "SSO"}
-              </a>
+              {ssoConfig?.oidc?.enabled && (
+                <a
+                  href={getSsoLoginUrl("oidc")}
+                  className="w-full py-3 bg-app-subtle border border-line-bright hover:border-accent-primary/50 text-content-primary rounded-sm text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 cursor-pointer"
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  Sign in with {ssoConfig?.oidc?.display_name || ssoConfig?.display_name || "SSO"}
+                </a>
+              )}
+              {ssoConfig?.saml?.enabled && (
+                <a
+                  href={getSsoLoginUrl("saml")}
+                  className="w-full py-3 bg-app-subtle border border-line-bright hover:border-accent-primary/50 text-content-primary rounded-sm text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 cursor-pointer"
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Sign in with {ssoConfig?.saml?.display_name || "SAML SSO"}
+                </a>
+              )}
+              {/* Backward compat flat config */}
+              {!ssoConfig?.oidc && !ssoConfig?.saml && ssoConfig?.enabled && (
+                <a
+                  href={getSsoLoginUrl("oidc")}
+                  className="w-full py-3 bg-app-subtle border border-line-bright hover:border-accent-primary/50 text-content-primary rounded-sm text-sm font-semibold transition duration-150 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40 cursor-pointer"
+                >
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  Sign in with {ssoConfig.display_name || "SSO"}
+                </a>
+              )}
               <div className="relative flex items-center">
                 <div className="flex-grow border-t border-line-subtle"></div>
                 <span className="flex-shrink mx-3 text-[11px] text-content-tertiary uppercase tracking-wider">or</span>

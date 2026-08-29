@@ -8,7 +8,7 @@ from app.models.entity import Entity, EntityLink
 from app.models.soar import SoarAction, SoarPlaybook
 from app.models.item import DetectionRule, IpReputation, EngineSetting, AuditLog
 from app.models.connector import ConnectorSource
-from app.models.sso import SsoProvider, ScimToken
+from app.models.sso import SsoProvider, ScimToken, ScimGroup, ConnectorOAuth
 
 __all__ = [
     "Org",
@@ -29,4 +29,6 @@ __all__ = [
     "ConnectorSource",
     "SsoProvider",
     "ScimToken",
+    "ScimGroup",
+    "ConnectorOAuth",
 ]

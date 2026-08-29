@@ -1,9 +1,10 @@
-"""SCIM 2.0 provisioning endpoints.
+"""SCIM 2.0 provisioning endpoints — Users + Groups + Bulk (Phase 41).
 
-Implements the minimal SCIM server required for Okta/Azure AD/Google provisioning:
-- ServiceProviderConfig, ResourceTypes, Schemas (unauthenticated, per spec)
+Implements:
+- ServiceProviderConfig, ResourceTypes, Schemas (unauthenticated)
 - Users: list, create, get, update, patch, delete (Bearer auth)
-- Groups: list (minimal)
+- Groups: list, create, get, update, patch, delete with membership sync
+- Bulk: POST /Bulk with operations (max 20)
 
 Auth: Bearer token from ScimToken table (per-org) + fallback SCIM_TOKEN env var.
 """
@@ -34,17 +35,15 @@ def _verify_scim_auth(
     bearer: str,
     db: Session,
 ) -> tuple[Optional[int], Optional[int]]:
-    """Returns (token_id, org_id) or raises 401."""
     result = scim_service.verify_scim_token(db, bearer)
     if result is None:
         raise HTTPException(status_code=401, detail="Invalid SCIM token")
     token_row, org_id = result
-    # token_row may be None for env fallback
     token_id = token_row.id if token_row else None
     return token_id, org_id
 
 
-# Discovery — no auth required per SCIM spec (or some IdPs call without auth to check)
+# Discovery — no auth required per SCIM spec
 
 @router.get("/ServiceProviderConfig")
 def get_service_provider_config():
@@ -61,7 +60,7 @@ def get_schemas():
     return scim_service.schemas()
 
 
-# Users — requires auth
+# Users
 
 @router.get("/Users")
 def list_users(
@@ -88,7 +87,6 @@ def create_user(
     try:
         return scim_service.create_user(db, org_id=org_id, payload=payload)
     except ValueError as exc:
-        # 409 for already exists
         if "already exists" in str(exc).lower():
             raise HTTPException(status_code=409, detail=str(exc))
         raise HTTPException(status_code=400, detail=str(exc))
@@ -153,17 +151,113 @@ def delete_user(
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+# Groups — Phase 41 membership sync
+
 @router.get("/Groups")
 def list_groups(
+    filter: Optional[str] = Query(None),
+    startIndex: int = Query(1, ge=1),
+    count: int = Query(100, ge=1, le=100),
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ):
     bearer = _get_bearer_token(authorization)
     _, org_id = _verify_scim_auth(bearer, db)
-    return scim_service.list_groups(org_id=org_id)
+    return scim_service.list_groups(db, org_id=org_id, filter_str=filter, start_index=startIndex, count=count)
 
 
-# Admin endpoints for SCIM token management (outside /scim/v2 prefix, under /admin/scim)
+@router.post("/Groups", status_code=201)
+def create_group(
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    bearer = _get_bearer_token(authorization)
+    _, org_id = _verify_scim_auth(bearer, db)
+    try:
+        return scim_service.create_group(db, org_id=org_id, payload=payload)
+    except ValueError as exc:
+        if "already exists" in str(exc).lower():
+            raise HTTPException(status_code=409, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/Groups/{group_id}")
+def get_group(
+    group_id: int,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    bearer = _get_bearer_token(authorization)
+    _, org_id = _verify_scim_auth(bearer, db)
+    try:
+        return scim_service.get_group(db, org_id=org_id, group_id=group_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.put("/Groups/{group_id}")
+def update_group(
+    group_id: int,
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    bearer = _get_bearer_token(authorization)
+    _, org_id = _verify_scim_auth(bearer, db)
+    try:
+        return scim_service.update_group(db, org_id=org_id, group_id=group_id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.patch("/Groups/{group_id}")
+def patch_group(
+    group_id: int,
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    bearer = _get_bearer_token(authorization)
+    _, org_id = _verify_scim_auth(bearer, db)
+    try:
+        return scim_service.patch_group(db, org_id=org_id, group_id=group_id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.delete("/Groups/{group_id}", status_code=204)
+def delete_group(
+    group_id: int,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    bearer = _get_bearer_token(authorization)
+    _, org_id = _verify_scim_auth(bearer, db)
+    try:
+        scim_service.delete_group(db, org_id=org_id, group_id=group_id)
+        return Response(status_code=204)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# Bulk — Phase 41
+
+@router.post("/Bulk")
+def bulk_operations(
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    bearer = _get_bearer_token(authorization)
+    _, org_id = _verify_scim_auth(bearer, db)
+    try:
+        return scim_service.handle_bulk(db, org_id=org_id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+# Admin endpoints for SCIM token management
 
 admin_router = APIRouter(prefix="/admin/scim", tags=["SCIM Admin"])
 
@@ -190,7 +284,7 @@ def create_token(
         "id": row.id,
         "name": row.name,
         "prefix": row.token_prefix,
-        "token": raw,  # shown once
+        "token": raw,
         "message": "Token created — copy it now, it will not be shown again",
     }
 

@@ -9,6 +9,14 @@ export interface SsoConfig {
   scopes?: string;
   jit?: boolean;
   source?: string;
+  // SAML
+  sso_url?: string;
+  entity_id?: string;
+  acs_url?: string;
+  metadata_url?: string;
+  // New nested for Phase 41
+  oidc?: SsoConfig;
+  saml?: SsoConfig;
 }
 
 export async function fetchSsoConfig(): Promise<SsoConfig> {
@@ -16,10 +24,11 @@ export async function fetchSsoConfig(): Promise<SsoConfig> {
   return data;
 }
 
-export function getSsoLoginUrl(): string {
-  // Backend will redirect to IdP
+export function getSsoLoginUrl(type: "oidc" | "saml" = "oidc"): string {
   const base = axiosInstance.defaults.baseURL || "/api/v1";
-  // axios base is /api/v1, so SSO login is /api/v1/auth/sso/login
+  if (type === "saml") {
+    return `${base}/auth/sso/saml/login`;
+  }
   return `${base}/auth/sso/login`;
 }
 
@@ -27,9 +36,13 @@ export interface SsoProvider {
   id?: number;
   provider_type: string;
   display_name: string;
-  issuer: string;
-  client_id: string;
-  scopes: string;
+  issuer?: string;
+  client_id?: string;
+  scopes?: string;
+  saml_metadata_url?: string;
+  saml_entity_id?: string;
+  saml_acs_url?: string;
+  saml_sso_url?: string;
   enabled: boolean;
   jit_provisioning: boolean;
 }
@@ -42,10 +55,15 @@ export async function fetchSsoProviders(): Promise<{ org: SsoConfig; global: Sso
 export async function upsertSsoProvider(payload: {
   provider_type: string;
   display_name?: string;
-  issuer: string;
-  client_id: string;
+  issuer?: string;
+  client_id?: string;
   client_secret?: string;
   scopes?: string;
+  saml_metadata_url?: string;
+  saml_entity_id?: string;
+  saml_acs_url?: string;
+  saml_sso_url?: string;
+  saml_certificate?: string;
   enabled: boolean;
   jit_provisioning: boolean;
 }): Promise<SsoProvider> {
@@ -53,8 +71,9 @@ export async function upsertSsoProvider(payload: {
   return data;
 }
 
-export async function deleteSsoProvider(): Promise<{ deleted: number }> {
-  const { data } = await axiosInstance.delete("/admin/sso/providers");
+export async function deleteSsoProvider(providerType?: string): Promise<{ deleted: number }> {
+  const url = providerType ? `/admin/sso/providers?provider_type=${providerType}` : "/admin/sso/providers";
+  const { data } = await axiosInstance.delete(url);
   return data;
 }
 
