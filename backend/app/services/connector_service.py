@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hmac
 import ipaddress
+import secrets
 import logging
 import socket
 import threading
@@ -545,6 +546,157 @@ def _fetch_slack_audit_events(
     state = {"pages_fetched": max_pages, "cursor": next_cursor}
     return events, next_cursor, state
 
+def _normalize_gworkspace_event(raw: dict) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    # Google Workspace Reports API activity
+    actor = raw.get("actor", {}) if isinstance(raw.get("actor"), dict) else {}
+    actor_email = actor.get("email") or raw.get("actorEmail") or "unknown"
+    events = raw.get("events", []) if isinstance(raw.get("events"), list) else []
+    action = ""
+    if events and isinstance(events[0], dict):
+        action = events[0].get("name") or events[0].get("type") or "activity"
+        # Try to get details
+        params = events[0].get("parameters", [])
+        if params:
+            action += " " + " ".join([str(p.get("value", ""))[:100] for p in params[:2] if isinstance(p, dict)])
+    else:
+        action = raw.get("type") or raw.get("eventType") or "workspace activity"
+    message = f"Google Workspace: {action} by {actor_email}"
+    ip = raw.get("ipAddress") or actor.get("profileId") or None
+    # Infer severity
+    sev = "MEDIUM"
+    if "login_failure" in action or "suspended" in action or "admin" in action.lower():
+        sev = "HIGH"
+    return {
+        "message": str(message)[:2000],
+        "severity": sev,
+        "alert_type": "log",
+        "source_ip": ip,
+        "score": None,
+        "mitre_tactic": None,
+        "mitre_technique_id": None,
+        "mitre_technique": None,
+        "gworkspace_action": action,
+    }
+
+
+def _normalize_azuread_event(raw: dict) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    # Microsoft Graph signIns or auditLogs
+    user = raw.get("userPrincipalName") or raw.get("userDisplayName") or raw.get("userId") or "unknown"
+    action = raw.get("activityDisplayName") or raw.get("activity") or raw.get("operationName") or "AzureAD activity"
+    result = raw.get("result") or raw.get("status", {}).get("errorCode") if isinstance(raw.get("status"), dict) else raw.get("result")
+    message = f"AzureAD: {action} by {user}"
+    if result and str(result) not in ("0", "success", "Success"):
+        message += f" failed: {result}"
+    ip = raw.get("ipAddress") or raw.get("clientIp") or (raw.get("location", {}).get("ipAddress") if isinstance(raw.get("location"), dict) else None)
+    sev = "MEDIUM"
+    if "failed" in message.lower() or "risk" in action.lower() or result not in (None, "0", 0, "success", "Success"):
+        sev = "HIGH"
+    return {
+        "message": str(message)[:2000],
+        "severity": sev,
+        "alert_type": "log",
+        "source_ip": ip,
+        "score": None,
+        "mitre_tactic": None,
+        "mitre_technique_id": None,
+        "mitre_technique": None,
+        "azuread_action": action,
+    }
+
+
+def _fetch_gworkspace_events(
+    oauth_token: str,
+    cursor: str | None = None,
+    max_pages: int = 3,
+) -> tuple[list[dict], str | None, dict]:
+    headers = {"Authorization": f"Bearer {oauth_token}"}
+    events: list[dict] = []
+    next_cursor = cursor
+    state: dict = {}
+    # Google Reports API: login activities
+    url = "https://admin.googleapis.com/admin/reports/v1/activity/users/all/applications/login?maxResults=50"
+    if cursor:
+        url += f"&pageToken={cursor}"
+    for _ in range(max_pages):
+        try:
+            resp = _fetch_events(url, headers)
+            if resp.status_code == 429:
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            items = data.get("items") if isinstance(data, dict) else data
+            if not isinstance(items, list):
+                break
+            for item in items:
+                norm = _normalize_gworkspace_event(item)
+                if norm:
+                    events.append(norm)
+            nc = data.get("nextPageToken") if isinstance(data, dict) else None
+            if nc:
+                next_cursor = nc
+                url = f"https://admin.googleapis.com/admin/reports/v1/activity/users/all/applications/login?maxResults=50&pageToken={nc}"
+                if len(events) >= 100:
+                    break
+                continue
+            break
+        except Exception as exc:
+            _LOGGER.debug("Google Workspace fetch failed: %s", exc)
+            break
+    state = {"pages_fetched": max_pages, "cursor": next_cursor}
+    return events, next_cursor, state
+
+
+def _fetch_azuread_events(
+    oauth_token: str,
+    cursor: str | None = None,
+    max_pages: int = 3,
+) -> tuple[list[dict], str | None, dict]:
+    headers = {"Authorization": f"Bearer {oauth_token}"}
+    events: list[dict] = []
+    next_cursor = cursor
+    state: dict = {}
+    url = "https://graph.microsoft.com/v1.0/auditLogs/signIns?$top=50"
+    if cursor:
+        # Azure uses $skiptoken
+        url += f"&$skiptoken={cursor}"
+    for _ in range(max_pages):
+        try:
+            resp = _fetch_events(url, headers)
+            if resp.status_code == 429:
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            items = data.get("value") if isinstance(data, dict) else data
+            if not isinstance(items, list):
+                break
+            for item in items:
+                norm = _normalize_azuread_event(item)
+                if norm:
+                    events.append(norm)
+            # Pagination via @odata.nextLink
+            next_link = data.get("@odata.nextLink") if isinstance(data, dict) else None
+            if next_link:
+                # Extract skiptoken if present
+                if "$skiptoken=" in next_link:
+                    next_cursor = next_link.split("$skiptoken=")[-1].split("&")[0]
+                else:
+                    next_cursor = next_link
+                url = next_link
+                if len(events) >= 100:
+                    break
+                continue
+            break
+        except Exception as exc:
+            _LOGGER.debug("AzureAD fetch failed: %s", exc)
+            break
+    state = {"pages_fetched": max_pages, "cursor": next_cursor}
+    return events, next_cursor, state
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -647,7 +799,8 @@ def list_connectors(db: Session, org_id: int | None) -> list[dict]:
         }
 
         # Phase 41: check OAuth for github/slack even if no cfg
-        if connector_id in ("github", "slack"):
+        # Phase 46: also gworkspace and azuread
+        if connector_id in ("github", "slack", "gworkspace", "azuread"):
             try:
                 from app.services.connector_oauth_service import get_connector_oauth_status
 
@@ -764,6 +917,54 @@ def upsert_config(
         details=f"{name} set to {mode} mode (enabled={cfg.enabled})",
     )
     return serialize_config(cfg)
+
+
+def rotate_ingest_secret(db: Session, org_id: int, connector_id: str, *, actor: str) -> dict:
+    """Rotate ingest_token for a connector — returns new token once (Phase 46).
+
+    Generates a cryptographically random 32-byte urlsafe secret, stores encrypted,
+    logs rotation. Old secret immediately invalid. Returns new secret once.
+    """
+    cfg = get_config(db, org_id, connector_id)
+    if cfg is None:
+        raise ValueError(f"No configuration for connector '{connector_id}'")
+    new_secret = secrets.token_urlsafe(32)
+    cfg.ingest_token = encrypt_secret(new_secret)
+    cfg.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(cfg)
+    try:
+        from app.services.audit_service import log_action
+
+        log_action(
+            db,
+            action="connector.rotate_secret",
+            user_id=0,
+            org_id=org_id,
+            details={
+                "connector_id": connector_id,
+                "actor": actor,
+                "rotated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+    except Exception:
+        pass
+    try:
+        create_audit_log(
+            db,
+            action="CONNECTOR_ROTATE_SECRET",
+            actor=actor,
+            resource=f"connector:{connector_id}",
+            details=f"Rotated ingest secret for {connector_id}",
+        )
+    except Exception:
+        pass
+    return {
+        "connector_id": connector_id,
+        "ingest_token": new_secret,
+        "rotated_at": datetime.now(timezone.utc).isoformat(),
+        "warning": "Store this token securely — it will not be shown again. Update your webhook source.",
+    }
 
 
 def delete_config(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict:
@@ -1143,7 +1344,7 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
 
     headers = {}
     oauth_token = None
-    if connector_id in ("github", "slack"):
+    if connector_id in ("github", "slack", "gworkspace", "azuread"):
         try:
             from app.services.connector_oauth_service import get_oauth_token
 
@@ -1184,12 +1385,20 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
 
     is_github_real = connector_id == "github" and oauth_token and cfg.endpoint and "api.github.com" in cfg.endpoint
     is_slack_real = connector_id == "slack" and oauth_token and cfg.endpoint and "slack.com" in cfg.endpoint
+    is_gworkspace_real = connector_id == "gworkspace" and oauth_token and cfg.endpoint and "googleapis.com" in cfg.endpoint
+    is_azuread_real = connector_id == "azuread" and oauth_token and cfg.endpoint and "graph.microsoft.com" in cfg.endpoint
     if connector_id == "github" and oauth_token and not is_github_real:
         if cfg.endpoint and ("github" in cfg.endpoint.lower() or cfg.endpoint.startswith("https://api.github.com")):
             is_github_real = True
     if connector_id == "slack" and oauth_token and not is_slack_real:
         if cfg.endpoint and ("slack.com" in cfg.endpoint.lower()):
             is_slack_real = True
+    if connector_id == "gworkspace" and oauth_token and not is_gworkspace_real:
+        if cfg.endpoint and ("googleapis.com" in cfg.endpoint.lower() or "gworkspace" in cfg.endpoint.lower()):
+            is_gworkspace_real = True
+    if connector_id == "azuread" and oauth_token and not is_azuread_real:
+        if cfg.endpoint and ("graph.microsoft.com" in cfg.endpoint.lower() or "azuread" in cfg.endpoint.lower()):
+            is_azuread_real = True
 
     try:
         if is_github_real and oauth_token:
@@ -1208,6 +1417,16 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
         elif is_slack_real and oauth_token:
             cursor_val = cfg.last_cursor
             events, next_cursor, sync_state_data = _fetch_slack_audit_events(
+                oauth_token, cursor=cursor_val
+            )
+        elif is_gworkspace_real and oauth_token:
+            cursor_val = cfg.last_cursor
+            events, next_cursor, sync_state_data = _fetch_gworkspace_events(
+                oauth_token, cursor=cursor_val
+            )
+        elif is_azuread_real and oauth_token:
+            cursor_val = cfg.last_cursor
+            events, next_cursor, sync_state_data = _fetch_azuread_events(
                 oauth_token, cursor=cursor_val
             )
         else:

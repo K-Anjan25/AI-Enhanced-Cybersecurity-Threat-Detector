@@ -40,8 +40,8 @@ def oauth_start(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if connector_id not in ("github", "slack"):
-        raise HTTPException(status_code=400, detail="OAuth only supported for github and slack connectors")
+    if connector_id not in ("github", "slack", "gworkspace", "azuread"):
+        raise HTTPException(status_code=400, detail="OAuth only supported for github, slack, gworkspace and azuread connectors")
 
     base = str(request.base_url).rstrip("/")
     redirect_uri = f"{base}/api/v1/connectors/{connector_id}/oauth/callback"
@@ -85,16 +85,19 @@ def oauth_callback(
         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {exc}")
 
     # Phase 42: auto-create poll config for this connector if not exists, so scheduler can pick it up
+    # Phase 46: also for gworkspace and azuread
     try:
         from app.services import connector_service
 
         cfg = connector_service.get_config(db, org_id=row.org_id, connector_id=connector_id)
         if cfg is None:
-            endpoint = (
-                "https://api.github.com/orgs/{org}/code-scanning/alerts"
-                if connector_id == "github"
-                else "https://api.slack.com/audit/v1/logs"
-            )
+            endpoints = {
+                "github": "https://api.github.com/orgs/{org}/code-scanning/alerts",
+                "slack": "https://api.slack.com/audit/v1/logs",
+                "gworkspace": "https://admin.googleapis.com/admin/reports/v1/activity/users/all/applications/login",
+                "azuread": "https://graph.microsoft.com/v1.0/auditLogs/signIns",
+            }
+            endpoint = endpoints.get(connector_id, f"https://api.{connector_id}.example/events")
             connector_service.upsert_config(
                 db,
                 org_id=row.org_id,

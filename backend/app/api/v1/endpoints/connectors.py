@@ -98,6 +98,25 @@ def remove_config(
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+@router.post("/{connector_id}/rotate-secret")
+def rotate_secret(
+    connector_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("alerts:write")),
+):
+    """Rotate push webhook secret — generates new secret, returns it once (Phase 46).
+
+    The old secret is immediately invalidated (no grace period) — documented gap.
+    For zero-downtime rotation, create new secret in IdP first, then rotate here.
+    """
+    try:
+        return connector_service.rotate_ingest_secret(
+            db, org_id=current_user.org_id, connector_id=connector_id, actor=current_user.username
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
 @router.post("/ingest/{connector_id}", status_code=201)
 async def ingest_events(
     connector_id: str,

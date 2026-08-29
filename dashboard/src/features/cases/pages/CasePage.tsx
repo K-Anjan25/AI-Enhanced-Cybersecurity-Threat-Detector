@@ -224,6 +224,33 @@ const CasePage: React.FC = () => {
     }
   };
 
+  const handleExportEvidencePdf = async (includeSoc2 = false) => {
+    if (!data?.id) return;
+    setExportingPdf(true);
+    setPdfError(null);
+    try {
+      const resp = await api.get(`/compliance/cases/${data.id}/evidence-bundle/pdf`, {
+        responseType: "blob",
+        params: { include_soc2: includeSoc2 },
+      });
+      const blob = new Blob([resp.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `evidence-bundle-case-${data.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 501) setPdfError("Evidence PDF export needs reportlab on server.");
+      else setPdfError("Could not export evidence bundle PDF.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const runDecision = async (kind: Exclude<DialogKind, null>) => {
     if (!id) return;
     setBusy(true);
@@ -598,6 +625,10 @@ const CasePage: React.FC = () => {
                 <Download size={16} className="mr-1.5" aria-hidden />
                 {exportingPdf ? "Exporting…" : "Export PDF"}
               </Button>
+              <Button variant="ghost" onClick={() => handleExportEvidencePdf(false)} disabled={exportingPdf}>
+                <Download size={16} className="mr-1.5" aria-hidden />
+                Evidence PDF
+              </Button>
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
@@ -651,6 +682,14 @@ const CasePage: React.FC = () => {
                 <Button variant="ghost" onClick={handleExportPdf} disabled={exportingPdf}>
                   <Download size={16} className="mr-1.5" aria-hidden />
                   {exportingPdf ? "Exporting…" : "Export PDF"}
+                </Button>
+                <Button variant="ghost" onClick={() => handleExportEvidencePdf(false)} disabled={exportingPdf}>
+                  <Download size={16} className="mr-1.5" aria-hidden />
+                  Evidence PDF
+                </Button>
+                <Button variant="ghost" onClick={() => handleExportEvidencePdf(true)} disabled={exportingPdf}>
+                  <Download size={16} className="mr-1.5" aria-hidden />
+                  Evidence+SOC2 PDF
                 </Button>
                 {data.report && (
                   <Button variant="ghost" onClick={() => setShowReport((s) => !s)}>
