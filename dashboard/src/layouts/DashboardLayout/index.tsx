@@ -42,6 +42,9 @@ import {
   ShieldAlert,
   Swords,
   FileDown,
+  CheckCheck,
+  BookOpen,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -142,6 +145,16 @@ const NAV_SECTIONS: NavSection[] = [
       { name: "Agent Collab P83", path: "/agent-collab", icon: ShieldAlert, badge: "P83" },
       { name: "SOC TV Wall P84", path: "/soc-tv-wall", icon: Shield, badge: "P84" },
       { name: "Final 81-84", path: "/final-phases", icon: Layers, badge: "P81-84" },
+    ],
+  },
+  {
+    label: "Ultra 85-88",
+    items: [
+      { name: "Approval WF P85", path: "/approval-workflows", icon: CheckCheck, badge: "P85" },
+      { name: "Hunt Notebook P86", path: "/hunt-notebooks", icon: BookOpen, badge: "P86" },
+      { name: "Exposure ASM P87", path: "/exposure", icon: Globe, badge: "P87" },
+      { name: "AI Red Team P88", path: "/ai-redteam", icon: ShieldAlert, badge: "P88" },
+      { name: "Ultra 85-88", path: "/ultra-phases", icon: Layers, badge: "P85-88" },
     ],
   },
   {
