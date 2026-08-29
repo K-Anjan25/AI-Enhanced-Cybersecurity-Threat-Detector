@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     # 0 disables the limiter.
     CONNECTOR_INGEST_RATE_LIMIT: int = 120
 
+    # Separate key for connector credential encryption at rest. When not set,
+    # falls back to JWT_SECRET_KEY for back-compat (with the documented trade
+    # that rotating JWT_SECRET_KEY invalidates stored credentials). Setting
+    # this allows JWT rotation without losing connector secrets.
+    CONNECTOR_ENCRYPTION_KEY: str | None = None
+
+    # Chat rate limiting: max questions per case per minute per user.
+    ANALYST_CHAT_RATE_LIMIT: int = 20
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
