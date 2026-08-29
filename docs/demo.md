@@ -298,9 +298,9 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 166 passed, 2 skipped
+cd backend   && pytest tests      # 196+ passed, 2 skipped (Phase 39: 54 analyst+stream+pdf + 5 scheduler)
 cd ml-service&& pytest tests      # 13 passed
-cd dashboard && npm run test:ci   # 32 passed (Vitest)
+cd dashboard && npm run test:ci   # 43 passed (Vitest, Phase 38: streaming + PDF)
 cd dashboard && npx tsc --noEmit && npm run build
 ```
 
@@ -315,7 +315,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 ## Known gaps — say these before someone finds them
 
-Honest gaps are better than surprise gaps. As of this writing:
+Honest gaps are better than surprise gaps. As of this writing (Phase 39):
 
 - **No connector is wired by default.** Out of the box all four report
   `not_connected` with `—` for counts — the honest state. You can make one real
@@ -326,6 +326,22 @@ Honest gaps are better than surprise gaps. As of this writing:
   `synced` (a real poll fetched events), `recorded` (nothing to fetch — no
   config / disabled / push mode), `error` (a poll was attempted and failed,
   with the reason). See §3a.
+- **Scheduled polling watches continuously (Phase 39).** When `CONNECTOR_POLL_ENABLED=true`
+  (default), a daemon thread polls enabled poll-mode connectors every 15 min
+  (900s) with jitter and exponential backoff on error (5 min base, 1h max).
+  It is per-process: with N workers, N threads poll (dedupe prevents duplicate
+  alerts, but work is duplicated). Set `CONNECTOR_POLL_ENABLED=false` for tests
+  or multi-worker deployments.
+- **Live streaming is per-process (Phase 38).** `GET /stream/alerts?ticket=` is SSE.
+  The EventBus lives in one API process — a tab connected to worker A won't see
+  events ingested by worker B. `GET /stream/status` reports `process_scoped:true`
+  and `subscriber_count` honestly. Auth uses single-use 30s tickets (`POST /stream/ticket`),
+  not JWT in URL (which would be logged). Backpressure drops events then sends a
+  `gap` frame so the client refetches — silent loss is worse than no stream.
+- **PDF export is server-side from the recorded report (Phase 38).** `GET /analyst/cases/{id}/report.pdf`
+  returns 409 if no report yet (pending case), 501 if `reportlab` is not installed,
+  and preserves the engine note including `(templated fallback)` so fallback reasoning
+  is never presented as verified. Markdown syntax is stripped — no `**` or `| --- |` in PDF.
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.
@@ -337,18 +353,16 @@ Honest gaps are better than surprise gaps. As of this writing:
   dev/test value (a dev checkout defaults to `development`, and §3a's local
   mock endpoint relies on that), and a name this process cannot resolve cannot
   be judged. Don't describe it as "SSRF-proof".
-- **Connector credentials are encrypted at rest, with a consequence worth
-  knowing.** Both secrets are stored as tagged ciphertext and are never
-  returned by the API (only `has_auth_token` / `has_ingest_token` booleans).
-  The key is derived from `JWT_SECRET_KEY`, so **rotating `JWT_SECRET_KEY`
-  invalidates them** and each source has to have its secret re-entered. A
-  credential that cannot be decrypted is reported as a failure, never treated
-  silently as unset.
-- **The webhook rate limit is per process.** Ingest is capped at 120 requests
-  per connector per minute (`CONNECTOR_INGEST_RATE_LIMIT`), counted in memory —
-  so with N workers the real ceiling is N x 120, and a restart clears the
-  counters. It bounds a runaway or compromised sender; a tenant-wide quota
-  needs a shared store.
+- **Connector credentials are encrypted at rest (Phase 37 fix).** Both secrets are
+  stored as tagged ciphertext and never returned (`has_*_token` only). Phase 37
+  added `CONNECTOR_ENCRYPTION_KEY` dedicated key — when set, JWT rotation no longer
+  invalidates stored credentials. When not set, fallback to `JWT_SECRET_KEY` remains
+  with the documented consequence that rotation requires re-entry.
+- **Rate limits are per-process.** Push webhook: 120 req/min/connector (`CONNECTOR_INGEST_RATE_LIMIT`),
+  chat: 20 req/min per org:user:case (`ANALYST_CHAT_RATE_LIMIT`). Counted in memory —
+  N workers → N× ceiling, restart clears. Bounds runaway senders, not tenant quota.
+- **Bulk decisions are honest (Phase 37).** `POST /analyst/bulk-decide` only acts on
+  pending cases, returns `decided` + `failed` with reasons, never silently skips.
 - **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
   deterministic fallback and the UI labels it "NOCTRA built-in reasoning engine"
   with confidence `n/a`. When a key is set, both case analysis and the Ask-NOCTRA
