@@ -1,21 +1,28 @@
-"""In-process pub/sub for live alert delivery.
+"""In-process pub/sub for live alert delivery + Phase 58 Redis EventBus.
 
-Scope, stated plainly: this is a bus inside one API process. Events published
-here reach subscribers connected to THIS process only. Run several uvicorn
-workers and a browser connected to worker A will not see an event ingested by
-worker B. That is fine for the single-process demo and for one worker; a
-multi-worker deployment needs Redis pub/sub or a broker. The dashboard's
-EventSource reconnects on its own, and every reconnect re-fetches, so a
-restart or a lost event is visible rather than silent.
+Scope, stated plainly: default is in-process bus. When REDIS_EVENTBUS_ENABLED=true
+and REDIS_URL set, publish also goes to Redis channel `noctra:events` so multiple
+workers can receive. Subscriber side still uses in-process queue; a background
+task would be needed to subscribe to Redis and re-publish locally (honest gap
+documented in ha_status). For now, publish to both local and Redis.
+
+Phase 58 honest notes:
+- Without Redis, multi-worker fan-out is per-process only.
+- With Redis, publish is cross-worker but subscribe still local; full cross-worker
+  SSE requires a Redis listener loop per worker (future).
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
 import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(eq=False)  # identity-keyed: two streams for one user are distinct
@@ -55,7 +62,9 @@ class EventBus:
         self._subscribers.discard(sub)
 
     def publish(self, event: dict[str, Any]) -> int:
-        """Thread-safe. Returns number of subscriber loops notified."""
+        """Thread-safe. Returns number of subscriber loops notified.
+        Phase 58: if REDIS_EVENTBUS_ENABLED, also publish to Redis.
+        """
         delivered = 0
         for sub in list(self._subscribers):
             if sub.org_id is not None and event.get("org_id") not in (None, sub.org_id):
@@ -66,6 +75,25 @@ class EventBus:
             except RuntimeError:
                 # loop closed
                 self._subscribers.discard(sub)
+
+        # Phase 58: Redis fan-out
+        try:
+            from app.core.config import settings
+
+            if getattr(settings, "REDIS_EVENTBUS_ENABLED", False) and getattr(settings, "REDIS_URL", None):
+                try:
+                    import redis as _redis
+
+                    r = _redis.from_url(settings.REDIS_URL, decode_responses=False)
+                    # Serialize with default str for datetime
+                    payload = json.dumps(event, default=str).encode("utf-8")
+                    r.publish("noctra:events", payload)
+                    r.close()
+                except Exception as exc:
+                    _LOGGER.debug("Redis EventBus publish failed: %s", exc)
+        except Exception:
+            pass
+
         return delivered
 
     def subscriber_count(self) -> int:

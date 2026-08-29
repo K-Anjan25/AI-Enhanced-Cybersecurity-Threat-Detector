@@ -28,11 +28,31 @@ import requests
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.secrets import SecretDecryptionError, decrypt_secret, encrypt_secret
+import app.core.secrets as _secrets_mod
+from app.core.secrets import SecretDecryptionError as _SecretDecryptionError, decrypt_secret as _decrypt_secret, encrypt_secret as _encrypt_secret
 from app.models import ConnectorSource, SecurityAlert
 from app.services.mitre import map_alert
 import json
 from app.utils.helpers import create_audit_log
+
+# Compatibility wrappers that always use current module's class/function (handles importlib.reload in tests)
+def _current_decrypt_secret(*args, **kwargs):
+    return _secrets_mod.decrypt_secret(*args, **kwargs)
+
+def _current_encrypt_secret(*args, **kwargs):
+    return _secrets_mod.encrypt_secret(*args, **kwargs)
+
+def _current_secret_error():
+    return _secrets_mod.SecretDecryptionError
+
+# For backward compat, keep names but resolve dynamically
+def decrypt_secret(stored):
+    return _secrets_mod.decrypt_secret(stored)
+
+def encrypt_secret(value):
+    return _secrets_mod.encrypt_secret(value)
+
+SecretDecryptionError = _secrets_mod.SecretDecryptionError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1118,6 +1138,21 @@ def _ingest_events(
         except Exception:
             _LOGGER.debug("EventBus publish failed", exc_info=True)
 
+        # Phase 49: Threat intel enrichment (best-effort, non-blocking per alert)
+        try:
+            from app.core.config import settings as _settings
+            from app.services import threat_intel_enrichment as _tie
+
+            if getattr(_settings, "THREAT_INTEL_ENABLED", True):
+                for row in created:
+                    try:
+                        # Enrich in same DB session but new transaction per alert to avoid rollback of ingest
+                        _tie.enrich_alert_threat_intel(db, row)
+                    except Exception as exc:
+                        _LOGGER.debug("Threat intel enrich failed for alert %s: %s", getattr(row, "id", "?"), exc)
+        except Exception:
+            _LOGGER.debug("Threat intel integration outer failed", exc_info=True)
+
         # Phase 44: auto-triage - create cases for CRITICAL/HIGH alerts from connectors
         try:
             from app.models import Case
@@ -1212,14 +1247,24 @@ def ingest_push(
         .first()
     )
     try:
-        stored = decrypt_secret(cfg.ingest_token) if cfg is not None else None
-    except SecretDecryptionError:
+        stored = _secrets_mod.decrypt_secret(cfg.ingest_token) if cfg is not None else None
+    except _secrets_mod.SecretDecryptionError:
         stored = None
         _LOGGER.error(
             "Connector %s has an undecryptable ingest secret - JWT_SECRET_KEY "
             "was rotated; the source must be reconfigured.",
             connector_id,
         )
+    except Exception as _exc:
+        if "SecretDecryptionError" in type(_exc).__name__ or "cannot be decrypted" in str(_exc) or "not in a recognised format" in str(_exc):
+            stored = None
+            _LOGGER.error(
+                "Connector %s has an undecryptable ingest secret - JWT_SECRET_KEY "
+                "was rotated; the source must be reconfigured.",
+                connector_id,
+            )
+        else:
+            raise
 
     authenticated = False
     if cfg is not None and stored:
@@ -1356,8 +1401,8 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
 
     if cfg.auth_header and cfg.auth_token:
         try:
-            headers[cfg.auth_header] = decrypt_secret(cfg.auth_token) or ""
-        except SecretDecryptionError as exc:
+            headers[cfg.auth_header] = _secrets_mod.decrypt_secret(cfg.auth_token) or ""
+        except _secrets_mod.SecretDecryptionError as exc:
             cfg.last_sync_at = _now()
             cfg.last_status = "error"
             cfg.last_error = (
@@ -1377,6 +1422,28 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
                 "live": False,
                 "message": cfg.last_error,
             }
+        except Exception as exc:
+            if "SecretDecryptionError" in type(exc).__name__ or "cannot be decrypted" in str(exc) or "not in a recognised format" in str(exc):
+                cfg.last_sync_at = _now()
+                cfg.last_status = "error"
+                cfg.last_error = (
+                    f"{exc} - re-enter the credential for {name} in connector settings"
+                )
+                db.commit()
+                create_audit_log(
+                    db,
+                    action="CONNECTOR_SYNC_FAILED",
+                    actor=actor,
+                    resource=f"connector:{connector_id}",
+                    details=f"Sync aborted for {name}: stored credential undecryptable",
+                )
+                return {
+                    "status": "error",
+                    "connector_id": connector_id,
+                    "live": False,
+                    "message": cfg.last_error,
+                }
+            raise
 
     started = time.perf_counter()
     events: list = []

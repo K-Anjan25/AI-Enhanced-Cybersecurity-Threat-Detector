@@ -144,5 +144,38 @@ class Settings(BaseSettings):
     ORG_RATE_LIMIT_BURST: int = 200
     API_KEY_ENABLED: bool = True
 
+    # Phase 49: threat intel enrichment
+    VT_API_KEY: str | None = None
+    ABUSEIPDB_API_KEY: str | None = None
+    SHODAN_API_KEY: str | None = None
+    OTX_API_KEY: str | None = None
+    THREAT_INTEL_ENABLED: bool = True
+    THREAT_INTEL_CACHE_TTL_SECONDS: int = 3600  # 1 hour
+    THREAT_INTEL_TIMEOUT: float = 5.0
+
+    # Phase 50: SOAR real execution
+    SOAR_WEBHOOK_ENABLED: bool = True
+    SOAR_SLACK_WEBHOOK_URL: str | None = None
+    SOAR_JIRA_URL: str | None = None
+    SOAR_JIRA_TOKEN: str | None = None
+    SOAR_PAGERDUTY_KEY: str | None = None
+
+    # Phase 53: compliance + S3
+    S3_ENDPOINT: str | None = None
+    S3_BUCKET: str | None = None
+    S3_ACCESS_KEY: str | None = None
+    S3_SECRET_KEY: str | None = None
+
+    # Phase 54: org invites
+    INVITE_TOKEN_EXPIRE_HOURS: int = 72
+    MAX_USERS_PER_ORG: int = 100
+
+    # Phase 58: HA
+    REDIS_EVENTBUS_ENABLED: bool = False
+
+    # Phase 60: billing
+    BILLING_ENABLED: bool = False
+    BILLING_FREE_ALERTS_PER_MONTH: int = 10000
+
 
 settings = Settings()
