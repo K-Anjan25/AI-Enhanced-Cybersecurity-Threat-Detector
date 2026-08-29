@@ -43,6 +43,7 @@ const FinalPhasesPage = React.lazy(() => import("./features/advanced/pages/Final
 const SOCWallPage = React.lazy(() => import("./features/advanced/pages/SOCWallPage"));
 const UltraPhasesPage = React.lazy(() => import("./features/advanced/pages/UltraPhasesPage"));
 const FederatedAutopilotPage = React.lazy(() => import("./features/advanced/pages/FederatedAutopilotPage"));
+const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -134,6 +135,17 @@ export default function App(): JSX.Element {
               <Route path="ai-redteam" element={<UltraPhasesPage />} />
               <Route path="federated" element={<FederatedAutopilotPage />} />
               <Route path="compliance-autopilot" element={<FederatedAutopilotPage />} />
+              <Route path="final10" element={<Final10Page />} />
+              <Route path="federated-intel" element={<Final10Page />} />
+              <Route path="quantum-safe" element={<Final10Page />} />
+              <Route path="attack-path" element={<Final10Page />} />
+              <Route path="cart" element={<Final10Page />} />
+              <Route path="data-fabric" element={<Final10Page />} />
+              <Route path="soc-manager" element={<Final10Page />} />
+              <Route path="drp" element={<Final10Page />} />
+              <Route path="cnapp" element={<Final10Page />} />
+              <Route path="posture-score" element={<Final10Page />} />
+              <Route path="noctra-os" element={<Final10Page />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<ModulePage />} />
               <Route path="vulns" element={<ModulePage />} />
