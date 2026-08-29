@@ -49,7 +49,21 @@ async def lifespan(app: FastAPI):
         _LOGGER.info("Database tables verified/created successfully!")
     except Exception as exc:  # pragma: no cover - DB may be offline during tests/dev
         _LOGGER.warning("Could not create database tables: %s", exc)
+    # Start connector poll scheduler (Phase 39) — watches continuously
+    try:
+        from app.services.connector_scheduler import start_poll_scheduler
+
+        start_poll_scheduler()
+    except Exception as exc:
+        _LOGGER.warning("Could not start connector scheduler: %s", exc)
     yield
+    # Shutdown: stop scheduler
+    try:
+        from app.services.connector_scheduler import stop_poll_scheduler
+
+        stop_poll_scheduler()
+    except Exception:
+        pass
 
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)

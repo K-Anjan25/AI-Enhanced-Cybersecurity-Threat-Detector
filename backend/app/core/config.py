@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     # Chat rate limiting: max questions per case per minute per user.
     ANALYST_CHAT_RATE_LIMIT: int = 20
 
+    # Connector scheduled polling (Phase 39) — watches continuously without manual sync
+    CONNECTOR_POLL_ENABLED: bool = True
+    CONNECTOR_POLL_INTERVAL_SECONDS: int = 900  # 15 min
+    CONNECTOR_POLL_JITTER_SECONDS: int = 60
+    CONNECTOR_POLL_BACKOFF_BASE_SECONDS: int = 300  # 5 min base backoff on error
+    CONNECTOR_POLL_BACKOFF_MAX_SECONDS: int = 3600  # 1 hour max
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
