@@ -30,6 +30,13 @@ from app.models.forensics import ForensicCase, ForensicArtifact, TimelineEvent
 from app.models.tip import IntelFeed, STIXObject, MISPEvent
 from app.models.compliance_continuous import ComplianceControl, ComplianceEvidence, ComplianceAssessment
 from app.models.exec_risk import RiskMetric, ExecReport, ROIMetric
+from app.models.data_lake import DataLakeExport, DataLakeQuery
+from app.models.ha_eventbus import EventBusMessage, HANode
+from app.models.marketplace import MarketplacePlaybook, MarketplaceInstall
+from app.models.finetune import FineTuneJob, FineTuneDataset
+from app.models.risk_based import Asset, RiskBasedRule, RiskScoreLog
+from app.models.purple_team import PurpleTeamExercise, PurpleTeamFinding
+from app.models.pdf_export import PDFExport
 
 __all__ = [
     "Org",
@@ -113,4 +120,18 @@ __all__ = [
     "RiskMetric",
     "ExecReport",
     "ROIMetric",
+    "DataLakeExport",
+    "DataLakeQuery",
+    "EventBusMessage",
+    "HANode",
+    "MarketplacePlaybook",
+    "MarketplaceInstall",
+    "FineTuneJob",
+    "FineTuneDataset",
+    "Asset",
+    "RiskBasedRule",
+    "RiskScoreLog",
+    "PurpleTeamExercise",
+    "PurpleTeamFinding",
+    "PDFExport",
 ]

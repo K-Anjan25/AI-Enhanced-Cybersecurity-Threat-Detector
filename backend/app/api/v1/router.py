@@ -47,6 +47,13 @@ from app.api.v1.endpoints import (
     tip,
     compliance_continuous,
     exec_risk,
+    data_lake,
+    ha_eventbus,
+    marketplace,
+    finetune,
+    risk_based,
+    purple_team,
+    pdf_export,
 )
 
 api_router = APIRouter()
@@ -102,3 +109,11 @@ api_router.include_router(forensics.router)
 api_router.include_router(tip.router)
 api_router.include_router(compliance_continuous.router)
 api_router.include_router(exec_risk.router)
+# Phases 73-80
+api_router.include_router(data_lake.router)
+api_router.include_router(ha_eventbus.router)
+api_router.include_router(marketplace.router)
+api_router.include_router(finetune.router)
+api_router.include_router(risk_based.router)
+api_router.include_router(purple_team.router)
+api_router.include_router(pdf_export.router)
