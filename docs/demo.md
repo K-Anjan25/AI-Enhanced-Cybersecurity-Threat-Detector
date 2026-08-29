@@ -127,9 +127,10 @@ Then **fire a scenario** — this is the moment the demo becomes real:
 - Pick a scenario in the Inbox control, or press **⌘K / Ctrl+K** → **Actions** →
   `Simulate: Credential leak (T1078)`. Both call
   `POST /analyst/simulate?scenario_type=…`.
-- Four scenarios exist, all wired: `credential_leak` (T1078),
+- Six scenarios exist, all wired: `credential_leak` (T1078),
   `phishing_outbreak` (T1566), `data_exfiltration` (T1048),
-  `compromised_api_key` (T1098).
+  `compromised_api_key` (T1098), `insider_threat` (T1003),
+  `ransomware_activity` (T1486). Listed via `GET /analyst/scenarios`.
 - What happens server-side in one request: a CRITICAL alert is inserted → the
   blast radius is built in the entity graph → one reversible action is drafted →
   a `pending` analyst case is opened → `ANALYST_CASE_OPENED` is appended to the
@@ -273,7 +274,7 @@ reputation) fail by design, and are labelled below.
 | 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error. Unconfigured connector cards read `not_connected` + `—`; Sync returns `synced` / `recorded` / `error` and the UI shows the server's message verbatim |
 | 3a | Connector config modal | `components/connectors/ConnectorConfigModal.tsx` | `GET/PUT/DELETE /connectors/{id}/config`, `POST /connectors/ingest/{id}` | Secrets never returned (`has_*_token` flags only); push webhook ingests real alerts (401 on a bad token); poll sync records real counts + measured latency; duplicates skipped; a failing endpoint reports `error` with the reason |
 | 4 | `/feed` | `features/cases/pages/FeedPage.tsx` | `GET /analyst/feed` | Paginated decision feed, newest first; pending/approved/declined/reverted badges correct |
-| 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted` |
+| 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`, `.../export`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted`; Export JSON downloads full case + timeline |
 | 6 | `/actions` | `features/actions/pages/ActionsPage.tsx` | `GET /analyst/feed`; `POST /analyst/cases/{id}/revert` | Only `approved`/`reverted` cases; filter by action type/target/case; record-only + reversible stated |
 | 7 | `/reports` | `features/reports/pages/ReportsPage.tsx` | `GET /analyst/feed`, `/analyst/cases/{id}/report` | Report downloads as `noctra-report-case-{id}.md`; names the reasoning source |
 | 8 | `/alerts` | `features/alerts/pages/ThreatAlertsPage.tsx` → `AlertList` | `GET /alerts`, `/save-scanned-alerts` | Search + severity filter + MITRE mapping; detail modal links to any case opened from the alert |
@@ -297,9 +298,9 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 160 passed, 2 skipped
+cd backend   && pytest tests      # 233+ passed, 2 skipped (Phase 45: 54 analyst+stream+pdf + 5 scheduler + 10 SSO/SCIM + 5 SCIM API + 12 SAML/Groups/Bulk/OAuth + 4 Groups API + 4 OAuth API + 7 real-fetch/HMAC + 4 groups-roles + 5 OCSF/compliance)
 cd ml-service&& pytest tests      # 13 passed
-cd dashboard && npm run test:ci   # 14 passed (Vitest)
+cd dashboard && npm run test:ci   # 46 passed (Vitest, Phase 45: SSO/SCIM + OAuth + OCSF + Compliance)
 cd dashboard && npx tsc --noEmit && npm run build
 ```
 
@@ -314,9 +315,9 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 ## Known gaps — say these before someone finds them
 
-Honest gaps are better than surprise gaps. As of this writing:
+Honest gaps are better than surprise gaps. As of this writing (Phase 45):
 
-- **No connector is wired by default.** Out of the box all four report
+- **No connector is wired by default.** Out of the box all ten report
   `not_connected` with `—` for counts — the honest state. You can make one real
   in about a minute: **Configure → push → set a shared secret → POST events to
   the shown webhook** (or **poll** → point it at a JSON events URL). Then it
@@ -324,7 +325,31 @@ Honest gaps are better than surprise gaps. As of this writing:
   three honest outcomes and the UI shows the server's wording verbatim:
   `synced` (a real poll fetched events), `recorded` (nothing to fetch — no
   config / disabled / push mode), `error` (a poll was attempted and failed,
-  with the reason). See §3a.
+  with the reason). See §3a. Phase 40 expands catalogue from 4 to 10:
+  Okta, Sentinel/CrowdStrike, GuardDuty, Cloudflare, GitHub Advanced Security,
+  Slack Audit Logs, Google Workspace, Entra ID, Datadog SIEM, Splunk ES — more
+  telemetry makes the live stream + scheduler busy.
+- **Scheduled polling watches continuously (Phase 39).** When `CONNECTOR_POLL_ENABLED=true`
+  (default), a daemon thread polls enabled poll-mode connectors every 15 min
+  (900s) with jitter and exponential backoff on error (5 min base, 1h max).
+  It is per-process: with N workers, N threads poll (dedupe prevents duplicate
+  alerts, but work is duplicated). Set `CONNECTOR_POLL_ENABLED=false` for tests
+  or multi-worker deployments.
+- **Live streaming is per-process (Phase 38).** `GET /stream/alerts?ticket=` is SSE.
+  The EventBus lives in one API process — a tab connected to worker A won't see
+  events ingested by worker B. `GET /stream/status` reports `process_scoped:true`
+  and `subscriber_count` honestly. Auth uses single-use 30s tickets (`POST /stream/ticket`),
+  not JWT in URL (which would be logged). Backpressure drops events then sends a
+  `gap` frame so the client refetches — silent loss is worse than no stream.
+- **PDF export is server-side from the recorded report (Phase 38).** `GET /analyst/cases/{id}/report.pdf`
+  returns 409 if no report yet (pending case), 501 if `reportlab` is not installed,
+  and preserves the engine note including `(templated fallback)` so fallback reasoning
+  is never presented as verified. Markdown syntax is stripped — no `**` or `| --- |` in PDF.
+- **SSO is OIDC + SAML 2.0 hardened (Phase 43).** `GET /auth/sso/config` reports OIDC + SAML. OIDC: Authorization Code with state+nonce TTL 10m per-process, callback exchanges code + userinfo + JIT USER/ANALYST never ADMIN. SAML: SP-initiated AuthnRequest deflate+base64 RelayState TTL 10m, ACS parses SAMLResponse base64 XML NameID/email. Verification: if xmlsec+lxml available and cert configured, verifies Signature node via xmlsec; if `SSO_SAML_REQUIRE_SIGNED_ASSERTIONS` or `REQUIRE_SIGNED_RESPONSE` true, fails closed on invalid/missing signature; else logs warning and parses without verification — documented gap. Secrets encrypted at rest. Admin CRUD `/admin/sso/providers` per-org per-type, metadata auto-fills SSO URL + cert. Env fallback `SSO_OIDC_*` and `SSO_SAML_*`.
+- **SCIM is Users + Groups + Bulk + Groups→Roles (Phase 43).** Endpoints `/scim/v2`: discovery `ServiceProviderConfig` bulk max 20, `ResourceTypes`, `Schemas` no auth. Users: filter userName/email/externalId eq, CRUD, PATCH active, DELETE soft-deactivates + logs session revocation. Groups: filter displayName/externalId eq, CRUD, members validated against User table, enriched display, PATCH add/remove/replace. Groups→Roles: mapping table `scim_group_role_mappings` org_id+display_name unique, role USER|ANALYST (never ADMIN), auto-upgrade on add/replace (USER→ANALYST), no auto-downgrade on removal to avoid accidental demotion. Admin mapping CRUD `/admin/scim/groups/role-mappings`. Bulk: POST `/Bulk` max 20 ops failOnErrors, supports POST Users/Groups, PUT/PATCH/DELETE Users, DELETE Groups. Auth Bearer hashed per-org, env fallback `SCIM_TOKEN`. Gaps: filtering limited, bulk max 20, role downgrade manual.
+- **Connector OAuth is GitHub App + Slack OAuth with real fetch (Phase 42).** `GET /connectors/{id}/oauth/status` connected+account_name, `GET /oauth/start` 302 to provider (GitHub scopes security_events read:org, Slack auditlogs:read), `GET /oauth/callback` exchanges code JSON Accept, fetches account info, encrypts tokens in `connector_oauth` per-org, auto-creates poll config for scheduler. Real fetch: `_fetch_github_events` calls api.github.com/user/orgs (max 5 orgs) then orgs/{org}/{code-scanning,secret-scanning,dependabot}/alerts with Link header pagination max 3 pages bound 100 events, `_fetch_slack_audit_events` calls api.slack.com/audit/v1/logs with cursor pagination max 3 pages. Incremental sync: last_cursor + sync_state JSON (orgs_fetched, since) persisted in ConnectorSource. Rate limit honest: 403 rate limit logs warning, 429 Slack logs Retry-After. Webhook HMAC: GitHub X-Hub-Signature-256 HMAC SHA256 raw body vs ingest_token, Slack X-Slack-Signature v0:{ts}:{body} HMAC SHA256 + 5m replay check. Fallback X-Connector-Token for backward compat. State TTL 10m per-process, refresh not yet implemented warning. Env `GITHUB_OAUTH_*`, `SLACK_OAUTH_*`, `CONNECTOR_OAUTH_REDIRECT_BASE`.
+- **OCSF normalization + auto-triage + chat grounding (Phase 44).** `ocsf_service.py` maps SecurityAlert to OCSF Security Finding class 2001 severity 2-5, MITRE attack tactic/technique, observables IP, src_endpoint, metadata product NOCTRA, unmapped original. Batch export `GET /ocsf/alerts?limit&severity&source` returns OCSF batch, `GET /ocsf/alerts/{id}` single, `GET /ocsf/brief` summary for analyst chat grounding. Auto-triage: after ingest, CRITICAL/HIGH alerts create analyst cases (kind analyst) with OCSF context, deduped by source_alert_id, title [SEV] source - message, analysis what_happened/why_it_matters/blast_radius_summary confidence 0.85 model connector-auto-triage, proposed ISOLATE_HOST or ALERT_OPERATOR. Chat: analyst_service chat_about_case includes recent 10 alerts OCSF summary as connector_context in LLM prompt. Frontend BriefPage shows OCSF summary.
+- **Compliance evidence — tamper-evident audit, SOC2 bundle, chain-of-custody (Phase 45).** `compliance_service.py` implements hash chain: each audit log hash = SHA256(prev_hash|action|actor|resource|details|timestamp_iso naive UTC), stored as [audit_hash:xxx][prev_hash:yyy] prefix in details (append-only, explicit created_at to avoid update guard). `verify_audit_chain` checks prev_hash chain and hash mismatch, returns verified count + broken_at. `enforce_retention_policy` deletes logs older than LOG_RETENTION_DAYS (default 30) with checkpoint log preserving last_hash. SOC2 mapping static: CC6.1 access controls (CONNECTOR_CONFIGURED etc), CC6.2 monitoring (SYNC_COMPLETED etc), CC7.2 system monitoring (CASE_APPROVED etc), CC8.1 change management. `get_soc2_evidence_bundle` returns controls with sample logs + chain integrity. Case chain-of-custody: `get_case_chain_of_custody` hashes timeline entries (at|kind|label|detail) chained, returns chain + last_hash. Endpoints: `GET /compliance/audit/verify?limit`, `GET /compliance/audit/evidence?days`, `POST /compliance/audit/retention/enforce`, `GET /compliance/cases/{id}/chain-of-custody`, `GET /compliance/cases/{id}/evidence-bundle`. Frontend BriefPage shows chain valid badge. Honest gaps: hash chain per-org but AuditLog has no org_id column so global chain, retention deletes but keeps checkpoint, chain verification uses naive UTC due to SQLite tz stripping.
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.
@@ -336,20 +361,20 @@ Honest gaps are better than surprise gaps. As of this writing:
   dev/test value (a dev checkout defaults to `development`, and §3a's local
   mock endpoint relies on that), and a name this process cannot resolve cannot
   be judged. Don't describe it as "SSRF-proof".
-- **Connector credentials are encrypted at rest, with a consequence worth
-  knowing.** Both secrets are stored as tagged ciphertext and are never
-  returned by the API (only `has_auth_token` / `has_ingest_token` booleans).
-  The key is derived from `JWT_SECRET_KEY`, so **rotating `JWT_SECRET_KEY`
-  invalidates them** and each source has to have its secret re-entered. A
-  credential that cannot be decrypted is reported as a failure, never treated
-  silently as unset.
-- **The webhook rate limit is per process.** Ingest is capped at 120 requests
-  per connector per minute (`CONNECTOR_INGEST_RATE_LIMIT`), counted in memory —
-  so with N workers the real ceiling is N x 120, and a restart clears the
-  counters. It bounds a runaway or compromised sender; a tenant-wide quota
-  needs a shared store.
+- **Connector credentials are encrypted at rest (Phase 37 fix).** Both secrets are
+  stored as tagged ciphertext and never returned (`has_*_token` only). Phase 37
+  added `CONNECTOR_ENCRYPTION_KEY` dedicated key — when set, JWT rotation no longer
+  invalidates stored credentials. When not set, fallback to `JWT_SECRET_KEY` remains
+  with the documented consequence that rotation requires re-entry.
+- **Rate limits are per-process.** Push webhook: 120 req/min/connector (`CONNECTOR_INGEST_RATE_LIMIT`),
+  chat: 20 req/min per org:user:case (`ANALYST_CHAT_RATE_LIMIT`). Counted in memory —
+  N workers → N× ceiling, restart clears. Bounds runaway senders, not tenant quota.
+- **Bulk decisions are honest (Phase 37).** `POST /analyst/bulk-decide` only acts on
+  pending cases, returns `decided` + `failed` with reasons, never silently skips.
 - **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
   deterministic fallback and the UI labels it "NOCTRA built-in reasoning engine"
-  with confidence `n/a`.
+  with confidence `n/a`. When a key is set, both case analysis and the Ask-NOCTRA
+  chat (`POST /analyst/cases/{id}/chat`) use the model; chat falls back to keyword
+  logic on any failure so the endpoint never breaks for lack of a key.
 - **Scenarios are simulated.** `POST /analyst/simulate` injects a synthetic but
   realistic incident — say "simulate", not "detect", when you fire one live.

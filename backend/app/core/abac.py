@@ -76,6 +76,24 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "analytics:read",
         "engine:read",
     },
+    # Phase 47: service accounts / API keys
+    "SERVICE": {
+        "alerts:read",
+        "alerts:write",
+        "alerts:export",
+        "analytics:read",
+        "engine:read",
+        "rules:read",
+        "reputation:read",
+        "audit:read",
+    },
+    "SERVICE_READONLY": {
+        "alerts:read",
+        "analytics:read",
+        "engine:read",
+        "rules:read",
+        "reputation:read",
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -101,15 +119,16 @@ DEFAULT_CLEARANCE_BY_ROLE: dict[str, int] = {
 }
 
 
-def effective_clearance(user: User) -> int:
+def effective_clearance(user) -> int:
     """Resolve the subject's clearance_level, falling back to role default."""
-    if user.clearance_level is not None:
-        return user.clearance_level
+    cl = getattr(user, "clearance_level", None)
+    if cl is not None:
+        return cl
     role = (getattr(user, "role", None) or "USER").upper()
     return DEFAULT_CLEARANCE_BY_ROLE.get(role, 1)
 
 
-def effective_department(user: User) -> Optional[str]:
+def effective_department(user) -> Optional[str]:
     return getattr(user, "department", None)
 
 
@@ -118,7 +137,7 @@ def base_permissions_for_role(role: Optional[str]) -> set[str]:
     return set(ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["USER"]))
 
 
-def subject_is_active(user: User) -> bool:
+def subject_is_active(user) -> bool:
     if getattr(user, "is_blocked", False):
         return False
     if hasattr(user, "is_active"):
@@ -168,7 +187,7 @@ def resource_condition_passes(permission: str, resource: Optional[dict] = None) 
     return True
 
 
-def can(user: User, permission: str, resource: Optional[dict] = None) -> bool:
+def can(user, permission: str, resource: Optional[dict] = None) -> bool:
     """Full ABAC decision for `user` doing `permission` on `resource`."""
     if permission not in PERMISSIONS:
         return False

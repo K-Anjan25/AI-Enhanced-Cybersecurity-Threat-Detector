@@ -24,7 +24,7 @@ _HASH_RE = re.compile(r"\b(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b"
 _DOMAIN_RE = re.compile(r"\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b")
 _EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 # Common malware file-name markers (case-insensitive).
-_FILE_MARKERS = ("\.exe", "\.dll", "\.vbs", "\.js", "\.ps1", "\.scr", "\.bat")
+_FILE_MARKERS = (r"\.exe", r"\.dll", r"\.vbs", r"\.js", r"\.ps1", r"\.scr", r"\.bat")
 
 
 def _is_ip(candidate: str) -> bool:

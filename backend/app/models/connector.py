@@ -62,6 +62,10 @@ class ConnectorSource(Base):
     last_count = Column(Integer, nullable=True)
     events_ingested = Column(Integer, default=0, nullable=False)
 
+    # Phase 42: incremental sync — cursor/pagination state for real APIs (GitHub, Slack, etc)
+    last_cursor = Column(Text, nullable=True)  # opaque cursor for next page / incremental sync
+    sync_state = Column(Text, nullable=True)  # JSON blob for provider-specific state (etag, since, etc)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,

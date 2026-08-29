@@ -232,8 +232,65 @@ def _extract_json(text: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Public entry point
+# Public entry points
 # ---------------------------------------------------------------------------
+
+def answer_case_question(case_context: dict, question: str) -> str | None:
+    """Answer a specific question about a case using the LLM.
+
+    Returns the answer text on success, None on any failure or when the LLM
+    is disabled / no key configured. Never raises — caller must fall back to
+    deterministic logic.
+    """
+    if not settings.LLM_ENABLED or not settings.ANTHROPIC_API_KEY:
+        return None
+
+    system = (
+        "You are NOCTRA, an autonomous security analyst. You are given a case "
+        "with its analysis, blast radius, proposed action and MITRE mapping. "
+        "Answer the analyst's question concisely in plain English, grounded in "
+        "the provided context. If the answer is not in the context, say what "
+        "you do know and what is missing. Never invent assets or actions not in "
+        "the context. Keep answers under 120 words."
+    )
+
+    user_lines = [
+        f"CASE #{case_context.get('id')}: {case_context.get('title')}",
+        f"What happened: {case_context.get('what_happened')}",
+        f"Why it matters: {case_context.get('why_it_matters')}",
+        f"Blast radius: {case_context.get('blast_radius_summary')}",
+        f"Recommended action: {case_context.get('action_type')} on {case_context.get('target')} - {case_context.get('rationale')} (undo: {case_context.get('undo')})",
+        f"MITRE: {case_context.get('mitre_id')} {case_context.get('mitre_name')}",
+        f"Confidence: {case_context.get('confidence')} model: {case_context.get('model')} fallback: {case_context.get('fallback')}",
+        f"Entities: {', '.join(case_context.get('entities', []))}",
+        "",
+        f"QUESTION: {question}",
+    ]
+
+    url = f"{settings.ANTHROPIC_BASE_URL.rstrip('/')}/v1/messages"
+    headers = {
+        "x-api-key": settings.ANTHROPIC_API_KEY,
+        "anthropic-version": _ANTHROPIC_VERSION,
+        "content-type": "application/json",
+    }
+    body = {
+        "model": settings.ANTHROPIC_MODEL,
+        "max_tokens": min(512, settings.LLM_MAX_TOKENS),
+        "system": system,
+        "messages": [{"role": "user", "content": "\n".join(user_lines)}],
+    }
+
+    try:
+        data = _post_with_retry(url, body, headers, timeout=settings.LLM_TIMEOUT)
+        text = ""
+        for block in data.get("content", []):
+            if isinstance(block, dict) and block.get("type") == "text":
+                text += block.get("text", "")
+        text = text.strip()
+        return text if text else None
+    except Exception:
+        return None
+
 
 def analyze_incident(alert: dict, entities: list[dict]) -> dict:
     """Reason about one incident + its blast radius. Never raises.

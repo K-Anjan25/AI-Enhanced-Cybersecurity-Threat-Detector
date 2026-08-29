@@ -1,0 +1,17 @@
+{
+  "name": "NOCTRA - Threat Intelligence",
+  "short_name": "NOCTRA",
+  "description": "Threat intelligence, always on.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070b0f",
+  "theme_color": "#a6ff3f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

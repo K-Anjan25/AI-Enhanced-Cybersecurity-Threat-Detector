@@ -301,3 +301,76 @@ def test_timeline_and_notifications_http(client, auth_headers):
 
     missing = client.get("/api/v1/analyst/cases/999999/timeline", headers=auth_headers)
     assert missing.status_code == 404
+
+# ---------------------------------------------------------------------------
+# Phase 36 — new scenarios, export, scenarios list, LLM chat resilience
+# ---------------------------------------------------------------------------
+
+def test_new_scenarios_insider_and_ransomware(db_session, org):
+    for s_type in ["insider_threat", "ransomware_activity"]:
+        case = scenario.run_scenario(db_session, s_type, org_id=org.id, actor="analyst1")
+        assert case.kind == "analyst"
+        assert case.decision == "pending"
+        assert case.blast_radius["nodes"]
+        assert case.proposed_action["action_type"] in SUPPORTED_ACTIONS
+
+
+def test_scenario_catalog_lists_all_six():
+    catalog = scenario.list_scenarios()
+    ids = {c["id"] for c in catalog}
+    assert ids == {
+        "credential_leak",
+        "phishing_outbreak",
+        "data_exfiltration",
+        "compromised_api_key",
+        "insider_threat",
+        "ransomware_activity",
+    }
+    for entry in catalog:
+        assert "label" in entry and "mitre" in entry
+
+
+def test_export_endpoint_returns_case_and_timeline(client, auth_headers):
+    resp = client.post("/api/v1/analyst/simulate?scenario_type=insider_threat", headers=auth_headers)
+    assert resp.status_code == 201
+    case_id = resp.json()["id"]
+
+    exp = client.get(f"/api/v1/analyst/cases/{case_id}/export", headers=auth_headers)
+    assert exp.status_code == 200
+    body = exp.json()
+    assert "case" in body and "timeline" in body
+    assert body["case"]["id"] == case_id
+    assert body["exported_by"]
+    assert body["exported_at"]
+
+
+def test_scenarios_list_endpoint(client, auth_headers):
+    resp = client.get("/api/v1/analyst/scenarios", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()["data"] if "data" in resp.json() else resp.json()
+    assert len(data) >= 6
+    assert any(c["id"] == "ransomware_activity" for c in data)
+
+
+def test_chat_fallback_when_llm_disabled(db_session, org):
+    case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
+    res = analyst_service.chat_about_case(db_session, case, "Explain MITRE T1078", actor="analyst1")
+    assert "answer" in res
+    assert res["llm_used"] is False
+    assert "confidence" in res
+
+
+def test_chat_tries_llm_when_enabled(monkeypatch, db_session, org):
+    # Simulate LLM returning an answer
+    def fake_answer(ctx, q):
+        return f"LLM answer for: {q}"
+
+    monkeypatch.setattr("app.services.llm_client.answer_case_question", fake_answer)
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "LLM_ENABLED", True)
+
+    case = scenario.run_credential_leak(db_session, org_id=org.id, actor="analyst1")
+    res = analyst_service.chat_about_case(db_session, case, "What is the blast radius?", actor="analyst1")
+    assert res["llm_used"] is True
+    assert "LLM answer" in res["answer"]
+
