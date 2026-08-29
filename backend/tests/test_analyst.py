@@ -11,7 +11,7 @@ import pytest
 
 from app.core.config import settings
 from app.models import Org, Case, SoarAction, AuditLog
-from app.services import scenario, analyst_service, llm_client
+from app.services import scenario, analyst_service, connector_service, llm_client
 from app.services.soar import SUPPORTED_ACTIONS
 
 
@@ -100,19 +100,31 @@ def test_case_chat_returns_contextual_answer(db_session, org):
 
 
 def test_connectors_status_and_sync(db_session, org):
-    connectors = analyst_service.get_connectors_status()
+    """Smoke-level contract only — the full behaviour lives in
+    tests/test_connectors.py (real config, real poll, real push ingest)."""
+    connectors = connector_service.list_connectors(db_session, org_id=org.id)
     assert len(connectors) >= 4
     ids = [c["id"] for c in connectors]
     assert "okta" in ids
     assert "sentinel" in ids
 
-    # Sync a connector
-    sync_res = analyst_service.sync_connector(db_session, "okta", actor="analyst1")
-    assert sync_res["status"] == "success"
-    assert "Okta Identity Cloud" in sync_res["message"]
+    # Unconfigured: no claim of connection, no invented telemetry.
+    for conn in connectors:
+        assert conn["live"] is False
+        assert conn["status"] == "not_connected"
+        assert conn["assets_monitored"] is None
+        assert conn["latency_ms"] is None
+
+    # Syncing with nothing configured records a request — it does not claim
+    # to have synchronized.
+    sync_res = connector_service.sync(
+        db_session, connector_id="okta", org_id=org.id, actor="analyst1"
+    )
+    assert sync_res["status"] == "recorded"
+    assert "No source is configured" in sync_res["message"]
 
     actions = {a.action for a in db_session.query(AuditLog).all()}
-    assert "CONNECTOR_SYNC_TRIGGERED" in actions
+    assert "CONNECTOR_SYNC_REQUESTED" in actions
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +196,8 @@ def test_analyst_http_flow_including_chat_and_connectors(client, auth_headers):
 
     sync_resp = client.post("/api/v1/analyst/connectors/sentinel/sync", headers=auth_headers)
     assert sync_resp.status_code == 200
-    assert sync_resp.json()["status"] == "success"
+    # Nothing is configured in this flow, so the honest outcome is "recorded".
+    assert sync_resp.json()["status"] == "recorded"
 
     # 4. Approve
     approve = client.post(f"/api/v1/analyst/cases/{case_id}/approve", headers=auth_headers)

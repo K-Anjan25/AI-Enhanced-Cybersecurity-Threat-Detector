@@ -1,10 +1,19 @@
 # NOCTRA — Commercial-Grade Frontend Redesign
 *Researched from WordPress + WooCommerce's best implementations, applied to a security product.*
 
-Status: **Active** — companion to [`docs/noctra-redesign-spec.md`](noctra-redesign-spec.md).
+Status: **Partly superseded** — companion to [`docs/noctra-redesign-spec.md`](noctra-redesign-spec.md).
 Stage 1 (this pass): token system, hooks, component library additions, landing page rewrite
 (WordPress-grade marketing surface), dashboard shell upgrade (WooCommerce-storefront patterns:
 sticky header + primary action, slide-out "pending decisions" drawer, live count pills).
+
+> **⚠ Read before using.** The *research and patterns* (WordPress/WooCommerce
+> storefront conventions, token + hook + component system, the pending-decisions
+> drawer) are live and implemented. The **landing page section and the visual
+> tokens are superseded**: the landing was rebuilt as a 1:1 port of the SIGNAL
+> design source (`newfile.html`), and the palette/type are now SIGNAL — see
+> [`noctra-redesign-spec.md`](noctra-redesign-spec.md) **§40** and
+> `dashboard/src/components/landing/*`. Where this doc and §40 disagree on
+> colour, type or landing structure, §40 wins.
 
 ---
 

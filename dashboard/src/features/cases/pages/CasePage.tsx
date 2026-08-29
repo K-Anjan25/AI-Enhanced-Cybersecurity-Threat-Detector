@@ -24,6 +24,7 @@ import {
   ConfirmDialog,
   EmptyState,
   SkeletonChart,
+  ThinkingIndicator,
   Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
@@ -409,9 +410,11 @@ const CasePage: React.FC = () => {
         )}
       </div>
 
-      {/* Recommended action */}
+      {/* Recommended action — the one thing on this page that needs a human,
+          so it is the one element carrying HUD corner brackets (spec §40.4:
+          brackets mark the focal element of a view, never decoration). */}
       {action && (
-        <div className="bg-app-surface rounded-2xl border border-accent-primary/30 p-6 shadow-card">
+        <div className="hud-corners bg-app-surface rounded-2xl border border-accent-primary/30 p-6 shadow-card">
           <div className="flex items-start gap-3">
             <span className="w-10 h-10 rounded-xl bg-accent-primary/15 text-accent-primary flex items-center justify-center shrink-0">
               <ShieldAlert size={20} aria-hidden />
@@ -507,9 +510,9 @@ const CasePage: React.FC = () => {
             </div>
           ))}
           {chatLoading && (
-            <div className="flex items-center gap-2 text-xs text-content-tertiary animate-pulse">
-              <Bot size={14} className="text-accent-secondary" /> NOCTRA is reasoning…
-            </div>
+            /* Spec §30: AI reasoning is a three-dot shimmer — never a pulsing
+               block of text, never a glow storm. */
+            <ThinkingIndicator label="NOCTRA is reasoning" className="px-1 py-1" />
           )}
         </div>
 

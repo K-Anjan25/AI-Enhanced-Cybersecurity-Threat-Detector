@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader, Card, Button, SeverityBadge, StatusBadge, SkeletonTable, EmptyState, Term } from "../../../components/ui";
+import { cn } from "../../../components/ui/Button";
 import AnalystApi from "../../../api/analystApi";
 import type { AnalystCase, Decision } from "../../../types/analyst";
 import type { PaginatedResponse } from "../../../types/pagination";
@@ -100,7 +101,12 @@ const FeedPage: React.FC = () => {
                       <tr
                         key={c.id}
                         onClick={() => navigate(`/case/${c.id}`)}
-                        className="hover:bg-app-subtle/50 transition-colors cursor-pointer"
+                        className={cn(
+                          "hover:bg-app-subtle/50 transition-colors cursor-pointer",
+                          // SIGNAL: a pending decision is the row that needs
+                          // you, so it carries the signal left edge (threat-item).
+                          c.decision === "pending" && "threat-item"
+                        )}
                       >
                         <td className="px-5 py-3.5 max-w-md">
                           <p className="text-content-primary font-medium truncate" title={c.analysis?.headline || c.title}>

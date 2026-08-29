@@ -11,7 +11,9 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 export const Badge: React.FC<BadgeProps> = ({ children, className, ...props }) => (
   <span
     className={cn(
-      "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap",
+      /* `transition-colors` carries the decision-state change (spec §30):
+         pending → approved re-tints the pill instead of snapping. */
+      "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors duration-200 ease-out",
       className
     )}
     {...props}
