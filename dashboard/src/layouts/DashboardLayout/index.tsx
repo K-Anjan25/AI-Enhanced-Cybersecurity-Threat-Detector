@@ -20,6 +20,7 @@ import {
   Rows3,
   ClipboardList,
   UploadCloud,
+  Layers,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -28,12 +29,6 @@ import PageTransition from "../../components/PageTransition";
 import CommandMenu from "../../components/CommandMenu";
 import PendingDecisionsDrawer from "../../components/storefront/PendingDecisionsDrawer";
 
-/**
- * NOCTRA navigation (spec §8). Four MAIN items mirror the analyst loop —
- * SENSE (Home) → REASON (Cases) → DECIDE (Actions) → REPORT (Reports).
- * Everything else is grouped by verb and progressive-disclosed, never removed:
- * INVESTIGATE keeps the legacy deep-dive surfaces at their original URLs.
- */
 interface NavItem {
   name: string;
   path: string;
@@ -60,18 +55,21 @@ const INVESTIGATE_NAV_ITEMS: NavItem[] = [
 const AUTOMATE_NAV_ITEMS: NavItem[] = [
   { name: "SOAR", path: "/soar", icon: Workflow },
   { name: "Rules", path: "/admin/rules", icon: ListChecks },
+  { name: "Advanced Hub P49-60", path: "/advanced", icon: Layers },
+  { name: "Next P61-63 + Agent", path: "/next", icon: Layers },
 ];
 
 const SYSTEM_NAV_ITEMS: NavItem[] = [
   { name: "Audit", path: "/admin/system-logs", icon: ScrollText },
   { name: "Reputation", path: "/admin/reputation", icon: Ban },
   { name: "Engine", path: "/admin/engine-settings", icon: Settings2 },
-  // Admin Overview kept so /admin stays reachable from the nav (no route
-  // loses its entry — see spec §7 progressive disclosure).
   { name: "Admin Overview", path: "/admin", icon: ShieldCheck },
   { name: "Users", path: "/admin/users", icon: KeyRound },
   { name: "Tenants", path: "/admin/tenants", icon: Building2 },
   { name: "Roles", path: "/admin/roles", icon: ShieldCheck },
+  { name: "SSO & SCIM", path: "/admin/sso", icon: KeyRound },
+  { name: "API Keys", path: "/admin/apikeys", icon: KeyRound },
+  { name: "Compliance", path: "/admin/compliance", icon: ShieldCheck },
 ];
 
 type Density = "comfortable" | "compact";
@@ -90,12 +88,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
   });
   const location = useLocation();
 
-  // Route changes always close the mobile drawer.
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  // Per-route document titles (tab + screen-reader context).
   useEffect(() => {
     const path = location.pathname;
     let title = "NOCTRA";
@@ -109,6 +105,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
     else if (path.startsWith("/analytics")) title = "Analytics";
     else if (path.startsWith("/dashboard")) title = "SOC Cockpit";
     else if (path.startsWith("/soar")) title = "SOAR";
+    else if (path.startsWith("/advanced")) title = "Advanced Hub P49-60";
+    else if (path.startsWith("/next")) title = "Next P61-63 + AI Agent";
     else if (path.startsWith("/incidents")) title = "Manual Incidents";
     else if (path.startsWith("/logs")) title = "Log Uploads";
     else if (path.startsWith("/profile") || path.startsWith("/account")) title = "Profile";
@@ -178,7 +176,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         Skip to content
       </a>
 
-      {/* Mobile drawer backdrop */}
       {mobileNavOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
@@ -190,7 +187,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
       <aside
         className={cn(
           "bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden",
-          // Mobile: overlay drawer (open only). Desktop: static column.
           "fixed inset-y-0 left-0 z-40 lg:static",
           mobileNavOpen ? "flex w-64" : "hidden lg:flex",
           isSidebarOpen ? "lg:w-64" : "lg:w-[68px]"
@@ -230,7 +226,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
           </div>
 
           <nav aria-label="Primary" className="p-3 space-y-1 mt-2 flex-1 overflow-y-auto min-h-0">
-            {/* Mobile-only close inside the drawer */}
             <button
               type="button"
               onClick={() => setMobileNavOpen(false)}
