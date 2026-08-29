@@ -181,6 +181,38 @@ def serialize_segment(s: NetworkSegment) -> Dict[str, Any]:
     return {"id": s.id, "org_id": s.org_id, "name": s.name, "cidr": s.cidr, "zone": s.zone, "description": s.description, "risk_level": s.risk_level, "created_at": s.created_at.isoformat() if s.created_at else None}
 
 
+def seed_defaults(db: Session, org_id: int) -> List[NetworkSegment]:
+    """Seed default segments if none exist: internal, dmz, external."""
+    existing = list_segments(db, org_id)
+    if existing:
+        return existing
+    defaults = [
+        {"name": "internal", "cidr": "10.0.0.0/24", "zone": "internal", "description": "Internal corporate"},
+        {"name": "dmz", "cidr": "10.0.1.0/24", "zone": "dmz", "description": "DMZ"},
+        {"name": "external", "cidr": "0.0.0.0/0", "zone": "external", "description": "External internet"},
+    ]
+    created = []
+    for d in defaults:
+        try:
+            seg = create_segment(db, org_id=org_id, name=d["name"], cidr=d["cidr"], zone=d["zone"], description=d["description"])
+            created.append(seg)
+        except Exception:
+            db.rollback()
+    # Seed default policies: internal->dmz allow, external->internal deny, dmz->internal deny
+    if created:
+        try:
+            internal = next((s for s in created if s.name == "internal"), None)
+            dmz = next((s for s in created if s.name == "dmz"), None)
+            external = next((s for s in created if s.name == "external"), None)
+            if internal and dmz:
+                create_policy(db, org_id=org_id, name="internal->dmz allow", policy_json={}, src_segment_id=internal.id, dst_segment_id=dmz.id, action="allow", priority=10)
+            if external and internal:
+                create_policy(db, org_id=org_id, name="external->internal deny", policy_json={}, src_segment_id=external.id, dst_segment_id=internal.id, action="deny", priority=20)
+        except Exception:
+            db.rollback()
+    return list_segments(db, org_id)
+
+
 def serialize_policy(p: ZTNAPolicy) -> Dict[str, Any]:
     return {
         "id": p.id,

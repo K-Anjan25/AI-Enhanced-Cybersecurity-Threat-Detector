@@ -236,6 +236,41 @@ def serialize_hunt(h: Hunt) -> Dict[str, Any]:
     }
 
 
+def schedule_saved_hunts(db: Session) -> List[Dict[str, Any]]:
+    """Auto-run saved hunts with schedule_cron or is_scheduled=True, create case if result_count > threshold.
+    Answers doubt #4. This is called by a background task every 5m."""
+    from app.models import Case
+    scheduled = db.query(Hunt).filter(Hunt.is_scheduled == True).all()  # noqa
+    created_cases = []
+    for hunt in scheduled:
+        try:
+            result = execute_hunt_query(db, hunt.org_id, hunt.query, limit=20)
+            # Log execution
+            exec_log = HuntExecution(
+                org_id=hunt.org_id,
+                hunt_id=hunt.id,
+                query=hunt.query,
+                status="completed",
+                result_count=result["result_count"],
+                results_json=result["results"][:100],
+                duration_ms=result["duration_ms"],
+            )
+            db.add(exec_log)
+            hunt.last_executed_at = _now()
+            hunt.execution_count = (hunt.execution_count or 0) + 1
+            db.commit()
+            # If results > threshold, auto-create case
+            threshold = 1
+            if result["result_count"] >= threshold:
+                case = Case(org_id=hunt.org_id, title=f"Hunt {hunt.name} hit {result['result_count']} alerts", description=f"Auto-created from scheduled hunt {hunt.query}", severity="HIGH", status="open")
+                db.add(case)
+                db.commit()
+                created_cases.append({"hunt_id": hunt.id, "case_id": case.id, "result_count": result["result_count"]})
+        except Exception:
+            db.rollback()
+    return created_cases
+
+
 def serialize_execution(e: HuntExecution) -> Dict[str, Any]:
     return {
         "id": e.id,

@@ -142,6 +142,26 @@ def get_risk_summary(db: Session, org_id: int) -> Dict[str, Any]:
     }
 
 
+def fetch_from_trivy_api(target: str) -> List[Dict[str, Any]]:
+    """If VULN_SCANNER_URL set, fetch real Trivy results. Doubt #6: integrate real scanner."""
+    import requests
+    url = getattr(settings, "VULN_SCANNER_URL", None)
+    if not url:
+        return []
+    try:
+        resp = requests.post(f"{url.rstrip('/')}/scan", json={"target": target}, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            # Expect list of vulns
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict) and "vulnerabilities" in data:
+                return data["vulnerabilities"]
+    except Exception:
+        pass
+    return []
+
+
 def list_scans(db: Session, org_id: int, limit: int = 20) -> List[VulnScan]:
     return db.query(VulnScan).filter(VulnScan.org_id == org_id).order_by(VulnScan.started_at.desc()).limit(limit).all()
 

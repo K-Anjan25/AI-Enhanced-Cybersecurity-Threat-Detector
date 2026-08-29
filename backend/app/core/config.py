@@ -235,5 +235,19 @@ class Settings(BaseSettings):
     # Phase 72: Exec risk
     EXEC_RISK_ENABLED: bool = True
 
+    # DB sharding / read replica (Phase 73 - analysis)
+    DB_SHARDING_ENABLED: bool = False
+    DB_SHARD_COUNT: int = 1
+    DATABASE_REPLICA_URL: str | None = None
+    DB_PARTITIONING_ENABLED: bool = False
+
+    # Hunt auto-run (doubt #4)
+    HUNT_AUTO_RUN_ENABLED: bool = True
+    HUNT_AUTO_RUN_INTERVAL_SECONDS: int = 300
+
+    # Agent chat streaming (doubt #7)
+    AI_AGENT_CHAT_STREAMING: bool = True
+    AI_AGENT_ORG_MEMORY_ENABLED: bool = True  # org-level memory (doubt #3)
+
 
 settings = Settings()

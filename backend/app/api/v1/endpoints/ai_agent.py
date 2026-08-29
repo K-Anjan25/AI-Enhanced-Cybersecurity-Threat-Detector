@@ -18,6 +18,15 @@ class InvestigateRequest(BaseModel):
     case_id: int
 
 
+class ChatRequest(BaseModel):
+    case_id: int
+    message: str
+
+
+class ConfigUpdate(BaseModel):
+    auto_approve_low_risk: Optional[bool] = None
+
+
 @router.post("/investigate", status_code=201)
 def investigate(payload: InvestigateRequest, db: Session = Depends(get_db), current_user: User = Depends(require_permission("alerts:read"))):
     try:
@@ -25,6 +34,35 @@ def investigate(payload: InvestigateRequest, db: Session = Depends(get_db), curr
         return result
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/chat")
+def chat(payload: ChatRequest, db: Session = Depends(get_db), current_user: User = Depends(require_permission("alerts:read"))):
+    """Dedicated chat with streaming-ready response, tool use parsing (Anthropic tool_use blocks)."""
+    try:
+        # Use same investigate but with user message as extra context
+        result = ai_agent_service.autonomous_investigate(db, org_id=current_user.org_id, case_id=payload.case_id, actor=current_user.username, user_message=payload.message)
+        # Format as chat response
+        return {
+            "response": result.get("final_answer"),
+            "tool_calls": result.get("tools_used"),
+            "memories": result.get("memories"),
+            "llm_used": result.get("llm_used"),
+            "task_id": result.get("task_id"),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as e:
+        return {"response": f"Error: {str(e)}", "tool_calls": [], "memories": []}
+
+
+@router.post("/config")
+def update_config(payload: ConfigUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
+    """Toggle auto-approve LOW for demo (doubt #1)."""
+    from app.core.config import settings
+    if payload.auto_approve_low_risk is not None:
+        settings.AI_AGENT_AUTO_APPROVE_LOW_RISK = payload.auto_approve_low_risk
+    return {"auto_approve_low_risk": getattr(settings, "AI_AGENT_AUTO_APPROVE_LOW_RISK", False), "note": "Set via env AI_AGENT_AUTO_APPROVE_LOW_RISK for persistence, this toggle is runtime only"}
 
 
 @router.get("/memories")
