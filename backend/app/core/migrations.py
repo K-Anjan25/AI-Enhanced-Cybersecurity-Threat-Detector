@@ -32,6 +32,7 @@ ADDITIVE_MIGRATIONS = [
     # decisions" reuses the existing cases table. All nullable -> the legacy
     # Incidents page (which ignores unknown keys) is unaffected.
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS kind VARCHAR(30) DEFAULT 'manual'",
+    "ALTER TABLE cases ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES orgs(id) ON DELETE CASCADE",
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS analysis JSON",
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS blast_radius JSON",
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS proposed_action JSON",
@@ -45,13 +46,17 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider VARCHAR(50)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_sso_user BOOLEAN DEFAULT FALSE",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS scim_external_id VARCHAR(255)",
+    # Phase 47: service accounts
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_service_account BOOLEAN DEFAULT FALSE",
     # Phase 41: SAML columns on sso_providers + SCIM Groups + Connector OAuth handled by create_all
+    "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES orgs(id) ON DELETE CASCADE",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_entity_id TEXT",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_acs_url TEXT",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_sso_url TEXT",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_certificate TEXT",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_nameid_format VARCHAR(255)",
     # Phase 42: incremental sync for real connector fetch (GitHub, Slack)
+    "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES orgs(id) ON DELETE CASCADE",
     "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS last_cursor TEXT",
     "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS sync_state TEXT",
 ]
@@ -72,7 +77,7 @@ def ensure_default_org(engine) -> None:
             text("SELECT id FROM orgs WHERE slug = 'default' LIMIT 1")
         ).scalar()
         # Backfill existing tenant-owned rows into the default org.
-        for table in ("security_alerts", "scanned_alerts", "scan_batches", "cases", "entities", "entity_links", "soar_actions", "soar_playbooks"):
+        for table in ("security_alerts", "scanned_alerts", "scan_batches", "cases", "connector_sources", "sso_providers", "entities", "entity_links", "soar_actions", "soar_playbooks"):
             conn.execute(
                 text(f"UPDATE {table} SET org_id = :oid WHERE org_id IS NULL"),
                 {"oid": org_id},
