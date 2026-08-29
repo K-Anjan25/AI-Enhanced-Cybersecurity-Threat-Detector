@@ -37,6 +37,11 @@ class EvaluateRequest(BaseModel):
 
 @router.get("/segments")
 def list_segments(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
+    # Auto-seed defaults if empty (answers doubt #5)
+    try:
+        ztna_service.seed_defaults(db, org_id=current_user.org_id)
+    except Exception:
+        pass
     rows = ztna_service.list_segments(db, org_id=current_user.org_id)
     return [ztna_service.serialize_segment(r) for r in rows]
 

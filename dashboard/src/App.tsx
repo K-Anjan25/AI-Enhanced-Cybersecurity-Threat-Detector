@@ -38,6 +38,8 @@ const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPag
 const AdvancedHubPage = React.lazy(() => import("./features/advanced/pages/AdvancedHubPage"));
 const NextPhasesPage = React.lazy(() => import("./features/advanced/pages/NextPhasesPage"));
 const FuturePhasesPage = React.lazy(() => import("./features/advanced/pages/FuturePhasesPage"));
+const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
+const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
 const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
@@ -108,6 +110,22 @@ export default function App(): JSX.Element {
               <Route path="advanced" element={<AdvancedHubPage />} />
               <Route path="next" element={<NextPhasesPage />} />
               <Route path="future" element={<FuturePhasesPage />} />
+              <Route path="ztna" element={<ModulePage />} />
+              <Route path="hunting" element={<ModulePage />} />
+              <Route path="vulns" element={<ModulePage />} />
+              <Route path="cspm" element={<ModulePage />} />
+              <Route path="sbom" element={<ModulePage />} />
+              <Route path="deception" element={<ModulePage />} />
+              <Route path="forensics" element={<ModulePage />} />
+              <Route path="itdr" element={<ModulePage />} />
+              <Route path="tip" element={<ModulePage />} />
+              <Route path="threat-intel" element={<ModulePage />} />
+              <Route path="attack-navigator" element={<ModulePage />} />
+              <Route path="compliance-continuous" element={<ModulePage />} />
+              <Route path="exec-risk" element={<ModulePage />} />
+              <Route path="ai-agent" element={<ModulePage />} />
+              <Route path="agent-chat" element={<AgentChatPage />} />
+              <Route path="compliance" element={<CompliancePage />} />
               <Route path="profile" element={<Profile />} />
               <Route path="account" element={<Account />} />
               <Route
