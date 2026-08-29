@@ -73,6 +73,16 @@ from app.api.v1.endpoints import (
     cnapp,
     posture_score,
     noctra_os,
+    global_federation,
+    predictive_soc,
+    hunt_swarm,
+    digital_twin,
+    quantum_comms,
+    ai_governance,
+    supply_chain_v2,
+    xr_soc,
+    deception_grid,
+    self_healing,
 )
 
 api_router = APIRouter()
@@ -159,3 +169,14 @@ api_router.include_router(drp.router)
 api_router.include_router(cnapp.router)
 api_router.include_router(posture_score.router)
 api_router.include_router(noctra_os.router)
+# Phases 101-110 - Post-OS Singularity
+api_router.include_router(global_federation.router)
+api_router.include_router(predictive_soc.router)
+api_router.include_router(hunt_swarm.router)
+api_router.include_router(digital_twin.router)
+api_router.include_router(quantum_comms.router)
+api_router.include_router(ai_governance.router)
+api_router.include_router(supply_chain_v2.router)
+api_router.include_router(xr_soc.router)
+api_router.include_router(deception_grid.router)
+api_router.include_router(self_healing.router)

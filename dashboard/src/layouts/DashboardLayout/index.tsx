@@ -182,6 +182,22 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Singularity P101-P110",
+    items: [
+      { name: "Global Fed P101", path: "/global-federation", icon: Globe, badge: "P101" },
+      { name: "Predictive P102", path: "/predictive-soc", icon: Brain, badge: "P102" },
+      { name: "Hunt Swarm P103", path: "/hunt-swarm", icon: Swords, badge: "P103" },
+      { name: "Digital Twin P104", path: "/digital-twin", icon: Boxes, badge: "P104" },
+      { name: "Q-Comms P105", path: "/quantum-comms", icon: Shield, badge: "P105" },
+      { name: "AI Gov P106", path: "/ai-governance", icon: Gavel, badge: "P106" },
+      { name: "Supply v2 P107", path: "/supply-chain-v2", icon: Package, badge: "P107" },
+      { name: "XR SOC P108", path: "/xr-soc", icon: Layers, badge: "P108" },
+      { name: "Deception v2 P109", path: "/deception-grid", icon: EyeOff, badge: "P109" },
+      { name: "Self-Heal P110", path: "/self-healing", icon: ShieldCheck, badge: "P110" },
+      { name: "Beyond100 All", path: "/beyond100", icon: Layers, badge: "P101-110" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,

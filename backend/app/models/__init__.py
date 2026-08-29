@@ -56,6 +56,16 @@ from app.models.drp import DRP_Monitor, DRP_Finding, DRP_Takedown
 from app.models.cnapp import CNAPP_Cluster, CNAPP_Workload, CNAPP_Policy, CNAPP_Finding
 from app.models.posture_score import PostureScore, PostureFinding, PostureRecommendation
 from app.models.noctra_os import NOCTRA_OS_Config, NOCTRA_OS_Metric, NOCTRA_OS_Log
+from app.models.global_federation import GlobalFederation, FederatedTenant, CrossBorderCaseShare
+from app.models.predictive_soc import PredictionModel, ThreatForecast, RiskPrediction
+from app.models.hunt_swarm import HuntSwarm, SwarmAgent, SwarmFinding
+from app.models.digital_twin import DigitalTwin, TwinSimulation, ResilienceScore
+from app.models.quantum_comms import QuantumChannel, QKDKey, SecureMessage
+from app.models.ai_governance import AIModelCard, BiasAudit, ExplainabilityLog
+from app.models.supply_chain_v2 import SupplyChainGraph, VendorRisk, Attestation
+from app.models.xr_soc import XRSOCSession, SpatialEntity, XRAlert
+from app.models.deception_grid import DeceptionGrid, DeceptionNode, DeceptionInteraction
+from app.models.self_healing import SelfHealingPolicy, HealingExecution, HealingVerification
 
 __all__ = [
     "Org",
@@ -207,4 +217,34 @@ __all__ = [
     "NOCTRA_OS_Config",
     "NOCTRA_OS_Metric",
     "NOCTRA_OS_Log",
+    "GlobalFederation",
+    "FederatedTenant",
+    "CrossBorderCaseShare",
+    "PredictionModel",
+    "ThreatForecast",
+    "RiskPrediction",
+    "HuntSwarm",
+    "SwarmAgent",
+    "SwarmFinding",
+    "DigitalTwin",
+    "TwinSimulation",
+    "ResilienceScore",
+    "QuantumChannel",
+    "QKDKey",
+    "SecureMessage",
+    "AIModelCard",
+    "BiasAudit",
+    "ExplainabilityLog",
+    "SupplyChainGraph",
+    "VendorRisk",
+    "Attestation",
+    "XRSOCSession",
+    "SpatialEntity",
+    "XRAlert",
+    "DeceptionGrid",
+    "DeceptionNode",
+    "DeceptionInteraction",
+    "SelfHealingPolicy",
+    "HealingExecution",
+    "HealingVerification",
 ]
