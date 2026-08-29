@@ -31,6 +31,7 @@ const TenantsPage = React.lazy(() => import("./features/admin/pages/TenantsPage"
 const AccessRolesPage = React.lazy(() => import("./features/admin/pages/AccessRolesPage"));
 const RulesPage = React.lazy(() => import("./features/admin/pages/RulesPage"));
 const ReputationPage = React.lazy(() => import("./features/admin/pages/ReputationPage"));
+const SsoScimPage = React.lazy(() => import("./features/admin/pages/SsoScimPage"));
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
 
 const FallbackLoader: React.FC = () => (
@@ -124,6 +125,7 @@ export default function App(): JSX.Element {
                 <Route path="reputation" element={<ReputationPage />} />
                 <Route path="engine-settings" element={<AdminEngineSettings />} />
                 <Route path="system-logs" element={<AdminAuditLogs />} />
+                <Route path="sso" element={<SsoScimPage />} />
               </Route>
             </Route>
           </Route>

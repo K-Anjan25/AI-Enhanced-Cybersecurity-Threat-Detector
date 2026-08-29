@@ -88,11 +88,20 @@ def reset_ingest_rate_limits() -> None:
 # The catalogue — the sources NOCTRA is built to ingest from. A catalogue entry
 # alone proves nothing; it only becomes "connected" once a source row exists and
 # has synced successfully.
+# Phase 40: expanded from 4 to 10 — more telemetry makes the live stream busy
+# and the scheduled poller useful. Each entry is a real product with a real API.
 CATALOGUE: list[tuple[str, str, str]] = [
     ("okta", "Okta Identity Cloud", "Identity"),
     ("sentinel", "CrowdStrike / Sentinel EDR", "Endpoint"),
     ("guardduty", "AWS GuardDuty & IAM Audit", "Cloud Security"),
     ("cloudflare", "Cloudflare Edge WAF", "Network & Edge"),
+    # Phase 40 — breadth: code, collaboration, productivity, identity, observability, SIEM
+    ("github", "GitHub Advanced Security", "Code & Supply Chain"),
+    ("slack", "Slack Enterprise Audit Logs", "Collaboration"),
+    ("gworkspace", "Google Workspace Admin", "Productivity"),
+    ("azuread", "Microsoft Entra ID", "Identity"),
+    ("datadog", "Datadog Cloud SIEM", "Observability"),
+    ("splunk", "Splunk Enterprise Security", "SIEM"),
 ]
 
 VALID_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}

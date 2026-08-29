@@ -298,9 +298,9 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 196+ passed, 2 skipped (Phase 39: 54 analyst+stream+pdf + 5 scheduler)
+cd backend   && pytest tests      # 211+ passed, 2 skipped (Phase 40: 54 analyst+stream+pdf + 5 scheduler + 10 SSO/SCIM + 5 SCIM API)
 cd ml-service&& pytest tests      # 13 passed
-cd dashboard && npm run test:ci   # 43 passed (Vitest, Phase 38: streaming + PDF)
+cd dashboard && npm run test:ci   # 46 passed (Vitest, Phase 40: +3 SSO/SCIM page)
 cd dashboard && npx tsc --noEmit && npm run build
 ```
 
@@ -315,9 +315,9 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 ## Known gaps — say these before someone finds them
 
-Honest gaps are better than surprise gaps. As of this writing (Phase 39):
+Honest gaps are better than surprise gaps. As of this writing (Phase 40):
 
-- **No connector is wired by default.** Out of the box all four report
+- **No connector is wired by default.** Out of the box all ten report
   `not_connected` with `—` for counts — the honest state. You can make one real
   in about a minute: **Configure → push → set a shared secret → POST events to
   the shown webhook** (or **poll** → point it at a JSON events URL). Then it
@@ -325,7 +325,10 @@ Honest gaps are better than surprise gaps. As of this writing (Phase 39):
   three honest outcomes and the UI shows the server's wording verbatim:
   `synced` (a real poll fetched events), `recorded` (nothing to fetch — no
   config / disabled / push mode), `error` (a poll was attempted and failed,
-  with the reason). See §3a.
+  with the reason). See §3a. Phase 40 expands catalogue from 4 to 10:
+  Okta, Sentinel/CrowdStrike, GuardDuty, Cloudflare, GitHub Advanced Security,
+  Slack Audit Logs, Google Workspace, Entra ID, Datadog SIEM, Splunk ES — more
+  telemetry makes the live stream + scheduler busy.
 - **Scheduled polling watches continuously (Phase 39).** When `CONNECTOR_POLL_ENABLED=true`
   (default), a daemon thread polls enabled poll-mode connectors every 15 min
   (900s) with jitter and exponential backoff on error (5 min base, 1h max).
@@ -342,6 +345,21 @@ Honest gaps are better than surprise gaps. As of this writing (Phase 39):
   returns 409 if no report yet (pending case), 501 if `reportlab` is not installed,
   and preserves the engine note including `(templated fallback)` so fallback reasoning
   is never presented as verified. Markdown syntax is stripped — no `**` or `| --- |` in PDF.
+- **SSO is OIDC only, not SAML (Phase 40).** `GET /auth/sso/config` reports if SSO
+  is enabled. `GET /auth/sso/login` redirects to IdP via Authorization Code flow
+  with state+nonce (in-memory TTL 10 min, per-process). Callback `GET /auth/sso/callback`
+  exchanges code, fetches userinfo, JIT provisions USER/ANALYST (never ADMIN) if
+  enabled. Secrets encrypted at rest. No SAML yet — documented as gap, returns 422
+  if requested. Admin CRUD at `/admin/sso/providers` per-org. Env fallback via
+  `SSO_OIDC_*` settings. Discovery via issuer/.well-known/openid-configuration.
+- **SCIM is Users CRUD + Groups minimal (Phase 40).** Endpoints under `/scim/v2`:
+  `ServiceProviderConfig`, `ResourceTypes`, `Schemas` (no auth), `Users` (GET with
+  limited filter userName/email/externalId eq, POST, GET/{id}, PUT, PATCH active,
+  DELETE soft-deactivates), `Groups` list minimal empty. Auth is Bearer token
+  hashed at rest in `scim_tokens` per-org (prefix shown, raw shown once). Env
+  fallback `SCIM_TOKEN` for single-tenant. Groups membership sync not implemented,
+  bulk extension not implemented — both documented. Admin token management at
+  `/admin/scim/tokens`.
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.

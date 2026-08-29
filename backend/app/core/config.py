@@ -47,6 +47,20 @@ class Settings(BaseSettings):
     CONNECTOR_POLL_JITTER_SECONDS: int = 60
     CONNECTOR_POLL_BACKOFF_BASE_SECONDS: int = 300  # 5 min base backoff on error
     CONNECTOR_POLL_BACKOFF_MAX_SECONDS: int = 3600  # 1 hour max
+
+    # SSO / SCIM (Phase 40) — enterprise auth
+    SSO_ENABLED: bool = False
+    SSO_OIDC_ISSUER: str | None = None  # e.g. https://accounts.google.com
+    SSO_OIDC_CLIENT_ID: str | None = None
+    SSO_OIDC_CLIENT_SECRET: str | None = None
+    SSO_OIDC_SCOPES: str = "openid email profile"
+    SSO_JIT_PROVISIONING: bool = True  # create user on first SSO login
+    SSO_DEFAULT_ROLE: str = "USER"  # role for JIT provisioned users
+
+    SCIM_ENABLED: bool = False
+    # Fallback global token (hashed comparison) — per-org tokens in DB are preferred
+    SCIM_TOKEN: str | None = None
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
