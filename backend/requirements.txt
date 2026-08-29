@@ -5,6 +5,7 @@ psycopg2-binary
 pydantic[email]
 pydantic-settings
 python-jose[cryptography]
+cryptography  # connector credentials at rest (app/core/secrets.py)
 passlib[bcrypt]
 bcrypt==4.0.1
 kafka-python

@@ -39,7 +39,7 @@ Software-engineering documentation for the **AI-Enhanced Cybersecurity Threat De
 
 | Suite | Command | Count |
 | --- | --- | --- |
-| Backend (pytest) | `cd backend && pytest tests` | 146 passed, 2 skipped |
+| Backend (pytest) | `cd backend && pytest tests` | 160 passed, 2 skipped |
 | ML service (pytest) | `cd ml-service && pytest tests` | 13 passed |
 | Dashboard (Vitest) | `cd dashboard && npm run test:ci` | 14 passed |
 

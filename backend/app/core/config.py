@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
+    # Push-webhook ingest: max requests per connector per minute. Counted in
+    # this process, so with N workers the effective ceiling is N x this value.
+    # 0 disables the limiter.
+    CONNECTOR_INGEST_RATE_LIMIT: int = 120
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
