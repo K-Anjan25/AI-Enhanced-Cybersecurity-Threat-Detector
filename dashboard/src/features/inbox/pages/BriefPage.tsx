@@ -15,6 +15,8 @@ import { Button, PageHeader, SeverityBadge, SkeletonCard, SkeletonChart, StatusB
 import { Select } from "../../../components/ui/Select";
 import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
 import AnalystApi from "../../../api/analystApi";
+import OcsfApi from "../../../api/ocsfApi";
+import ComplianceApi from "../../../api/complianceApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -75,7 +77,10 @@ const BriefPage: React.FC = () => {
   const [simulating, setSimulating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState("credential_leak");
+  const [scenarios, setScenarios] = useState<{ id: string; label: string }[]>([]);
   const [configFor, setConfigFor] = useState<Connector | null>(null);
+  const [ocsfBrief, setOcsfBrief] = useState<{ summary: string; total: number } | null>(null);
+  const [chainStatus, setChainStatus] = useState<{ chain_valid: boolean; verified: number } | null>(null);
 
   /** Configuring a source writes alerts — gate it on the same permission the
    *  API enforces, so the button never promises a request that would 403. */
@@ -93,14 +98,22 @@ const BriefPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [briefData, connData, feedData] = await Promise.all([
+      const [briefData, connData, feedData, scenData, ocsfData, chainData] = await Promise.all([
         AnalystApi.fetchBrief(),
         AnalystApi.fetchConnectors().catch(() => []),
         AnalystApi.fetchFeed({ page: 1, limit: 100 }).catch(() => ({ data: [] as AnalystCase[] })),
+        AnalystApi.fetchScenarios().catch(() => [] as any),
+        OcsfApi.fetchBrief(20).catch(() => null),
+        ComplianceApi.fetchAuditVerify(100).catch(() => null),
       ]);
       setBrief(briefData);
       setConnectors(connData);
-      setFeedCases(Array.isArray(feedData) ? feedData : feedData?.data ?? []);
+      setFeedCases(Array.isArray(feedData) ? feedData : (feedData as any)?.data ?? []);
+      if (Array.isArray(scenData) && scenData.length > 0) {
+        setScenarios(scenData as any);
+      }
+      if (ocsfData) setOcsfBrief(ocsfData);
+      if (chainData) setChainStatus(chainData);
     } catch (err: any) {
       setError(getApiError(err, "Failed to load your brief"));
     } finally {
@@ -239,13 +252,15 @@ const BriefPage: React.FC = () => {
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={simulating}
               aria-label="Scenario to simulate"
-              className="flex-1 sm:flex-none sm:min-w-[190px] bg-app-subtle text-xs"
-              options={[
-                { value: "credential_leak", label: "Credential Leak (T1078)" },
-                { value: "phishing_outbreak", label: "Phishing Outbreak (T1566)" },
-                { value: "data_exfiltration", label: "Data Exfiltration (T1048)" },
-                { value: "compromised_api_key", label: "Compromised API Key (T1098)" },
-              ]}
+              className="flex-1 sm:flex-none sm:min-w-[220px] bg-app-subtle text-xs"
+              options={(scenarios.length > 0 ? scenarios : [
+                { id: "credential_leak", label: "Credential Leak (T1078)" },
+                { id: "phishing_outbreak", label: "Phishing Outbreak (T1566)" },
+                { id: "data_exfiltration", label: "Data Exfiltration (T1048)" },
+                { id: "compromised_api_key", label: "Compromised API Key (T1098)" },
+                { id: "insider_threat", label: "Insider Threat (T1003)" },
+                { id: "ransomware_activity", label: "Ransomware Activity (T1486)" },
+              ]).map((s: any) => ({ value: s.id, label: s.label }))}
             />
             <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2">
               <Sparkles size={14} className="mr-1.5" aria-hidden />
@@ -456,7 +471,7 @@ const BriefPage: React.FC = () => {
               <ShieldCheck size={16} className="text-accent-primary" /> Integrated security tooling
             </h2>
             <p className="text-xs text-content-tertiary mt-0.5">
-              Telemetry sources NOCTRA is built to ingest from. No source is
+              Telemetry sources NOCTRA is built to ingest from (10 total, Phase 40). No source is
               wired in this deployment — counts appear once one is connected.
             </p>
           </div>
@@ -538,6 +553,43 @@ const BriefPage: React.FC = () => {
         onClose={() => setConfigFor(null)}
         onSaved={loadData}
       />
+      </div>
+
+      {/* Phase 44/45: OCSF + Compliance */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
+          <h2 className="text-sm font-bold text-content-primary flex items-center gap-2 font-display">
+            <span className="text-accent-primary">OCSF</span> Connector Telemetry (Phase 44)
+          </h2>
+          <p className="text-xs text-content-tertiary mt-1">
+            Recent alerts normalized to OCSF Security Finding (class 2001). Auto-triage creates cases for CRITICAL/HIGH.
+          </p>
+          {ocsfBrief ? (
+            <div className="mt-3">
+              <p className="text-xs text-content-secondary">{ocsfBrief.summary}</p>
+              <p className="text-[11px] text-content-tertiary mt-1">{ocsfBrief.total} alerts in last 50, auto-triaged to analyst feed.</p>
+            </div>
+          ) : (
+            <p className="text-xs text-content-tertiary mt-3">No recent connector telemetry — configure a source or simulate.</p>
+          )}
+        </div>
+
+        <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
+          <h2 className="text-sm font-bold text-content-primary flex items-center gap-2 font-display">
+            <ShieldCheck size={16} className="text-accent-primary" /> Compliance Evidence (Phase 45)
+          </h2>
+          <p className="text-xs text-content-tertiary mt-1">
+            Tamper-evident audit chain (SHA256 hash chain), SOC2 controls mapping, chain-of-custody per case.
+          </p>
+          {chainStatus ? (
+            <div className="mt-3 flex items-center gap-2">
+              <StatusBadge tone={chainStatus.chain_valid ? "success" : "critical"} label={chainStatus.chain_valid ? "Chain valid" : "Chain broken"} />
+              <span className="text-[11px] text-content-tertiary">{chainStatus.verified} entries verified</span>
+            </div>
+          ) : (
+            <p className="text-xs text-content-tertiary mt-3">Chain status unavailable — admin only.</p>
+          )}
+        </div>
       </div>
     </div>
   );

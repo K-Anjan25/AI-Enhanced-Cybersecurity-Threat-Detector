@@ -22,6 +22,15 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Phase 40: SSO/SCIM
+    external_id = Column(String(255), nullable=True, index=True)  # IdP sub
+    sso_provider = Column(String(50), nullable=True)  # e.g. oidc:google, oidc:azure
+    is_sso_user = Column(Boolean, default=False, nullable=False)
+    scim_external_id = Column(String(255), nullable=True, index=True)  # SCIM externalId
+
+    # Phase 47: service accounts
+    is_service_account = Column(Boolean, default=False, nullable=False)
+
     alerts = relationship("SecurityAlert", back_populates="user")
     scanned_alerts = relationship("ScannedAlert", back_populates="user")
     scan_batches = relationship("ScanBatch", back_populates="user")

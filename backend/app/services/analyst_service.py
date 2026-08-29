@@ -11,10 +11,28 @@ from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_
 
+from app.core.config import settings
 from app.models import AuditLog, Case, SecurityAlert, Entity, SoarAction, User
 from app.services import case_service, report as report_service
 from app.services import soar
 from app.utils.helpers import paginate, create_audit_log
+from app.utils.rate_limit import RateLimiter
+
+# Chat rate limiting: per (org, user, case) to prevent abuse of LLM costs
+_chat_limiter = RateLimiter(limit=settings.ANALYST_CHAT_RATE_LIMIT, window_seconds=60)
+
+
+class ChatRateLimited(Exception):
+    def __init__(self, retry_after: int = 60):
+        super().__init__("Too many chat questions for this case")
+        self.retry_after = retry_after
+
+
+def _check_chat_rate(org_id: int | None, user_id: int | None, case_id: int) -> None:
+    key = f"{org_id}:{user_id}:{case_id}"
+    if not _chat_limiter.check(key):
+        raise ChatRateLimited()
+
 
 _DECIDED = ("approved", "declined", "reverted")
 
@@ -283,15 +301,20 @@ def list_notifications(db, org_id: int | None, limit: int = 20) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Interactive Case Chat & Connectors (Phase 19)
 # ---------------------------------------------------------------------------
-def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
-    """Answer analyst questions about a specific case using LLM / case context."""
+def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | None = None) -> dict:
+    """Answer analyst questions about a specific case using LLM when available,
+    falling back to deterministic keyword logic.
+
+    The LLM path is attempted first when LLM_ENABLED and ANTHROPIC_API_KEY are
+    set; any failure (network, parse, empty) falls back to the keyword logic so
+    the endpoint never fails for lack of a key — same resilience contract as
+    analyze_incident.
+    """
     analysis = case.analysis or {}
     proposed = case.proposed_action or {}
     blast = case.blast_radius or {}
     nodes = blast.get("nodes", [])
 
-    # Real MITRE mapping lives on the source alert (set at detection time),
-    # not in the analysis narrative.
     mitre_technique_id = None
     mitre_technique = None
     if case.source_alert_id is not None:
@@ -301,41 +324,97 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
         mitre_technique_id = getattr(alert_row, "mitre_technique_id", None)
         mitre_technique = getattr(alert_row, "mitre_technique", None)
 
-    q_lower = question.lower()
+    # Rate limit (Phase 37) — prevents LLM cost abuse
+    try:
+        _check_chat_rate(case.org_id, actor_id, case.id)
+    except ChatRateLimited as exc:
+        raise exc
 
-    if "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
-        node_names = ", ".join([f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:5]])
-        answer = (
-            f"The blast radius contains {len(nodes)} identified entities: {node_names}. "
-            f"The root entity is connected to key assets and accounts."
+    # Phase 44: grounding on recent connector alerts (OCSF)
+    connector_context = ""
+    try:
+        from app.services import ocsf_service
+
+        recent_alerts = (
+            db.query(SecurityAlert)
+            .filter(SecurityAlert.org_id == case.org_id)
+            .order_by(SecurityAlert.created_at.desc())
+            .limit(10)
+            .all()
         )
-    elif "action" in q_lower or "why" in q_lower or "recommend" in q_lower or "remediat" in q_lower:
-        answer = (
-            f"The recommended action is {proposed.get('action_type', 'REVOKE_CREDENTIALS')} on {proposed.get('target')}. "
-            f"Rationale: {proposed.get('rationale', 'Prevent unauthorized lateral movement')}. "
-            f"Reversible via: {proposed.get('undo', 'Re-enable account or IP access')}."
-        )
-    elif "mitre" in q_lower or "tactic" in q_lower or "technique" in q_lower:
-        technique_id = mitre_technique_id or "N/A"
-        technique_name = mitre_technique or "Unclassified"
-        answer = (
-            f"This case maps to MITRE ATT&CK technique {technique_id} ({technique_name}). "
-            f"It represents an active threat vector requiring immediate containment."
-        )
-    else:
-        answer = (
-            f"Based on NOCTRA's analysis of case #{case.id}: {case.title}. "
-            f"What happened: {case.description or analysis.get('what_happened')}. "
-            f"Confidence score is {analysis.get('confidence', 0.9) * 100:.0f}%. "
-            f"Status is {case.status} with decision '{case.decision}'."
-        )
+        if recent_alerts:
+            ocsf_batch = ocsf_service.alerts_to_ocsf_batch(recent_alerts)
+            connector_context = ocsf_service.ocsf_to_brief_summary(ocsf_batch["findings"])
+    except Exception:
+        connector_context = ""
+
+    # Try LLM first (Phase 36)
+    answer: str | None = None
+    llm_used = False
+    try:
+        from app.services import llm_client as _llm
+
+        context = {
+            "id": case.id,
+            "title": case.title,
+            "what_happened": analysis.get("what_happened") or case.description or "",
+            "why_it_matters": analysis.get("why_it_matters") or "",
+            "blast_radius_summary": analysis.get("blast_radius_summary") or "",
+            "action_type": proposed.get("action_type") or "",
+            "target": proposed.get("target") or "",
+            "rationale": proposed.get("rationale") or "",
+            "undo": proposed.get("undo") or "",
+            "mitre_id": mitre_technique_id or "",
+            "mitre_name": mitre_technique or "",
+            "confidence": analysis.get("confidence", 0.0),
+            "model": analysis.get("model", ""),
+            "fallback": analysis.get("fallback", False),
+            "entities": [f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:10]],
+            "connector_context": connector_context,
+        }
+        llm_answer = _llm.answer_case_question(context, question)
+        if llm_answer:
+            answer = llm_answer
+            llm_used = True
+    except Exception:
+        answer = None
+
+    if not answer:
+        q_lower = question.lower()
+
+        if "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
+            node_names = ", ".join([f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:5]])
+            answer = (
+                f"The blast radius contains {len(nodes)} identified entities: {node_names}. "
+                f"The root entity is connected to key assets and accounts."
+            )
+        elif "action" in q_lower or "why" in q_lower or "recommend" in q_lower or "remediat" in q_lower:
+            answer = (
+                f"The recommended action is {proposed.get('action_type', 'REVOKE_CREDENTIALS')} on {proposed.get('target')}. "
+                f"Rationale: {proposed.get('rationale', 'Prevent unauthorized lateral movement')}. "
+                f"Reversible via: {proposed.get('undo', 'Re-enable account or IP access')}."
+            )
+        elif "mitre" in q_lower or "tactic" in q_lower or "technique" in q_lower:
+            technique_id = mitre_technique_id or "N/A"
+            technique_name = mitre_technique or "Unclassified"
+            answer = (
+                f"This case maps to MITRE ATT&CK technique {technique_id} ({technique_name}). "
+                f"It represents an active threat vector requiring immediate containment."
+            )
+        else:
+            answer = (
+                f"Based on NOCTRA's analysis of case #{case.id}: {case.title}. "
+                f"What happened: {case.description or analysis.get('what_happened')}. "
+                f"Confidence score is {analysis.get('confidence', 0.9) * 100:.0f}%. "
+                f"Status is {case.status} with decision '{case.decision}'."
+            )
 
     create_audit_log(
         db,
         action="ANALYST_CHAT_QUESTION",
         actor=actor,
         resource=f"case:{case.id}",
-        details=f"q:'{question[:60]}' a:'{answer[:60]}'",
+        details=f"q:'{question[:60]}' a:'{answer[:60]}' llm:{llm_used}",
     )
 
     return {
@@ -343,6 +422,7 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
         "question": question,
         "answer": answer,
         "confidence": float(analysis.get("confidence", 0.92)),
+        "llm_used": llm_used,
     }
 
 
@@ -424,6 +504,45 @@ def decline_case(db, case: Case, actor: str, actor_id: int | None) -> Case:
         resource=f"case:{case.id}",
     )
     return case
+
+
+def bulk_decide(
+    db,
+    org_id: int | None,
+    case_ids: list[int],
+    decision: str,
+    actor: str,
+    actor_id: int | None,
+) -> dict:
+    """Bulk approve/decline for multiple pending cases.
+
+    Returns {decided: [ids], failed: [{id, reason}]}. Only pending cases are
+    acted upon; already-decided cases are reported as failed. This is honest:
+    it never silently skips.
+    """
+    if decision not in ("approved", "declined"):
+        raise ValueError("bulk decision must be 'approved' or 'declined'")
+
+    decided = []
+    failed = []
+    for cid in case_ids:
+        case = get_case(db, cid, org_id=org_id)
+        if not case:
+            failed.append({"id": cid, "reason": "not found"})
+            continue
+        if case.decision != "pending":
+            failed.append({"id": cid, "reason": f"already {case.decision}"})
+            continue
+        try:
+            if decision == "approved":
+                approve_case(db, case, actor=actor, actor_id=actor_id)
+            else:
+                decline_case(db, case, actor=actor, actor_id=actor_id)
+            decided.append(cid)
+        except Exception as exc:
+            failed.append({"id": cid, "reason": str(exc)})
+
+    return {"decided": decided, "failed": failed, "decision": decision}
 
 
 def revert_case(db, case: Case, actor: str, actor_id: int | None) -> Case:

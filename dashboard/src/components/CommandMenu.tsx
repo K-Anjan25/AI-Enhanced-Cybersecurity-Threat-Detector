@@ -43,6 +43,8 @@ const SIMULATIONS: { key: string; label: string }[] = [
   { key: "phishing_outbreak", label: "Phishing outbreak (T1566)" },
   { key: "data_exfiltration", label: "Data exfiltration (T1048)" },
   { key: "compromised_api_key", label: "Compromised API key (T1098)" },
+  { key: "insider_threat", label: "Insider threat (T1003)" },
+  { key: "ransomware_activity", label: "Ransomware activity (T1486)" },
 ];
 
 const CommandMenu: React.FC = () => {
