@@ -13,7 +13,7 @@ import type { Brief, Connector } from "../../../types/analyst";
 // The page imports the default API object, so the module boundary — not the
 // individual functions — is what has to be stubbed.
 vi.mock("../../../api/ocsfApi", () => ({ default: { fetchBrief: vi.fn().mockResolvedValue({ summary: "No recent", total: 0, findings: [] }), exportAlerts: vi.fn() } }));
-vi.mock("../../../api/complianceApi", () => ({ default: { verifyAuditChain: vi.fn().mockResolvedValue({ chain_valid: true, verified: 5 }), getSoc2Evidence: vi.fn(), getCaseChain: vi.fn() } }));
+vi.mock("../../../api/complianceApi", () => ({ default: { fetchAuditVerify: vi.fn().mockResolvedValue({ total_checked: 5, verified: 5, chain_valid: true, last_hash: "0000" }), fetchSoc2Evidence: vi.fn(), fetchChainOfCustody: vi.fn() } }));
 
 vi.mock("../../../api/analystApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../api/analystApi")>();
