@@ -57,6 +57,10 @@ from app.api.v1.endpoints import (
     attack_coverage,
     agent_collab,
     soc_tv,
+    approval_workflows,
+    hunt_notebooks,
+    exposure,
+    ai_redteam,
 )
 
 api_router = APIRouter()
@@ -124,3 +128,8 @@ api_router.include_router(pdf_export.router)
 api_router.include_router(attack_coverage.router)
 api_router.include_router(agent_collab.router)
 api_router.include_router(soc_tv.router)
+# Phases 85-88
+api_router.include_router(approval_workflows.router)
+api_router.include_router(hunt_notebooks.router)
+api_router.include_router(exposure.router)
+api_router.include_router(ai_redteam.router)

@@ -40,6 +40,10 @@ from app.models.pdf_export import PDFExport
 from app.models.attack_coverage import AttackCoverage, AttackCoverageReport
 from app.models.agent_collab import AgentCollaboration, AgentMessage
 from app.models.soc_tv import SOCWallConfig, SOCWallMetric
+from app.models.approval_workflow import ApprovalWorkflow, ApprovalInstance, ApprovalTask
+from app.models.hunt_notebook import HuntNotebook, NotebookCell, NotebookExecution
+from app.models.exposure import ASM_Domain, ASM_AssetExposure, ASM_Certificate, ExposureFinding
+from app.models.ai_redteam import RedTeamJob, RedTeamPrompt, RedTeamFinding
 
 __all__ = [
     "Org",
@@ -143,4 +147,17 @@ __all__ = [
     "AgentMessage",
     "SOCWallConfig",
     "SOCWallMetric",
+    "ApprovalWorkflow",
+    "ApprovalInstance",
+    "ApprovalTask",
+    "HuntNotebook",
+    "NotebookCell",
+    "NotebookExecution",
+    "ASM_Domain",
+    "ASM_AssetExposure",
+    "ASM_Certificate",
+    "ExposureFinding",
+    "RedTeamJob",
+    "RedTeamPrompt",
+    "RedTeamFinding",
 ]
