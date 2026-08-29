@@ -854,3 +854,71 @@ via python-jose.
 Backend suite: 160 passed, 2 skipped. The three "known gaps" in demo.md were
 rewritten to describe what these measures do and do not cover, rather than
 being deleted.
+
+## Phase 36 — trust hardening, scenario expansion & frontend coverage
+
+**Why this phase.** Phase 35 closed the connector credential-plaintext, rate-limit
+and DNS-rebinding gaps. The product loop was complete but two things were thin:
+the scenario catalogue (4 types) and the dashboard test coverage (14 tests). The
+chat endpoint was also keyword-only even when an LLM key was present.
+
+**Backend**
+
+- Fixed `DeprecationWarning: invalid escape sequence '\.'` in
+  `entity_graph.py` — `_FILE_MARKERS` now uses raw strings.
+- **Two new scenarios** in `scenario.py`:
+  - `insider_threat` (T1003 OS Credential Dumping) — off-hours access to
+    `ntds.dit` on a privileged host, 4 entities, recommends DISABLE_ACCOUNT.
+  - `ransomware_activity` (T1486 Data Encrypted for Impact) — file encryption
+    + shadow copy deletion + C2 beacon, 3 entities, recommends QUARANTINE_ENDPOINT.
+  - Added `SCENARIO_CATALOG` + `list_scenarios()` — single source for API and UI,
+    replacing hardcoded lists.
+- **API surface** in `analyst.py`:
+  - `GET /analyst/scenarios` — lists the 6 scenarios (id, label, mitre, severity,
+    description). The Inbox dropdown and ⌘K menu now fetch this instead of
+    hardcoding.
+  - `GET /analyst/cases/{id}/export` — structured JSON export (case + timeline +
+    exported_at/by) for external SOAR/SIEM integration. All fields are real rows.
+- **Ask-NOCTRA chat now uses LLM when available** (`llm_client.answer_case_question`):
+  - New function `answer_case_question` — synchronous, never raises, returns None
+    when LLM disabled or on any failure. Mirrors the resilience contract of
+    `analyze_incident`.
+  - `analyst_service.chat_about_case` tries LLM first, then falls back to the
+    existing keyword logic. Audit entry now records `llm:true/false`.
+  - UI shows `· LLM` suffix on timestamp when the model answered.
+- **CasePage export**: one-click Export JSON (pending and decided cases) — downloads
+  `noctra-case-{id}-export.json` from the new endpoint. Added to both decision
+  gate states.
+
+**Frontend**
+
+- `api/analystApi.ts`: added `fetchScenarios()` and `exportCase()`; back-compat
+  handling for envelope vs bare array.
+- `BriefPage.tsx`: scenarios fetched from backend, fallback list includes 6 types;
+  dropdown width increased to fit longer labels.
+- `CommandMenu.tsx`: simulation list expanded from 4 to 6.
+- **Test coverage expanded from 14 to 32**:
+  - `FeedPage.test.tsx` (3) — pending threat-item marking, empty state, bare-array
+    defensive handling.
+  - `ActionsPage.test.tsx` (2) — filtering approved/reverted only, record-only language,
+    empty state.
+  - `ReportsPage.test.tsx` (2) — list rendering, honest empty state.
+  - `CasePage.test.tsx` (4) — headline/blast-radius/reversible rendering, fallback
+    reasoning label, timeline from server, export button presence.
+  - `ConnectorConfigModal.test.tsx` (4) — push mode webhook display, secret non-leakage,
+    poll mode switch, save payload does not wipe blank secrets.
+  - `CommandMenu.test.tsx` (3) — opens on event, filters by query, closes on Escape.
+  - All tests mock the API boundary, assert on real DOM text (no fake data), and
+    verify SIGNAL vocabulary usage where applicable.
+
+**Docs & verification**
+
+- `demo.md`: updated scenario count (4→6), added `/scenarios` and `/export`
+  endpoints to verification matrix, updated LLM gap to describe chat LLM usage,
+  updated test counts (160→166 backend, 14→32 dashboard).
+- Backend suite: **166 passed / 2 skipped** (was 160; +6 new tests).
+- Dashboard: **32 passed** Vitest, `tsc --noEmit && vite build` clean.
+- Live smoke (via pytest client): simulate insider_threat → export → timeline →
+  chat → approve → revert, all 200.
+
+

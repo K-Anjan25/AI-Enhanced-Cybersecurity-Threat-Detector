@@ -43,12 +43,34 @@ export const deleteConfig = async (
 export const webhookUrl = (connectorId: string): string =>
   `${window.location.origin}/api/v1/connectors/ingest/${connectorId}`;
 
+export const fetchOAuthStatus = async (connectorId: string): Promise<{ connected: boolean; account_name?: string; provider?: string }> => {
+  const { data } = await api.get(`/connectors/${connectorId}/oauth/status`);
+  return data;
+};
+
+export const oauthStartUrl = (connectorId: string): string =>
+  `${window.location.origin}/api/v1/connectors/${connectorId}/oauth/start`;
+
+export const disconnectOAuth = async (connectorId: string): Promise<{ disconnected: string }> => {
+  const { data } = await api.delete(`/connectors/${connectorId}/oauth`);
+  return data;
+};
+
+export const rotateSecret = async (connectorId: string): Promise<{ connector_id: string; ingest_token: string; rotated_at: string; warning: string }> => {
+  const { data } = await api.post(`/connectors/${connectorId}/rotate-secret`);
+  return data;
+};
+
 export const ConnectorApi = {
   fetchConfigs,
   fetchConfig,
   saveConfig,
   deleteConfig,
   webhookUrl,
+  fetchOAuthStatus,
+  oauthStartUrl,
+  disconnectOAuth,
+  rotateSecret,
 };
 
 export default ConnectorApi;

@@ -113,6 +113,18 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
   };
 
   const hook = ConnectorApi.webhookUrl(connector.id);
+  const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; account_name?: string } | null>(null);
+
+  useEffect(() => {
+    if (!open || !connector) return;
+    if (["github", "slack", "gworkspace", "azuread"].includes(connector.id)) {
+      ConnectorApi.fetchOAuthStatus(connector.id)
+        .then(setOauthStatus)
+        .catch(() => setOauthStatus({ connected: false }));
+    } else {
+      setOauthStatus(null);
+    }
+  }, [open, connector]);
 
   const copy = async (text: string) => {
     try {
@@ -275,6 +287,58 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
               </div>
             </div>
           )}
+
+          {(["github", "slack", "gworkspace", "azuread"] as const).includes(connector.id as any) && (
+            <div className="console-panel rounded-sm p-3">
+              <p className="tech-label text-content-tertiary mb-1.5">OAuth — {connector.id === "github" ? "GitHub App" : connector.id === "slack" ? "Slack" : connector.id === "gworkspace" ? "Google Workspace" : "Azure AD"}</p>
+              {oauthStatus?.connected ? (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-content-secondary">
+                    Connected as <span className="font-semibold text-content-primary">{oauthStatus.account_name || "authorized account"}</span> — polling will use OAuth token automatically (refresh token supported).
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={async () => {
+                    try {
+                      await ConnectorApi.disconnectOAuth(connector.id);
+                      setOauthStatus({ connected: false });
+                    } catch (err: any) {
+                      setError(getApiError(err, "Failed to disconnect OAuth"));
+                    }
+                  }}>Disconnect</Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-content-tertiary">Connect via OAuth to ingest directly from {connector.id === "github" ? "GitHub Advanced Security" : connector.id === "slack" ? "Slack Audit Logs" : connector.id === "gworkspace" ? "Google Workspace Login Audit" : "Azure AD Sign-In Logs"} API. Token encrypted at rest, refresh supported.</p>
+                  <a href={ConnectorApi.oauthStartUrl(connector.id)} className="inline-flex items-center px-3 py-1.5 rounded-sm bg-app-surface border border-line-subtle text-xs font-semibold text-accent-primary hover:border-accent-primary transition-colors">
+                    Connect {connector.id === "github" ? "GitHub" : connector.id === "slack" ? "Slack" : connector.id === "gworkspace" ? "Google Workspace" : "Azure AD"} via OAuth
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Phase 46: Secret rotation */}
+          <div className="console-panel rounded-sm p-3">
+            <p className="tech-label text-content-tertiary mb-1.5">Secret Rotation</p>
+            <p className="text-[11px] text-content-tertiary mb-2">Rotate push webhook secret. New secret shown once — update your webhook source immediately. Old secret invalidated instantly (no grace period).</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                if (!confirm(`Rotate secret for ${connector.name}? Old secret will stop working immediately.`)) return;
+                try {
+                  const res = await ConnectorApi.rotateSecret(connector.id);
+                  setIngestToken(res.ingest_token);
+                  setError(null);
+                  // Show token once via alert/prompt
+                  prompt(`New secret for ${connector.name} — copy now (won't be shown again):`, res.ingest_token);
+                } catch (err: any) {
+                  setError(getApiError(err, "Failed to rotate secret"));
+                }
+              }}
+            >
+              Rotate Secret
+            </Button>
+          </div>
 
           <label className="flex items-center gap-2 text-xs text-content-secondary">
             <input

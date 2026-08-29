@@ -6,6 +6,7 @@ import {
   Sparkles,
   Undo2,
   FileText,
+  Download,
   CheckCircle2,
   XCircle,
   RotateCcw,
@@ -28,6 +29,7 @@ import {
   Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
+import { api } from "../../../api/axios";
 import { fetchAlerts } from "../../../api/alertApi";
 import type { Alert } from "../../../types/alert";
 import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../../../types/analyst";
@@ -71,6 +73,8 @@ const CasePage: React.FC = () => {
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [busy, setBusy] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -169,27 +173,81 @@ const CasePage: React.FC = () => {
     setChatLoading(true);
 
     try {
-      const res = await AnalystApi.chatAboutCase(id, userText);
+      const res: any = await AnalystApi.chatAboutCase(id, userText);
       const analystMsg: ChatMessage = {
         id: `n-${Date.now()}`,
         sender: "axiom",
-        text: res.answer,
+        text: res.answer + (res.llm_used ? "" : ""),
         confidence: res.confidence,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (res.llm_used ? " · LLM" : ""),
       };
       setChatMessages((prev) => [...prev, analystMsg]);
     } catch (err: any) {
+      const is429 = err?.response?.status === 429;
+      const detail = err?.response?.data?.detail || "";
       setChatMessages((prev) => [
         ...prev,
         {
           id: `e-${Date.now()}`,
           sender: "axiom",
-          text: "I couldn't process that question right now. Please try again.",
+          text: is429 ? `Rate limited — ${detail}. Try again shortly.` : "I couldn't process that question right now. Please try again.",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
     } finally {
       setChatLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!data?.id) return;
+    setExportingPdf(true);
+    setPdfError(null);
+    try {
+      const resp = await api.get(`/analyst/cases/${data.id}/report.pdf`, { responseType: "blob" });
+      const blob = new Blob([resp.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `noctra-case-${data.id}-report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 409) setPdfError("No report yet — a report is written when a decision is recorded.");
+      else if (status === 501) setPdfError("PDF export is not available on this server (reportlab is not installed).");
+      else setPdfError("Could not export PDF. Try again.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleExportEvidencePdf = async (includeSoc2 = false) => {
+    if (!data?.id) return;
+    setExportingPdf(true);
+    setPdfError(null);
+    try {
+      const resp = await api.get(`/compliance/cases/${data.id}/evidence-bundle/pdf`, {
+        responseType: "blob",
+        params: { include_soc2: includeSoc2 },
+      });
+      const blob = new Blob([resp.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `evidence-bundle-case-${data.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 501) setPdfError("Evidence PDF export needs reportlab on server.");
+      else setPdfError("Could not export evidence bundle PDF.");
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -545,6 +603,32 @@ const CasePage: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    const exp = await AnalystApi.exportCase(data.id);
+                    const blob = new Blob([JSON.stringify(exp, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `noctra-case-${data.id}-export.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch {}
+                }}
+              >
+                <FileText size={16} className="mr-1.5" aria-hidden />
+                Export JSON
+              </Button>
+              <Button variant="ghost" onClick={handleExportPdf} disabled={exportingPdf}>
+                <Download size={16} className="mr-1.5" aria-hidden />
+                {exportingPdf ? "Exporting…" : "Export PDF"}
+              </Button>
+              <Button variant="ghost" onClick={() => handleExportEvidencePdf(false)} disabled={exportingPdf}>
+                <Download size={16} className="mr-1.5" aria-hidden />
+                Evidence PDF
+              </Button>
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
@@ -576,7 +660,37 @@ const CasePage: React.FC = () => {
                   )}
                 </p>
               </div>
-              <div className="flex items-center gap-2 ml-auto shrink-0">
+              <div className="flex items-center gap-2 ml-auto shrink-0 flex-wrap">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      const exp = await AnalystApi.exportCase(data.id);
+                      const blob = new Blob([JSON.stringify(exp, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `noctra-case-${data.id}-export.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {}
+                  }}
+                >
+                  <FileText size={16} className="mr-1.5" aria-hidden />
+                  Export JSON
+                </Button>
+                <Button variant="ghost" onClick={handleExportPdf} disabled={exportingPdf}>
+                  <Download size={16} className="mr-1.5" aria-hidden />
+                  {exportingPdf ? "Exporting…" : "Export PDF"}
+                </Button>
+                <Button variant="ghost" onClick={() => handleExportEvidencePdf(false)} disabled={exportingPdf}>
+                  <Download size={16} className="mr-1.5" aria-hidden />
+                  Evidence PDF
+                </Button>
+                <Button variant="ghost" onClick={() => handleExportEvidencePdf(true)} disabled={exportingPdf}>
+                  <Download size={16} className="mr-1.5" aria-hidden />
+                  Evidence+SOC2 PDF
+                </Button>
                 {data.report && (
                   <Button variant="ghost" onClick={() => setShowReport((s) => !s)}>
                     <FileText size={16} className="mr-1.5" aria-hidden />
@@ -597,6 +711,12 @@ const CasePage: React.FC = () => {
                 {data.report}
               </pre>
             )}
+          </div>
+        )}
+
+        {pdfError && (
+          <div role="status" className="px-4 py-2 rounded-lg bg-status-warning/10 border border-status-warning/30 text-xs text-content-primary">
+            {pdfError}
           </div>
         )}
 

@@ -20,6 +20,31 @@ import {
   Rows3,
   ClipboardList,
   UploadCloud,
+  Layers,
+  Fingerprint,
+  Cloud,
+  Package,
+  EyeOff,
+  FileSearch,
+  Share2 as Share2Icon,
+  FileCheck,
+  Shield,
+  Bug,
+  Search,
+  Bot,
+  Network,
+  Boxes,
+  Gavel,
+  Database,
+  Radio,
+  Store,
+  Brain,
+  ShieldAlert,
+  Swords,
+  FileDown,
+  CheckCheck,
+  BookOpen,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -28,50 +53,232 @@ import PageTransition from "../../components/PageTransition";
 import CommandMenu from "../../components/CommandMenu";
 import PendingDecisionsDrawer from "../../components/storefront/PendingDecisionsDrawer";
 
-/**
- * NOCTRA navigation (spec §8). Four MAIN items mirror the analyst loop —
- * SENSE (Home) → REASON (Cases) → DECIDE (Actions) → REPORT (Reports).
- * Everything else is grouped by verb and progressive-disclosed, never removed:
- * INVESTIGATE keeps the legacy deep-dive surfaces at their original URLs.
- */
 interface NavItem {
   name: string;
   path: string;
   icon: LucideIcon;
-  matchPrefix?: boolean;
+  badge?: string;
 }
 
-const MAIN_NAV_ITEMS: NavItem[] = [
-  { name: "Home", path: "/", icon: Home },
-  { name: "Cases", path: "/feed", icon: Inbox },
-  { name: "Actions", path: "/actions", icon: ShieldCheck },
-  { name: "Reports", path: "/reports", icon: ScrollText },
-];
+interface NavSection {
+  label: string;
+  items: NavItem[];
+  adminOnly?: boolean;
+  collapsedByDefault?: boolean;
+}
 
-const INVESTIGATE_NAV_ITEMS: NavItem[] = [
-  { name: "Alerts", path: "/alerts", icon: TriangleAlert },
-  { name: "Entities & Graph", path: "/entities", icon: Share2 },
-  { name: "Analytics", path: "/analytics", icon: BarChart3 },
-  { name: "SOC Cockpit", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Manual Incidents", path: "/incidents", icon: ClipboardList },
-  { name: "Log Uploads", path: "/logs", icon: UploadCloud },
-];
-
-const AUTOMATE_NAV_ITEMS: NavItem[] = [
-  { name: "SOAR", path: "/soar", icon: Workflow },
-  { name: "Rules", path: "/admin/rules", icon: ListChecks },
-];
-
-const SYSTEM_NAV_ITEMS: NavItem[] = [
-  { name: "Audit", path: "/admin/system-logs", icon: ScrollText },
-  { name: "Reputation", path: "/admin/reputation", icon: Ban },
-  { name: "Engine", path: "/admin/engine-settings", icon: Settings2 },
-  // Admin Overview kept so /admin stays reachable from the nav (no route
-  // loses its entry — see spec §7 progressive disclosure).
-  { name: "Admin Overview", path: "/admin", icon: ShieldCheck },
-  { name: "Users", path: "/admin/users", icon: KeyRound },
-  { name: "Tenants", path: "/admin/tenants", icon: Building2 },
-  { name: "Roles", path: "/admin/roles", icon: ShieldCheck },
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: "Overview",
+    items: [
+      { name: "Home", path: "/", icon: Home },
+      { name: "SOC Cockpit", path: "/dashboard", icon: LayoutDashboard },
+      { name: "Analytics", path: "/analytics", icon: BarChart3 },
+      { name: "Reports", path: "/reports", icon: ScrollText },
+      { name: "Exec Risk P72", path: "/exec-risk", icon: Gavel, badge: "P72" },
+    ],
+  },
+  {
+    label: "Detect",
+    items: [
+      { name: "Alerts", path: "/alerts", icon: TriangleAlert },
+      { name: "Cases", path: "/feed", icon: Inbox },
+      { name: "Incidents", path: "/incidents", icon: ClipboardList },
+      { name: "Entities & Graph", path: "/entities", icon: Share2 },
+      { name: "Threat Hunting P62", path: "/hunting", icon: Search, badge: "P62" },
+      { name: "Threat Intel", path: "/threat-intel", icon: Share2Icon },
+      { name: "TIP P69", path: "/tip", icon: Share2Icon, badge: "P69" },
+      { name: "Log Uploads", path: "/logs", icon: UploadCloud },
+    ],
+  },
+  {
+    label: "Protect",
+    items: [
+      { name: "ZTNA P61", path: "/ztna", icon: Shield, badge: "P61" },
+      { name: "Vuln Mgmt P63", path: "/vulns", icon: Bug, badge: "P63" },
+      { name: "CSPM P65", path: "/cspm", icon: Cloud, badge: "P65" },
+      { name: "SBOM P66", path: "/sbom", icon: Package, badge: "P66" },
+      { name: "Compliance", path: "/compliance", icon: FileCheck },
+      { name: "Cont Compliance P71", path: "/compliance-continuous", icon: FileCheck, badge: "P71" },
+    ],
+  },
+  {
+    label: "Deceive & Investigate",
+    items: [
+      { name: "Deception P67", path: "/deception", icon: EyeOff, badge: "P67" },
+      { name: "Forensics P68", path: "/forensics", icon: FileSearch, badge: "P68" },
+      { name: "ITDR P64", path: "/itdr", icon: Fingerprint, badge: "P64" },
+      { name: "Attack Navigator", path: "/attack-navigator", icon: Network },
+    ],
+  },
+  {
+    label: "Respond",
+    items: [
+      { name: "SOAR", path: "/soar", icon: Workflow },
+      { name: "Actions", path: "/actions", icon: ShieldCheck },
+      { name: "AI Agent P70", path: "/ai-agent", icon: Bot, badge: "P70" },
+      { name: "Agent Chat", path: "/agent-chat", icon: Bot },
+      { name: "Advanced Hub P49-60", path: "/advanced", icon: Layers },
+      { name: "Next P61-63", path: "/next", icon: Layers },
+      { name: "Future P64-72", path: "/future", icon: Layers },
+      { name: "Advanced 73-80", path: "/advanced-phases", icon: Layers, badge: "P73-80" },
+    ],
+  },
+  {
+    label: "Data & Resilience",
+    items: [
+      { name: "Data Lake P73", path: "/data-lake", icon: Database, badge: "P73" },
+      { name: "HA Bus P74", path: "/ha", icon: Radio, badge: "P74" },
+      { name: "Marketplace P75", path: "/marketplace", icon: Store, badge: "P75" },
+      { name: "FineTune P76", path: "/finetune", icon: Brain, badge: "P76" },
+      { name: "Risk-Based P77", path: "/risk-based", icon: ShieldAlert, badge: "P77" },
+      { name: "Purple Team P78-79", path: "/purple-team", icon: Swords, badge: "P78" },
+      { name: "PDF Export P80", path: "/pdf-export", icon: FileDown, badge: "P80" },
+      { name: "Advanced 73-80", path: "/advanced-phases", icon: Layers, badge: "P73-80" },
+    ],
+  },
+  {
+    label: "Governance & Coverage",
+    items: [
+      { name: "Retention P81", path: "/data-lifecycle", icon: FileDown, badge: "P81" },
+      { name: "ATT&CK Coverage P82", path: "/attack-coverage", icon: Shield, badge: "P82" },
+      { name: "Agent Collab P83", path: "/agent-collab", icon: ShieldAlert, badge: "P83" },
+      { name: "SOC TV Wall P84", path: "/soc-tv-wall", icon: Shield, badge: "P84" },
+      { name: "Final 81-84", path: "/final-phases", icon: Layers, badge: "P81-84" },
+    ],
+  },
+  {
+    label: "Ultra 85-88",
+    items: [
+      { name: "Approval WF P85", path: "/approval-workflows", icon: CheckCheck, badge: "P85" },
+      { name: "Hunt Notebook P86", path: "/hunt-notebooks", icon: BookOpen, badge: "P86" },
+      { name: "Exposure ASM P87", path: "/exposure", icon: Globe, badge: "P87" },
+      { name: "AI Red Team P88", path: "/ai-redteam", icon: ShieldAlert, badge: "P88" },
+      { name: "Ultra 85-88", path: "/ultra-phases", icon: Layers, badge: "P85-88" },
+    ],
+  },
+  {
+    label: "Federated & Autopilot",
+    items: [
+      { name: "Federated P89", path: "/federated", icon: Share2, badge: "P89" },
+      { name: "Autopilot P90", path: "/compliance-autopilot", icon: FileDown, badge: "P90" },
+      { name: "Federated+Autopilot", path: "/federated-autopilot", icon: Layers, badge: "P89-90" },
+    ],
+  },
+  {
+    label: "Final 10 P91-P100 OS",
+    items: [
+      { name: "Intel Share P91", path: "/federated-intel", icon: Share2, badge: "P91" },
+      { name: "Quantum Safe P92", path: "/quantum-safe", icon: Shield, badge: "P92" },
+      { name: "Attack Path P93", path: "/attack-path", icon: Network, badge: "P93" },
+      { name: "CART P94", path: "/cart", icon: Swords, badge: "P94" },
+      { name: "Data Fabric P95", path: "/data-fabric", icon: Database, badge: "P95" },
+      { name: "SOC Mgr P96", path: "/soc-manager", icon: Bot, badge: "P96" },
+      { name: "DRP P97", path: "/drp", icon: Globe, badge: "P97" },
+      { name: "CNAPP P98", path: "/cnapp", icon: Boxes, badge: "P98" },
+      { name: "Posture v2 P99", path: "/posture-score", icon: ShieldAlert, badge: "P99" },
+      { name: "NOCTRA OS P100", path: "/noctra-os", icon: Layers, badge: "P100" },
+      { name: "Final10 All", path: "/final10", icon: Layers, badge: "P91-100" },
+    ],
+  },
+  {
+    label: "Singularity P101-P110",
+    items: [
+      { name: "Global Fed P101", path: "/global-federation", icon: Globe, badge: "P101" },
+      { name: "Predictive P102", path: "/predictive-soc", icon: Brain, badge: "P102" },
+      { name: "Hunt Swarm P103", path: "/hunt-swarm", icon: Swords, badge: "P103" },
+      { name: "Digital Twin P104", path: "/digital-twin", icon: Boxes, badge: "P104" },
+      { name: "Q-Comms P105", path: "/quantum-comms", icon: Shield, badge: "P105" },
+      { name: "AI Gov P106", path: "/ai-governance", icon: Gavel, badge: "P106" },
+      { name: "Supply v2 P107", path: "/supply-chain-v2", icon: Package, badge: "P107" },
+      { name: "XR SOC P108", path: "/xr-soc", icon: Layers, badge: "P108" },
+      { name: "Deception v2 P109", path: "/deception-grid", icon: EyeOff, badge: "P109" },
+      { name: "Self-Heal P110", path: "/self-healing", icon: ShieldCheck, badge: "P110" },
+      { name: "Beyond100 All", path: "/beyond100", icon: Layers, badge: "P101-110" },
+    ],
+  },
+  {
+    label: "Meta-Singularity P111-P120",
+    items: [
+      { name: "IC P111", path: "/incident-commander", icon: Bot, badge: "P111" },
+      { name: "Ins Risk P112", path: "/insurance-risk", icon: Gavel, badge: "P112" },
+      { name: "Actor DNA P113", path: "/actor-dna", icon: Fingerprint, badge: "P113" },
+      { name: "Data Vault P114", path: "/data-vault", icon: Package, badge: "P114" },
+      { name: "Audit v2 P115", path: "/compliance-auditor-v2", icon: FileCheck, badge: "P115" },
+      { name: "Neural P116", path: "/neural-copilot", icon: Brain, badge: "P116" },
+      { name: "Intel Mesh P117", path: "/intel-mesh", icon: Share2, badge: "P117" },
+      { name: "Adv LLM P118", path: "/adversary-llm", icon: Swords, badge: "P118" },
+      { name: "Blockchain P119", path: "/blockchain-audit", icon: FileDown, badge: "P119" },
+      { name: "Meta-OS P120", path: "/meta-os", icon: Layers, badge: "P120" },
+      { name: "Meta All", path: "/meta-singularity", icon: Layers, badge: "P111-120" },
+    ],
+  },
+  {
+    label: "Omni-Singularity P121-P130",
+    items: [
+      { name: "Interplanetary P121", path: "/interplanetary-soc", icon: Globe, badge: "P121" },
+      { name: "AGI Council P122", path: "/agi-council", icon: Brain, badge: "P122" },
+      { name: "Legislation P123", path: "/legislation-engine", icon: Gavel, badge: "P123" },
+      { name: "Synthetic P124", path: "/synthetic-universe", icon: Database, badge: "P124" },
+      { name: "Holographic P125", path: "/holographic-soc", icon: Layers, badge: "P125" },
+      { name: "Workforce P126", path: "/autonomous-workforce", icon: Bot, badge: "P126" },
+      { name: "Consciousness P127", path: "/consciousness-monitor", icon: Fingerprint, badge: "P127" },
+      { name: "Planetary P128", path: "/planetary-defense", icon: ShieldAlert, badge: "P128" },
+      { name: "Time Prophecy P129", path: "/time-prophecy", icon: ScrollText, badge: "P129" },
+      { name: "Omni-OS P130", path: "/omni-os", icon: Layers, badge: "P130" },
+      { name: "Omni All", path: "/omni-singularity", icon: Layers, badge: "P121-130" },
+    ],
+  },
+  {
+    label: "Transcendence P131-P140",
+    items: [
+      { name: "Multiverse P131", path: "/multiverse-soc", icon: Globe, badge: "P131" },
+      { name: "Q-Conscious P132", path: "/quantum-consciousness", icon: Brain, badge: "P132" },
+      { name: "Economy P133", path: "/autonomous-economy", icon: Store, badge: "P133" },
+      { name: "Neuro-Sym P134", path: "/neuro-symbolic", icon: Brain, badge: "P134" },
+      { name: "Replicator P135", path: "/self-replicating", icon: Boxes, badge: "P135" },
+      { name: "Temporal P136", path: "/temporal-defense", icon: ScrollText, badge: "P136" },
+      { name: "Univ Lang P137", path: "/universal-language", icon: Share2Icon, badge: "P137" },
+      { name: "∞ Learning P138", path: "/infinite-learning", icon: Brain, badge: "P138" },
+      { name: "X-Risk P139", path: "/existential-risk", icon: ShieldAlert, badge: "P139" },
+      { name: "Transcend P140", path: "/transcendence-os", icon: Layers, badge: "P140" },
+      { name: "Transcend All", path: "/transcendence", icon: Layers, badge: "P131-140" },
+    ],
+  },
+  {
+    label: "Absolute P141-P150",
+    items: [
+      { name: "Omniverse P141", path: "/omniversal-soc", icon: Globe, badge: "P141" },
+      { name: "Reality P142", path: "/reality-fabric", icon: ShieldAlert, badge: "P142" },
+      { name: "Chrono P143", path: "/chrono-loop", icon: ScrollText, badge: "P143" },
+      { name: "Hive P144", path: "/unified-consciousness", icon: Brain, badge: "P144" },
+      { name: "Void P145", path: "/void-defense", icon: EyeOff, badge: "P145" },
+      { name: "Genesis P146", path: "/genesis-protocol", icon: Database, badge: "P146" },
+      { name: "Akashic P147", path: "/akashic-ledger", icon: FileDown, badge: "P147" },
+      { name: "Cosmic P148", path: "/cosmic-threat", icon: Globe, badge: "P148" },
+      { name: "Dimensional P149", path: "/dimensional-barrier", icon: Layers, badge: "P149" },
+      { name: "Absolute P150", path: "/absolute-os", icon: Layers, badge: "P150" },
+      { name: "Absolute All", path: "/absolute-infinity", icon: Layers, badge: "P141-150" },
+    ],
+  },
+  {
+    label: "System",
+    adminOnly: true,
+    collapsedByDefault: true,
+    items: [
+      { name: "Admin Overview", path: "/admin", icon: ShieldCheck },
+      { name: "Users", path: "/admin/users", icon: KeyRound },
+      { name: "Tenants", path: "/admin/tenants", icon: Building2 },
+      { name: "Roles", path: "/admin/roles", icon: ShieldCheck },
+      { name: "Rules", path: "/admin/rules", icon: ListChecks },
+      { name: "Reputation", path: "/admin/reputation", icon: Ban },
+      { name: "Engine", path: "/admin/engine-settings", icon: Settings2 },
+      { name: "Audit", path: "/admin/system-logs", icon: ScrollText },
+      { name: "SSO & SCIM", path: "/admin/sso", icon: KeyRound },
+      { name: "API Keys", path: "/admin/apikeys", icon: KeyRound },
+      { name: "Compliance Packs", path: "/admin/compliance", icon: Boxes },
+    ],
+  },
 ];
 
 type Density = "comfortable" | "compact";
@@ -84,63 +291,50 @@ export interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [mobileNavOpen, setMobileNavOpen] = useState<boolean>(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    NAV_SECTIONS.forEach(s => { if (s.collapsedByDefault) init[s.label] = true; });
+    return init;
+  });
   const [density, setDensity] = useState<Density>(() => {
     const saved = localStorage.getItem("td_density");
     return saved === "compact" ? "compact" : "comfortable";
   });
   const location = useLocation();
 
-  // Route changes always close the mobile drawer.
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
+  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
 
-  // Per-route document titles (tab + screen-reader context).
   useEffect(() => {
     const path = location.pathname;
     let title = "NOCTRA";
-    if (path === "/") title = "Analyst Inbox";
+    const allItems = NAV_SECTIONS.flatMap(s => s.items);
+    const match = allItems.find(i => path === i.path || (i.path !== "/" && path.startsWith(i.path)));
+    if (match) title = match.name;
+    else if (path === "/") title = "Analyst Inbox";
     else if (path.startsWith("/case/")) title = `Case #${path.split("/")[2] ?? ""}`;
-    else if (path.startsWith("/feed")) title = "Cases";
-    else if (path.startsWith("/actions")) title = "Actions";
-    else if (path.startsWith("/reports")) title = "Reports";
-    else if (path.startsWith("/alerts")) title = "Alerts";
-    else if (path.startsWith("/entities")) title = "Entities & Graph";
-    else if (path.startsWith("/analytics")) title = "Analytics";
-    else if (path.startsWith("/dashboard")) title = "SOC Cockpit";
-    else if (path.startsWith("/soar")) title = "SOAR";
-    else if (path.startsWith("/incidents")) title = "Manual Incidents";
-    else if (path.startsWith("/logs")) title = "Log Uploads";
     else if (path.startsWith("/profile") || path.startsWith("/account")) title = "Profile";
-    else if (path.startsWith("/admin")) title = "Administration";
     document.title = `${title} — NOCTRA`;
   }, [location.pathname]);
 
   const username: string = localStorage.getItem("username") || "User";
   const userRole: string = (localStorage.getItem("user_role") || "user").toLowerCase();
   const isAdmin = userRole === "admin";
-  const { permissions } = {
-    permissions: (() => {
-      try {
-        return JSON.parse(localStorage.getItem("user_permissions") || "[]");
-      } catch {
-        return [];
-      }
-    })(),
-  };
+  const permissions: string[] = (() => {
+    try { return JSON.parse(localStorage.getItem("user_permissions") || "[]"); } catch { return []; }
+  })();
   const adminVisible = isAdmin || permissions.includes("audit:read") || permissions.includes("users:manage");
 
   const isActive = (item: NavItem): boolean =>
-    item.path === "/"
-      ? location.pathname === "/"
-      : item.matchPrefix
-      ? location.pathname.startsWith(item.path)
-      : location.pathname === item.path;
+    item.path === "/" ? location.pathname === "/" : location.pathname === item.path || location.pathname.startsWith(item.path + "/") || (item.path !== "/" && location.pathname.startsWith(item.path) && item.path.length > 3);
 
   const toggleDensity = (): void => {
     const next: Density = density === "comfortable" ? "compact" : "comfortable";
     setDensity(next);
     localStorage.setItem("td_density", next);
+  };
+
+  const toggleSection = (label: string) => {
+    setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
   const renderItem = (item: NavItem): React.ReactElement => {
@@ -151,14 +345,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         key={item.name}
         to={item.path}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-sm text-xs font-semibold transition border-l-2 ${
-          active
-            ? "border-accent-primary bg-accent-primary/10 text-accent-primary"
-            : "border-transparent text-content-secondary hover:bg-app-subtle hover:text-accent-primary"
+        className={`flex items-center gap-3 px-3.5 py-2 rounded-sm text-xs font-semibold transition border-l-2 group ${
+          active ? "border-accent-primary bg-accent-primary/10 text-accent-primary" : "border-transparent text-content-secondary hover:bg-app-subtle hover:text-accent-primary"
         }`}
       >
-        <Icon size={17} className="shrink-0" aria-hidden />
-        {isSidebarOpen && <span className="truncate">{item.name}</span>}
+        <Icon size={16} className="shrink-0" aria-hidden />
+        {isSidebarOpen && (
+          <>
+            <span className="truncate flex-1">{item.name}</span>
+            {item.badge && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${active ? "bg-accent-primary text-black" : "bg-app-subtle text-content-tertiary group-hover:bg-accent-primary/20"}`}>{item.badge}</span>}
+          </>
+        )}
         {!isSidebarOpen && <span className="sr-only">{item.name}</span>}
       </Link>
     );
@@ -167,135 +364,43 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
   const sectionLabel = (label: string): string => (isSidebarOpen ? label : "·");
 
   return (
-    <div
-      className="noctra-canvas h-screen w-screen text-content-primary flex overflow-hidden font-sans"
-      data-density={density}
-    >
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-app-surface focus:border focus:border-line-subtle focus:text-content-primary focus:text-sm focus:shadow-overlay"
-      >
-        Skip to content
-      </a>
+    <div className="noctra-canvas h-screen w-screen text-content-primary flex overflow-hidden font-sans" data-density={density}>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-app-surface focus:border focus:border-line-subtle focus:text-content-primary focus:text-sm focus:shadow-overlay">Skip to content</a>
+      {mobileNavOpen && <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setMobileNavOpen(false)} aria-hidden />}
 
-      {/* Mobile drawer backdrop */}
-      {mobileNavOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setMobileNavOpen(false)}
-          aria-hidden
-        />
-      )}
-
-      <aside
-        className={cn(
-          "bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden",
-          // Mobile: overlay drawer (open only). Desktop: static column.
-          "fixed inset-y-0 left-0 z-40 lg:static",
-          mobileNavOpen ? "flex w-64" : "hidden lg:flex",
-          isSidebarOpen ? "lg:w-64" : "lg:w-[68px]"
-        )}
-      >
+      <aside className={cn("bg-app-surface border-r border-line-subtle transition-all duration-300 flex-col justify-between shrink-0 overflow-hidden", "fixed inset-y-0 left-0 z-40 lg:static", mobileNavOpen ? "flex w-64" : "hidden lg:flex", isSidebarOpen ? "lg:w-64" : "lg:w-[68px]")}>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div
-            className={cn(
-              "h-16 flex items-center border-b border-line-subtle shrink-0 transition-all duration-300",
-              mobileNavOpen || isSidebarOpen ? "justify-between px-4" : "justify-center px-2"
-            )}
-          >
+          <div className={cn("h-16 flex items-center border-b border-line-subtle shrink-0 transition-all duration-300", mobileNavOpen || isSidebarOpen ? "justify-between px-4" : "justify-center px-2")}>
             <Link to="/" className="flex items-center min-w-0 hover:opacity-80 transition">
-              <BrandLogo
-                collapsed={!isSidebarOpen && !mobileNavOpen}
-                size={isSidebarOpen || mobileNavOpen ? 28 : 22}
-              />
+              <BrandLogo collapsed={!isSidebarOpen && !mobileNavOpen} size={isSidebarOpen || mobileNavOpen ? 28 : 22} />
             </Link>
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              className={cn(
-                "group p-1.5 rounded-full bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary active:scale-90 transition-all duration-200 cursor-pointer shrink-0 border border-line-subtle"
-              )}
-              title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
-              type="button"
-            >
-              <ChevronsLeft
-                size={15}
-                aria-hidden
-                className={cn(
-                  "transition-transform duration-300 ease-out",
-                  !isSidebarOpen && "rotate-180"
-                )}
-              />
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"} className="group p-1.5 rounded-full bg-app-subtle hover:bg-app-surface-raised text-content-secondary hover:text-content-primary active:scale-90 transition-all duration-200 cursor-pointer shrink-0 border border-line-subtle" title={isSidebarOpen ? "Collapse navigation" : "Expand navigation"} type="button">
+              <ChevronsLeft size={15} aria-hidden className={cn("transition-transform duration-300 ease-out", !isSidebarOpen && "rotate-180")} />
             </button>
           </div>
 
-          <nav aria-label="Primary" className="p-3 space-y-1 mt-2 flex-1 overflow-y-auto min-h-0">
-            {/* Mobile-only close inside the drawer */}
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(false)}
-              className="lg:hidden w-full flex items-center justify-end px-3.5 pb-1 text-content-tertiary hover:text-content-primary transition text-xs font-bold cursor-pointer"
-            >
-              Close ×
-            </button>
-            <p
-              className={cn(
-                "px-3.5 pb-1.5 tech-label text-content-tertiary",
-                !isSidebarOpen && "text-center"
-              )}
-            >
-              {sectionLabel("Main")}
-            </p>
-            {MAIN_NAV_ITEMS.map(renderItem)}
-
-            <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
-              <p className={cn("px-3.5 pb-1.5 tech-label text-content-tertiary", !isSidebarOpen && "text-center")}>
-                {sectionLabel("Investigate")}
-              </p>
-              {INVESTIGATE_NAV_ITEMS.map(renderItem)}
-            </div>
-
-            <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
-              <p className={cn("px-3.5 pb-1.5 tech-label text-content-tertiary", !isSidebarOpen && "text-center")}>
-                {sectionLabel("Automate")}
-              </p>
-              {adminVisible ? (
-                AUTOMATE_NAV_ITEMS.map(renderItem)
-              ) : (
-                renderItem(AUTOMATE_NAV_ITEMS[0])
-              )}
-            </div>
-
-            {adminVisible && (
-              <div className="pt-3 mt-3 border-t border-line-subtle space-y-1">
-                <p className={cn("px-3.5 pb-1.5 tech-label text-content-tertiary", !isSidebarOpen && "text-center")}>
-                  {sectionLabel("System")}
-                </p>
-                {SYSTEM_NAV_ITEMS.map(renderItem)}
-              </div>
-            )}
+          <nav aria-label="Primary" className="p-3 space-y-3 mt-1 flex-1 overflow-y-auto min-h-0">
+            <button type="button" onClick={() => setMobileNavOpen(false)} className="lg:hidden w-full flex items-center justify-end px-3.5 pb-1 text-content-tertiary hover:text-content-primary transition text-xs font-bold cursor-pointer">Close ×</button>
+            {NAV_SECTIONS.map(section => {
+              if (section.adminOnly && !adminVisible) return null;
+              const collapsed = collapsedSections[section.label];
+              return (
+                <div key={section.label} className="space-y-1">
+                  <button onClick={() => toggleSection(section.label)} className={cn("w-full flex items-center justify-between px-3.5 pb-1.5 tech-label text-content-tertiary hover:text-content-secondary transition", !isSidebarOpen && "justify-center")}>
+                    <span>{sectionLabel(section.label)}</span>
+                    {isSidebarOpen && <span className="text-[10px]">{collapsed ? "▶" : "▼"}</span>}
+                  </button>
+                  {!collapsed && <div className="space-y-0.5">{section.items.map(renderItem)}</div>}
+                </div>
+              );
+            })}
           </nav>
         </div>
 
         <div className="p-4 border-t border-line-subtle flex items-center gap-3 shrink-0 bg-app-subtle/50">
-          <div className="w-9 h-9 rounded-full bg-brand-gradient text-brand-ink flex items-center justify-center font-bold text-sm shrink-0">
-            {username.charAt(0).toUpperCase()}
-          </div>
-          {isSidebarOpen && (
-            <div className="overflow-hidden flex-1 min-w-0">
-              <p className="text-xs font-bold text-content-primary truncate">{username}</p>
-              <p className="text-[10px] font-medium text-accent-secondary capitalize">{userRole}</p>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={toggleDensity}
-            title={density === "comfortable" ? "Switch to compact density" : "Switch to comfortable density"}
-            aria-pressed={density === "compact"}
-            className="p-1.5 rounded-full text-content-tertiary hover:bg-app-subtle hover:text-content-secondary transition cursor-pointer"
-          >
-            <Rows3 size={15} aria-hidden />
-          </button>
+          <div className="w-9 h-9 rounded-full bg-brand-gradient text-brand-ink flex items-center justify-center font-bold text-sm shrink-0">{username.charAt(0).toUpperCase()}</div>
+          {isSidebarOpen && <div className="overflow-hidden flex-1 min-w-0"><p className="text-xs font-bold text-content-primary truncate">{username}</p><p className="text-[10px] font-medium text-accent-secondary capitalize">{userRole}</p></div>}
+          <button type="button" onClick={toggleDensity} title={density === "comfortable" ? "Switch to compact" : "Switch to comfortable"} aria-pressed={density === "compact"} className="p-1.5 rounded-full text-content-tertiary hover:bg-app-subtle hover:text-content-secondary transition cursor-pointer"><Rows3 size={15} aria-hidden /></button>
         </div>
       </aside>
 
@@ -303,13 +408,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
         <Navbar onLogout={onLogout} onOpenNav={() => setMobileNavOpen(true)} />
         <CommandMenu />
         <PendingDecisionsDrawer />
-
-        <main
-          key={location.pathname}
-          id="main-content"
-          tabIndex={-1}
-          className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none bg-app-bg"
-        >
+        <main key={location.pathname} id="main-content" tabIndex={-1} className="p-6 flex-1 min-w-0 w-full overflow-y-auto focus:outline-none bg-app-bg">
           <PageTransition>{children || <Outlet />}</PageTransition>
         </main>
       </div>

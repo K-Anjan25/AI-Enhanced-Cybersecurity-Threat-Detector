@@ -36,7 +36,7 @@ def test_catalogue_reports_not_connected_without_config(db_session, org):
     """No configuration => no claim of connection, and no invented telemetry."""
     rows = connector_service.list_connectors(db_session, org_id=org.id)
 
-    assert len(rows) == 4
+    assert len(rows) == 10  # Phase 40 expanded to 10, Phase 41 keeps 10
     for row in rows:
         assert row["status"] == "not_connected"
         assert row["live"] is False
