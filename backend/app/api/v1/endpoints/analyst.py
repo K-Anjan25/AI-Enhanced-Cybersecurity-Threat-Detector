@@ -24,9 +24,18 @@ class ChatRequest(BaseModel):
     message: str
 
 
+@router.get("/scenarios")
+def list_scenarios(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List available simulation scenarios (Phase 36)."""
+    return {"data": scenario.list_scenarios()}
+
+
 @router.post("/simulate", status_code=201)
 def simulate_incident(
-    scenario_type: str = Query("credential_leak", description="Scenario: credential_leak, phishing_outbreak, data_exfiltration, compromised_api_key"),
+    scenario_type: str = Query("credential_leak", description="Scenario: credential_leak, phishing_outbreak, data_exfiltration, compromised_api_key, insider_threat, ransomware_activity"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("alerts:write")),
 ):
@@ -205,6 +214,30 @@ def get_timeline(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return {"case_id": case.id, "entries": analyst_service.case_timeline(db, case)}
+
+
+@router.get("/cases/{case_id}/export")
+def export_case(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export a case as structured JSON for external systems (Phase 36).
+
+    Includes analysis, blast radius, proposed action, timeline and audit refs.
+    All fields are real rows — no synthesis.
+    """
+    case = analyst_service.get_case(db, case_id, org_id=current_user.org_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    serialized = serialize_case(case)
+    timeline = analyst_service.case_timeline(db, case)
+    return {
+        "case": serialized,
+        "timeline": timeline,
+        "exported_at": analyst_service._now().isoformat(),
+        "exported_by": current_user.username,
+    }
 
 
 @router.get("/notifications")

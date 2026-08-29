@@ -75,6 +75,7 @@ const BriefPage: React.FC = () => {
   const [simulating, setSimulating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState("credential_leak");
+  const [scenarios, setScenarios] = useState<{ id: string; label: string }[]>([]);
   const [configFor, setConfigFor] = useState<Connector | null>(null);
 
   /** Configuring a source writes alerts — gate it on the same permission the
@@ -93,14 +94,18 @@ const BriefPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [briefData, connData, feedData] = await Promise.all([
+      const [briefData, connData, feedData, scenData] = await Promise.all([
         AnalystApi.fetchBrief(),
         AnalystApi.fetchConnectors().catch(() => []),
         AnalystApi.fetchFeed({ page: 1, limit: 100 }).catch(() => ({ data: [] as AnalystCase[] })),
+        AnalystApi.fetchScenarios().catch(() => [] as any),
       ]);
       setBrief(briefData);
       setConnectors(connData);
-      setFeedCases(Array.isArray(feedData) ? feedData : feedData?.data ?? []);
+      setFeedCases(Array.isArray(feedData) ? feedData : (feedData as any)?.data ?? []);
+      if (Array.isArray(scenData) && scenData.length > 0) {
+        setScenarios(scenData as any);
+      }
     } catch (err: any) {
       setError(getApiError(err, "Failed to load your brief"));
     } finally {
@@ -239,13 +244,15 @@ const BriefPage: React.FC = () => {
               onChange={(e) => setSelectedScenario(e.target.value)}
               disabled={simulating}
               aria-label="Scenario to simulate"
-              className="flex-1 sm:flex-none sm:min-w-[190px] bg-app-subtle text-xs"
-              options={[
-                { value: "credential_leak", label: "Credential Leak (T1078)" },
-                { value: "phishing_outbreak", label: "Phishing Outbreak (T1566)" },
-                { value: "data_exfiltration", label: "Data Exfiltration (T1048)" },
-                { value: "compromised_api_key", label: "Compromised API Key (T1098)" },
-              ]}
+              className="flex-1 sm:flex-none sm:min-w-[220px] bg-app-subtle text-xs"
+              options={(scenarios.length > 0 ? scenarios : [
+                { id: "credential_leak", label: "Credential Leak (T1078)" },
+                { id: "phishing_outbreak", label: "Phishing Outbreak (T1566)" },
+                { id: "data_exfiltration", label: "Data Exfiltration (T1048)" },
+                { id: "compromised_api_key", label: "Compromised API Key (T1098)" },
+                { id: "insider_threat", label: "Insider Threat (T1003)" },
+                { id: "ransomware_activity", label: "Ransomware Activity (T1486)" },
+              ]).map((s: any) => ({ value: s.id, label: s.label }))}
             />
             <Button variant="primary" onClick={handleSimulate} disabled={simulating} className="text-xs px-4 py-2">
               <Sparkles size={14} className="mr-1.5" aria-hidden />

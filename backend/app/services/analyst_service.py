@@ -284,14 +284,19 @@ def list_notifications(db, org_id: int | None, limit: int = 20) -> list[dict]:
 # Interactive Case Chat & Connectors (Phase 19)
 # ---------------------------------------------------------------------------
 def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
-    """Answer analyst questions about a specific case using LLM / case context."""
+    """Answer analyst questions about a specific case using LLM when available,
+    falling back to deterministic keyword logic.
+
+    The LLM path is attempted first when LLM_ENABLED and ANTHROPIC_API_KEY are
+    set; any failure (network, parse, empty) falls back to the keyword logic so
+    the endpoint never fails for lack of a key — same resilience contract as
+    analyze_incident.
+    """
     analysis = case.analysis or {}
     proposed = case.proposed_action or {}
     blast = case.blast_radius or {}
     nodes = blast.get("nodes", [])
 
-    # Real MITRE mapping lives on the source alert (set at detection time),
-    # not in the analysis narrative.
     mitre_technique_id = None
     mitre_technique = None
     if case.source_alert_id is not None:
@@ -301,41 +306,72 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
         mitre_technique_id = getattr(alert_row, "mitre_technique_id", None)
         mitre_technique = getattr(alert_row, "mitre_technique", None)
 
-    q_lower = question.lower()
+    # Try LLM first (Phase 36)
+    answer: str | None = None
+    llm_used = False
+    try:
+        from app.services import llm_client as _llm
 
-    if "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
-        node_names = ", ".join([f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:5]])
-        answer = (
-            f"The blast radius contains {len(nodes)} identified entities: {node_names}. "
-            f"The root entity is connected to key assets and accounts."
-        )
-    elif "action" in q_lower or "why" in q_lower or "recommend" in q_lower or "remediat" in q_lower:
-        answer = (
-            f"The recommended action is {proposed.get('action_type', 'REVOKE_CREDENTIALS')} on {proposed.get('target')}. "
-            f"Rationale: {proposed.get('rationale', 'Prevent unauthorized lateral movement')}. "
-            f"Reversible via: {proposed.get('undo', 'Re-enable account or IP access')}."
-        )
-    elif "mitre" in q_lower or "tactic" in q_lower or "technique" in q_lower:
-        technique_id = mitre_technique_id or "N/A"
-        technique_name = mitre_technique or "Unclassified"
-        answer = (
-            f"This case maps to MITRE ATT&CK technique {technique_id} ({technique_name}). "
-            f"It represents an active threat vector requiring immediate containment."
-        )
-    else:
-        answer = (
-            f"Based on NOCTRA's analysis of case #{case.id}: {case.title}. "
-            f"What happened: {case.description or analysis.get('what_happened')}. "
-            f"Confidence score is {analysis.get('confidence', 0.9) * 100:.0f}%. "
-            f"Status is {case.status} with decision '{case.decision}'."
-        )
+        context = {
+            "id": case.id,
+            "title": case.title,
+            "what_happened": analysis.get("what_happened") or case.description or "",
+            "why_it_matters": analysis.get("why_it_matters") or "",
+            "blast_radius_summary": analysis.get("blast_radius_summary") or "",
+            "action_type": proposed.get("action_type") or "",
+            "target": proposed.get("target") or "",
+            "rationale": proposed.get("rationale") or "",
+            "undo": proposed.get("undo") or "",
+            "mitre_id": mitre_technique_id or "",
+            "mitre_name": mitre_technique or "",
+            "confidence": analysis.get("confidence", 0.0),
+            "model": analysis.get("model", ""),
+            "fallback": analysis.get("fallback", False),
+            "entities": [f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:10]],
+        }
+        llm_answer = _llm.answer_case_question(context, question)
+        if llm_answer:
+            answer = llm_answer
+            llm_used = True
+    except Exception:
+        answer = None
+
+    if not answer:
+        q_lower = question.lower()
+
+        if "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
+            node_names = ", ".join([f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:5]])
+            answer = (
+                f"The blast radius contains {len(nodes)} identified entities: {node_names}. "
+                f"The root entity is connected to key assets and accounts."
+            )
+        elif "action" in q_lower or "why" in q_lower or "recommend" in q_lower or "remediat" in q_lower:
+            answer = (
+                f"The recommended action is {proposed.get('action_type', 'REVOKE_CREDENTIALS')} on {proposed.get('target')}. "
+                f"Rationale: {proposed.get('rationale', 'Prevent unauthorized lateral movement')}. "
+                f"Reversible via: {proposed.get('undo', 'Re-enable account or IP access')}."
+            )
+        elif "mitre" in q_lower or "tactic" in q_lower or "technique" in q_lower:
+            technique_id = mitre_technique_id or "N/A"
+            technique_name = mitre_technique or "Unclassified"
+            answer = (
+                f"This case maps to MITRE ATT&CK technique {technique_id} ({technique_name}). "
+                f"It represents an active threat vector requiring immediate containment."
+            )
+        else:
+            answer = (
+                f"Based on NOCTRA's analysis of case #{case.id}: {case.title}. "
+                f"What happened: {case.description or analysis.get('what_happened')}. "
+                f"Confidence score is {analysis.get('confidence', 0.9) * 100:.0f}%. "
+                f"Status is {case.status} with decision '{case.decision}'."
+            )
 
     create_audit_log(
         db,
         action="ANALYST_CHAT_QUESTION",
         actor=actor,
         resource=f"case:{case.id}",
-        details=f"q:'{question[:60]}' a:'{answer[:60]}'",
+        details=f"q:'{question[:60]}' a:'{answer[:60]}' llm:{llm_used}",
     )
 
     return {
@@ -343,6 +379,7 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
         "question": question,
         "answer": answer,
         "confidence": float(analysis.get("confidence", 0.92)),
+        "llm_used": llm_used,
     }
 
 
