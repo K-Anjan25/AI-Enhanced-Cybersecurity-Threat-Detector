@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+// vitest/config re-exports vite's defineConfig with the `test` key typed.
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
@@ -28,5 +29,14 @@ export default defineConfig({
   },
   build: {
     outDir: "build",
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    // Recharts measures its container and framer-motion animates via JS;
+    // jsdom provides neither layout nor rAF guarantees, so both are stubbed
+    // in src/test/setup.ts.
+    css: false,
   },
 });

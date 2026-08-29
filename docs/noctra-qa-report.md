@@ -1,5 +1,15 @@
 # NOCTRA Frontend QA Report — Duality pass
 
+> **⚠ Historical — superseded in part.** This audit is dated 2026-08-27 and
+> describes the **DUALITY** identity (periwinkle accents, Inter/Sora/JetBrains
+> Mono). Those colour/type findings are obsolete: the shipped system is
+> **SIGNAL** (Phase 29) — see
+> [`noctra-redesign-spec.md`](noctra-redesign-spec.md) **§40**. What still
+> applies: the **bug classes** in §1, the trust-UX labeling rules (Observed vs
+> Inferred, record-only language) and the verification *method*. Contrast ratios
+> quoted here were measured against the retired palette and must be re-measured
+> before being reused.
+
 Date: 2026-08-27 · Branch: `arena/01a041f3-ai-enhanced-cybersecurity-thre`
 Scope: full-route frontend audit (directive §9–22), Phase-18 loop verification,
 DUALITY theme implementation, trust-UX labeling. Every claim below was

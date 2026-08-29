@@ -49,8 +49,16 @@ export const fetchConnectors = async (): Promise<Connector[]> => {
   return data;
 };
 
-export const syncConnector = async (connectorId: string): Promise<{ status: string; message: string }> => {
-  const { data } = await api.post<{ status: string; message: string }>(`/analyst/connectors/${connectorId}/sync`);
+export interface SyncConnectorResult {
+  /** "recorded" when no live source is configured — never a fake "success". */
+  status: string;
+  message: string;
+  live?: boolean;
+  last_sync?: string | null;
+}
+
+export const syncConnector = async (connectorId: string): Promise<SyncConnectorResult> => {
+  const { data } = await api.post<SyncConnectorResult>(`/analyst/connectors/${connectorId}/sync`);
   return data;
 };
 

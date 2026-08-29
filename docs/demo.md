@@ -1,53 +1,350 @@
-# AXIOM AI Demo — 5-Min Portfolio Walkthrough
+# NOCTRA Demo — 5-Minute Walkthrough
 
-> **AXIOM AI** — *Self-evident threat reasoning. Instant containment.* — http://localhost:3000 (`/brief` → `/case/1`)
+> **NOCTRA** — *Threat intelligence, always on.* — http://localhost:3000
+> (`/welcome` → `/` → `/case/1`)
 
-This is the exact walkthrough for demonstrating AXIOM AI. Stack is `docker compose -f docker/docker-compose.yml up -d --build` (postgres + backend + ml-service + dashboard).
+The exact script for demonstrating NOCTRA. Design system: **SIGNAL** — ink canvas
+`#070b0f` + signal green `#a6ff3f`, DM Sans + Space Mono, sharp corners, HUD
+brackets, console panels.
+
+**Accuracy contract.** Every route, endpoint, file path and number below was read
+from the code in this repository, not from memory or from an earlier brand. Where
+the product cannot do something yet, this script says so out loud — a demo that
+overstates the product is worse than no demo.
 
 ---
 
-## 0. Opening (0:00-0:20) — Brand
+## 0. Before you start
 
-- Show **http://localhost:3000/welcome** — AXIOM AI hero, 3-column Bento layout, posture score card, plain-English story, and instant blast-radius containment.
-- Say: “AXIOM AI is the autonomous AI security analyst for growing companies — self-evident threat reasoning, zero alerts fatigue.”
+### Bring the stack up
 
-## 1. Auth (0:20-0:50)
+```bash
+docker compose -f docker/docker-compose.yml up -d --build
+# dashboard :3000 · backend :8000 · ml-service :8001 · postgres :5431
+```
 
-- Click **Get Started** → `/register` — note `BrandLogo` Axiom Delta mark + royal cobalt blue accents.
-- Register `analyst / analyst@axiom.ai / ChangeMe#2026` (role ANALYST) → **Sign in** → `/login`.
-- Login — lands on **AXIOM AI Brief** (`/brief`).
+Manual dev setup instead (three terminals + a seed):
 
-## 2. SOC Brief & Bento Layout (0:50-1:30)
+```bash
+cd ml-service && python -m uvicorn app.main:app --port 8001
+cd backend   && python -m uvicorn app.main:app --port 8000
+cd backend   && python seed_preview.py          # demo user + ~50 alerts over 8 days
+cd dashboard && npm install && npm start        # Vite proxies /api → :8000
+                                                # NB: the script is `npm start`
+                                                # (`npm run dev` does not exist)
+```
 
-- Show 3-Column Bento layout:
-  - **Posture Score Card**: White card with royal cobalt ring displaying `96/100`.
-  - **Latest Incident Card**: Midnight Navy card (`#0e1320`) with plain-English incident story narrative, blast-radius asset chips (`Server`, `User`, `IP`, `Application`), and `Remediate Incident` primary button.
-  - **Recent Alerts & Operations**: Live event log and green `All Systems Operational` indicator.
+### Sign in
 
-## 3. Interactive Case & Ask-AXIOM AI Copilot (1:30-2:30)
+| Field | Value |
+| --- | --- |
+| Username | `demo` |
+| Email | `demo@noctra.ai` |
+| Password | `DemoPass123!` |
+| Role | `ANALYST` |
 
-- Click **View Case** → `/cases/1` — view plain-English incident story, blast radius connected assets graph, recommended action, and Ask-AXIOM AI interactive copilot chat.
-- Ask copilot: *"What assets are affected in the blast radius?"* → AXIOM AI replies in real time with exact asset list and risk scores.
-- Action Gate: Review recommended reversible action (`REVOKE_CREDENTIALS` / `BLOCK_SOURCE_IP`) → Click **Approve Action** → instant SOAR execution & audit logging.
+Created idempotently by `backend/seed_preview.py` (it also creates
+`admin / admin@noctra.ai / AdminPass123!` for §7). Without seeding, register your
+own account at `/register` — the Inbox will be empty until you fire a scenario
+(§3), which is a perfectly good cold-start story.
 
-## 4. Entity Graph & Threat Alerts (2:30-3:50)
+**What a fresh seed gives you** (verified 2026-08-28): 1 org · `demo` + `admin`
+users · ~49 alerts spread over 8 days · 10 entities / 9 links · 3 ABAC roles ·
+engine settings. It gives you **no** analyst cases (fire one in §3), and **no**
+playbooks, detection rules or reputation entries — those three screens show their
+empty states on a fresh seed, which is the honest state, not a bug.
 
-- Open **Entity Graph** (`/entities`) — summary KPIs (nodes/edges/hub degree), **Path Finder** (From ID → To ID → Trace path), and entity blast-radius SVG view.
-- Open **Threat Alerts** (`/alerts`) — searchable alerts list, MITRE technique mapping (`T1078`), and severity filters.
+### Say it right — the four language rules
 
-## 5. Security Connectors & SOAR Automation (3:50-4:40)
+The product's whole claim is that it is honest. Breaking these in a demo breaks
+the claim:
 
-- **Security Connectors** — monitor live status for Okta Identity Cloud, CrowdStrike / Sentinel EDR, AWS GuardDuty, and Cloudflare WAF.
-- **SOAR Automation** (`/soar`) — Dry-run rule evaluator, playbook executions, and reversible action logs.
+1. **"Recorded", never "executed".** SOAR is record-only. NOCTRA writes the
+   action and its compensating reversal to the log; it never touches your
+   systems. Never say "blocks", "revokes", "contains" or "remediates"
+   unqualified — say "records a recommendation to …".
+2. **Name the reasoning source.** With `ANTHROPIC_API_KEY` set, the case reads
+   "Reasoned by `<model>`". Without it, the case reads "NOCTRA built-in
+   reasoning engine" (`analysis.fallback = true`, `model =
+   "fallback-template"`). Say which one you are showing — the fallback is a
+   deterministic template, not a model inference.
+3. **Confidence is a number, not a vibe.** The Inbox renders `n/a` instead of a
+   percentage when the analysis is a fallback. Do not improvise a number.
+4. **Empty is honest.** Empty states are real states. "Nothing is waiting" is a
+   better sentence than inventing an incident.
 
-## 6. Closing (4:40-5:00)
+---
 
-- “AXIOM AI combines self-evident LLM reasoning, blast radius graph tracking, and one-click reversible containment.”
+## 1. Landing — the brand (0:00–0:35) · `/welcome`
+
+- Open **http://localhost:3000/welcome** — `LandingPage.tsx`.
+- Say: *"NOCTRA is the autonomous security analyst for small teams. You employ an
+  analyst; you don't operate a dashboard."*
+- Walk the page top to bottom (it is a 1:1 port of the SIGNAL design source
+  `newfile.html`):
+  - **Hero** — eyebrow *Autonomous threat intelligence* → headline *"See the
+    threat before it sees you."* → HUD-bracketed SVG threat-topology frame
+    (no stock art — the frame is built in SVG, per the repo rule).
+  - **Stats band** — `24/7` · `< 5 min` · `360°` · `1 view`. Capability claims
+    only, no invented telemetry numbers. (The console demo below *does* show
+    numbers — but it is a labelled demo panel, and this script tells you to say
+    so.)
+  - **Console demo** — click **Start scan** (→ **Reset scan**): the radar sweep
+    animates, prioritized threat items populate, and the metric cards read
+    `1,284` assets mapped · `48.7k` signals/hour · `03` critical paths · `92%`
+    noise reduced. These are **illustrative demo values in a labelled demo
+    panel**, not live telemetry — say so if anyone asks. The stats band above
+    (24/7, < 5 min, 360°, 1 view) is different: those are capability claims.
+  - **Feature grid**, **access panel**, **footer**.
+- Note the chrome: ink canvas with the 56px signal grid, `signal-dot` live mark,
+  `tech-label` in Space Mono, sharp 2–4px corners.
+
+## 2. Sign in (0:35–1:00) · `/login`
+
+- **Request access** → `/register`, then **Sign in** → `/login`.
+- The auth surface is forced to the ink canvas (no theme toggle here — asking
+  the analyst happens in the dark).
+- Sign in as `demo` → lands on the **Analyst Inbox** (`/`).
+
+## 3. Analyst Inbox — what needs you (1:00–1:45) · `/`
+
+`BriefPage.tsx` → `GET /analyst/brief`. Point at the lead card and the metrics:
+
+| Metric | Meaning | Endpoint field |
+| --- | --- | --- |
+| Waiting for you | Analyst cases with `decision = pending` | `pending_count` |
+| Decisions by you | Decided since local midnight | `handled_today` |
+| Assets watched | Entity rows in your org | `watching` |
+| Events investigated today | Raw detections created today | `alerts_today` |
+| Auto-recorded responses | SOAR actions recorded by rules (excludes analyst decisions and their reversals) | `auto_recorded_today` |
+
+The sub-line reads as a sentence: *"N events investigated today · N auto-recorded
+responses · N decisions by you · N waiting."* Every number is a real count —
+nothing is estimated.
+
+Then **fire a scenario** — this is the moment the demo becomes real:
+
+- Pick a scenario in the Inbox control, or press **⌘K / Ctrl+K** → **Actions** →
+  `Simulate: Credential leak (T1078)`. Both call
+  `POST /analyst/simulate?scenario_type=…`.
+- Four scenarios exist, all wired: `credential_leak` (T1078),
+  `phishing_outbreak` (T1566), `data_exfiltration` (T1048),
+  `compromised_api_key` (T1098).
+- What happens server-side in one request: a CRITICAL alert is inserted → the
+  blast radius is built in the entity graph → one reversible action is drafted →
+  a `pending` analyst case is opened → `ANALYST_CASE_OPENED` is appended to the
+  audit trail. You land on the new case.
+
+## 3a. Make a connector real (optional, +60s)
+
+This is the moment the demo stops being a closed loop and ingests something
+from outside. Do it if the audience asks "but where does the data come from?".
+
+- On a connector card click **Configure** (needs `alerts:write`).
+- **Push mode** — set a shared secret, then post events to the shown webhook:
+
+  ```bash
+  curl -X POST http://localhost:3000/api/v1/connectors/ingest/okta \
+    -H "X-Connector-Token: <your-secret>" \
+    -H "Content-Type: application/json" \
+    -d '{"events":[{"message":"Impossible travel for jdoe@acme.com","severity":"HIGH","source_ip":"203.0.113.24"}]}'
+  ```
+
+- **Poll mode** — point it at any URL returning a JSON array of events (or
+  `{"events": [...]}`), then hit **Sync**. For a rehearsal, serve one from your
+  own machine:
+
+  ```bash
+  printf '[{"message":"Impossible travel for jdoe@acme.com","severity":"HIGH","source_ip":"203.0.113.24"}]' > /tmp/events.json
+  python3 -m http.server 8099 --directory /tmp
+  # endpoint: http://127.0.0.1:8099/events.json
+  ```
+
+  Loopback works because a dev checkout defaults to `ENVIRONMENT=development`.
+  A deployed instance refuses loopback and private addresses on purpose — see
+  Known gaps.
+
+What to point at: the events land as real `SecurityAlert` rows (MITRE-mapped,
+deduped for 24h), so they show up in **Alerts**, **Analytics** and the Inbox
+counts immediately. The card flips to `connected` with a real asset count and
+the measured request latency; a failed poll shows `error` and the reason
+instead of a cheerful "success".
+
+## 4. Case workspace — the reasoning (1:45–3:00) · `/case/:id`
+
+`CasePage.tsx` → `GET /analyst/cases/{id}` + `GET /analyst/cases/{id}/timeline`.
+Walk it in this order:
+
+1. **Headline + plain-English narrative** — what happened, why it matters,
+   stated confidence. Console-panel treatment (ink + green hairline) because
+   this is the analyst's voice.
+2. **Evidence (Observed)** — resolved from `case.source_alert_id`: type,
+   severity, source IP, MITRE technique, raw message. If the alert row is gone
+   the page says so instead of inventing one.
+3. **Blast radius** — the connected assets, with risk. Term tooltips
+   (hover/focus) give the plain-English gloss; the label stays formal.
+4. **The ask** — one recommended action with its `undo` line. Read the
+   word **Reversible** out loud; it is the product's promise made visible.
+5. **Case record** — server-composed timeline from real rows only (evidence,
+   case opened, decision, recorded action, report, audit entries). Absent rows
+   produce no entries — never filler.
+6. **Ask NOCTRA** — `POST /analyst/cases/{id}/chat`. Ask *"What's affected in
+   the blast radius?"* The answer is grounded in the case's own entities.
+
+## 5. The decision — and the record (3:00–3:50)
+
+- **Approve Action** → confirm dialog states plainly that NOCTRA will *record*
+  `REVOKE_CREDENTIALS` on the target, that it is reversible and record-only.
+- `POST /analyst/cases/{id}/approve` → decision `approved`, status `resolved`,
+  `soar_action_id` **recorded**, report generated, audit entry appended.
+- **Reports** (`/reports`) → download `noctra-report-case-{id}.md`. Open it:
+  the loop in writing, with the reasoning source named.
+- **Actions** (`/actions`) → the action log. Every row carries a one-click
+  **Revert** (`POST /analyst/cases/{id}/revert`) that records the compensating
+  action and flips the case to `reverted`. Revert it live if you want — that is
+  the reversibility claim being proven, not described.
+- Decline path: `POST /analyst/cases/{id}/decline` closes the case with no
+  action; it stays in the decision feed as a decision.
+
+## 6. Investigate — the depth behind the analyst (3:50–4:40)
+
+Optional, and only if the audience wants the engine room. Say the honest framing:
+*"NOCTRA leads with the analyst; this is the deep dive it stands on."*
+
+- **Alerts** (`/alerts`) — `AlertList` over `GET /alerts`; search, severity
+  filter, MITRE mapping; detail modal links straight to the case opened from
+  that alert.
+- **Entities & Graph** (`/entities`) — summary KPIs, scroll-zoom/drag-pan graph
+  with hover highlighting and a details panel, and a BFS **path finder**
+  (`GET /entities/path`). Seeded with 10 entities / 9 links.
+- **Analytics** (`/analytics`) — 7-day trend, severity mix, top patterns, and
+  the model **benchmark** table (`GET /ml/benchmark`).
+- **SOC Cockpit** (`/dashboard`) — the classic operational view, kept.
+- **SOAR** (`/soar`) — playbook CRUD, dry-run rule evaluation, action records.
+- **Manual Incidents** (`/incidents`) · **Log Uploads** (`/logs`,
+  `POST /upload-logs` → `GET /logs/history`).
+
+## 7. Administration (4:40–5:00) — `ADMIN` only
+
+`/admin` hub → **Users**, **Tenants**, **Roles** (ABAC matrix),
+**Rules**, **Reputation**, **Engine**, **Audit** (`/admin/system-logs`).
+Point at the audit trail specifically: every decision, chat question and state
+change lands in an append-only log. That is the compliance story.
+
+## 8. Close
+
+> *"NOCTRA watches the telemetry, explains what happened in plain English, maps
+> what is affected, and drafts one reversible action — then it stops and asks.
+> You approve; it records and reports. Nothing executes behind your back, and
+> every step is auditable."*
 
 ---
 
 ## Local URLs
 
-- Landing: http://localhost:3000/welcome
-- Console: http://localhost:3000 (→ /brief after login)
-- API: http://localhost:8000/health/live, http://localhost:8001/health
+| Surface | URL |
+| --- | --- |
+| Landing | http://localhost:3000/welcome |
+| Console (→ Inbox after login) | http://localhost:3000 |
+| Backend health | http://localhost:8000/health/live · /health/ready |
+| ML service health | http://localhost:8001/health |
+
+---
+
+## Verification matrix
+
+Run this before a demo, or after any change to a page. **Pass** = the page loads,
+the listed endpoints return data, and the expected state holds — with no fake,
+placeholder or `NaN`/`Invalid Date` values anywhere on screen.
+
+All endpoints are relative to the API base `/api/v1` (`dashboard/src/api/axios.ts`);
+in compose, nginx on `:3000` proxies them to the backend on `:8000`.
+
+**Executed 2026-08-28** against the live stack (SQLite seed, `demo` + `admin`,
+Vite proxy): **all endpoint checks passed**, including RBAC (an ANALYST token gets 403
+on `/admin/orgs`, `/admin/roles`, `/audit-logs`). Re-run it after any page
+change — the three rows that fail on a *fresh* seed (playbooks, rules,
+reputation) fail by design, and are labelled below.
+
+| # | Route | Source file | Endpoints | Expected state |
+| --- | --- | --- | --- | --- |
+| 1 | `/welcome` | `features/landing/pages/LandingPage.tsx` | — (static) | Hero + stats band + console demo; Start/Reset scan works; no fabricated metrics |
+| 2 | `/login`, `/register`, `/reset-password` | `features/auth/**`, `store/userActions.ts` | `POST /login`, `POST /register`, `GET /me`, `POST /refresh`, `POST /logout`, `POST /forgot-password`, `POST /reset-password` | Ink canvas, no theme toggle; login sets httpOnly cookies (`COOKIE_AUTH=true`); 401 triggers single-flight refresh then clean logout |
+| 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error. Unconfigured connector cards read `not_connected` + `—`; Sync returns `synced` / `recorded` / `error` and the UI shows the server's message verbatim |
+| 3a | Connector config modal | `components/connectors/ConnectorConfigModal.tsx` | `GET/PUT/DELETE /connectors/{id}/config`, `POST /connectors/ingest/{id}` | Secrets never returned (`has_*_token` flags only); push webhook ingests real alerts (401 on a bad token); poll sync records real counts + measured latency; duplicates skipped; a failing endpoint reports `error` with the reason |
+| 4 | `/feed` | `features/cases/pages/FeedPage.tsx` | `GET /analyst/feed` | Paginated decision feed, newest first; pending/approved/declined/reverted badges correct |
+| 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted` |
+| 6 | `/actions` | `features/actions/pages/ActionsPage.tsx` | `GET /analyst/feed`; `POST /analyst/cases/{id}/revert` | Only `approved`/`reverted` cases; filter by action type/target/case; record-only + reversible stated |
+| 7 | `/reports` | `features/reports/pages/ReportsPage.tsx` | `GET /analyst/feed`, `/analyst/cases/{id}/report` | Report downloads as `noctra-report-case-{id}.md`; names the reasoning source |
+| 8 | `/alerts` | `features/alerts/pages/ThreatAlertsPage.tsx` → `AlertList` | `GET /alerts`, `/save-scanned-alerts` | Search + severity filter + MITRE mapping; detail modal links to any case opened from the alert |
+| 9 | `/entities` | `features/entities/pages/EntitiesPage.tsx`, `components/EntityGraphView.tsx` | `GET /entities`, `GET /entities/summary`, `GET /entities/{id}/graph`, `GET /entities/path`, `POST /entities/{id}/reputation` | Fresh seed = **10 nodes / 9 links**; firing a scenario adds entities, so the count grows during a demo (18/15 after two scenarios) — expected, not a bug. Zoom/pan/select; path finder returns real hops; risk values guarded |
+| 10 | `/analytics` | `features/analytics/pages/AIAnalyticsPage.tsx` | `GET /analytics/overview`, `/analytics/trends`, `/analytics/top-threats`, `/ml/benchmark` | Charts render with `role="img"` + labels; no divide-by-zero bar widths |
+| 11 | `/dashboard` | `features/dashboard/pages/DashboardOverviewPage.tsx` | `GET /analytics/overview`, `/analytics/trends`, `/analytics/top-threats` | SOC Cockpit header via shared `PageHeader`; top-threats bars bounded by computed max |
+| 12 | `/incidents` | `features/incidents/pages/IncidentsPage.tsx`, `components/CreateIncidentModal.tsx` | `GET /cases`, `POST /cases`, `PATCH /cases/{id}` | Manual incident CRUD works |
+| 13 | `/logs` | `features/system/pages/LogHistoryPage.tsx` | `POST /upload-logs`, `GET /logs/history`, `GET /uploads/{batchId}` | Upload → scan → save; history lists batches |
+| 14 | `/soar` | `features/soar/pages/SoarPage.tsx` | `GET /soar/actions`, `POST /soar/evaluate`, `POST /soar/trigger/{alertId}`, `GET/POST /soar/playbooks`, `PATCH/DELETE /soar/playbooks/{id}` | Dry-run evaluation returns matches; action records present once a decision is approved. **Playbooks are empty on a fresh seed** — the empty state is the pass condition; create one live if you want to show CRUD |
+| 15 | `/profile`, `/account` | `features/account/pages/Profile.tsx`, `components/Account.tsx` | `GET /user/profile`, `PUT /user/profile`, `POST /user/profile/image`, `PUT /user/updatePassword` | Avatar upload + profile + password update |
+| 16 | `/admin` | `features/admin/pages/AdminDashboard.tsx` | `GET /admin/orgs`, `GET /users`, `GET /rules` | Tiles + metrics on shared components |
+| 17 | `/admin/users` | `features/admin/pages/AdminUsers.tsx` | `GET /admin/orgs`, `GET/POST /users`, `PATCH/DELETE /users/{id}` | Roster create/edit/delete |
+| 18 | `/admin/tenants` | `features/admin/pages/TenantsPage.tsx` | `GET /admin/orgs` | Tenant list |
+| 19 | `/admin/roles` | `features/admin/pages/AccessRolesPage.tsx` | `GET /admin/roles` | ABAC role × permission matrix |
+| 20 | `/admin/rules` | `features/admin/pages/RulesPage.tsx` | `GET/POST /rules`, `PUT/DELETE /rules/{id}` | Detection-rule CRUD. **Empty on a fresh seed** — empty state is the pass condition |
+| 21 | `/admin/reputation` | `features/admin/pages/ReputationPage.tsx` | `GET/POST /reputation`, `POST /reputation/{ip}/block`, `.../unblock` | IP reputation CRUD + block/unblock. **Empty on a fresh seed** |
+| 22 | `/admin/engine-settings` | `features/admin/pages/EngineSettingsPage.tsx` | `GET/PUT /engine/settings` | Engine settings persist |
+| 23 | `/admin/system-logs` | `features/admin/pages/SystemLogsPage.tsx` | `GET /audit-logs` | Append-only audit trail; decision + chat + error entries visible |
+| 24 | Shell (all routes) | `layouts/DashboardLayout`, `components/CommandMenu.tsx`, `Navbar`, `OnboardingChecklist` | `GET /analyst/notifications`, `GET /me` | ⌘K menu (Navigate · Cases · Actions); notification bell shows real pending count; sidebar is a drawer below `lg`; skip-link + `main#main-content` present; onboarding steps derive from real data |
+
+**Automated gates** (run these too — CI runs them on every push):
+
+```bash
+cd backend   && pytest tests      # 146 passed, 2 skipped
+cd ml-service&& pytest tests      # 13 passed
+cd dashboard && npm run test:ci   # 14 passed (Vitest)
+cd dashboard && npx tsc --noEmit && npm run build
+```
+
+**Reset between takes:**
+
+```bash
+docker compose -f docker/docker-compose.yml down -v   # wipe volumes
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+---
+
+## Known gaps — say these before someone finds them
+
+Honest gaps are better than surprise gaps. As of this writing:
+
+- **No connector is wired by default.** Out of the box all four report
+  `not_connected` with `—` for counts — the honest state. You can make one real
+  in about a minute: **Configure → push → set a shared secret → POST events to
+  the shown webhook** (or **poll** → point it at a JSON events URL). Then it
+  reports `connected` with counts derived from rows actually ingested. Sync has
+  three honest outcomes and the UI shows the server's wording verbatim:
+  `synced` (a real poll fetched events), `recorded` (nothing to fetch — no
+  config / disabled / push mode), `error` (a poll was attempted and failed,
+  with the reason). See §3a.
+- **The landing console-demo numbers are illustrative.** They live in a labelled
+  demo panel on the public marketing page; every number inside the signed-in
+  product is a real count.
+- **Connector credentials are stored in plaintext.** A configured source keeps
+  its outbound auth token and its push shared secret in cleartext in the
+  database, and they are never returned by the API (only `has_auth_token` /
+  `has_ingest_token` booleans). Fine for a self-hosted demo; encrypt at rest
+  before this holds real credentials.
+- **The webhook has no rate limit.** Any caller holding the shared secret can
+  post events as fast as it likes. Token comparison is constant-time, but
+  throttling the ingest endpoint is not done yet.
+- **The SSRF guard on polling is defence in depth, not a sealed boundary.**
+  Poll endpoints resolving to private, loopback or link-local addresses are
+  refused — but only when `ENVIRONMENT` is not a dev/test value (a dev checkout
+  defaults to `development`, and §3a's local mock endpoint relies on that), a
+  name this process
+  cannot resolve cannot be judged, and DNS rebinding between the check and the
+  request is not covered. Don't describe it as "SSRF-proof".
+- **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
+  deterministic fallback and the UI labels it "NOCTRA built-in reasoning engine"
+  with confidence `n/a`.
+- **Scenarios are simulated.** `POST /analyst/simulate` injects a synthetic but
+  realistic incident — say "simulate", not "detect", when you fire one live.

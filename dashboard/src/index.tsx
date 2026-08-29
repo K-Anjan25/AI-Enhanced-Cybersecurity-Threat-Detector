@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { MotionConfig } from "framer-motion";
 import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "react-query";
 import store from "./store/store";
@@ -31,7 +32,14 @@ root.render(
         <ToastProvider>
           <ErrorBoundary>
             <ThemeProvider>
-              <App />
+              {/* Motion contract (spec §40.8): framer-motion animates with
+                  JS, so the global CSS reduced-motion override in globals.css
+                  does not reach it. `reducedMotion="user"` makes every motion
+                  component honour the OS setting — transforms are dropped,
+                  opacity/color still animate. */}
+              <MotionConfig reducedMotion="user">
+                <App />
+              </MotionConfig>
             </ThemeProvider>
           </ErrorBoundary>
         </ToastProvider>

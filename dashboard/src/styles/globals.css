@@ -118,7 +118,12 @@ html.light {
     border-radius: 2px;
   }
 
-  /* Reduced-motion users get instant transitions. */
+  /* Reduced-motion users get instant transitions (motion contract, spec §40.8).
+     This covers CSS-driven motion only — framer-motion is handled in JS via
+     <MotionConfig reducedMotion="user"> (index.tsx), and JS smooth-scroll
+     checks the media query itself (landing/LandingHero.tsx). Loop-based
+     indicators (thinking dots, skeletons) land on their static frame rather
+     than disappearing, so a "working" state still reads as working. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -126,6 +131,7 @@ html.light {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }

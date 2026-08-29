@@ -1,5 +1,12 @@
 # Frontend Architecture
 
+> **⚠ Historical — superseded (kept as a decision record).** This document was
+> written for a Next.js 14 client in `client/`. **That directory no longer
+> exists**: all frontend development was consolidated onto the single production
+> **React + Vite** app in `dashboard/` (see `docs/session-log.md`, Phase 10
+> clean-up). Treat the routes, auth flows and API contracts below as *intent*,
+> not as the current implementation — verify against `dashboard/src/`.
+
 **Framework**: Next.js 14 (App Router) + TypeScript + Tailwind CSS v3 + Shadcn UI
 
 **Directory Structure** (`client/`):

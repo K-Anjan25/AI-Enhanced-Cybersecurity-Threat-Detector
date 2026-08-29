@@ -17,6 +17,8 @@ import OnboardingChecklist, { type OnboardingStep } from "../../../components/On
 import AnalystApi from "../../../api/analystApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
+import { showSuccess } from "../../../utils/showSuccess";
+import ConnectorConfigModal from "../../../components/connectors/ConnectorConfigModal";
 
 /**
  * Home — the Analyst Inbox (spec §7, §21).
@@ -43,14 +45,20 @@ const NODE_ICON: Record<string, typeof Server> = {
   hash: AppWindow,
 };
 
-const connectorTone = (status: Connector["status"]): "success" | "warning" | "critical" => {
+/** "Not connected" is a fact about this deployment, not an error — so it
+ *  renders neutral, not red. Red is reserved for a real sync failure. */
+const connectorTone = (
+  status: Connector["status"]
+): "success" | "warning" | "critical" | "neutral" => {
   switch (status) {
     case "connected":
       return "success";
     case "syncing":
       return "warning";
-    default:
+    case "error":
       return "critical";
+    default:
+      return "neutral";
   }
 };
 
@@ -67,6 +75,19 @@ const BriefPage: React.FC = () => {
   const [simulating, setSimulating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [selectedScenario, setSelectedScenario] = useState("credential_leak");
+  const [configFor, setConfigFor] = useState<Connector | null>(null);
+
+  /** Configuring a source writes alerts — gate it on the same permission the
+   *  API enforces, so the button never promises a request that would 403. */
+  const canConfigure = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user_permissions") || "[]").includes(
+        "alerts:write"
+      );
+    } catch {
+      return false;
+    }
+  })();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -106,10 +127,14 @@ const BriefPage: React.FC = () => {
   const handleSyncConnector = async (id: string) => {
     setSyncingId(id);
     try {
-      await AnalystApi.syncConnector(id);
-      setConnectors((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, last_sync: "Just now" } : c))
-      );
+      const res = await AnalystApi.syncConnector(id);
+      // Surface the server's own wording. It says what actually happened
+      // ("synced 3 events" / "request recorded — nothing to fetch" / the real
+      // error) — we must not overwrite it with a fake "Just now".
+      showSuccess(res.message);
+      // Re-read real state: a genuine poll changes status, counts and timing.
+      const fresh = await AnalystApi.fetchConnectors().catch(() => null);
+      if (fresh) setConnectors(fresh);
     } catch (err: any) {
       setError(getApiError(err, "Connector sync failed"));
     } finally {
@@ -242,8 +267,10 @@ const BriefPage: React.FC = () => {
       {!onboardingDismissed && <OnboardingChecklist steps={onboardingSteps} onDismiss={dismissOnboarding} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Lead card — the one thing that needs a decision, on the night canvas. */}
-        <div className="night console-panel hud-corners lg:col-span-7 text-content-primary rounded-sm p-6 flex flex-col justify-between min-h-[320px]">
+        {/* Lead card — the one thing that needs a decision, on the night canvas.
+            It is the only element that enters with a fade-up (spec §30): the
+            eye should land here first. */}
+        <div className="night console-panel hud-corners lg:col-span-7 text-content-primary rounded-sm p-6 flex flex-col justify-between min-h-[320px] animate-fade-up">
           {latestCase ? (
             <>
               <div>
@@ -429,7 +456,8 @@ const BriefPage: React.FC = () => {
               <ShieldCheck size={16} className="text-accent-primary" /> Integrated security tooling
             </h2>
             <p className="text-xs text-content-tertiary mt-0.5">
-              Telemetry sources feeding NOCTRA's analysis.
+              Telemetry sources NOCTRA is built to ingest from. No source is
+              wired in this deployment — counts appear once one is connected.
             </p>
           </div>
         </div>
@@ -446,22 +474,54 @@ const BriefPage: React.FC = () => {
                     <span className="text-xs font-bold text-content-primary truncate">
                       {conn.name}
                     </span>
-                    <StatusBadge tone={connectorTone(conn.status)} label={conn.status} />
+                    <StatusBadge
+                      tone={connectorTone(conn.status)}
+                      label={conn.status.replace("_", " ")}
+                    />
                   </div>
                   <p className="text-[11px] text-content-tertiary">{conn.category}</p>
+                  {/* A failed sync says why. Silence here would hide the one
+                      thing the operator needs to know. */}
+                  {conn.status === "error" && conn.last_error && (
+                    <p className="text-[10px] text-status-critical mt-1 line-clamp-2">
+                      {conn.last_error}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-content-secondary border-t border-line-subtle pt-2">
-                  <span>{conn.assets_monitored} assets</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSyncConnector(conn.id)}
-                    disabled={syncingId === conn.id}
-                    className="flex items-center gap-1 text-accent-primary font-semibold hover:underline text-[11px]"
-                  >
-                    <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
-                    {conn.last_sync}
-                  </button>
+                  <span title="Distinct source IPs this connector has delivered">
+                    {conn.assets_monitored != null
+                      ? `${conn.assets_monitored} asset${conn.assets_monitored === 1 ? "" : "s"}`
+                      : "—"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {canConfigure && (
+                      <button
+                        type="button"
+                        onClick={() => setConfigFor(conn)}
+                        className="text-content-secondary hover:text-accent-primary font-semibold transition-colors text-[11px]"
+                      >
+                        Configure
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSyncConnector(conn.id)}
+                      disabled={syncingId === conn.id}
+                      title={
+                        conn.mode === "poll"
+                          ? "Fetch events now"
+                          : conn.live
+                            ? "Sync now"
+                            : "No live source configured — syncing records a request only"
+                      }
+                      className="flex items-center gap-1 text-accent-primary font-semibold hover:underline text-[11px]"
+                    >
+                      <RefreshCw size={10} className={syncingId === conn.id ? "animate-spin" : ""} />
+                      {conn.last_sync ?? "Sync"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -471,6 +531,13 @@ const BriefPage: React.FC = () => {
             No connector telemetry configured for this environment.
           </p>
         )}
+
+      <ConnectorConfigModal
+        open={configFor !== null}
+        connector={configFor}
+        onClose={() => setConfigFor(null)}
+        onSaved={loadData}
+      />
       </div>
     </div>
   );

@@ -1,5 +1,15 @@
 # Frontend Design System
 
+> **⚠ Historical — superseded (kept as a decision record).** This document
+> describes the original "Slate Indigo Dark" system, which predates two rebrands
+> (DUALITY, then **SIGNAL**). **Do not build against it.** For the palette,
+> type, component vocabulary and geometry actually shipped, see
+> [`noctra-redesign-spec.md`](noctra-redesign-spec.md) **§40 (SIGNAL)**; the
+> source of truth in code is `dashboard/tailwind.config.js`,
+> `dashboard/src/styles/globals.css` and `dashboard/src/constants/brand.ts`.
+> The *process* below (role-named semantic tokens, WCAG-checked pairs, no raw
+> colour literals in pages) is still the rule.
+
 ## 1. Color Palette — "Slate Indigo Dark" (Professional Minimalist)
 
 **Philosophy**: Dark-mode-first for night-shift SOC analysts, high contrast, WCAG AA compliant, single accent color to reduce cognitive load. All colors are named by role, not hex, so they can be swapped thematically later.

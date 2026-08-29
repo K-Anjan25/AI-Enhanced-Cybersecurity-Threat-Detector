@@ -11,8 +11,21 @@ import { BRAND_HERO_LINE } from "../../constants/brand";
  * Right: HUD-bracketed threat-topology frame (built in SVG — the repo rule
  * of no stock art stands; the frame carries the design's corner brackets).
  */
+/**
+ * Smooth-scroll to a section — but never against the user's wishes. The global
+ * reduced-motion rule in `globals.css` only covers CSS animations, so a JS
+ * `behavior: "smooth"` has to check the media query itself (motion contract,
+ * spec §40.8).
+ */
+const prefersReducedMotion = (): boolean =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 const scrollTo = (id: string) => () => {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById(id)?.scrollIntoView({
+    behavior: prefersReducedMotion() ? "auto" : "smooth",
+    block: "start",
+  });
 };
 
 const LandingHero: React.FC = () => (

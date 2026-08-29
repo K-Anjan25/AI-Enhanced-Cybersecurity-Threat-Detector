@@ -564,3 +564,250 @@ auth board is ink, hub/README rewritten for the Signal system.
 **Preview verified end-to-end:** backend venv + .env (cookie auth, CHIPS partitioned)
 restored and seeded; login 200 → Set-Cookie → /user/me 200 (7 perms) → /analyst/brief
 200 through the :3000 proxy; `tsc --noEmit && vite build` clean.
+
+## Phase 30 — Stage 4 docs: SIGNAL demo script + brand-drift sweep
+
+Docs-only pass (one code comment/token-mirror change) that finishes the Stage 4
+"demo script + verification matrix" item from spec §32 and closes the
+documentation drift the Phase-29 SIGNAL retheme left behind.
+
+**New demo script (`docs/demo.md`)** — replaces the stale AXIOM AI walkthrough
+(which also claimed "instant SOAR execution", contradicting record-only):
+- 5-minute act structure mapped to real routes: `/welcome` → `/login` → `/`
+  (Inbox) → fire a scenario → `/case/:id` → approve → `/reports` + `/actions` →
+  investigate surfaces → admin → close.
+- **Four language rules** up front: "recorded" never "executed"; name the
+  reasoning source (`Reasoned by <model>` vs "NOCTRA built-in reasoning engine"
+  when `analysis.fallback`); don't improvise a confidence number (Inbox renders
+  `n/a` for fallbacks); empty states are real states.
+- Real credentials (`demo / demo@noctra.ai / DemoPass123!`, seeded by
+  `backend/seed_preview.py`), real scenario keys (`credential_leak` T1078,
+  `phishing_outbreak` T1566, `data_exfiltration` T1048, `compromised_api_key`
+  T1098), and the real brief fields (`pending_count`, `handled_today`,
+  `watching`, `alerts_today`, `auto_recorded_today`).
+- **Verification matrix**: 24 rows, each route → source file → endpoints (all
+  re-checked against `dashboard/src/api/*.ts`, not from memory) → expected
+  state. Plus the automated gates (backend 121/2, ml 13, `tsc` + `vite build`)
+  and a `down -v` reset recipe.
+- **Known gaps** section: connectors are status-only, LLM reasoning needs
+  `ANTHROPIC_API_KEY`, scenarios are simulated, landing console-demo metrics are
+  illustrative.
+
+**Brand-drift sweep (docs now match shipped code):**
+- `docs/noctra-redesign-spec.md`: header banner + supersession banners on §9,
+  §12, §13, §15, §16, §17 (all point at the new **§40 — SIGNAL**, the shipped
+  design system: palette, type, logo/lockup, component vocabulary, geometry,
+  landing, wireframes, verification); §32 roadmap annotated with Stage-4 status.
+- `README.md`: typography DM Sans + Space Mono (was Sora/Inter/JetBrains Mono),
+  tagline "Threat intelligence, always on." (was "Your autonomous security
+  analyst."), brand block now points at SIGNAL, the wireframe kit, the design
+  source and the demo script.
+- `dashboard/src/constants/brand.ts`: the "periwinkle accent" comment → signal
+  green; `BRAND_GRADIENT` documented as flat; `BRAND_RADII`/`BRAND_SHADOWS`
+  re-mirrored to Tailwind's compressed 2–4px scale and ink-cast shadows
+  (+ the `signal` hover shadow). No page consumes these constants, so no
+  rendering change.
+- Supersession banners on the three stale frontend docs:
+  `frontend-design.md` (Slate Indigo Dark), `frontend-architecture.md`
+  (Next.js `client/` — that directory was deleted in Phase 10),
+  `frontend-commercial-redesign.md` (patterns live; landing + tokens
+  superseded). Plus `noctra-qa-report.md` (DUALITY-era contrast ratios must be
+  re-measured) and `brand-strategy.md` (naming record current; visuals §40).
+- `docs/README.md` index gained the demo, spec, brand, terminology and QA rows
+  it was missing.
+- Housekeeping: closed the stale **PR #1 "rebrand to AXIOM AI"** — superseded by
+  the NOCTRA brand and by the SIGNAL system.
+
+Verified: backend 121 passed / 2 skipped; ml-service 13 passed;
+`tsc --noEmit` + `vite build` clean.
+
+## Phase 31 — Stage 4 close: motion polish
+
+The last open item from the Stage 4 roadmap (spec §32). Motion audited against
+§30, three real gaps found and fixed, and the contract written down as §40.8 so
+it stops drifting.
+
+**Gaps found (all three were invisible to the CSS-only reduced-motion rule):**
+- **framer-motion ignored `prefers-reduced-motion`.** `PageTransition` animates
+  via JS, so the `animation-duration: 0.01ms !important` override in
+  `globals.css` never reached it — reduced-motion users still got the 220ms
+  page slide. Fixed by wrapping the app in `<MotionConfig reducedMotion="user">`
+  (`index.tsx`): transforms are dropped, opacity/color still animate.
+- **Landing smooth-scroll ignored it too.** `LandingHero` called
+  `scrollIntoView({ behavior: "smooth" })` unconditionally; it now checks
+  `matchMedia("(prefers-reduced-motion: reduce)")` and falls back to `auto`.
+- **The AI "reasoning" indicator wasn't the spec'd one.** §30 asks for a
+  three-dot text shimmer; the case chat rendered a `animate-pulse` text line.
+  Replaced with `components/ui/ThinkingDots.tsx` (`ThinkingIndicator`): three
+  1px signal dots, opacity-only 1.05s stagger, `role="status"`, dots
+  `aria-hidden` with the meaning carried by the label.
+
+**Also in this pass:**
+- `Badge` gained `transition-colors duration-200` — the decision-state pill
+  re-tints on pending → approved instead of snapping (§30).
+- Lead case card on the Inbox now enters with `animate-fade-up` (240ms) — the
+  only element on the page that does, so the eye lands on the decision first.
+- `globals.css` reduced-motion block now also forces `scroll-behavior: auto`,
+  and carries a comment naming the three layers (CSS / framer / JS scroll)
+  because a future reader would otherwise assume one layer covers everything.
+- `tailwind.config.js`: `thinking-dot` keyframes + a comment recording the
+  140–240ms entrance band.
+
+**Doc bug caught by running the stack:** `docs/demo.md` (and `README.md`)
+instructed `cd dashboard && npm run dev` — **that script does not exist**; the
+package exposes `start` (and `build`). Both corrected to `npm install &&
+npm start`. Found only because the demo script was actually executed.
+
+**Live verification (SQLite, `COOKIE_AUTH=true`, Vite proxy on :3000):**
+login `demo` 200 → `/me` 200 (ANALYST) → `/analyst/brief` returns the five real
+counts → `POST /analyst/simulate?scenario_type=credential_leak` → case #1
+`critical` / `REVOKE_CREDENTIALS` / `fallback: true` + `fallback-template` /
+3 blast nodes → timeline `['evidence','opened']` → approve → `approved`,
+`resolved`, `soar_action_id` recorded → report generated naming the fallback
+model. Every claim in `docs/demo.md` now has a live pass behind it.
+
+Verified: `tsc --noEmit` + `vite build` clean; backend 121/2 and ml 13
+unchanged (no backend code touched).
+
+## Phase 32 — Real connector ingest (replacing the mock)
+
+Follow-on to Phase 31's honesty fix. The catalogue was honest but inert, so the
+panel now ingests real events and every number is measured.
+
+**Model** — `app/models/connector.py` `ConnectorSource` (tenant-scoped, unique
+per org+connector): mode (`poll` | `push`), endpoint, auth header/token
+(outbound, write-only), `ingest_token` (inbound shared secret), enabled, plus
+real sync state: `last_sync_at`, `last_status`, `last_error`,
+`last_duration_ms`, `last_count`, `events_ingested`.
+
+**Service** — `app/services/connector_service.py`:
+- `list_connectors()` merges the 4-entry catalogue with real config:
+  `not_connected` (no config) → `configured` (config, never synced) →
+  `connected` (last sync ok, with real counts) → `error` (last sync failed,
+  reason shown). `assets_monitored` = distinct source IPs actually delivered;
+  `latency_ms` = measured request duration.
+- `sync()` has three honest outcomes: `synced` (real poll), `recorded` (no
+  config / disabled / push mode — nothing to fetch), `error` (poll attempted,
+  failed, reason returned and persisted).
+- `ingest_push()` authenticates by `X-Connector-Token` and writes real
+  `SecurityAlert` rows, MITRE-mapped via the existing `mitre.map_alert`.
+- `_normalize_event()` tolerates provider field drift (`message`/`summary`/
+  `displayMessage`, `source_ip`/`src_ip`/`client_ip`, numeric 1–10 severities)
+  and **drops** events it cannot describe rather than inventing content.
+- Dedupe: within a payload, and against the same connector's last 24h.
+- Config changes are audited (`CONNECTOR_CONFIGURED` / `_UPDATED` /
+  `_REMOVED`); secrets are never serialized.
+
+**API** — new `endpoints/connectors.py`: `GET /connectors`,
+`GET/PUT/DELETE /connectors/{id}/config` (gated on `alerts:write`),
+`POST /connectors/ingest/{id}` (webhook, token-authenticated, no session).
+`/analyst/connectors` + `/analyst/connectors/{id}/sync` now delegate here; the
+dead `analyst_service.get_connectors_status` / `sync_connector` were deleted.
+
+**Frontend** — `api/connectorApi.ts`, `components/connectors/
+ConnectorConfigModal.tsx` (mode switch, poll endpoint + auth, push secret +
+copyable webhook URL + sample body, enable toggle, remove) and Inbox wiring:
+Configure button gated on the same `alerts:write` permission the API enforces,
+real counts with `—` when unknown, error reason surfaced on the card, and the
+connector list re-read after sync instead of a client-side fake "Just now".
+
+**Tests** — `tests/test_connectors.py`, 15 cases: honesty of each status
+transition, tenant scoping, tenant-scoped sync, success/failure paths (mocked
+HTTP), push auth + dedupe + numeric-severity mapping, secret non-leakage,
+validation, auditing, and a full HTTP config → ingest → connected flow.
+Suite: backend **136 passed / 2 skipped** (was 121).
+
+**Live-verified end to end** (backend + Vite + a real local HTTP source):
+unconfigured `not_connected`/null → configure push → `configured` → webhook 401
+with a bad token, 201 with the right one (1 ingested, 1 duplicate skipped) →
+`connected` / live / assets 1 → configure poll against a live JSON endpoint →
+`synced` 3 events, latency 12ms, assets 3 → re-sync 0 ingested / 3 skipped →
+poll a dead port → `error` with the real connection error → push-mode sync
+returns `recorded`, not a fake success.
+
+## Phase 33 — SIGNAL surfaces + the dashboard's first test suite
+
+**SIGNAL vocabulary, applied where it means something (spec §40.4).**
+Auditing class usage showed the vocabulary was landing-only: `threat-item`
+appeared solely in `ConsoleDemo.tsx` and `metric-card` did not exist in CSS at
+all (§40.4 claimed StatCard "is" it — corrected; the component is the token).
+- `threat-item` (signal left edge + faint tint) now marks **the rows that need
+  attention**: HIGH/CRITICAL alerts in `AlertList`, and `pending` decisions in
+  the Cases feed. Deliberately not every row — a list where everything is
+  highlighted carries no signal.
+- `hud-corners` now marks **the focal element** of the case view: the
+  recommended-action card. Rule recorded in §40.4: one bracketed element per
+  view.
+- §40.4 gained explicit "where the vocabulary is allowed" rules so the next
+  pass cannot dilute it by decoration.
+
+**Frontend tests — the dashboard had none.** CI only typechecked and built, so
+every page-level regression in Phases 27–32 (NaN widths, "Invalid Date", the
+connector "success" lie) was invisible to automation.
+- Vitest 4 (matching Vite 8 — Vitest 2 bundles an older Vite that cannot load
+  the ESM-only React plugin) + jsdom + React Testing Library. The `test` block
+  lives in the existing `vite.config.mjs`: Vite resolves `.ts` before `.mjs`,
+  so adding a separate `vite.config.ts` silently won and forked dev/build away
+  from test. `src/test/setup.ts` stubs what jsdom lacks
+  (`ResizeObserver` for Recharts, `matchMedia` for framer-motion/reduced
+  motion, `scrollIntoView`).
+- 14 tests: ThinkingDots (three dots, staggered, `aria-hidden` + status role),
+  Badge (severity never colour-alone, unknown/null severity survives), and six
+  BriefPage tests against a mocked API module — real counts rendered,
+  pluralisation ("1 decision" not "1 decisions"), "—" for telemetry the app
+  does not have vs. real counts it does, no fake "just now" for an un-synced
+  connector, Configure gated on `alerts:write`, and the connector list being
+  re-read after sync rather than patched client-side.
+- `npm test` / `npm run test:ci` / `npm run test:coverage` scripts.
+
+**The CI step had to be applied by hand.** This session's GitHub App token has
+no `workflows` scope, so the push carrying the workflow change was rejected;
+the maintainer added the `Unit tests (Vitest)` step directly on `main`
+(`4cb92ec`), which was then merged back into this branch.
+
+**That first CI run failed, and the failure was worth having.** The suite passed
+on Node 22 locally but failed on the runner: jsdom 30 declares engines
+`^22.22.2 || ^24.15.0 || >=26.0.0` while CI runs Node 20, and npm only *warns*
+on EBADENGINE. jsdom is pinned to `^29` — the newest release still supporting
+Node 20.19, matching Vite 8's own floor — verified with a clean `npm ci` on
+Node 20.19.5 (14 tests pass, `npm run build` succeeds). Noted in README so it
+is not bumped back to `^30` without also bumping the workflow's Node.
+
+One test caught a mistake in itself rather than in the code — asserting "2
+decisions by you" when `handled_today` is 1; the component's singular copy was
+right and the assertion was wrong. Worth keeping it as an explicit assertion.
+
+## Phase 34 — merge-readiness review of the connector work
+
+Reviewing PR #5 for merge rather than shipping more surface turned up two
+things in the connector code that had no business merging as they stood:
+
+**Token comparison was not constant-time.** `token != cfg.ingest_token` in the
+push webhook leaks match position through timing. Now `hmac.compare_digest`.
+
+**Polling had no SSRF guard.** Poll mode makes the server fetch a
+tenant-supplied URL, so `http://169.254.169.254/latest/meta-data/` (cloud
+metadata) or an internal service were both reachable by typing them into a
+config box. `_guard_endpoint` now refuses private, loopback, link-local and
+reserved addresses at configuration time (422) *and* again at fetch time (so a
+row written in dev, or before the guard existed, still cannot be fetched — it
+records a failed sync instead of a 500).
+
+The guard is deliberately inactive when `ENVIRONMENT` is a dev/test value:
+§3a of the demo points a connector at `127.0.0.1`, which is exactly the address
+a deployed instance must refuse, and `k8s/configmap.yaml` sets
+`ENVIRONMENT: "production"`. Its three real limits are recorded in the code
+docstring and in demo.md's known gaps: unresolvable names cannot be judged,
+DNS rebinding between check and request is not covered, and it is defence in
+depth rather than a sealed boundary.
+
+Also documented as known gaps rather than quietly shipped: connector
+credentials are stored in plaintext (never returned by the API — only
+`has_*_token` booleans), and the ingest webhook has no rate limit.
+
+Backend suite now 146 passed, 2 skipped (was 136; +10 guard tests).
+
+The constant-time fix needed a second pass of its own: `hmac.compare_digest()`
+rejects non-ASCII `str` with a TypeError, so a wrong token containing an accent
+would have returned 500 instead of 401. Comparing UTF-8 bytes keeps a wrong
+token a wrong token, with a test pinning it.

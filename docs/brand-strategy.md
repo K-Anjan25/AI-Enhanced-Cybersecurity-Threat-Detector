@@ -1,10 +1,13 @@
 # Brand & UI/UX Strategy — NOCTRA
 
 > **✅ Current (NOCTRA redesign):** the product ships as **NOCTRA** — the name
-> this Phase 1–3 document originally chose, now realized as the full "Night
-> Shift" identity. See the live specification in
-> [`noctra-redesign-spec.md`](noctra-redesign-spec.md) and
-> `dashboard/src/constants/brand.ts`.
+> this Phase 1–3 document originally chose. **Naming, positioning and the
+> shortlist below are still the live decision record.** The *visual* identity
+> has since moved twice: "Night Shift" → DUALITY → **SIGNAL** (Phase 29, ink
+> canvas + signal green, DM Sans + Space Mono), specified in
+> [`noctra-redesign-spec.md`](noctra-redesign-spec.md) **§40** and implemented
+> in `dashboard/tailwind.config.js` + `dashboard/src/constants/brand.ts`.
+> Ignore this document's colour/type references — §40 wins.
 >
 > **⚠ Historical interlude (Phase 20):** the product briefly shipped as
 > **AXIOM AI** — see [`brand-identity-axiom.md`](brand-identity-axiom.md).

@@ -16,8 +16,11 @@ export const BRAND_POSITIONING =
   "NOCTRA continuously maps your attack surface, detects what matters, and turns fragmented signals into decisive action." as const;
 export const BRAND_DOMAIN_HINT = "noctra.ai" as const;
 
-/** Exact logo gradient (user-locked brand spec §12). Used on the mark, hero
- *  accent and primary actions only — never decorative noise. */
+/** Brand accent — SIGNAL green. The accent is FLAT: Signal never gradients it
+ *  (spec §40). `from`/`to` are identical so the token stays API-compatible with
+ *  the earlier gradient shape; `sparkle` is the bright step used for hover and
+ *  the insight mark. Used on the mark, hero accent and primary actions only —
+ *  never decorative noise. */
 export const BRAND_GRADIENT = {
   from: "#a6ff3f", // signal green (flat — the accent is never a gradient)
   to: "#a6ff3f",
@@ -53,7 +56,10 @@ export const BRAND_TYPE_SCALE = {
   },
 } as const;
 
-/** Brand palette — ink foundation + periwinkle accent (see docs/noctra-redesign-spec.md §16). */
+/** Brand palette — ink canvas + signal green accent, the SIGNAL system
+ *  (see docs/noctra-redesign-spec.md §40; §16 documents the retired DUALITY
+ *  palette this replaced). Mirrors the Tailwind tokens in tailwind.config.js —
+ *  change both together. */
 export const BRAND_PALETTE = {
   voidInk: "#070b0f", // ink canvas
   bgInk: "#070b0f",
@@ -89,25 +95,33 @@ export const BRAND_DATAVIZ = [
   "#7e87a3",
 ] as const;
 
-/** Radius scale (4px base, rounded-square system — matches the app icon badge). */
+/**
+ * Radius scale — mirrors Tailwind's compressed SIGNAL scale (2–4px, sharp;
+ * `rounded-full` stays for tags/avatars). Kept as the JS-side registry so
+ * future consumers don't reintroduce the old soft 8–20px geometry.
+ */
 export const BRAND_RADII = {
-  xs: "4px",
-  sm: "6px",
-  md: "8px",
-  lg: "12px",
-  xl: "16px",
-  "2xl": "20px",
+  xxs: "2px",
+  xs: "2px",
+  sm: "2px",
+  md: "2px",
+  lg: "3px",
+  xl: "3px",
+  "2xl": "4px",
+  "3xl": "6px",
   pill: "999px",
 } as const;
 
-/** Shadow system — layered, calm, never glowy. */
+/** Shadow system — ink-cast, calm, never glowy (the one glow is the signal
+ *  hover on primary actions, defined as `shadow-signal` in tailwind.config.js). */
 export const BRAND_SHADOWS = {
-  card: "0 1px 2px rgba(15, 16, 22, 0.05), 0 3px 10px rgba(15, 16, 22, 0.04)",
-  raised: "0 8px 24px rgba(15, 16, 22, 0.12)",
-  float: "0 12px 32px rgba(15, 16, 22, 0.16)",
-  hero: "0 24px 64px rgba(8, 9, 13, 0.4)",
-  navy: "0 8px 32px rgba(8, 9, 13, 0.35)",
-  overlay: "0 16px 48px rgba(15, 16, 22, 0.18)",
+  card: "0 1px 2px rgba(0, 0, 0, 0.4), 0 3px 12px rgba(0, 0, 0, 0.22)",
+  raised: "0 8px 24px rgba(0, 0, 0, 0.35)",
+  float: "0 12px 32px rgba(0, 0, 0, 0.45)",
+  hero: "0 24px 70px rgba(0, 0, 0, 0.35)",
+  navy: "0 26px 80px rgba(0, 0, 0, 0.3)", // console-panel
+  overlay: "0 16px 48px rgba(0, 0, 0, 0.5)",
+  signal: "0 12px 28px rgba(166, 255, 63, 0.2)", // primary-action hover only
 } as const;
 
 /** Breakpoints (Tailwind defaults — declared once for JS consumers). */

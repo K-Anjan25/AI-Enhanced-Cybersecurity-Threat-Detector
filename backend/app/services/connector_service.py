@@ -1,0 +1,645 @@
+"""Real connector ingest — configuration, polling and push, with honest status.
+
+Replaces the hardcoded connector list. The rules this module exists to uphold:
+
+1. **A connector is "connected" only if it is configured, enabled, and its
+   last sync succeeded.** Otherwise it says so (`configured` / `not_connected`).
+2. **Every number is derived from rows this deployment actually ingested.**
+   `assets_monitored` counts distinct source IPs seen from that connector;
+   `latency_ms` is the measured duration of the last request.
+3. **Failures are reported, never swallowed.** A failed poll returns
+   `status: "error"` with the exception text and records it on the row — it
+   does not fall back to a cheerful "success".
+"""
+
+from __future__ import annotations
+
+import hmac
+import ipaddress
+import socket
+import time
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
+
+import requests
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.models import ConnectorSource, SecurityAlert
+from app.services.mitre import map_alert
+from app.utils.helpers import create_audit_log
+
+# The catalogue — the sources NOCTRA is built to ingest from. A catalogue entry
+# alone proves nothing; it only becomes "connected" once a source row exists and
+# has synced successfully.
+CATALOGUE: list[tuple[str, str, str]] = [
+    ("okta", "Okta Identity Cloud", "Identity"),
+    ("sentinel", "CrowdStrike / Sentinel EDR", "Endpoint"),
+    ("guardduty", "AWS GuardDuty & IAM Audit", "Cloud Security"),
+    ("cloudflare", "Cloudflare Edge WAF", "Network & Edge"),
+]
+
+VALID_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
+REQUEST_TIMEOUT = (3, 10)  # (connect, read) seconds
+
+# Poll mode makes this server fetch a URL a tenant typed. Unchecked, that is a
+# ready-made SSRF: point it at cloud metadata (169.254.169.254), at a service
+# that trusts the pod's network position, or at the API itself. Non-local
+# environments refuse internal addresses — see _guard_endpoint.
+_DEV_ENVIRONMENTS = {"development", "dev", "local", "test", "testing"}
+
+
+def _is_internal_address(raw: str) -> bool:
+    ip = ipaddress.ip_address(raw)
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def _guard_endpoint(url: str | None) -> None:
+    """Refuse endpoints that would turn a poll into an SSRF.
+
+    Inactive in dev/test environments on purpose: a dev checkout defaults to
+    ENVIRONMENT="development", and docs/demo.md §3a's local mock endpoint
+    (http://127.0.0.1) depends on that — while a deployed instance must refuse
+    exactly that address. k8s/configmap.yaml sets ENVIRONMENT="production".
+
+    Two honest limits:
+    * A name this process cannot resolve cannot be judged here, so it is
+      allowed through and left to fail (or succeed) at request time.
+    * DNS rebinding between this check and requests' own lookup is not
+      covered — closing that means pinning the resolved IP for the
+      connection, a larger change than this guard.
+
+    So this is defence in depth against a hostile or mistaken endpoint, not a
+    sealed boundary.
+    """
+    if (settings.ENVIRONMENT or "").strip().lower() in _DEV_ENVIRONMENTS:
+        return
+    if not url:
+        return
+
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("endpoint must be an http(s) URL")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("endpoint URL has no host")
+
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if _is_internal_address(literal):
+            raise ValueError(_INTERNAL_ENDPOINT_MESSAGE)
+        return
+
+    try:
+        resolved = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return  # Nothing to judge here; the request itself will fail.
+    if any(_is_internal_address(info[4][0]) for info in resolved):
+        raise ValueError(_INTERNAL_ENDPOINT_MESSAGE)
+
+
+_INTERNAL_ENDPOINT_MESSAGE = (
+    "endpoint resolves to a private, loopback or link-local address — "
+    "refusing to fetch it"
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _humanize(moment: datetime | None) -> str | None:
+    """'just now' / '4 minutes ago' / '2 days ago' — null in, null out."""
+    if moment is None:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    delta = _now() - moment
+    seconds = int(delta.total_seconds())
+    if seconds < 0:
+        return "just now"
+    if seconds < 60:
+        return "just now"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    days = hours // 24
+    return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+def get_config(db: Session, org_id: int | None, connector_id: str) -> ConnectorSource | None:
+    query = db.query(ConnectorSource).filter(ConnectorSource.connector_id == connector_id)
+    if org_id is not None:
+        query = query.filter(ConnectorSource.org_id == org_id)
+    return query.first()
+
+
+def _assets_monitored(db: Session, org_id: int | None, connector_id: str) -> int:
+    """Distinct source IPs this connector has actually delivered.
+
+    Real telemetry only — no row, no number.
+    """
+    query = db.query(SecurityAlert.source_ip).filter(
+        SecurityAlert.source == connector_id,
+        SecurityAlert.source_ip.isnot(None),
+        SecurityAlert.source_ip != "",
+    )
+    if org_id is not None:
+        query = query.filter(SecurityAlert.org_id == org_id)
+    return len({row[0] for row in query.all()})
+
+
+def serialize_config(cfg: ConnectorSource) -> dict:
+    """Config for the UI. Outbound credentials are never included; the push
+    token is masked so it can be shown as 'configured' without leaking it."""
+    return {
+        "connector_id": cfg.connector_id,
+        "name": cfg.name,
+        "category": cfg.category,
+        "mode": cfg.mode,
+        "endpoint": cfg.endpoint,
+        "auth_header": cfg.auth_header,
+        "has_auth_token": bool(cfg.auth_token),
+        "has_ingest_token": bool(cfg.ingest_token),
+        "enabled": cfg.enabled,
+        "last_sync": _humanize(cfg.last_sync_at),
+        "last_status": cfg.last_status,
+        "last_error": cfg.last_error,
+        "last_count": cfg.last_count,
+        "events_ingested": cfg.events_ingested or 0,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Status
+# ---------------------------------------------------------------------------
+
+
+def list_connectors(db: Session, org_id: int | None) -> list[dict]:
+    """Catalogue merged with real per-tenant sync state."""
+    rows: list[dict] = []
+    for connector_id, name, category in CATALOGUE:
+        cfg = get_config(db, org_id, connector_id)
+        entry = {
+            "id": connector_id,
+            "name": name,
+            "category": category,
+            "status": "not_connected",
+            "live": False,
+            "last_sync": None,
+            "assets_monitored": None,
+            "latency_ms": None,
+            "mode": None,
+            "last_error": None,
+            "events_ingested": 0,
+        }
+        if cfg is None:
+            rows.append(entry)
+            continue
+
+        entry["mode"] = cfg.mode
+        entry["events_ingested"] = cfg.events_ingested or 0
+
+        if not cfg.enabled:
+            entry["status"] = "disabled"
+            entry["last_sync"] = _humanize(cfg.last_sync_at)
+            rows.append(entry)
+            continue
+
+        if cfg.last_status == "error":
+            entry["status"] = "error"
+            entry["last_error"] = cfg.last_error
+            entry["last_sync"] = _humanize(cfg.last_sync_at)
+            rows.append(entry)
+            continue
+
+        if cfg.last_status == "ok":
+            entry["status"] = "connected"
+            entry["live"] = True
+            entry["last_sync"] = _humanize(cfg.last_sync_at)
+            entry["latency_ms"] = cfg.last_duration_ms
+            entry["assets_monitored"] = _assets_monitored(db, org_id, connector_id)
+            rows.append(entry)
+            continue
+
+        # Configured, enabled, never synced yet.
+        entry["status"] = "configured"
+        rows.append(entry)
+
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+
+def upsert_config(
+    db: Session,
+    org_id: int | None,
+    connector_id: str,
+    payload: dict,
+    actor: str,
+) -> dict:
+    names = {cid: (nm, cat) for cid, nm, cat in CATALOGUE}
+    if connector_id not in names:
+        raise ValueError(f"Unknown connector ID: {connector_id}")
+    name, category = names[connector_id]
+
+    mode = (payload.get("mode") or "push").lower()
+    if mode not in {"poll", "push"}:
+        raise ValueError("mode must be 'poll' or 'push'")
+    if mode == "poll":
+        if not payload.get("endpoint"):
+            raise ValueError("poll mode requires an endpoint URL")
+        # Refuse an SSRF endpoint at configuration time rather than at the
+        # first poll — the operator should see why it was rejected now.
+        _guard_endpoint(payload.get("endpoint"))
+
+    cfg = get_config(db, org_id, connector_id)
+    created = cfg is None
+    if cfg is None:
+        cfg = ConnectorSource(
+            org_id=org_id,
+            connector_id=connector_id,
+            name=name,
+            category=category,
+            mode=mode,
+        )
+        db.add(cfg)
+
+    cfg.name = name
+    cfg.category = category
+    cfg.mode = mode
+    if "endpoint" in payload:
+        cfg.endpoint = payload.get("endpoint")
+    if "auth_header" in payload:
+        cfg.auth_header = payload.get("auth_header")
+    if payload.get("auth_token") is not None:
+        cfg.auth_token = payload["auth_token"]
+    if payload.get("ingest_token") is not None:
+        cfg.ingest_token = payload["ingest_token"]
+    if payload.get("enabled") is not None:
+        cfg.enabled = bool(payload["enabled"])
+
+    db.commit()
+    db.refresh(cfg)
+
+    create_audit_log(
+        db,
+        action="CONNECTOR_CONFIGURED" if created else "CONNECTOR_UPDATED",
+        actor=actor,
+        resource=f"connector:{connector_id}",
+        details=f"{name} set to {mode} mode (enabled={cfg.enabled})",
+    )
+    return serialize_config(cfg)
+
+
+def delete_config(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict:
+    cfg = get_config(db, org_id, connector_id)
+    if cfg is None:
+        raise ValueError(f"No configuration for connector: {connector_id}")
+    db.delete(cfg)
+    db.commit()
+    create_audit_log(
+        db,
+        action="CONNECTOR_REMOVED",
+        actor=actor,
+        resource=f"connector:{connector_id}",
+        details=f"Configuration removed for {cfg.name}",
+    )
+    return {"status": "deleted", "connector_id": connector_id}
+
+
+# ---------------------------------------------------------------------------
+# Ingest
+# ---------------------------------------------------------------------------
+
+
+def _normalize_event(raw: dict) -> dict | None:
+    """Map an arbitrary provider event onto a SecurityAlert shape.
+
+    Deliberately tolerant: providers disagree on field names. Anything we
+    cannot describe honestly (no message at all) is dropped and counted as
+    skipped rather than invented.
+    """
+    if not isinstance(raw, dict):
+        return None
+
+    message = (
+        raw.get("message")
+        or raw.get("description")
+        or raw.get("summary")
+        or raw.get("event")
+        or raw.get("displayMessage")
+    )
+    if not message or not str(message).strip():
+        return None
+
+    severity = str(raw.get("severity") or raw.get("risk") or "MEDIUM").upper()
+    if severity not in VALID_SEVERITIES:
+        # Numeric scales are common (1-10 / 1-100): map them, don't guess.
+        try:
+            value = float(severity)
+        except ValueError:
+            severity = "MEDIUM"
+        else:
+            if value >= 8:
+                severity = "CRITICAL"
+            elif value >= 6:
+                severity = "HIGH"
+            elif value >= 3:
+                severity = "MEDIUM"
+            else:
+                severity = "LOW"
+
+    alert_type = str(raw.get("alert_type") or raw.get("type") or "log").lower()
+    if alert_type not in {"network", "log", "email", "dns", "endpoint", "cloud", "identity"}:
+        alert_type = "log"
+
+    source_ip = raw.get("source_ip") or raw.get("src_ip") or raw.get("client_ip") or raw.get("ip")
+    mitre = map_alert(alert_type, str(message), source_ip)
+
+    return {
+        "alert_type": alert_type if alert_type in {"network", "log", "email", "dns"} else "log",
+        "severity": severity,
+        "message": str(message)[:2000],
+        "source_ip": str(source_ip)[:50] if source_ip else None,
+        "score": float(raw.get("score")) if raw.get("score") is not None else None,
+        "mitre_tactic": raw.get("mitre_tactic") or mitre.get("tactic"),
+        "mitre_technique_id": raw.get("mitre_technique_id") or mitre.get("technique_id"),
+        "mitre_technique": raw.get("mitre_technique") or mitre.get("technique"),
+    }
+
+
+def _ingest_events(
+    db: Session,
+    cfg: ConnectorSource,
+    events: list,
+) -> tuple[int, int]:
+    """Insert normalized events, skipping duplicates. Returns (inserted, skipped)."""
+    inserted = 0
+    skipped = 0
+    since = _now() - timedelta(hours=24)
+
+    seen: set[tuple[str, str | None]] = set()
+    for raw in events:
+        normalized = _normalize_event(raw)
+        if normalized is None:
+            skipped += 1
+            continue
+
+        key = (normalized["message"], normalized["source_ip"])
+        if key in seen:
+            skipped += 1
+            continue
+
+        existing = (
+            db.query(SecurityAlert.id)
+            .filter(
+                SecurityAlert.source == cfg.connector_id,
+                SecurityAlert.message == normalized["message"],
+                SecurityAlert.source_ip == normalized["source_ip"],
+                SecurityAlert.created_at >= since,
+            )
+            .first()
+        )
+        if existing:
+            skipped += 1
+            continue
+
+        seen.add(key)
+        db.add(
+            SecurityAlert(
+                org_id=cfg.org_id,
+                source=cfg.connector_id,
+                source_ip=normalized["source_ip"],
+                alert_type=normalized["alert_type"],
+                severity=normalized["severity"],
+                score=normalized["score"],
+                message=normalized["message"],
+                mitre_tactic=normalized["mitre_tactic"],
+                mitre_technique_id=normalized["mitre_technique_id"],
+                mitre_technique=normalized["mitre_technique"],
+            )
+        )
+        inserted += 1
+
+    db.commit()
+    return inserted, skipped
+
+
+def ingest_push(
+    db: Session,
+    connector_id: str,
+    token: str,
+    events: list,
+) -> dict:
+    """Push ingest: authenticate by shared secret, then record real events."""
+    cfg = (
+        db.query(ConnectorSource)
+        .filter(
+            ConnectorSource.connector_id == connector_id,
+            ConnectorSource.ingest_token.isnot(None),
+            ConnectorSource.enabled.is_(True),
+        )
+        .first()
+    )
+    # Compared as bytes: hmac.compare_digest() rejects str with non-ASCII
+    # characters outright, which would turn a wrong token containing an accent
+    # into a TypeError (500) instead of a rejection (401).
+    if cfg is None or not token or not hmac.compare_digest(
+        token.encode("utf-8"), (cfg.ingest_token or "").encode("utf-8")
+    ):
+        raise PermissionError("Unknown connector ID or invalid ingest token")
+
+    if not isinstance(events, list):
+        raise ValueError("'events' must be a list")
+
+    inserted, skipped = _ingest_events(db, cfg, events)
+
+    cfg.events_ingested = (cfg.events_ingested or 0) + inserted
+    cfg.last_sync_at = _now()
+    cfg.last_status = "ok"
+    cfg.last_error = None
+    cfg.last_count = inserted
+    db.commit()
+
+    create_audit_log(
+        db,
+        action="CONNECTOR_INGEST",
+        actor=f"connector:{connector_id}",
+        resource=f"connector:{connector_id}",
+        details=f"{inserted} event(s) ingested, {skipped} skipped",
+    )
+    return {
+        "status": "ingested",
+        "connector_id": connector_id,
+        "ingested": inserted,
+        "skipped": skipped,
+        "message": f"Recorded {inserted} event(s) from {cfg.name}"
+        + (f"; {skipped} skipped as duplicate or unmappable" if skipped else ""),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Sync
+# ---------------------------------------------------------------------------
+
+
+def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict:
+    """Run a sync for one connector.
+
+    Three honest outcomes:
+      - **synced**   — a poll really fetched events; counts are real.
+      - **recorded** — nothing to fetch (no config, disabled, or push mode);
+                       the request is audited and the user is told why.
+      - **error**    — a poll was attempted and failed; the reason is returned.
+    """
+    names = {cid: nm for cid, nm, _ in CATALOGUE}
+    if connector_id not in names:
+        raise ValueError(f"Unknown connector ID: {connector_id}")
+    name = names[connector_id]
+
+    cfg = get_config(db, org_id, connector_id)
+
+    if cfg is None:
+        create_audit_log(
+            db,
+            action="CONNECTOR_SYNC_REQUESTED",
+            actor=actor,
+            resource=f"connector:{connector_id}",
+            details=f"Sync requested for {name} (no source configured)",
+        )
+        return {
+            "status": "recorded",
+            "connector_id": connector_id,
+            "live": False,
+            "message": (
+                f"Sync request recorded for {name}. No source is configured, so "
+                f"nothing was fetched — configure it to enable live sync."
+            ),
+        }
+
+    if not cfg.enabled:
+        create_audit_log(
+            db,
+            action="CONNECTOR_SYNC_REQUESTED",
+            actor=actor,
+            resource=f"connector:{connector_id}",
+            details=f"Sync requested for {name} (disabled)",
+        )
+        return {
+            "status": "recorded",
+            "connector_id": connector_id,
+            "live": False,
+            "message": f"{name} is disabled — no sync was attempted.",
+        }
+
+    if cfg.mode != "poll" or not cfg.endpoint:
+        create_audit_log(
+            db,
+            action="CONNECTOR_SYNC_REQUESTED",
+            actor=actor,
+            resource=f"connector:{connector_id}",
+            details=f"Sync requested for {name} (push mode — nothing to fetch)",
+        )
+        return {
+            "status": "recorded",
+            "connector_id": connector_id,
+            "live": False,
+            "message": (
+                f"{name} is configured for push ingest — there is nothing to fetch. "
+                f"Send events to /api/v1/connectors/ingest/{connector_id}."
+            ),
+        }
+
+    headers = {}
+    if cfg.auth_header and cfg.auth_token:
+        headers[cfg.auth_header] = cfg.auth_token
+
+    started = time.perf_counter()
+    try:
+        # Re-checked here as well as on write: a config created in a dev
+        # environment, or before this guard existed, must still not turn into
+        # an internal request. Raising inside the try records it as a failed
+        # sync rather than a 500.
+        _guard_endpoint(cfg.endpoint)
+        response = requests.get(cfg.endpoint, headers=headers or None, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception as exc:  # network, HTTP error, or non-JSON body
+        duration = int((time.perf_counter() - started) * 1000)
+        cfg.last_sync_at = _now()
+        cfg.last_status = "error"
+        cfg.last_error = str(exc)[:500]
+        cfg.last_duration_ms = duration
+        db.commit()
+        create_audit_log(
+            db,
+            action="CONNECTOR_SYNC_FAILED",
+            actor=actor,
+            resource=f"connector:{connector_id}",
+            details=f"Sync from {name} failed: {exc}"[:500],
+        )
+        return {
+            "status": "error",
+            "connector_id": connector_id,
+            "live": False,
+            "last_error": str(exc)[:500],
+            "message": f"Sync from {name} failed: {exc}"[:500],
+        }
+
+    events = payload if isinstance(payload, list) else (payload.get("events") or payload.get("data") or [])
+    if not isinstance(events, list):
+        events = []
+
+    inserted, skipped = _ingest_events(db, cfg, events)
+
+    duration = int((time.perf_counter() - started) * 1000)
+    cfg.last_sync_at = _now()
+    cfg.last_status = "ok"
+    cfg.last_error = None
+    cfg.last_duration_ms = duration
+    cfg.last_count = inserted
+    cfg.events_ingested = (cfg.events_ingested or 0) + inserted
+    db.commit()
+
+    create_audit_log(
+        db,
+        action="CONNECTOR_SYNC_COMPLETED",
+        actor=actor,
+        resource=f"connector:{connector_id}",
+        details=f"Synced {name}: {inserted} new event(s), {skipped} skipped",
+    )
+    return {
+        "status": "synced",
+        "connector_id": connector_id,
+        "live": True,
+        "ingested": inserted,
+        "skipped": skipped,
+        "last_sync": _humanize(cfg.last_sync_at),
+        "message": (
+            f"Fetched {len(events)} event(s) from {name} — {inserted} recorded"
+            + (f", {skipped} already known" if skipped else "")
+            + "."
+        ),
+    }

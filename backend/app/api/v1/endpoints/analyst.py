@@ -14,7 +14,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.abac import require_permission
 from app.models import User
-from app.services import analyst_service, scenario
+from app.services import analyst_service, connector_service, scenario
 from app.services.case_service import serialize_case
 
 router = APIRouter(prefix="/analyst", tags=["Analyst"])
@@ -69,10 +69,13 @@ def get_feed(
 
 @router.get("/connectors")
 def get_connectors(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Return live status of integrated security tools (Okta, Sentinel, GuardDuty, Cloudflare)."""
-    return analyst_service.get_connectors_status()
+    """Status of integrated security tools, derived from real configuration and
+    real sync state — a connector reads "connected" only if its last sync
+    actually succeeded, and counts come from ingested rows."""
+    return connector_service.list_connectors(db, org_id=current_user.org_id)
 
 
 @router.post("/connectors/{connector_id}/sync")
@@ -81,9 +84,16 @@ def sync_connector(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("alerts:write")),
 ):
-    """Trigger manual synchronization for a security connector."""
+    """Run a sync for a security connector.
+
+    Returns `synced` when a poll really fetched events, `recorded` when there
+    was nothing to fetch (no config / disabled / push mode), and `error` with
+    the reason when a poll was attempted and failed.
+    """
     try:
-        return analyst_service.sync_connector(db, connector_id, actor=current_user.username)
+        return connector_service.sync(
+            db, connector_id=connector_id, org_id=current_user.org_id, actor=current_user.username
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
