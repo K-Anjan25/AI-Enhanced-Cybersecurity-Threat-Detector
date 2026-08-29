@@ -40,8 +40,11 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS decided_at TIMESTAMP",
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS soar_action_id VARCHAR(64)",
     "ALTER TABLE cases ADD COLUMN IF NOT EXISTS report TEXT",
-    # Entity / attack-graph tables are created by Base.metadata.create_all when
-    # the app starts; the backfill below keeps them tenant-scoped consistently.
+    # Phase 40: SSO/SCIM — User columns for external identity
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS external_id VARCHAR(255)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider VARCHAR(50)",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_sso_user BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS scim_external_id VARCHAR(255)",
 ]
 
 

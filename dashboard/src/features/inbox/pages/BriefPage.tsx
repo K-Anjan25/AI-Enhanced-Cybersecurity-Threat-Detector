@@ -463,7 +463,7 @@ const BriefPage: React.FC = () => {
               <ShieldCheck size={16} className="text-accent-primary" /> Integrated security tooling
             </h2>
             <p className="text-xs text-content-tertiary mt-0.5">
-              Telemetry sources NOCTRA is built to ingest from. No source is
+              Telemetry sources NOCTRA is built to ingest from (10 total, Phase 40). No source is
               wired in this deployment — counts appear once one is connected.
             </p>
           </div>

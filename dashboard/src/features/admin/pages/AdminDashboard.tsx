@@ -118,6 +118,12 @@ export default function AdminDashboard(): React.ReactElement {
       body: "Score and blacklist source IPs feeding threat-intel enrichment.",
       cta: "Manage Reputation",
     },
+    {
+      to: "/admin/sso",
+      title: "SSO & SCIM",
+      body: "Configure OIDC single sign-on and SCIM provisioning for enterprise identity providers.",
+      cta: "Manage SSO/SCIM",
+    },
   ];
 
   const renderLinkCard = (link: AdminLink): React.ReactElement => (
