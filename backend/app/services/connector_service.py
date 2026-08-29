@@ -377,8 +377,25 @@ def list_connectors(db: Session, org_id: int | None) -> list[dict]:
             "mode": None,
             "last_error": None,
             "events_ingested": 0,
+            "oauth_connected": False,  # Phase 41
         }
+
+        # Phase 41: check OAuth for github/slack even if no cfg
+        if connector_id in ("github", "slack"):
+            try:
+                from app.services.connector_oauth_service import get_connector_oauth_status
+
+                oauth_status = get_connector_oauth_status(db, org_id=org_id, connector_id=connector_id)
+                entry["oauth_connected"] = oauth_status.get("connected", False)
+                entry["oauth_account"] = oauth_status.get("account_name")
+            except Exception:
+                pass
+
         if cfg is None:
+            # If OAuth connected but no cfg, still show as configured via OAuth
+            if entry.get("oauth_connected"):
+                entry["status"] = "configured"
+                entry["mode"] = "poll"
             rows.append(entry)
             continue
 
@@ -781,12 +798,25 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
         }
 
     headers = {}
+    # Phase 41: if OAuth token exists for github/slack, use it automatically
+    # unless explicit auth_header/token already configured
+    if connector_id in ("github", "slack"):
+        try:
+            from app.services.connector_oauth_service import get_oauth_token
+
+            oauth_token = get_oauth_token(db, org_id=cfg.org_id, connector_id=connector_id)
+            if oauth_token:
+                if connector_id == "github":
+                    headers["Authorization"] = f"Bearer {oauth_token}"
+                else:  # slack
+                    headers["Authorization"] = f"Bearer {oauth_token}"
+        except Exception:
+            pass
+
     if cfg.auth_header and cfg.auth_token:
         try:
             headers[cfg.auth_header] = decrypt_secret(cfg.auth_token) or ""
         except SecretDecryptionError as exc:
-            # Don't poll with a credential we cannot read, and don't report the
-            # attempt as a success: the operator needs to see why it failed.
             cfg.last_sync_at = _now()
             cfg.last_status = "error"
             cfg.last_error = (

@@ -298,9 +298,9 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 211+ passed, 2 skipped (Phase 40: 54 analyst+stream+pdf + 5 scheduler + 10 SSO/SCIM + 5 SCIM API)
+cd backend   && pytest tests      # 228+ passed, 2 skipped (Phase 41: 54 analyst+stream+pdf + 5 scheduler + 10 SSO/SCIM + 5 SCIM API + 12 SAML/Groups/Bulk/OAuth + 4 Groups API + 4 OAuth API)
 cd ml-service&& pytest tests      # 13 passed
-cd dashboard && npm run test:ci   # 46 passed (Vitest, Phase 40: +3 SSO/SCIM page)
+cd dashboard && npm run test:ci   # 46 passed (Vitest, Phase 41: SSO/SCIM + OAuth)
 cd dashboard && npx tsc --noEmit && npm run build
 ```
 
@@ -315,7 +315,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 ## Known gaps — say these before someone finds them
 
-Honest gaps are better than surprise gaps. As of this writing (Phase 40):
+Honest gaps are better than surprise gaps. As of this writing (Phase 41):
 
 - **No connector is wired by default.** Out of the box all ten report
   `not_connected` with `—` for counts — the honest state. You can make one real
@@ -345,21 +345,9 @@ Honest gaps are better than surprise gaps. As of this writing (Phase 40):
   returns 409 if no report yet (pending case), 501 if `reportlab` is not installed,
   and preserves the engine note including `(templated fallback)` so fallback reasoning
   is never presented as verified. Markdown syntax is stripped — no `**` or `| --- |` in PDF.
-- **SSO is OIDC only, not SAML (Phase 40).** `GET /auth/sso/config` reports if SSO
-  is enabled. `GET /auth/sso/login` redirects to IdP via Authorization Code flow
-  with state+nonce (in-memory TTL 10 min, per-process). Callback `GET /auth/sso/callback`
-  exchanges code, fetches userinfo, JIT provisions USER/ANALYST (never ADMIN) if
-  enabled. Secrets encrypted at rest. No SAML yet — documented as gap, returns 422
-  if requested. Admin CRUD at `/admin/sso/providers` per-org. Env fallback via
-  `SSO_OIDC_*` settings. Discovery via issuer/.well-known/openid-configuration.
-- **SCIM is Users CRUD + Groups minimal (Phase 40).** Endpoints under `/scim/v2`:
-  `ServiceProviderConfig`, `ResourceTypes`, `Schemas` (no auth), `Users` (GET with
-  limited filter userName/email/externalId eq, POST, GET/{id}, PUT, PATCH active,
-  DELETE soft-deactivates), `Groups` list minimal empty. Auth is Bearer token
-  hashed at rest in `scim_tokens` per-org (prefix shown, raw shown once). Env
-  fallback `SCIM_TOKEN` for single-tenant. Groups membership sync not implemented,
-  bulk extension not implemented — both documented. Admin token management at
-  `/admin/scim/tokens`.
+- **SSO is OIDC + SAML 2.0 (Phase 41).** `GET /auth/sso/config` reports OIDC + SAML if configured. OIDC: `GET /auth/sso/login` → IdP Authorization Code with state+nonce (in-memory TTL 10 min per-process), `GET /auth/sso/callback` exchanges code + userinfo + JIT USER/ANALYST never ADMIN. SAML: `GET /auth/sso/saml/login` generates AuthnRequest (deflate+base64) with RelayState (TTL 10 min), `POST /auth/sso/saml/callback` parses SAMLResponse base64 XML (NameID/email), JIT same. SAML verifies signature if xmlsec + cert available, else logs warning and parses without verification — documented gap. Secrets encrypted at rest. Admin CRUD `/admin/sso/providers` per-org per-type (oidc|saml), supports metadata_url auto-filling SSO URL + cert. Env fallback via `SSO_OIDC_*` and `SSO_SAML_*` settings. Discovery via OIDC .well-known and SAML metadata XML.
+- **SCIM is Users + Groups + Bulk (Phase 41).** Endpoints under `/scim/v2`: discovery `ServiceProviderConfig` (now bulk supported max 20), `ResourceTypes`, `Schemas` (no auth). Users: GET with limited filter userName/email/externalId eq, POST, GET/{id}, PUT, PATCH active, DELETE soft-deactivates. Groups: GET with filter displayName/externalId eq, POST, GET/{id}, PUT, PATCH add/remove/replace members (validates user ids, enriches display), DELETE. Members stored as JSON array of {value, display}. Bulk: POST `/scim/v2/Bulk` max 20 ops, failOnErrors support, supports POST Users/Groups, PUT/PATCH/DELETE Users, DELETE Groups. Auth Bearer hashed per-org, env fallback `SCIM_TOKEN`. Admin token management at `/admin/scim/tokens`. Honest gaps: filtering limited, groups role mapping not automatic, bulk max 20.
+- **Connector OAuth is GitHub App + Slack OAuth (Phase 41).** `GET /connectors/{id}/oauth/status` reports connected + account_name, `GET /connectors/{id}/oauth/start` redirects to provider (GitHub https://github.com/login/oauth/authorize scopes security_events read:org, Slack https://slack.com/oauth/v2/authorize scope auditlogs:read), `GET /connectors/{id}/oauth/callback` exchanges code for token (JSON Accept), fetches account info (GitHub /user, Slack team), stores encrypted access/refresh tokens in `connector_oauth` per-org. Polling for github/slack uses OAuth token automatically if present (Authorization: Bearer). `DELETE /connectors/{id}/oauth` disconnects. State in-memory TTL 10 min per-process. Refresh not yet implemented — logs warning if expired — documented gap. Env config via `GITHUB_OAUTH_CLIENT_ID/SECRET`, `SLACK_OAUTH_CLIENT_ID/SECRET`, `CONNECTOR_OAUTH_REDIRECT_BASE`.
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.

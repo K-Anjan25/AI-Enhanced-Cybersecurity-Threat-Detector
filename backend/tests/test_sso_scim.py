@@ -56,13 +56,14 @@ def test_sso_upsert_provider(db_session, org):
     assert cfg["issuer"] == "https://example.com"
 
 
-def test_sso_only_oidc_supported(db_session, org):
-    with pytest.raises(ValueError, match="Only 'oidc'"):
+def test_sso_only_oidc_saml_supported(db_session, org):
+    # Phase 41: both oidc and saml supported, invalid type should fail
+    with pytest.raises(ValueError, match="must be 'oidc' or 'saml'"):
         sso_service.upsert_provider(
             db_session,
             org_id=org.id,
             payload={
-                "provider_type": "saml",
+                "provider_type": "invalid",
                 "issuer": "https://example.com",
                 "client_id": "cid",
             },
@@ -140,7 +141,7 @@ def test_scim_user_crud(db_session, org):
     assert deleted["active"] is False
 
 
-def test_scim_discovery():
+def test_scim_discovery(db_session):
     cfg = scim_service.service_provider_config()
     assert "authenticationSchemes" in cfg
 
@@ -150,7 +151,7 @@ def test_scim_discovery():
     schemas = scim_service.schemas()
     assert schemas["totalResults"] == 2
 
-    groups = scim_service.list_groups(org_id=None)
+    groups = scim_service.list_groups(db_session, org_id=None)
     assert groups["totalResults"] == 0
 
 

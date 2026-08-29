@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     stream,
     sso,
     scim,
+    connector_oauth,
 )
 
 api_router = APIRouter()
@@ -29,6 +30,7 @@ api_router.include_router(auth.router, tags=["Authentication"])
 api_router.include_router(sso.router, prefix="/auth", tags=["SSO"])
 api_router.include_router(scim.router)
 api_router.include_router(scim.admin_router)
+api_router.include_router(connector_oauth.router)
 api_router.include_router(users.router, prefix="/user", tags=["Profile"])
 api_router.include_router(alerts.router, tags=["Alerts & Analysis"])
 api_router.include_router(ingest.router, tags=["Ingestion"])

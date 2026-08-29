@@ -113,6 +113,18 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
   };
 
   const hook = ConnectorApi.webhookUrl(connector.id);
+  const [oauthStatus, setOauthStatus] = useState<{ connected: boolean; account_name?: string } | null>(null);
+
+  useEffect(() => {
+    if (!open || !connector) return;
+    if (connector.id === "github" || connector.id === "slack") {
+      ConnectorApi.fetchOAuthStatus(connector.id)
+        .then(setOauthStatus)
+        .catch(() => setOauthStatus({ connected: false }));
+    } else {
+      setOauthStatus(null);
+    }
+  }, [open, connector]);
 
   const copy = async (text: string) => {
     try {
@@ -273,6 +285,34 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
                   Body: <code className="font-mono">{"{ \"events\": [{ \"message\": \"…\", \"severity\": \"HIGH\" }] }"}</code>
                 </p>
               </div>
+            </div>
+          )}
+
+          {(connector.id === "github" || connector.id === "slack") && (
+            <div className="console-panel rounded-sm p-3">
+              <p className="tech-label text-content-tertiary mb-1.5">OAuth — {connector.id === "github" ? "GitHub App" : "Slack"}</p>
+              {oauthStatus?.connected ? (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-content-secondary">
+                    Connected as <span className="font-semibold text-content-primary">{oauthStatus.account_name || "authorized account"}</span> — polling will use OAuth token automatically.
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={async () => {
+                    try {
+                      await ConnectorApi.disconnectOAuth(connector.id);
+                      setOauthStatus({ connected: false });
+                    } catch (err: any) {
+                      setError(getApiError(err, "Failed to disconnect OAuth"));
+                    }
+                  }}>Disconnect</Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-content-tertiary">Connect via OAuth to ingest directly from {connector.id === "github" ? "GitHub Advanced Security" : "Slack Audit Logs"} API. Token encrypted at rest.</p>
+                  <a href={ConnectorApi.oauthStartUrl(connector.id)} className="inline-flex items-center px-3 py-1.5 rounded-sm bg-app-surface border border-line-subtle text-xs font-semibold text-accent-primary hover:border-accent-primary transition-colors">
+                    Connect {connector.id === "github" ? "GitHub" : "Slack"} via OAuth
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

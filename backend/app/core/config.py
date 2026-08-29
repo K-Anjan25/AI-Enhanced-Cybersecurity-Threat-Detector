@@ -61,6 +61,21 @@ class Settings(BaseSettings):
     # Fallback global token (hashed comparison) — per-org tokens in DB are preferred
     SCIM_TOKEN: str | None = None
 
+    # SAML (Phase 41)
+    SSO_SAML_ENABLED: bool = False
+    SSO_SAML_METADATA_URL: str | None = None
+    SSO_SAML_ENTITY_ID: str | None = None
+    SSO_SAML_ACS_URL: str | None = None
+    SSO_SAML_SSO_URL: str | None = None
+    SSO_SAML_CERTIFICATE: str | None = None
+
+    # Connector OAuth (Phase 41) — GitHub App + Slack OAuth
+    GITHUB_OAUTH_CLIENT_ID: str | None = None
+    GITHUB_OAUTH_CLIENT_SECRET: str | None = None
+    SLACK_OAUTH_CLIENT_ID: str | None = None
+    SLACK_OAUTH_CLIENT_SECRET: str | None = None
+    CONNECTOR_OAUTH_REDIRECT_BASE: str | None = None  # e.g. http://localhost:8000 or frontend URL
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
