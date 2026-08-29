@@ -44,6 +44,8 @@ from app.models.approval_workflow import ApprovalWorkflow, ApprovalInstance, App
 from app.models.hunt_notebook import HuntNotebook, NotebookCell, NotebookExecution
 from app.models.exposure import ASM_Domain, ASM_AssetExposure, ASM_Certificate, ExposureFinding
 from app.models.ai_redteam import RedTeamJob, RedTeamPrompt, RedTeamFinding
+from app.models.federated import FederatedJob, FederatedRound, OrgModelUpdate, FederatedModel
+from app.models.compliance_autopilot import AutopilotRule, AutopilotExecution, AutopilotFinding
 
 __all__ = [
     "Org",
@@ -160,4 +162,11 @@ __all__ = [
     "RedTeamJob",
     "RedTeamPrompt",
     "RedTeamFinding",
+    "FederatedJob",
+    "FederatedRound",
+    "OrgModelUpdate",
+    "FederatedModel",
+    "AutopilotRule",
+    "AutopilotExecution",
+    "AutopilotFinding",
 ]

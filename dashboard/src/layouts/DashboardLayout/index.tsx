@@ -158,6 +158,14 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Federated & Autopilot",
+    items: [
+      { name: "Federated P89", path: "/federated", icon: Share2, badge: "P89" },
+      { name: "Autopilot P90", path: "/compliance-autopilot", icon: FileDown, badge: "P90" },
+      { name: "Federated+Autopilot", path: "/federated-autopilot", icon: Layers, badge: "P89-90" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,

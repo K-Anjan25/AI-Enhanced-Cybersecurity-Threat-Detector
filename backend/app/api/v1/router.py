@@ -61,6 +61,8 @@ from app.api.v1.endpoints import (
     hunt_notebooks,
     exposure,
     ai_redteam,
+    federated,
+    compliance_autopilot,
 )
 
 api_router = APIRouter()
@@ -133,3 +135,6 @@ api_router.include_router(approval_workflows.router)
 api_router.include_router(hunt_notebooks.router)
 api_router.include_router(exposure.router)
 api_router.include_router(ai_redteam.router)
+# Phases 89-90
+api_router.include_router(federated.router)
+api_router.include_router(compliance_autopilot.router)
