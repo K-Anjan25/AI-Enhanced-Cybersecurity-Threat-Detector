@@ -169,13 +169,13 @@ const CasePage: React.FC = () => {
     setChatLoading(true);
 
     try {
-      const res = await AnalystApi.chatAboutCase(id, userText);
+      const res: any = await AnalystApi.chatAboutCase(id, userText);
       const analystMsg: ChatMessage = {
         id: `n-${Date.now()}`,
         sender: "axiom",
-        text: res.answer,
+        text: res.answer + (res.llm_used ? "" : ""),
         confidence: res.confidence,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (res.llm_used ? " · LLM" : ""),
       };
       setChatMessages((prev) => [...prev, analystMsg]);
     } catch (err: any) {
@@ -545,6 +545,24 @@ const CasePage: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    const exp = await AnalystApi.exportCase(data.id);
+                    const blob = new Blob([JSON.stringify(exp, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `noctra-case-${data.id}-export.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch {}
+                }}
+              >
+                <FileText size={16} className="mr-1.5" aria-hidden />
+                Export JSON
+              </Button>
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
@@ -577,6 +595,24 @@ const CasePage: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2 ml-auto shrink-0">
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      const exp = await AnalystApi.exportCase(data.id);
+                      const blob = new Blob([JSON.stringify(exp, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `noctra-case-${data.id}-export.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {}
+                  }}
+                >
+                  <FileText size={16} className="mr-1.5" aria-hidden />
+                  Export JSON
+                </Button>
                 {data.report && (
                   <Button variant="ghost" onClick={() => setShowReport((s) => !s)}>
                     <FileText size={16} className="mr-1.5" aria-hidden />

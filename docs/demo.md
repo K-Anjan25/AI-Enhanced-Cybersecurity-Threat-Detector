@@ -127,9 +127,10 @@ Then **fire a scenario** — this is the moment the demo becomes real:
 - Pick a scenario in the Inbox control, or press **⌘K / Ctrl+K** → **Actions** →
   `Simulate: Credential leak (T1078)`. Both call
   `POST /analyst/simulate?scenario_type=…`.
-- Four scenarios exist, all wired: `credential_leak` (T1078),
+- Six scenarios exist, all wired: `credential_leak` (T1078),
   `phishing_outbreak` (T1566), `data_exfiltration` (T1048),
-  `compromised_api_key` (T1098).
+  `compromised_api_key` (T1098), `insider_threat` (T1003),
+  `ransomware_activity` (T1486). Listed via `GET /analyst/scenarios`.
 - What happens server-side in one request: a CRITICAL alert is inserted → the
   blast radius is built in the entity graph → one reversible action is drafted →
   a `pending` analyst case is opened → `ANALYST_CASE_OPENED` is appended to the
@@ -273,7 +274,7 @@ reputation) fail by design, and are labelled below.
 | 3 | `/` Inbox | `features/inbox/pages/BriefPage.tsx` | `GET /analyst/brief`, `/analyst/connectors`, `/analyst/feed`; `POST /analyst/simulate`, `/analyst/connectors/{id}/sync` | All five brief counts render as integers; scenario control creates a case and navigates to it; empty state reads as a sentence, not an error. Unconfigured connector cards read `not_connected` + `—`; Sync returns `synced` / `recorded` / `error` and the UI shows the server's message verbatim |
 | 3a | Connector config modal | `components/connectors/ConnectorConfigModal.tsx` | `GET/PUT/DELETE /connectors/{id}/config`, `POST /connectors/ingest/{id}` | Secrets never returned (`has_*_token` flags only); push webhook ingests real alerts (401 on a bad token); poll sync records real counts + measured latency; duplicates skipped; a failing endpoint reports `error` with the reason |
 | 4 | `/feed` | `features/cases/pages/FeedPage.tsx` | `GET /analyst/feed` | Paginated decision feed, newest first; pending/approved/declined/reverted badges correct |
-| 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted` |
+| 5 | `/case/:id` | `features/cases/pages/CasePage.tsx` | `GET /analyst/cases/{id}`, `.../timeline`, `.../export`; `POST .../approve`, `.../decline`, `.../revert`, `.../chat` | Narrative + evidence + blast radius + one reversible action with `undo`; timeline composed from real rows; approve → `soar_action_id` recorded; revert → `reverted`; Export JSON downloads full case + timeline |
 | 6 | `/actions` | `features/actions/pages/ActionsPage.tsx` | `GET /analyst/feed`; `POST /analyst/cases/{id}/revert` | Only `approved`/`reverted` cases; filter by action type/target/case; record-only + reversible stated |
 | 7 | `/reports` | `features/reports/pages/ReportsPage.tsx` | `GET /analyst/feed`, `/analyst/cases/{id}/report` | Report downloads as `noctra-report-case-{id}.md`; names the reasoning source |
 | 8 | `/alerts` | `features/alerts/pages/ThreatAlertsPage.tsx` → `AlertList` | `GET /alerts`, `/save-scanned-alerts` | Search + severity filter + MITRE mapping; detail modal links to any case opened from the alert |
@@ -297,9 +298,9 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 160 passed, 2 skipped
+cd backend   && pytest tests      # 166 passed, 2 skipped
 cd ml-service&& pytest tests      # 13 passed
-cd dashboard && npm run test:ci   # 14 passed (Vitest)
+cd dashboard && npm run test:ci   # 32 passed (Vitest)
 cd dashboard && npx tsc --noEmit && npm run build
 ```
 
@@ -350,6 +351,8 @@ Honest gaps are better than surprise gaps. As of this writing:
   needs a shared store.
 - **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
   deterministic fallback and the UI labels it "NOCTRA built-in reasoning engine"
-  with confidence `n/a`.
+  with confidence `n/a`. When a key is set, both case analysis and the Ask-NOCTRA
+  chat (`POST /analyst/cases/{id}/chat`) use the model; chat falls back to keyword
+  logic on any failure so the endpoint never breaks for lack of a key.
 - **Scenarios are simulated.** `POST /analyst/simulate` injects a synthetic but
   realistic incident — say "simulate", not "detect", when you fire one live.

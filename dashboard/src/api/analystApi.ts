@@ -15,6 +15,26 @@ export interface FeedParams {
 }
 
 /** Calm home-screen summary: pending decisions, handled today, assets watched. */
+export interface ScenarioDef {
+  id: string;
+  label: string;
+  mitre: string;
+  severity: string;
+  description: string;
+}
+
+export const fetchScenarios = async (): Promise<ScenarioDef[]> => {
+  const { data } = await api.get<{ data: ScenarioDef[] }>("/analyst/scenarios");
+  // Back-compat: endpoint may return {data: [...]} or direct array
+  if (Array.isArray((data as any).data)) return (data as any).data;
+  return data as unknown as ScenarioDef[];
+};
+
+export const exportCase = async (id: number | string): Promise<{ case: AnalystCase; timeline: any[]; exported_at: string; exported_by: string }> => {
+  const { data } = await api.get(`/analyst/cases/${id}/export`);
+  return data;
+};
+
 export const fetchBrief = async (): Promise<Brief> => {
   const { data } = await api.get<Brief>("/analyst/brief");
   return data;
@@ -99,6 +119,8 @@ export const AnalystApi = {
   fetchFeed,
   fetchCase,
   simulate,
+  fetchScenarios,
+  exportCase,
   chatAboutCase,
   fetchConnectors,
   syncConnector,
