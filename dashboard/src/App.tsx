@@ -37,6 +37,7 @@ const CompliancePage = React.lazy(() => import("./features/admin/pages/Complianc
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
 const AdvancedHubPage = React.lazy(() => import("./features/advanced/pages/AdvancedHubPage"));
 const NextPhasesPage = React.lazy(() => import("./features/advanced/pages/NextPhasesPage"));
+const FuturePhasesPage = React.lazy(() => import("./features/advanced/pages/FuturePhasesPage"));
 
 const FallbackLoader: React.FC = () => (
   <div className="flex justify-center items-center h-screen bg-app-bg text-content-secondary font-mono text-sm">
@@ -106,6 +107,7 @@ export default function App(): JSX.Element {
               <Route path="soar" element={<SoarPage />} />
               <Route path="advanced" element={<AdvancedHubPage />} />
               <Route path="next" element={<NextPhasesPage />} />
+              <Route path="future" element={<FuturePhasesPage />} />
               <Route path="profile" element={<Profile />} />
               <Route path="account" element={<Account />} />
               <Route

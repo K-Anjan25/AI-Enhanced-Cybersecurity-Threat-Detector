@@ -39,6 +39,14 @@ from app.api.v1.endpoints import (
     hunts,
     vulns,
     ai_agent,
+    itdr,
+    cspm,
+    sbom,
+    deception,
+    forensics,
+    tip,
+    compliance_continuous,
+    exec_risk,
 )
 
 api_router = APIRouter()
@@ -85,3 +93,12 @@ api_router.include_router(ztna.router)
 api_router.include_router(hunts.router)
 api_router.include_router(vulns.router)
 api_router.include_router(ai_agent.router)
+# Phases 64-69 + 71-72
+api_router.include_router(itdr.router)
+api_router.include_router(cspm.router)
+api_router.include_router(sbom.router)
+api_router.include_router(deception.router)
+api_router.include_router(forensics.router)
+api_router.include_router(tip.router)
+api_router.include_router(compliance_continuous.router)
+api_router.include_router(exec_risk.router)

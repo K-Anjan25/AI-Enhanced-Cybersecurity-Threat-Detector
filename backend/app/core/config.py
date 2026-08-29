@@ -199,5 +199,41 @@ class Settings(BaseSettings):
     AI_AGENT_MAX_STEPS: int = 5
     AI_AGENT_MEMORY_TTL_HOURS: int = 24
 
+    # Phase 64: ITDR/UEBA
+    ITDR_ENABLED: bool = True
+    UEBA_BASELINE_DAYS: int = 30
+    UEBA_ANOMALY_THRESHOLD: float = 2.5
+
+    # Phase 65: CSPM + IaC
+    CSPM_ENABLED: bool = True
+    CSPM_CIS_BENCHMARK_VERSION: str = "1.4"
+    IAC_SCANNER_ENABLED: bool = True
+
+    # Phase 66: Supply Chain SBOM
+    SBOM_ENABLED: bool = True
+    SBOM_MAX_DEPENDENCIES: int = 10000
+
+    # Phase 67: Deception
+    DECEPTION_ENABLED: bool = True
+    HONEYPOT_ENABLED: bool = True
+
+    # Phase 68: Forensics
+    FORENSICS_ENABLED: bool = True
+    FORENSICS_TIMELINE_MAX_EVENTS: int = 10000
+
+    # Phase 69: TIP STIX/TAXII/MISP
+    TIP_ENABLED: bool = True
+    TAXII_ENABLED: bool = True
+    MISP_ENABLED: bool = False
+    MISP_URL: str | None = None
+    MISP_KEY: str | None = None
+
+    # Phase 71: Continuous compliance
+    CONTINUOUS_COMPLIANCE_ENABLED: bool = True
+    COMPLIANCE_EVIDENCE_INTERVAL_HOURS: int = 24
+
+    # Phase 72: Exec risk
+    EXEC_RISK_ENABLED: bool = True
+
 
 settings = Settings()

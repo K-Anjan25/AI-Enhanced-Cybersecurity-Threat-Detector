@@ -57,6 +57,7 @@ const AUTOMATE_NAV_ITEMS: NavItem[] = [
   { name: "Rules", path: "/admin/rules", icon: ListChecks },
   { name: "Advanced Hub P49-60", path: "/advanced", icon: Layers },
   { name: "Next P61-63 + Agent", path: "/next", icon: Layers },
+  { name: "Future P64-72", path: "/future", icon: Layers },
 ];
 
 const SYSTEM_NAV_ITEMS: NavItem[] = [
@@ -107,6 +108,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, onLogout })
     else if (path.startsWith("/soar")) title = "SOAR";
     else if (path.startsWith("/advanced")) title = "Advanced Hub P49-60";
     else if (path.startsWith("/next")) title = "Next P61-63 + AI Agent";
+    else if (path.startsWith("/future")) title = "Future P64-72";
     else if (path.startsWith("/incidents")) title = "Manual Incidents";
     else if (path.startsWith("/logs")) title = "Log Uploads";
     else if (path.startsWith("/profile") || path.startsWith("/account")) title = "Profile";
