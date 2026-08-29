@@ -47,6 +47,7 @@ const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Pa
 const Beyond100Page = React.lazy(() => import("./features/advanced/pages/Beyond100Page"));
 const MetaSingularityPage = React.lazy(() => import("./features/advanced/pages/MetaSingularityPage"));
 const OmniSingularityPage = React.lazy(() => import("./features/advanced/pages/OmniSingularityPage"));
+const TranscendencePage = React.lazy(() => import("./features/advanced/pages/TranscendencePage"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -182,6 +183,17 @@ export default function App(): JSX.Element {
               <Route path="planetary-defense" element={<OmniSingularityPage />} />
               <Route path="time-prophecy" element={<OmniSingularityPage />} />
               <Route path="omni-os" element={<OmniSingularityPage />} />
+              <Route path="transcendence" element={<TranscendencePage />} />
+              <Route path="multiverse-soc" element={<TranscendencePage />} />
+              <Route path="quantum-consciousness" element={<TranscendencePage />} />
+              <Route path="autonomous-economy" element={<TranscendencePage />} />
+              <Route path="neuro-symbolic" element={<TranscendencePage />} />
+              <Route path="self-replicating" element={<TranscendencePage />} />
+              <Route path="temporal-defense" element={<TranscendencePage />} />
+              <Route path="universal-language" element={<TranscendencePage />} />
+              <Route path="infinite-learning" element={<TranscendencePage />} />
+              <Route path="existential-risk" element={<TranscendencePage />} />
+              <Route path="transcendence-os" element={<TranscendencePage />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<ModulePage />} />
               <Route path="vulns" element={<ModulePage />} />

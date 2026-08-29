@@ -86,6 +86,16 @@ from app.models.consciousness_monitor import ConsciousnessProfile, AlignmentChec
 from app.models.planetary_defense import PlanetaryDefenseGrid, CriticalInfraNode, PlanetaryThreat
 from app.models.time_prophecy import TemporalModel, AnomalyProphecy, CausalGraph
 from app.models.omni_os import OmniOSConfig, OmniNode, OmniMetric, OmniLog
+from app.models.multiverse_soc import Multiverse, UniverseBranch, CrossUniverseIntel
+from app.models.quantum_consciousness import QuantumConsciousnessNode, EntanglementLink, QuantumThought
+from app.models.autonomous_economy import CyberEconomy, ResourceMarket, EconomyTransaction
+from app.models.neuro_symbolic import NeuroSymbolicEngine, SymbolicRule, ReasoningTrace
+from app.models.self_replicating import ReplicatorFleet, ReplicatorNode, ReplicationLog
+from app.models.temporal_defense import Timeline, TemporalAnomaly, TimelineProtection
+from app.models.universal_language import UniversalLanguageModel, Translation, UniversalThreat
+from app.models.infinite_learning import InfiniteLearner, LearningTask, MemoryConsolidation
+from app.models.existential_risk import ExistentialRisk, XRiskMitigation, XRiskScenario
+from app.models.transcendence_os import TranscendenceConfig, TranscendenceMetric, TranscendenceLog
 
 __all__ = [
     "Org",
@@ -328,4 +338,34 @@ __all__ = [
     "OmniNode",
     "OmniMetric",
     "OmniLog",
+    "Multiverse",
+    "UniverseBranch",
+    "CrossUniverseIntel",
+    "QuantumConsciousnessNode",
+    "EntanglementLink",
+    "QuantumThought",
+    "CyberEconomy",
+    "ResourceMarket",
+    "EconomyTransaction",
+    "NeuroSymbolicEngine",
+    "SymbolicRule",
+    "ReasoningTrace",
+    "ReplicatorFleet",
+    "ReplicatorNode",
+    "ReplicationLog",
+    "Timeline",
+    "TemporalAnomaly",
+    "TimelineProtection",
+    "UniversalLanguageModel",
+    "Translation",
+    "UniversalThreat",
+    "InfiniteLearner",
+    "LearningTask",
+    "MemoryConsolidation",
+    "ExistentialRisk",
+    "XRiskMitigation",
+    "XRiskScenario",
+    "TranscendenceConfig",
+    "TranscendenceMetric",
+    "TranscendenceLog",
 ]

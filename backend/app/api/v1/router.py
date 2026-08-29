@@ -103,6 +103,16 @@ from app.api.v1.endpoints import (
     planetary_defense,
     time_prophecy,
     omni_os,
+    multiverse_soc,
+    quantum_consciousness,
+    autonomous_economy,
+    neuro_symbolic,
+    self_replicating,
+    temporal_defense,
+    universal_language,
+    infinite_learning,
+    existential_risk,
+    transcendence_os,
 )
 
 api_router = APIRouter()
@@ -222,3 +232,14 @@ api_router.include_router(consciousness_monitor.router)
 api_router.include_router(planetary_defense.router)
 api_router.include_router(time_prophecy.router)
 api_router.include_router(omni_os.router)
+# Phases 131-140 - Transcendence
+api_router.include_router(multiverse_soc.router)
+api_router.include_router(quantum_consciousness.router)
+api_router.include_router(autonomous_economy.router)
+api_router.include_router(neuro_symbolic.router)
+api_router.include_router(self_replicating.router)
+api_router.include_router(temporal_defense.router)
+api_router.include_router(universal_language.router)
+api_router.include_router(infinite_learning.router)
+api_router.include_router(existential_risk.router)
+api_router.include_router(transcendence_os.router)
