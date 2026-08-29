@@ -6,6 +6,7 @@ import {
   Sparkles,
   Undo2,
   FileText,
+  Download,
   CheckCircle2,
   XCircle,
   RotateCcw,
@@ -28,6 +29,7 @@ import {
   Term,
 } from "../../../components/ui";
 import AnalystApi from "../../../api/analystApi";
+import { api } from "../../../api/axios";
 import { fetchAlerts } from "../../../api/alertApi";
 import type { Alert } from "../../../types/alert";
 import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../../../types/analyst";
@@ -71,6 +73,8 @@ const CasePage: React.FC = () => {
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [busy, setBusy] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -192,6 +196,31 @@ const CasePage: React.FC = () => {
       ]);
     } finally {
       setChatLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!data?.id) return;
+    setExportingPdf(true);
+    setPdfError(null);
+    try {
+      const resp = await api.get(`/analyst/cases/${data.id}/report.pdf`, { responseType: "blob" });
+      const blob = new Blob([resp.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `noctra-case-${data.id}-report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 409) setPdfError("No report yet — a report is written when a decision is recorded.");
+      else if (status === 501) setPdfError("PDF export is not available on this server (reportlab is not installed).");
+      else setPdfError("Could not export PDF. Try again.");
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -565,6 +594,10 @@ const CasePage: React.FC = () => {
                 <FileText size={16} className="mr-1.5" aria-hidden />
                 Export JSON
               </Button>
+              <Button variant="ghost" onClick={handleExportPdf} disabled={exportingPdf}>
+                <Download size={16} className="mr-1.5" aria-hidden />
+                {exportingPdf ? "Exporting…" : "Export PDF"}
+              </Button>
               <Button variant="secondary" onClick={() => setDialog("decline")}>
                 Decline
               </Button>
@@ -596,7 +629,7 @@ const CasePage: React.FC = () => {
                   )}
                 </p>
               </div>
-              <div className="flex items-center gap-2 ml-auto shrink-0">
+              <div className="flex items-center gap-2 ml-auto shrink-0 flex-wrap">
                 <Button
                   variant="ghost"
                   onClick={async () => {
@@ -614,6 +647,10 @@ const CasePage: React.FC = () => {
                 >
                   <FileText size={16} className="mr-1.5" aria-hidden />
                   Export JSON
+                </Button>
+                <Button variant="ghost" onClick={handleExportPdf} disabled={exportingPdf}>
+                  <Download size={16} className="mr-1.5" aria-hidden />
+                  {exportingPdf ? "Exporting…" : "Export PDF"}
                 </Button>
                 {data.report && (
                   <Button variant="ghost" onClick={() => setShowReport((s) => !s)}>
@@ -635,6 +672,12 @@ const CasePage: React.FC = () => {
                 {data.report}
               </pre>
             )}
+          </div>
+        )}
+
+        {pdfError && (
+          <div role="status" className="px-4 py-2 rounded-lg bg-status-warning/10 border border-status-warning/30 text-xs text-content-primary">
+            {pdfError}
           </div>
         )}
 

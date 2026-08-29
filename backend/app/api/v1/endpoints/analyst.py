@@ -6,7 +6,7 @@ questions, and monitor connected security integrations.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -273,6 +273,46 @@ def export_case(
         "exported_at": analyst_service._now().isoformat(),
         "exported_by": current_user.username,
     }
+
+@router.get("/cases/{case_id}/report.pdf")
+def export_case_pdf(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export a decided case's markdown report as PDF (Phase 38).
+
+    Honest: refuses with 409 if no report has been generated yet (pending case),
+    501 if reportlab is not installed, and preserves the engine note including
+    '(templated fallback)' so fallback reasoning is never presented as verified.
+    """
+    case = analyst_service.get_case(db, case_id, org_id=current_user.org_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if not case.report or not case.report.strip():
+        raise HTTPException(
+            status_code=409,
+            detail="No report yet — a report is written when a decision is recorded (approve/decline/revert).",
+        )
+    try:
+        from app.services.pdf_report import render_markdown_pdf
+    except Exception as exc:
+        raise HTTPException(status_code=501, detail=f"PDF export is not available: {exc}")
+    try:
+        pdf_bytes = render_markdown_pdf(case.report, case_id=case.id, title=case.title)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=501, detail=str(exc))
+    filename = f"noctra-case-{case.id}-report.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/notifications")

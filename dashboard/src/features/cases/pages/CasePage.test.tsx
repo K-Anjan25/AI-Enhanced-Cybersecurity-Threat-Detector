@@ -30,6 +30,17 @@ vi.mock("../../../api/alertApi", () => ({
   fetchAlerts: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("../../../api/axios", async (importOriginal) => {
+  const actual = await importOriginal<any>();
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      get: vi.fn().mockResolvedValue({ data: new Blob(["%PDF"], { type: "application/pdf" }) }),
+    },
+  };
+});
+
 const mocked = vi.mocked(AnalystApi);
 const mockedAlerts = vi.mocked(alertApi);
 
@@ -117,5 +128,30 @@ describe("CasePage", () => {
   it("has export button that triggers download", async () => {
     renderPage();
     await waitFor(() => expect(screen.getAllByText(/Export JSON/).length).toBeGreaterThan(0));
+  });
+
+  it("has Export PDF button", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText(/Export PDF/).length).toBeGreaterThan(0));
+  });
+
+  it("shows 409 message when PDF not ready", async () => {
+    const { api } = await import("../../../api/axios");
+    vi.mocked(api.get).mockRejectedValue({ response: { status: 409 } });
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText(/Export PDF/).length).toBeGreaterThan(0));
+    const btn = screen.getAllByText(/Export PDF/)[0];
+    btn.click();
+    await waitFor(() => expect(screen.getByText(/No report yet/)).toBeInTheDocument());
+  });
+
+  it("shows 501 message when PDF renderer missing", async () => {
+    const { api } = await import("../../../api/axios");
+    vi.mocked(api.get).mockRejectedValue({ response: { status: 501 } });
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText(/Export PDF/).length).toBeGreaterThan(0));
+    const btn = screen.getAllByText(/Export PDF/)[0];
+    btn.click();
+    await waitFor(() => expect(screen.getByText(/not available/)).toBeInTheDocument());
   });
 });
