@@ -25,6 +25,16 @@ from app.api.v1.endpoints import (
     ocsf,
     compliance,
     apikeys,
+    threat_intel,
+    soar_exec,
+    collaboration,
+    sigma_rules,
+    compliance_packs,
+    org_teams,
+    ml_feedback,
+    attack_navigator,
+    data_lifecycle,
+    ha_status,
 )
 
 api_router = APIRouter()
@@ -55,3 +65,14 @@ api_router.include_router(stream.router)
 api_router.include_router(ocsf.router)
 api_router.include_router(compliance.router)
 api_router.include_router(apikeys.router)
+# Phases 49-60
+api_router.include_router(threat_intel.router)
+api_router.include_router(soar_exec.router)
+api_router.include_router(collaboration.router)
+api_router.include_router(sigma_rules.router)
+api_router.include_router(compliance_packs.router)
+api_router.include_router(org_teams.router)
+api_router.include_router(ml_feedback.router)
+api_router.include_router(attack_navigator.router)
+api_router.include_router(data_lifecycle.router)
+api_router.include_router(ha_status.router)

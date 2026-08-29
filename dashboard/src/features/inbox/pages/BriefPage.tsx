@@ -104,7 +104,7 @@ const BriefPage: React.FC = () => {
         AnalystApi.fetchFeed({ page: 1, limit: 100 }).catch(() => ({ data: [] as AnalystCase[] })),
         AnalystApi.fetchScenarios().catch(() => [] as any),
         OcsfApi.fetchBrief(20).catch(() => null),
-        ComplianceApi.verifyAuditChain(100).catch(() => null),
+        ComplianceApi.fetchAuditVerify(100).catch(() => null),
       ]);
       setBrief(briefData);
       setConnectors(connData);
