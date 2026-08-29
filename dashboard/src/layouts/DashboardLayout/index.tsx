@@ -35,6 +35,13 @@ import {
   Network,
   Boxes,
   Gavel,
+  Database,
+  Radio,
+  Store,
+  Brain,
+  ShieldAlert,
+  Swords,
+  FileDown,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../components/ui";
@@ -111,6 +118,19 @@ const NAV_SECTIONS: NavSection[] = [
       { name: "Advanced Hub P49-60", path: "/advanced", icon: Layers },
       { name: "Next P61-63", path: "/next", icon: Layers },
       { name: "Future P64-72", path: "/future", icon: Layers },
+      { name: "Advanced 73-80", path: "/advanced-phases", icon: Layers, badge: "P73-80" },
+    ],
+  },
+  {
+    label: "Data & Resilience",
+    items: [
+      { name: "Data Lake P73", path: "/data-lake", icon: Database, badge: "P73" },
+      { name: "HA Bus P74", path: "/ha", icon: Radio, badge: "P74" },
+      { name: "Marketplace P75", path: "/marketplace", icon: Store, badge: "P75" },
+      { name: "FineTune P76", path: "/finetune", icon: Brain, badge: "P76" },
+      { name: "Risk-Based P77", path: "/risk-based", icon: ShieldAlert, badge: "P77" },
+      { name: "Purple Team P78-79", path: "/purple-team", icon: Swords, badge: "P78" },
+      { name: "PDF Export P80", path: "/pdf-export", icon: FileDown, badge: "P80" },
     ],
   },
   {
