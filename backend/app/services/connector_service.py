@@ -556,12 +556,19 @@ def _ingest_events(
     cfg: ConnectorSource,
     events: list,
 ) -> tuple[int, int]:
-    """Insert normalized events, skipping duplicates. Returns (inserted, skipped)."""
+    """Insert normalized events, skipping duplicates. Returns (inserted, skipped).
+
+    After commit, publishes each new alert to the in-process EventBus so an open
+    SSE stream sees it immediately. Publish happens after commit — a rollback
+    never announces an alert that wasn't recorded. A publish failure never
+    breaks ingestion.
+    """
     inserted = 0
     skipped = 0
     since = _now() - timedelta(hours=24)
 
     seen: set[tuple[str, str | None]] = set()
+    created: list[SecurityAlert] = []
     for raw in events:
         normalized = _normalize_event(raw)
         if normalized is None:
@@ -588,23 +595,35 @@ def _ingest_events(
             continue
 
         seen.add(key)
-        db.add(
-            SecurityAlert(
-                org_id=cfg.org_id,
-                source=cfg.connector_id,
-                source_ip=normalized["source_ip"],
-                alert_type=normalized["alert_type"],
-                severity=normalized["severity"],
-                score=normalized["score"],
-                message=normalized["message"],
-                mitre_tactic=normalized["mitre_tactic"],
-                mitre_technique_id=normalized["mitre_technique_id"],
-                mitre_technique=normalized["mitre_technique"],
-            )
+        alert = SecurityAlert(
+            org_id=cfg.org_id,
+            source=cfg.connector_id,
+            source_ip=normalized["source_ip"],
+            alert_type=normalized["alert_type"],
+            severity=normalized["severity"],
+            score=normalized["score"],
+            message=normalized["message"],
+            mitre_tactic=normalized["mitre_tactic"],
+            mitre_technique_id=normalized["mitre_technique_id"],
+            mitre_technique=normalized["mitre_technique"],
         )
+        db.add(alert)
+        created.append(alert)
         inserted += 1
 
     db.commit()
+    # Publish after commit — never announce a row that was rolled back.
+    if created:
+        try:
+            from app.core.events import alert_event_from_row, bus
+
+            for row in created:
+                try:
+                    bus.publish(alert_event_from_row(row))
+                except Exception:
+                    _LOGGER.debug("Failed to publish alert event for %s", getattr(row, 'id', '?'), exc_info=True)
+        except Exception:
+            _LOGGER.debug("EventBus publish failed", exc_info=True)
     return inserted, skipped
 
 

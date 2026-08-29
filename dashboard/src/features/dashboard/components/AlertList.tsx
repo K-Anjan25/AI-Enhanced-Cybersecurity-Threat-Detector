@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchAlerts } from "../../../api/alertApi";
 import AlertDetailModal from "./AlertDetailModal";
 import { cn } from "../../../components/ui/Button";
+import { useAlertStream } from "../../../hooks/useAlertStream";
 import { SeverityBadge, SkeletonTable, EmptyState } from "../../../components/ui";
 import { Select } from "../../../components/ui/Select";
 
@@ -23,29 +24,45 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 8;
 
+  const loadAlerts = useCallback(() => {
+    fetchAlerts()
+      .then((data: any) => {
+        const payload: any = data;
+        const list = Array.isArray(payload) ? payload : payload?.items || [];
+        setAlerts(list);
+        setLoading(false);
+        if (onAlertsFetched) {
+          onAlertsFetched(list);
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading alerts:", err);
+        setLoading(false);
+      });
+  }, [onAlertsFetched]);
+
+  const handleLiveAlert = useCallback((liveAlert: any) => {
+    setAlerts((prev) => {
+      if (prev.some((a: any) => a.id === liveAlert.id)) return prev;
+      return [liveAlert, ...prev];
+    });
+  }, []);
+
+  const handleGap = useCallback(() => {
+    loadAlerts();
+  }, [loadAlerts]);
+
+  const { status: streamStatus, live } = useAlertStream({
+    enabled: true,
+    onAlert: handleLiveAlert,
+    onGap: handleGap,
+  });
+
   useEffect(() => {
-    const loadAlerts = () => {
-      fetchAlerts()
-        .then((data: any) => {
-          const payload: any = data;
-          const list = Array.isArray(payload) ? payload : payload?.items || [];
-          setAlerts(list);
-          setLoading(false);
-
-          if (onAlertsFetched) {
-            onAlertsFetched(list);
-          }
-        })
-        .catch((err) => {
-          console.error("Error loading alerts:", err);
-          setLoading(false);
-        });
-    };
-
     loadAlerts();
     const interval = setInterval(loadAlerts, 60000);
     return () => clearInterval(interval);
-  }, [onAlertsFetched]);
+  }, [loadAlerts]);
 
   const getSeverity = (alert: any) => {
     if (!alert) return "LOW";
@@ -86,7 +103,23 @@ const AlertList: React.FC<AlertListProps> = ({ extraAlerts = [], onSelectAlert, 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-content-primary tracking-tight">Security Alerts</h2>
-          <p className="text-xs text-content-tertiary mt-0.5">Real-time threat log detections and severity breakdowns.</p>
+          <p className="text-xs text-content-tertiary mt-0.5 flex items-center gap-2">
+            Real-time threat log detections and severity breakdowns.
+            <span
+              data-testid="stream-status"
+              data-stream-status={streamStatus}
+              className={
+                streamStatus === "live"
+                  ? "inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-status-success/15 text-status-success text-[10px] font-bold uppercase tracking-wider border border-status-success/30"
+                  : streamStatus === "reconnecting"
+                  ? "inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-status-warning/15 text-status-warning text-[10px] font-bold uppercase tracking-wider border border-status-warning/30"
+                  : "inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-app-subtle text-content-tertiary text-[10px] font-bold uppercase tracking-wider border border-line-subtle"
+              }
+            >
+              <span className={streamStatus === "live" ? "w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" : "w-1.5 h-1.5 rounded-full bg-content-tertiary"} aria-hidden />
+              {streamStatus === "live" ? "Streaming" : streamStatus === "reconnecting" ? "Reconnecting…" : streamStatus === "connecting" ? "Connecting…" : "Polling every 60s"}
+            </span>
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
