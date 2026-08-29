@@ -214,6 +214,22 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Omni-Singularity P121-P130",
+    items: [
+      { name: "Interplanetary P121", path: "/interplanetary-soc", icon: Globe, badge: "P121" },
+      { name: "AGI Council P122", path: "/agi-council", icon: Brain, badge: "P122" },
+      { name: "Legislation P123", path: "/legislation-engine", icon: Gavel, badge: "P123" },
+      { name: "Synthetic P124", path: "/synthetic-universe", icon: Database, badge: "P124" },
+      { name: "Holographic P125", path: "/holographic-soc", icon: Layers, badge: "P125" },
+      { name: "Workforce P126", path: "/autonomous-workforce", icon: Bot, badge: "P126" },
+      { name: "Consciousness P127", path: "/consciousness-monitor", icon: Fingerprint, badge: "P127" },
+      { name: "Planetary P128", path: "/planetary-defense", icon: ShieldAlert, badge: "P128" },
+      { name: "Time Prophecy P129", path: "/time-prophecy", icon: ScrollText, badge: "P129" },
+      { name: "Omni-OS P130", path: "/omni-os", icon: Layers, badge: "P130" },
+      { name: "Omni All", path: "/omni-singularity", icon: Layers, badge: "P121-130" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,
