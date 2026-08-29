@@ -22,6 +22,14 @@ from app.models.ztna import NetworkSegment, ZTNAPolicy, ZTNADecisionLog
 from app.models.hunt import Hunt, HuntExecution
 from app.models.vuln import Vulnerability, VulnScan, PentestFinding
 from app.models.ai_agent import AgentMemory, AgentTask
+from app.models.itdr import UserBehaviorProfile, IdentityThreat, RiskySignIn
+from app.models.cspm import CloudAccount, CloudResource, CSPMViolation, IaCScan
+from app.models.sbom import SBOM, Dependency, SupplyChainRisk
+from app.models.deception import Honeypot, CanaryToken, DeceptionAlert
+from app.models.forensics import ForensicCase, ForensicArtifact, TimelineEvent
+from app.models.tip import IntelFeed, STIXObject, MISPEvent
+from app.models.compliance_continuous import ComplianceControl, ComplianceEvidence, ComplianceAssessment
+from app.models.exec_risk import RiskMetric, ExecReport, ROIMetric
 
 __all__ = [
     "Org",
@@ -80,4 +88,29 @@ __all__ = [
     "PentestFinding",
     "AgentMemory",
     "AgentTask",
+    "UserBehaviorProfile",
+    "IdentityThreat",
+    "RiskySignIn",
+    "CloudAccount",
+    "CloudResource",
+    "CSPMViolation",
+    "IaCScan",
+    "SBOM",
+    "Dependency",
+    "SupplyChainRisk",
+    "Honeypot",
+    "CanaryToken",
+    "DeceptionAlert",
+    "ForensicCase",
+    "ForensicArtifact",
+    "TimelineEvent",
+    "IntelFeed",
+    "STIXObject",
+    "MISPEvent",
+    "ComplianceControl",
+    "ComplianceEvidence",
+    "ComplianceAssessment",
+    "RiskMetric",
+    "ExecReport",
+    "ROIMetric",
 ]
