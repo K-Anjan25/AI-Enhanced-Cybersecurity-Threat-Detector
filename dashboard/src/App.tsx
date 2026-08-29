@@ -46,6 +46,7 @@ const FederatedAutopilotPage = React.lazy(() => import("./features/advanced/page
 const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
 const Beyond100Page = React.lazy(() => import("./features/advanced/pages/Beyond100Page"));
 const MetaSingularityPage = React.lazy(() => import("./features/advanced/pages/MetaSingularityPage"));
+const OmniSingularityPage = React.lazy(() => import("./features/advanced/pages/OmniSingularityPage"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -170,6 +171,17 @@ export default function App(): JSX.Element {
               <Route path="adversary-llm" element={<MetaSingularityPage />} />
               <Route path="blockchain-audit" element={<MetaSingularityPage />} />
               <Route path="meta-os" element={<MetaSingularityPage />} />
+              <Route path="omni-singularity" element={<OmniSingularityPage />} />
+              <Route path="interplanetary-soc" element={<OmniSingularityPage />} />
+              <Route path="agi-council" element={<OmniSingularityPage />} />
+              <Route path="legislation-engine" element={<OmniSingularityPage />} />
+              <Route path="synthetic-universe" element={<OmniSingularityPage />} />
+              <Route path="holographic-soc" element={<OmniSingularityPage />} />
+              <Route path="autonomous-workforce" element={<OmniSingularityPage />} />
+              <Route path="consciousness-monitor" element={<OmniSingularityPage />} />
+              <Route path="planetary-defense" element={<OmniSingularityPage />} />
+              <Route path="time-prophecy" element={<OmniSingularityPage />} />
+              <Route path="omni-os" element={<OmniSingularityPage />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<ModulePage />} />
               <Route path="vulns" element={<ModulePage />} />

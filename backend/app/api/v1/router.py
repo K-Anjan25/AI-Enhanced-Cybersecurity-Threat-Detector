@@ -93,6 +93,16 @@ from app.api.v1.endpoints import (
     adversary_llm,
     blockchain_audit,
     meta_os,
+    interplanetary_soc,
+    agi_council,
+    legislation_engine,
+    synthetic_universe,
+    holographic_soc,
+    autonomous_workforce,
+    consciousness_monitor,
+    planetary_defense,
+    time_prophecy,
+    omni_os,
 )
 
 api_router = APIRouter()
@@ -201,3 +211,14 @@ api_router.include_router(intel_mesh.router)
 api_router.include_router(adversary_llm.router)
 api_router.include_router(blockchain_audit.router)
 api_router.include_router(meta_os.router)
+# Phases 121-130 - Omni-Singularity
+api_router.include_router(interplanetary_soc.router)
+api_router.include_router(agi_council.router)
+api_router.include_router(legislation_engine.router)
+api_router.include_router(synthetic_universe.router)
+api_router.include_router(holographic_soc.router)
+api_router.include_router(autonomous_workforce.router)
+api_router.include_router(consciousness_monitor.router)
+api_router.include_router(planetary_defense.router)
+api_router.include_router(time_prophecy.router)
+api_router.include_router(omni_os.router)

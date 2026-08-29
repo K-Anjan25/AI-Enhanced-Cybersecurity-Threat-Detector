@@ -76,6 +76,16 @@ from app.models.intel_mesh import MeshNode, MeshSync, MeshIntel
 from app.models.adversary_llm import AdversaryAgent, AttackPlan, AdversaryExecution
 from app.models.blockchain_audit import BlockchainLedger, AuditBlock, ChainVerification
 from app.models.meta_os import MetaOSConfig, CodeEvolution, SelfRewriteLog
+from app.models.interplanetary_soc import InterplanetaryNode, SpaceTelemetry, DelayTolerantBundle
+from app.models.agi_council import AGICouncil, AGIMember, CouncilDecision
+from app.models.legislation_engine import RegulationSource, PolicyAsCode, LegislationUpdate
+from app.models.synthetic_universe import SyntheticUniverse, SyntheticDataset, SyntheticScenario
+from app.models.holographic_soc import HolographicDisplay, Hologram, HoloInteraction
+from app.models.autonomous_workforce import AIWorkforce, SkillMatrix, WorkforceTask
+from app.models.consciousness_monitor import ConsciousnessProfile, AlignmentCheck, CorrigibilityLog
+from app.models.planetary_defense import PlanetaryDefenseGrid, CriticalInfraNode, PlanetaryThreat
+from app.models.time_prophecy import TemporalModel, AnomalyProphecy, CausalGraph
+from app.models.omni_os import OmniOSConfig, OmniNode, OmniMetric, OmniLog
 
 __all__ = [
     "Org",
@@ -287,4 +297,35 @@ __all__ = [
     "MetaOSConfig",
     "CodeEvolution",
     "SelfRewriteLog",
+    "InterplanetaryNode",
+    "SpaceTelemetry",
+    "DelayTolerantBundle",
+    "AGICouncil",
+    "AGIMember",
+    "CouncilDecision",
+    "RegulationSource",
+    "PolicyAsCode",
+    "LegislationUpdate",
+    "SyntheticUniverse",
+    "SyntheticDataset",
+    "SyntheticScenario",
+    "HolographicDisplay",
+    "Hologram",
+    "HoloInteraction",
+    "AIWorkforce",
+    "SkillMatrix",
+    "WorkforceTask",
+    "ConsciousnessProfile",
+    "AlignmentCheck",
+    "CorrigibilityLog",
+    "PlanetaryDefenseGrid",
+    "CriticalInfraNode",
+    "PlanetaryThreat",
+    "TemporalModel",
+    "AnomalyProphecy",
+    "CausalGraph",
+    "OmniOSConfig",
+    "OmniNode",
+    "OmniMetric",
+    "OmniLog",
 ]
