@@ -66,6 +66,16 @@ from app.models.supply_chain_v2 import SupplyChainGraph, VendorRisk, Attestation
 from app.models.xr_soc import XRSOCSession, SpatialEntity, XRAlert
 from app.models.deception_grid import DeceptionGrid, DeceptionNode, DeceptionInteraction
 from app.models.self_healing import SelfHealingPolicy, HealingExecution, HealingVerification
+from app.models.incident_commander import IncidentCommander, ICDecision, ICRunbook
+from app.models.insurance_risk import InsurancePolicy, RiskQuantification, BreachCostModel
+from app.models.actor_dna import ActorDNA, TTPPattern, ActorAttribution
+from app.models.data_vault import DataVault, VaultSecret, VaultAccessLog
+from app.models.compliance_auditor_v2 import ComplianceAuditV2, AuditFindingV2, AuditEvidenceV2
+from app.models.neural_copilot import NeuralProfile, CoPilotSession, CognitiveMetric
+from app.models.intel_mesh import MeshNode, MeshSync, MeshIntel
+from app.models.adversary_llm import AdversaryAgent, AttackPlan, AdversaryExecution
+from app.models.blockchain_audit import BlockchainLedger, AuditBlock, ChainVerification
+from app.models.meta_os import MetaOSConfig, CodeEvolution, SelfRewriteLog
 
 __all__ = [
     "Org",
@@ -247,4 +257,34 @@ __all__ = [
     "SelfHealingPolicy",
     "HealingExecution",
     "HealingVerification",
+    "IncidentCommander",
+    "ICDecision",
+    "ICRunbook",
+    "InsurancePolicy",
+    "RiskQuantification",
+    "BreachCostModel",
+    "ActorDNA",
+    "TTPPattern",
+    "ActorAttribution",
+    "DataVault",
+    "VaultSecret",
+    "VaultAccessLog",
+    "ComplianceAuditV2",
+    "AuditFindingV2",
+    "AuditEvidenceV2",
+    "NeuralProfile",
+    "CoPilotSession",
+    "CognitiveMetric",
+    "MeshNode",
+    "MeshSync",
+    "MeshIntel",
+    "AdversaryAgent",
+    "AttackPlan",
+    "AdversaryExecution",
+    "BlockchainLedger",
+    "AuditBlock",
+    "ChainVerification",
+    "MetaOSConfig",
+    "CodeEvolution",
+    "SelfRewriteLog",
 ]

@@ -45,6 +45,7 @@ const UltraPhasesPage = React.lazy(() => import("./features/advanced/pages/Ultra
 const FederatedAutopilotPage = React.lazy(() => import("./features/advanced/pages/FederatedAutopilotPage"));
 const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
 const Beyond100Page = React.lazy(() => import("./features/advanced/pages/Beyond100Page"));
+const MetaSingularityPage = React.lazy(() => import("./features/advanced/pages/MetaSingularityPage"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -158,6 +159,17 @@ export default function App(): JSX.Element {
               <Route path="xr-soc" element={<Beyond100Page />} />
               <Route path="deception-grid" element={<Beyond100Page />} />
               <Route path="self-healing" element={<Beyond100Page />} />
+              <Route path="meta-singularity" element={<MetaSingularityPage />} />
+              <Route path="incident-commander" element={<MetaSingularityPage />} />
+              <Route path="insurance-risk" element={<MetaSingularityPage />} />
+              <Route path="actor-dna" element={<MetaSingularityPage />} />
+              <Route path="data-vault" element={<MetaSingularityPage />} />
+              <Route path="compliance-auditor-v2" element={<MetaSingularityPage />} />
+              <Route path="neural-copilot" element={<MetaSingularityPage />} />
+              <Route path="intel-mesh" element={<MetaSingularityPage />} />
+              <Route path="adversary-llm" element={<MetaSingularityPage />} />
+              <Route path="blockchain-audit" element={<MetaSingularityPage />} />
+              <Route path="meta-os" element={<MetaSingularityPage />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<ModulePage />} />
               <Route path="vulns" element={<ModulePage />} />

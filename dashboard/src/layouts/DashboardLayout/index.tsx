@@ -198,6 +198,22 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Meta-Singularity P111-P120",
+    items: [
+      { name: "IC P111", path: "/incident-commander", icon: Bot, badge: "P111" },
+      { name: "Ins Risk P112", path: "/insurance-risk", icon: Gavel, badge: "P112" },
+      { name: "Actor DNA P113", path: "/actor-dna", icon: Fingerprint, badge: "P113" },
+      { name: "Data Vault P114", path: "/data-vault", icon: Package, badge: "P114" },
+      { name: "Audit v2 P115", path: "/compliance-auditor-v2", icon: FileCheck, badge: "P115" },
+      { name: "Neural P116", path: "/neural-copilot", icon: Brain, badge: "P116" },
+      { name: "Intel Mesh P117", path: "/intel-mesh", icon: Share2, badge: "P117" },
+      { name: "Adv LLM P118", path: "/adversary-llm", icon: Swords, badge: "P118" },
+      { name: "Blockchain P119", path: "/blockchain-audit", icon: FileDown, badge: "P119" },
+      { name: "Meta-OS P120", path: "/meta-os", icon: Layers, badge: "P120" },
+      { name: "Meta All", path: "/meta-singularity", icon: Layers, badge: "P111-120" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,

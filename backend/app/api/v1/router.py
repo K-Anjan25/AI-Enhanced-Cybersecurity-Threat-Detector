@@ -83,6 +83,16 @@ from app.api.v1.endpoints import (
     xr_soc,
     deception_grid,
     self_healing,
+    incident_commander,
+    insurance_risk,
+    actor_dna,
+    data_vault,
+    compliance_auditor_v2,
+    neural_copilot,
+    intel_mesh,
+    adversary_llm,
+    blockchain_audit,
+    meta_os,
 )
 
 api_router = APIRouter()
@@ -180,3 +190,14 @@ api_router.include_router(supply_chain_v2.router)
 api_router.include_router(xr_soc.router)
 api_router.include_router(deception_grid.router)
 api_router.include_router(self_healing.router)
+# Phases 111-120 - Meta-Singularity
+api_router.include_router(incident_commander.router)
+api_router.include_router(insurance_risk.router)
+api_router.include_router(actor_dna.router)
+api_router.include_router(data_vault.router)
+api_router.include_router(compliance_auditor_v2.router)
+api_router.include_router(neural_copilot.router)
+api_router.include_router(intel_mesh.router)
+api_router.include_router(adversary_llm.router)
+api_router.include_router(blockchain_audit.router)
+api_router.include_router(meta_os.router)
