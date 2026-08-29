@@ -166,6 +166,22 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Final 10 P91-P100 OS",
+    items: [
+      { name: "Intel Share P91", path: "/federated-intel", icon: Share2, badge: "P91" },
+      { name: "Quantum Safe P92", path: "/quantum-safe", icon: Shield, badge: "P92" },
+      { name: "Attack Path P93", path: "/attack-path", icon: Network, badge: "P93" },
+      { name: "CART P94", path: "/cart", icon: Swords, badge: "P94" },
+      { name: "Data Fabric P95", path: "/data-fabric", icon: Database, badge: "P95" },
+      { name: "SOC Mgr P96", path: "/soc-manager", icon: Bot, badge: "P96" },
+      { name: "DRP P97", path: "/drp", icon: Globe, badge: "P97" },
+      { name: "CNAPP P98", path: "/cnapp", icon: Boxes, badge: "P98" },
+      { name: "Posture v2 P99", path: "/posture-score", icon: ShieldAlert, badge: "P99" },
+      { name: "NOCTRA OS P100", path: "/noctra-os", icon: Layers, badge: "P100" },
+      { name: "Final10 All", path: "/final10", icon: Layers, badge: "P91-100" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,
