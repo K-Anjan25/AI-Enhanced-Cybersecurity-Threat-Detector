@@ -16,18 +16,74 @@ from __future__ import annotations
 
 import hmac
 import ipaddress
+import logging
 import socket
+import threading
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import requests
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.secrets import SecretDecryptionError, decrypt_secret, encrypt_secret
 from app.models import ConnectorSource, SecurityAlert
 from app.services.mitre import map_alert
 from app.utils.helpers import create_audit_log
+
+_LOGGER = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Ingest rate limiting
+# ---------------------------------------------------------------------------
+#
+# The push webhook is unauthenticated apart from the shared secret, so
+# "anyone holding the token can post" also means "as fast as they like" —
+# which is a cheap way to fill the alerts table. This is a fixed-window
+# counter per connector.
+#
+# Honest scope: the counter lives in this process, so the real ceiling is
+# CONNECTOR_INGEST_RATE_LIMIT x (number of workers). It bounds a runaway or
+# compromised sender rather than enforcing a tenant quota; a shared limit
+# needs Redis or a database-backed window.
+
+_INGEST_WINDOW_SECONDS = 60
+_RATE_LOCK = threading.Lock()
+_RATE_HITS: dict[str, list[float]] = {}
+
+
+class RateLimited(Exception):
+    """Too many ingest requests for one connector inside the window."""
+
+    def __init__(self, connector_id: str, retry_after: float):
+        super().__init__(f"Too many ingest requests for {connector_id}")
+        self.connector_id = connector_id
+        self.retry_after = max(1, int(retry_after))
+
+
+def _check_ingest_rate(connector_id: str) -> None:
+    limit = settings.CONNECTOR_INGEST_RATE_LIMIT
+    if limit <= 0:  # 0 disables the limiter
+        return
+
+    now = time.monotonic()
+    with _RATE_LOCK:
+        hits = _RATE_HITS.setdefault(connector_id, [])
+        cutoff = now - _INGEST_WINDOW_SECONDS
+        while hits and hits[0] < cutoff:
+            hits.pop(0)
+        if len(hits) >= limit:
+            raise RateLimited(connector_id, _INGEST_WINDOW_SECONDS - (now - hits[0]))
+        hits.append(now)
+
+
+def reset_ingest_rate_limits() -> None:
+    """Clear the counters. Used by tests; harmless in production."""
+    with _RATE_LOCK:
+        _RATE_HITS.clear()
+
 
 # The catalogue — the sources NOCTRA is built to ingest from. A catalogue entry
 # alone proves nothing; it only becomes "connected" once a source row exists and
@@ -61,6 +117,12 @@ def _is_internal_address(raw: str) -> bool:
     )
 
 
+def _guard_active() -> bool:
+    """Is the internal-address policy in force? Off in dev/test, where the
+    documented walkthrough points a connector at 127.0.0.1."""
+    return (settings.ENVIRONMENT or "").strip().lower() not in _DEV_ENVIRONMENTS
+
+
 def _guard_endpoint(url: str | None) -> None:
     """Refuse endpoints that would turn a poll into an SSRF.
 
@@ -79,7 +141,7 @@ def _guard_endpoint(url: str | None) -> None:
     So this is defence in depth against a hostile or mistaken endpoint, not a
     sealed boundary.
     """
-    if (settings.ENVIRONMENT or "").strip().lower() in _DEV_ENVIRONMENTS:
+    if not _guard_active():
         return
     if not url:
         return
@@ -112,6 +174,102 @@ _INTERNAL_ENDPOINT_MESSAGE = (
     "endpoint resolves to a private, loopback or link-local address — "
     "refusing to fetch it"
 )
+
+
+class _PinnedHostAdapter(requests.adapters.HTTPAdapter):
+    """HTTPS adapter that connects to an IP but verifies the real hostname.
+
+    Without this, pinning would break TLS: the certificate would be checked
+    against the IP we connected to rather than the name that was resolved.
+    """
+
+    def __init__(self, hostname: str, **kwargs):
+        self._hostname = hostname
+        super().__init__(**kwargs)
+
+    def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
+        pool_kwargs["server_hostname"] = self._hostname  # SNI uses the real name
+        pool_kwargs["assert_hostname"] = self._hostname  # cert is checked against it
+        super().init_poolmanager(connections, maxsize, block=block, **pool_kwargs)
+
+
+def _pin_to_ip(url: str) -> tuple[str, dict[str, str], str | None, list[str]]:
+    """Rewrite a URL so the connection goes to the IP we just validated.
+
+    Returns ``(request_url, extra_headers, tls_hostname, addresses)``.
+    ``tls_hostname`` is None when nothing was pinned — either the host is
+    already an IP literal, or the name does not resolve (in which case the
+    request fails with its own error rather than one we invented).
+
+    ``addresses`` is what the caller must validate: they are the addresses the
+    request will actually use. Checking a *different* resolution — which is
+    what calling getaddrinfo twice does — leaves the rebinding window wide
+    open, because the second lookup can answer differently.
+
+    This is the other half of the SSRF guard. Checking that a name resolves
+    somewhere public and *then* letting requests resolve it again is a race a
+    hostile nameserver wins: it answers with a public address for the check and
+    an internal one for the request (DNS rebinding). Connecting to the address
+    that was validated removes the second lookup.
+    """
+    parsed = urlparse(url)
+    host = parsed.hostname
+    if host is None:
+        return url, {}, None, []
+
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        return url, {}, None, [host]  # IP literal — nothing to rebind
+
+    try:
+        resolved = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return url, {}, None, []
+
+    addresses = [info[4][0] for info in resolved]
+    if not addresses:
+        return url, {}, None, []
+
+    ip = addresses[0]
+    netloc = f"[{ip}]" if ":" in ip else ip
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+    pinned = urlunparse(parsed._replace(netloc=netloc))
+
+    # The Host header has to keep the original name; only the socket target
+    # changes.
+    default_port = 443 if parsed.scheme == "https" else 80
+    host_header = host if parsed.port in (None, default_port) else f"{host}:{parsed.port}"
+    return pinned, {"Host": host_header}, host, addresses
+
+
+def _fetch_events(url: str, headers: dict | None, timeout=REQUEST_TIMEOUT):
+    """GET an events URL, connecting to an address that was just checked.
+
+    The resolution, the policy check and the connection all use the same
+    addresses, resolved once. That is what closes DNS rebinding: an attacker
+    who answers the *next* lookup with 169.254.169.254 is talking to a lookup
+    that never happens.
+    """
+    pinned, extra_headers, tls_host, addresses = _pin_to_ip(url)
+
+    if _guard_active() and any(_is_internal_address(addr) for addr in addresses):
+        raise ValueError(_INTERNAL_ENDPOINT_MESSAGE)
+
+    merged = {**(headers or {}), **extra_headers}
+
+    if tls_host is None or not pinned.startswith("https://"):
+        return requests.get(pinned, headers=merged or None, timeout=timeout)
+
+    session = requests.Session()
+    session.mount("https://", _PinnedHostAdapter(tls_host))
+    try:
+        return session.get(pinned, headers=merged or None, timeout=timeout)
+    finally:
+        session.close()
 
 
 # ---------------------------------------------------------------------------
@@ -293,10 +451,13 @@ def upsert_config(
         cfg.endpoint = payload.get("endpoint")
     if "auth_header" in payload:
         cfg.auth_header = payload.get("auth_header")
+    # Credentials are encrypted before they touch the database. An empty string
+    # means "clear it", which is stored as NULL — an empty secret and no secret
+    # are the same thing.
     if payload.get("auth_token") is not None:
-        cfg.auth_token = payload["auth_token"]
+        cfg.auth_token = encrypt_secret(payload["auth_token"])
     if payload.get("ingest_token") is not None:
-        cfg.ingest_token = payload["ingest_token"]
+        cfg.ingest_token = encrypt_secret(payload["ingest_token"])
     if payload.get("enabled") is not None:
         cfg.enabled = bool(payload["enabled"])
 
@@ -453,7 +614,12 @@ def ingest_push(
     token: str,
     events: list,
 ) -> dict:
-    """Push ingest: authenticate by shared secret, then record real events."""
+    """Push ingest: authenticate by shared secret, then record real events.
+
+    Rate limited per connector — see _check_ingest_rate for what that does and
+    does not guarantee.
+    """
+    _check_ingest_rate(connector_id)
     cfg = (
         db.query(ConnectorSource)
         .filter(
@@ -466,8 +632,22 @@ def ingest_push(
     # Compared as bytes: hmac.compare_digest() rejects str with non-ASCII
     # characters outright, which would turn a wrong token containing an accent
     # into a TypeError (500) instead of a rejection (401).
+    #
+    # A stored secret that cannot be decrypted (JWT_SECRET_KEY rotated) is
+    # treated as a failed authentication, never as "no secret configured" —
+    # the latter would let anyone with the wrong token walk in. The caller gets
+    # the same generic rejection either way.
+    try:
+        stored = decrypt_secret(cfg.ingest_token) if cfg is not None else None
+    except SecretDecryptionError:
+        stored = None
+        _LOGGER.error(
+            "Connector %s has an undecryptable ingest secret — JWT_SECRET_KEY "
+            "was rotated; the source must be reconfigured.",
+            connector_id,
+        )
     if cfg is None or not token or not hmac.compare_digest(
-        token.encode("utf-8"), (cfg.ingest_token or "").encode("utf-8")
+        token.encode("utf-8"), (stored or "").encode("utf-8")
     ):
         raise PermissionError("Unknown connector ID or invalid ingest token")
 
@@ -574,16 +754,38 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
 
     headers = {}
     if cfg.auth_header and cfg.auth_token:
-        headers[cfg.auth_header] = cfg.auth_token
+        try:
+            headers[cfg.auth_header] = decrypt_secret(cfg.auth_token) or ""
+        except SecretDecryptionError as exc:
+            # Don't poll with a credential we cannot read, and don't report the
+            # attempt as a success: the operator needs to see why it failed.
+            cfg.last_sync_at = _now()
+            cfg.last_status = "error"
+            cfg.last_error = (
+                f"{exc} — re-enter the credential for {name} in connector settings"
+            )
+            db.commit()
+            create_audit_log(
+                db,
+                action="CONNECTOR_SYNC_FAILED",
+                actor=actor,
+                resource=f"connector:{connector_id}",
+                details=f"Sync aborted for {name}: stored credential undecryptable",
+            )
+            return {
+                "status": "error",
+                "connector_id": connector_id,
+                "live": False,
+                "message": cfg.last_error,
+            }
 
     started = time.perf_counter()
     try:
-        # Re-checked here as well as on write: a config created in a dev
-        # environment, or before this guard existed, must still not turn into
-        # an internal request. Raising inside the try records it as a failed
-        # sync rather than a 500.
-        _guard_endpoint(cfg.endpoint)
-        response = requests.get(cfg.endpoint, headers=headers or None, timeout=REQUEST_TIMEOUT)
+        # _fetch_events re-validates the address it connects to, so a config
+        # created in dev — or before this guard existed — still cannot become
+        # an internal request once deployed. Raising inside the try records it
+        # as a failed sync rather than a 500.
+        response = _fetch_events(cfg.endpoint, headers)
         response.raise_for_status()
         payload = response.json()
     except Exception as exc:  # network, HTTP error, or non-JSON body

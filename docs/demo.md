@@ -297,7 +297,7 @@ reputation) fail by design, and are labelled below.
 **Automated gates** (run these too — CI runs them on every push):
 
 ```bash
-cd backend   && pytest tests      # 146 passed, 2 skipped
+cd backend   && pytest tests      # 160 passed, 2 skipped
 cd ml-service&& pytest tests      # 13 passed
 cd dashboard && npm run test:ci   # 14 passed (Vitest)
 cd dashboard && npx tsc --noEmit && npm run build
@@ -328,21 +328,26 @@ Honest gaps are better than surprise gaps. As of this writing:
 - **The landing console-demo numbers are illustrative.** They live in a labelled
   demo panel on the public marketing page; every number inside the signed-in
   product is a real count.
-- **Connector credentials are stored in plaintext.** A configured source keeps
-  its outbound auth token and its push shared secret in cleartext in the
-  database, and they are never returned by the API (only `has_auth_token` /
-  `has_ingest_token` booleans). Fine for a self-hosted demo; encrypt at rest
-  before this holds real credentials.
-- **The webhook has no rate limit.** Any caller holding the shared secret can
-  post events as fast as it likes. Token comparison is constant-time, but
-  throttling the ingest endpoint is not done yet.
 - **The SSRF guard on polling is defence in depth, not a sealed boundary.**
-  Poll endpoints resolving to private, loopback or link-local addresses are
-  refused — but only when `ENVIRONMENT` is not a dev/test value (a dev checkout
-  defaults to `development`, and §3a's local mock endpoint relies on that), a
-  name this process
-  cannot resolve cannot be judged, and DNS rebinding between the check and the
-  request is not covered. Don't describe it as "SSRF-proof".
+  A poll endpoint is resolved once, private/loopback/link-local answers are
+  refused, and the request is pinned to an address from that same resolution —
+  so a hostile nameserver cannot answer differently for the request itself.
+  What it does not cover: the policy is inactive when `ENVIRONMENT` is a
+  dev/test value (a dev checkout defaults to `development`, and §3a's local
+  mock endpoint relies on that), and a name this process cannot resolve cannot
+  be judged. Don't describe it as "SSRF-proof".
+- **Connector credentials are encrypted at rest, with a consequence worth
+  knowing.** Both secrets are stored as tagged ciphertext and are never
+  returned by the API (only `has_auth_token` / `has_ingest_token` booleans).
+  The key is derived from `JWT_SECRET_KEY`, so **rotating `JWT_SECRET_KEY`
+  invalidates them** and each source has to have its secret re-entered. A
+  credential that cannot be decrypted is reported as a failure, never treated
+  silently as unset.
+- **The webhook rate limit is per process.** Ingest is capped at 120 requests
+  per connector per minute (`CONNECTOR_INGEST_RATE_LIMIT`), counted in memory —
+  so with N workers the real ceiling is N x 120, and a restart clears the
+  counters. It bounds a runaway or compromised sender; a tenant-wide quota
+  needs a shared store.
 - **LLM reasoning** requires `ANTHROPIC_API_KEY`; without it every case uses the
   deterministic fallback and the UI labels it "NOCTRA built-in reasoning engine"
   with confidence `n/a`.

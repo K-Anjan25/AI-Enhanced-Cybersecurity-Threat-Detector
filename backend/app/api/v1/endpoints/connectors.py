@@ -115,6 +115,14 @@ def ingest_events(
         return connector_service.ingest_push(
             db, connector_id, x_connector_token or "", payload.events
         )
+    except connector_service.RateLimited as exc:
+        # 429 with Retry-After, so a well-behaved sender backs off instead of
+        # hammering a limit it cannot see.
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after)},
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
     except ValueError as exc:

@@ -805,9 +805,52 @@ Also documented as known gaps rather than quietly shipped: connector
 credentials are stored in plaintext (never returned by the API — only
 `has_*_token` booleans), and the ingest webhook has no rate limit.
 
-Backend suite now 146 passed, 2 skipped (was 136; +10 guard tests).
+Backend suite now 160 passed, 2 skipped (was 136; +10 guard tests).
 
 The constant-time fix needed a second pass of its own: `hmac.compare_digest()`
 rejects non-ASCII `str` with a TypeError, so a wrong token containing an accent
 would have returned 500 instead of 401. Comparing UTF-8 bytes keeps a wrong
 token a wrong token, with a test pinning it.
+
+## Phase 35 — hardening the connector path
+
+PR #5 merged clean, so this pass took the three known gaps it documented and
+closed them.
+
+**Credentials are now encrypted at rest.** Both secrets are stored as
+`enc:v1:`-tagged Fernet ciphertext; the key is derived from `JWT_SECRET_KEY`
+rather than introduced as a second secret to distribute, which means rotating
+`JWT_SECRET_KEY` invalidates them. That trade is deliberate and documented:
+the alternative is a second key in every configmap. The important part is the
+failure mode — a credential that cannot be decrypted is reported as a failure
+and never collapses into "no credential configured", which would let any token
+through. Verified against the running API: the stored value is ciphertext, the
+plaintext is absent, and push auth still works.
+
+**Ingest is rate limited**, 120/connector/minute (`CONNECTOR_INGEST_RATE_LIMIT`),
+returning 429 with `Retry-After`. Honest scope: the counter is in-process, so
+the real ceiling is N x 120 across N workers. Verified live with the limit
+lowered to 3 — the 4th request gets 429 and `retry-after: 45`.
+
+**Polling now pins the connection to the address it validated.** The first
+version of this had a bug worth recording: `_guard_endpoint` resolved the name
+and checked it, then `_fetch_events` resolved it *again* and connected to that
+second answer — which is precisely the DNS-rebinding window pinning exists to
+close. The check and the connection now share one resolution: `_pin_to_ip`
+returns the addresses it resolved and `_fetch_events` validates those before
+using them.
+  - TLS was the delicate part: connecting to an IP would normally check the
+    certificate against the IP. A `_PinnedHostAdapter` carries `server_hostname`
+    and `assert_hostname` set to the resolved name. Verified with a local
+    HTTPS server: a certificate for the resolved name is accepted while
+    connecting to 127.0.0.1, and a certificate for a different name is
+    rejected — pinning did not quietly disable verification. (Plain HTTPS to
+    the internet is blocked in this sandbox, so this had to be done locally
+    rather than against a public host.)
+
+`cryptography` is now declared in requirements.txt — it was only transitive
+via python-jose.
+
+Backend suite: 160 passed, 2 skipped. The three "known gaps" in demo.md were
+rewritten to describe what these measures do and do not cover, rather than
+being deleted.

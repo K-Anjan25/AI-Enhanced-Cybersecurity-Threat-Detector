@@ -7,6 +7,11 @@ contract — a number is only returned if it was measured, and a failure is
 reported as a failure.
 """
 
+import json
+import socket
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 import pytest
 
 from app.models import AuditLog, ConnectorSource, Org, SecurityAlert
@@ -410,3 +415,348 @@ class _FakeResponse:
 
     def json(self):
         return self._payload
+
+
+# ---------------------------------------------------------------------------
+# Credentials at rest
+# ---------------------------------------------------------------------------
+
+
+def _raw_row(db_session, connector_id):
+    """The stored row, bypassing the service layer entirely."""
+    return (
+        db_session.query(ConnectorSource)
+        .filter(ConnectorSource.connector_id == connector_id)
+        .first()
+    )
+
+
+def test_credentials_are_encrypted_at_rest(db_session, org):
+    connector_service.upsert_config(
+        db_session,
+        org.id,
+        "okta",
+        {
+            "mode": "poll",
+            "endpoint": "https://provider.example/events",
+            "auth_header": "Authorization",
+            "auth_token": "Bearer live-provider-token",
+            "ingest_token": "push-shared-secret",
+        },
+        actor="admin",
+    )
+    row = _raw_row(db_session, "okta")
+
+    # Neither secret is recoverable from a dump of the table.
+    assert "live-provider-token" not in row.auth_token
+    assert "push-shared-secret" not in row.ingest_token
+    assert row.auth_token.startswith("enc:v1:")
+    assert row.ingest_token.startswith("enc:v1:")
+
+
+def test_credentials_round_trip_and_are_never_serialised(db_session, org):
+    saved = connector_service.upsert_config(
+        db_session,
+        org.id,
+        "okta",
+        {"mode": "push", "ingest_token": "push-shared-secret"},
+        actor="admin",
+    )
+    assert saved["has_ingest_token"] is True
+    assert "push-shared-secret" not in str(saved)
+
+    # The real secret is used, not a hash of it: a valid push is accepted.
+    result = connector_service.ingest_push(
+        db_session, "okta", "push-shared-secret", [{"message": "Impossible travel"}]
+    )
+    assert result["status"] == "ingested"
+
+
+def test_outbound_auth_header_carries_the_decrypted_credential(db_session, org, monkeypatch):
+    connector_service.upsert_config(
+        db_session,
+        org.id,
+        "okta",
+        {
+            "mode": "poll",
+            "endpoint": "https://provider.example/events",
+            "auth_header": "Authorization",
+            "auth_token": "Bearer live-provider-token",
+        },
+        actor="admin",
+    )
+
+    captured = {}
+
+    def _fake_get(url, headers=None, timeout=None):
+        captured["headers"] = headers
+
+        class _Resp:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return [{"message": "Impossible travel detected", "severity": "HIGH"}]
+
+        return _Resp()
+
+    monkeypatch.setattr(connector_service.requests, "get", _fake_get)
+    connector_service.sync(db_session, org.id, "okta", actor="admin")
+
+    assert captured["headers"]["Authorization"] == "Bearer live-provider-token"
+
+
+def test_rotated_key_fails_closed_on_push(db_session, org, monkeypatch):
+    """A credential we cannot read must not become 'no credential configured' —
+    that would let any token through."""
+    connector_service.upsert_config(
+        db_session, org.id, "okta", {"mode": "push", "ingest_token": "s3cret"}, actor="admin"
+    )
+    monkeypatch.setattr(connector_service.settings, "JWT_SECRET_KEY", "a-different-key")
+
+    with pytest.raises(PermissionError):
+        connector_service.ingest_push(db_session, "okta", "s3cret", [{"message": "x"}])
+    with pytest.raises(PermissionError):
+        connector_service.ingest_push(db_session, "okta", "anything", [{"message": "x"}])
+
+
+def test_rotated_key_is_reported_on_sync_not_hidden(db_session, org, monkeypatch):
+    connector_service.upsert_config(
+        db_session,
+        org.id,
+        "okta",
+        {
+            "mode": "poll",
+            "endpoint": "https://provider.example/events",
+            "auth_header": "Authorization",
+            "auth_token": "Bearer live-provider-token",
+        },
+        actor="admin",
+    )
+    monkeypatch.setattr(connector_service.settings, "JWT_SECRET_KEY", "a-different-key")
+
+    def _must_not_run(*args, **kwargs):  # pragma: no cover - must not be reached
+        raise AssertionError("must not poll with an unreadable credential")
+
+    monkeypatch.setattr(connector_service.requests, "get", _must_not_run)
+
+    result = connector_service.sync(db_session, org.id, "okta", actor="admin")
+    assert result["status"] == "error"
+    assert "re-enter the credential" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# Ingest rate limiting
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _clear_rate_counters():
+    connector_service.reset_ingest_rate_limits()
+    yield
+    connector_service.reset_ingest_rate_limits()
+
+
+def test_ingest_is_rate_limited_per_connector(db_session, org, monkeypatch):
+    monkeypatch.setattr(connector_service.settings, "CONNECTOR_INGEST_RATE_LIMIT", 2)
+    connector_service.upsert_config(
+        db_session, org.id, "okta", {"mode": "push", "ingest_token": "s3cret"}, actor="admin"
+    )
+    connector_service.upsert_config(
+        db_session,
+        org.id,
+        "sentinel",
+        {"mode": "push", "ingest_token": "s3cret"},
+        actor="admin",
+    )
+
+    for _ in range(2):
+        connector_service.ingest_push(db_session, "okta", "s3cret", [{"message": "x"}])
+
+    with pytest.raises(connector_service.RateLimited) as exc:
+        connector_service.ingest_push(db_session, "okta", "s3cret", [{"message": "x"}])
+    assert exc.value.retry_after >= 1
+
+    # One connector exhausting its budget does not silence the others.
+    connector_service.ingest_push(db_session, "sentinel", "s3cret", [{"message": "x"}])
+
+
+def test_rate_limit_window_expires(db_session, org, monkeypatch):
+    monkeypatch.setattr(connector_service.settings, "CONNECTOR_INGEST_RATE_LIMIT", 1)
+    connector_service.upsert_config(
+        db_session, org.id, "okta", {"mode": "push", "ingest_token": "s3cret"}, actor="admin"
+    )
+
+    real_monotonic = connector_service.time.monotonic
+    connector_service.ingest_push(db_session, "okta", "s3cret", [{"message": "x"}])
+    with pytest.raises(connector_service.RateLimited):
+        connector_service.ingest_push(db_session, "okta", "s3cret", [{"message": "x"}])
+
+    # Jump past the window; the counter must slide rather than latch forever.
+    started = real_monotonic()
+    monkeypatch.setattr(
+        connector_service.time, "monotonic", lambda: started + connector_service._INGEST_WINDOW_SECONDS + 1
+    )
+    connector_service.ingest_push(db_session, "okta", "s3cret", [{"message": "x"}])
+
+
+def test_rate_limited_ingest_returns_429_with_retry_after(client, auth_headers, monkeypatch):
+    monkeypatch.setattr(connector_service.settings, "CONNECTOR_INGEST_RATE_LIMIT", 1)
+    client.put(
+        "/api/v1/connectors/okta/config",
+        json={"mode": "push", "ingest_token": "s3cret"},
+        headers=auth_headers,
+    ).raise_for_status()
+
+    ok = client.post(
+        "/api/v1/connectors/ingest/okta",
+        json={"events": [{"message": "Impossible travel detected"}]},
+        headers={"X-Connector-Token": "s3cret"},
+    )
+    assert ok.status_code == 201
+
+    limited = client.post(
+        "/api/v1/connectors/ingest/okta",
+        json={"events": [{"message": "Impossible travel detected"}]},
+        headers={"X-Connector-Token": "s3cret"},
+    )
+    assert limited.status_code == 429
+    assert int(limited.headers["Retry-After"]) >= 1
+
+    client.delete("/api/v1/connectors/okta/config", headers=auth_headers)
+
+
+# ---------------------------------------------------------------------------
+# IP pinning (closes the DNS-rebinding half of the SSRF gap)
+# ---------------------------------------------------------------------------
+
+
+def test_pinned_request_targets_the_ip_that_was_validated(production, monkeypatch):
+    """The point of pinning: one lookup, and the address it returned is the
+    address used. A hostile nameserver answers the *next* lookup with an
+    internal address — but there is no next lookup."""
+    answers = [
+        ["93.184.216.34", "93.184.216.35"],  # public, what will be validated
+        ["169.254.169.254"],  # what a rebind would have handed the request
+    ]
+    lookups = {"n": 0}
+
+    def _getaddrinfo(host, port, *args, **kwargs):
+        ips = answers[min(lookups["n"], len(answers) - 1)]
+        lookups["n"] += 1
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port or 0)) for ip in ips]
+
+    monkeypatch.setattr(connector_service.socket, "getaddrinfo", _getaddrinfo)
+
+    captured = {}
+
+    def _fake_get(request_url, headers=None, timeout=None):
+        captured["url"] = request_url
+        captured["headers"] = headers
+
+        class _Resp:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return []
+
+        return _Resp()
+
+    monkeypatch.setattr(connector_service.requests, "get", _fake_get)
+
+    connector_service._fetch_events("http://events.example/events.json", {"Authorization": "Bearer x"})
+
+    assert captured["url"] == "http://93.184.216.34/events.json"
+    assert captured["headers"]["Host"] == "events.example"
+    assert captured["headers"]["Authorization"] == "Bearer x"
+    # Exactly one resolution: the one that was validated.
+    assert lookups["n"] == 1
+
+
+def test_pinned_fetch_refuses_an_internal_address_it_resolved(production, monkeypatch):
+    """Rebinding in its purest form: the name resolves straight to cloud
+    metadata. Validating a different lookup would miss this entirely."""
+    monkeypatch.setattr(
+        connector_service.socket,
+        "getaddrinfo",
+        lambda host, port, *a, **k: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.169.254", port or 0))
+        ],
+    )
+
+    def _must_not_run(*args, **kwargs):  # pragma: no cover - must not be reached
+        raise AssertionError("must not connect to a link-local address")
+
+    monkeypatch.setattr(connector_service.requests, "get", _must_not_run)
+
+    with pytest.raises(ValueError, match="refusing to fetch"):
+        connector_service._fetch_events("http://rebound.example/events.json", None)
+
+
+def test_pinned_fetch_refuses_an_ip_literal_in_production(production, monkeypatch):
+    """A config written in dev as http://127.0.0.1 must not survive a deploy."""
+
+    def _must_not_run(*args, **kwargs):  # pragma: no cover - must not be reached
+        raise AssertionError("must not fetch from loopback in production")
+
+    monkeypatch.setattr(connector_service.requests, "get", _must_not_run)
+
+    with pytest.raises(ValueError, match="refusing to fetch"):
+        connector_service._fetch_events("http://127.0.0.1:9000/events.json", None)
+
+
+def test_ip_literal_endpoints_are_fetched_unchanged():
+    url = "http://127.0.0.1:8099/events.json"
+    assert connector_service._pin_to_ip(url) == (url, {}, None, ["127.0.0.1"])
+
+
+def test_unresolvable_host_is_left_to_fail_naturally(monkeypatch):
+    def _boom(host, port, *args, **kwargs):
+        raise socket.gaierror("Name or service not known")
+
+    monkeypatch.setattr(connector_service.socket, "getaddrinfo", _boom)
+    url = "http://nowhere.example/events.json"
+    assert connector_service._pin_to_ip(url) == (url, {}, None, [])
+
+
+def test_pinned_fetch_works_over_a_real_socket(monkeypatch):
+    """End to end against a local server reached by a name, not an IP — the
+    same shape as production, without production's DNS."""
+    events = [{"message": "Impossible travel", "severity": "HIGH", "source_ip": "203.0.113.24"}]
+    body = json.dumps(events).encode()
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), _Handler)
+    port = server.server_address[1]
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
+    real_getaddrinfo = socket.getaddrinfo
+
+    def _fake_getaddrinfo(host, p, *args, **kwargs):
+        if host == "events.test":
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", p or 0))]
+        return real_getaddrinfo(host, p, *args, **kwargs)
+
+    monkeypatch.setattr(connector_service.socket, "getaddrinfo", _fake_getaddrinfo)
+    try:
+        response = connector_service._fetch_events(f"http://events.test:{port}/events.json", None)
+        assert response.status_code == 200
+        assert response.json() == events
+    finally:
+        server.shutdown()
+        server.server_close()
