@@ -135,3 +135,29 @@ class ConnectorOAuth(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class ScimGroupRoleMapping(Base):
+    """SCIM Group → Role mapping — Phase 43 identity hardening.
+
+    Maps a SCIM group displayName to an internal role (USER, ANALYST).
+    ADMIN never assigned via SCIM/JIT for safety — documented.
+    """
+
+    __tablename__ = "scim_group_role_mappings"
+    __table_args__ = (
+        UniqueConstraint("org_id", "group_display_name", name="uq_scim_group_role_org"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("orgs.id", ondelete="CASCADE"), nullable=True, index=True)
+
+    group_display_name = Column(String(255), nullable=False)  # matches ScimGroup.display_name
+    role = Column(String(20), nullable=False, default="USER")  # USER | ANALYST
+
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )

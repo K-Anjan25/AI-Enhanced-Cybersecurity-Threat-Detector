@@ -299,3 +299,44 @@ def delete_token(
         return scim_service.delete_scim_token(db, org_id=current_user.org_id, token_id=token_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+# Groups → Roles mapping admin endpoints (Phase 43)
+
+
+@admin_router.get("/groups/role-mappings")
+def list_group_role_mappings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
+    return {"data": scim_service.get_group_role_mappings(db, org_id=current_user.org_id)}
+
+
+@admin_router.post("/groups/role-mappings")
+def upsert_group_role_mapping(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
+    group_name = payload.get("group_display_name") or payload.get("displayName") or payload.get("group")
+    role = payload.get("role")
+    if not group_name or not role:
+        raise HTTPException(status_code=422, detail="group_display_name and role required")
+    try:
+        return scim_service.set_group_role_mapping(
+            db, org_id=current_user.org_id, group_display_name=group_name, role=role
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@admin_router.delete("/groups/role-mappings/{mapping_id}")
+def delete_group_role_mapping(
+    mapping_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("ADMIN")),
+):
+    try:
+        return scim_service.delete_group_role_mapping(db, org_id=current_user.org_id, mapping_id=mapping_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

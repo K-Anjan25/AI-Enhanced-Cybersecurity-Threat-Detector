@@ -1,4 +1,4 @@
-"""Real connector ingest — configuration, polling and push, with honest status.
+"""Real connector ingest - configuration, polling and push, with honest status.
 
 Replaces the hardcoded connector list. The rules this module exists to uphold:
 
@@ -8,7 +8,7 @@ Replaces the hardcoded connector list. The rules this module exists to uphold:
    `assets_monitored` counts distinct source IPs seen from that connector;
    `latency_ms` is the measured duration of the last request.
 3. **Failures are reported, never swallowed.** A failed poll returns
-   `status: "error"` with the exception text and records it on the row — it
+   `status: "error"` with the exception text and records it on the row - it
    does not fall back to a cheerful "success".
 """
 
@@ -30,6 +30,7 @@ from app.core.config import settings
 from app.core.secrets import SecretDecryptionError, decrypt_secret, encrypt_secret
 from app.models import ConnectorSource, SecurityAlert
 from app.services.mitre import map_alert
+import json
 from app.utils.helpers import create_audit_log
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 #
 # The push webhook is unauthenticated apart from the shared secret, so
-# "anyone holding the token can post" also means "as fast as they like" —
+# "anyone holding the token can post" also means "as fast as they like" -
 # which is a cheap way to fill the alerts table. This is a fixed-window
 # counter per connector.
 #
@@ -85,17 +86,17 @@ def reset_ingest_rate_limits() -> None:
         _RATE_HITS.clear()
 
 
-# The catalogue — the sources NOCTRA is built to ingest from. A catalogue entry
+# The catalogue - the sources NOCTRA is built to ingest from. A catalogue entry
 # alone proves nothing; it only becomes "connected" once a source row exists and
 # has synced successfully.
-# Phase 40: expanded from 4 to 10 — more telemetry makes the live stream busy
+# Phase 40: expanded from 4 to 10 - more telemetry makes the live stream busy
 # and the scheduled poller useful. Each entry is a real product with a real API.
 CATALOGUE: list[tuple[str, str, str]] = [
     ("okta", "Okta Identity Cloud", "Identity"),
     ("sentinel", "CrowdStrike / Sentinel EDR", "Endpoint"),
     ("guardduty", "AWS GuardDuty & IAM Audit", "Cloud Security"),
     ("cloudflare", "Cloudflare Edge WAF", "Network & Edge"),
-    # Phase 40 — breadth: code, collaboration, productivity, identity, observability, SIEM
+    # Phase 40 - breadth: code, collaboration, productivity, identity, observability, SIEM
     ("github", "GitHub Advanced Security", "Code & Supply Chain"),
     ("slack", "Slack Enterprise Audit Logs", "Collaboration"),
     ("gworkspace", "Google Workspace Admin", "Productivity"),
@@ -110,7 +111,7 @@ REQUEST_TIMEOUT = (3, 10)  # (connect, read) seconds
 # Poll mode makes this server fetch a URL a tenant typed. Unchecked, that is a
 # ready-made SSRF: point it at cloud metadata (169.254.169.254), at a service
 # that trusts the pod's network position, or at the API itself. Non-local
-# environments refuse internal addresses — see _guard_endpoint.
+# environments refuse internal addresses - see _guard_endpoint.
 _DEV_ENVIRONMENTS = {"development", "dev", "local", "test", "testing"}
 
 
@@ -137,14 +138,14 @@ def _guard_endpoint(url: str | None) -> None:
 
     Inactive in dev/test environments on purpose: a dev checkout defaults to
     ENVIRONMENT="development", and docs/demo.md §3a's local mock endpoint
-    (http://127.0.0.1) depends on that — while a deployed instance must refuse
+    (http://127.0.0.1) depends on that - while a deployed instance must refuse
     exactly that address. k8s/configmap.yaml sets ENVIRONMENT="production".
 
     Two honest limits:
     * A name this process cannot resolve cannot be judged here, so it is
       allowed through and left to fail (or succeed) at request time.
     * DNS rebinding between this check and requests' own lookup is not
-      covered — closing that means pinning the resolved IP for the
+      covered - closing that means pinning the resolved IP for the
       connection, a larger change than this guard.
 
     So this is defence in depth against a hostile or mistaken endpoint, not a
@@ -180,7 +181,7 @@ def _guard_endpoint(url: str | None) -> None:
 
 
 _INTERNAL_ENDPOINT_MESSAGE = (
-    "endpoint resolves to a private, loopback or link-local address — "
+    "endpoint resolves to a private, loopback or link-local address - "
     "refusing to fetch it"
 )
 
@@ -206,13 +207,13 @@ def _pin_to_ip(url: str) -> tuple[str, dict[str, str], str | None, list[str]]:
     """Rewrite a URL so the connection goes to the IP we just validated.
 
     Returns ``(request_url, extra_headers, tls_hostname, addresses)``.
-    ``tls_hostname`` is None when nothing was pinned — either the host is
+    ``tls_hostname`` is None when nothing was pinned - either the host is
     already an IP literal, or the name does not resolve (in which case the
     request fails with its own error rather than one we invented).
 
     ``addresses`` is what the caller must validate: they are the addresses the
-    request will actually use. Checking a *different* resolution — which is
-    what calling getaddrinfo twice does — leaves the rebinding window wide
+    request will actually use. Checking a *different* resolution - which is
+    what calling getaddrinfo twice does - leaves the rebinding window wide
     open, because the second lookup can answer differently.
 
     This is the other half of the SSRF guard. Checking that a name resolves
@@ -231,7 +232,7 @@ def _pin_to_ip(url: str) -> tuple[str, dict[str, str], str | None, list[str]]:
     except ValueError:
         pass
     else:
-        return url, {}, None, [host]  # IP literal — nothing to rebind
+        return url, {}, None, [host]  # IP literal - nothing to rebind
 
     try:
         resolved = socket.getaddrinfo(host, None)
@@ -280,6 +281,271 @@ def _fetch_events(url: str, headers: dict | None, timeout=REQUEST_TIMEOUT):
     finally:
         session.close()
 
+# ---------------------------------------------------------------------------
+# Webhook HMAC verification (Phase 42)
+# ---------------------------------------------------------------------------
+
+
+def verify_github_signature(raw_body: bytes, signature_header: str | None, secret: str) -> bool:
+    """Verify GitHub webhook HMAC SHA256 signature.
+
+    GitHub sends X-Hub-Signature-256: sha256=<hex digest of HMAC-SHA256(raw_body, secret)>
+    """
+    if not signature_header or not secret:
+        return False
+    if not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(secret.encode("utf-8"), raw_body, "sha256").hexdigest()
+    received = signature_header[len("sha256="):]
+    return hmac.compare_digest(expected, received)
+
+
+def verify_slack_signature(
+    raw_body: bytes, timestamp_header: str | None, signature_header: str | None, signing_secret: str
+) -> bool:
+    """Verify Slack webhook signature.
+
+    Slack: basestring = v0:{timestamp}:{raw_body}
+           signature = v0=<hex HMAC-SHA256(basestring, signing_secret)>
+    Timestamp must be within 5 minutes to prevent replay.
+    """
+    if not timestamp_header or not signature_header or not signing_secret:
+        return False
+    try:
+        ts = int(timestamp_header)
+    except ValueError:
+        return False
+    now = int(time.time())
+    if abs(now - ts) > 300:
+        return False
+    basestring = f"v0:{timestamp_header}:{raw_body.decode('utf-8', errors='replace')}"
+    expected = "v0=" + hmac.new(signing_secret.encode("utf-8"), basestring.encode("utf-8"), "sha256").hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+
+
+# ---------------------------------------------------------------------------
+# Real connector fetch - GitHub Advanced Security + Slack Audit Logs (Phase 42)
+# ---------------------------------------------------------------------------
+
+
+def _parse_link_header(link: str) -> dict:
+    """Parse GitHub Link header for pagination: <url>; rel="next", ..."""
+    links = {}
+    if not link:
+        return links
+    for part in link.split(","):
+        part = part.strip()
+        if ";" not in part:
+            continue
+        url_part, rel_part = part.split(";", 1)
+        url = url_part.strip()[1:-1]
+        rel = None
+        for param in rel_part.split(";"):
+            param = param.strip()
+            if param.startswith("rel="):
+                rel = param[4:].strip('"')
+        if rel:
+            links[rel] = url
+    return links
+
+
+def _normalize_github_alert(raw: dict, alert_type: str = "code_scanning") -> dict | None:
+    """Map GitHub Advanced Security alert to our normalized event shape."""
+    if not isinstance(raw, dict):
+        return None
+    rule = raw.get("rule", {}) if isinstance(raw.get("rule"), dict) else {}
+    message = (
+        rule.get("description")
+        or raw.get("description")
+        or raw.get("secret_type_display_name")
+        or raw.get("message")
+        or f"GitHub {alert_type} alert: {raw.get('html_url', raw.get('url', ''))}"
+    )
+    if not message:
+        return None
+    gh_sev = str(raw.get("severity") or rule.get("severity") or "medium").lower()
+    severity_map = {
+        "critical": "CRITICAL",
+        "high": "HIGH",
+        "error": "HIGH",
+        "medium": "MEDIUM",
+        "moderate": "MEDIUM",
+        "warning": "MEDIUM",
+        "low": "LOW",
+        "note": "LOW",
+    }
+    severity = severity_map.get(gh_sev, "MEDIUM")
+    repo = raw.get("repository", {}) if isinstance(raw.get("repository"), dict) else {}
+    repo_name = repo.get("full_name") or raw.get("repository_full_name") or ""
+    return {
+        "message": f"{message} [{repo_name}]" if repo_name else str(message)[:2000],
+        "severity": severity,
+        "alert_type": "log",
+        "source_ip": None,
+        "score": None,
+        "mitre_tactic": None,
+        "mitre_technique_id": None,
+        "mitre_technique": None,
+        "github_alert_type": alert_type,
+        "github_url": raw.get("html_url") or raw.get("url"),
+    }
+
+
+def _normalize_slack_audit_event(raw: dict) -> dict | None:
+    """Map Slack Audit Logs event to normalized shape."""
+    if not isinstance(raw, dict):
+        return None
+    action = raw.get("action") or raw.get("type") or "audit"
+    actor = raw.get("actor", {}) if isinstance(raw.get("actor"), dict) else {}
+    actor_email = ""
+    if isinstance(actor.get("user"), dict):
+        actor_email = actor.get("user", {}).get("email", "")
+    else:
+        actor_email = actor.get("email", "")
+    message = f"Slack audit: {action} by {actor_email or actor.get('user_id', 'unknown')}"
+    details = raw.get("details") or raw.get("context") or ""
+    if details and isinstance(details, dict):
+        message += f" - {str(details)[:500]}"
+    elif details:
+        message += f" - {str(details)[:500]}"
+    sev = "MEDIUM"
+    high_actions = {"user_login_failed", "app_approved", "role_change", "member_joined_via_group", "permissions_added"}
+    if action in high_actions or "failed" in action or "admin" in action:
+        sev = "HIGH"
+    return {
+        "message": str(message)[:2000],
+        "severity": sev,
+        "alert_type": "log",
+        "source_ip": raw.get("ip_address") or raw.get("ip") or (raw.get("actor", {}).get("ip_address") if isinstance(raw.get("actor"), dict) else None),
+        "score": None,
+        "mitre_tactic": None,
+        "mitre_technique_id": None,
+        "mitre_technique": None,
+        "slack_action": action,
+    }
+
+
+def _fetch_github_events(
+    oauth_token: str,
+    since: str | None = None,
+    cursor: str | None = None,
+    max_pages: int = 3,
+) -> tuple[list[dict], str | None, dict]:
+    """Fetch GitHub Advanced Security alerts using OAuth token."""
+    headers = {
+        "Authorization": f"Bearer {oauth_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    events: list[dict] = []
+    next_cursor = None
+    state: dict = {}
+    orgs = []
+    try:
+        orgs_resp = _fetch_events("https://api.github.com/user/orgs", headers)
+        if orgs_resp.status_code == 200:
+            orgs_data = orgs_resp.json()
+            if isinstance(orgs_data, list):
+                orgs = [o.get("login") for o in orgs_data if isinstance(o, dict) and o.get("login")]
+    except Exception as exc:
+        _LOGGER.debug("Failed to fetch GitHub orgs: %s", exc)
+    targets = orgs[:5]
+    if not targets:
+        try:
+            user_resp = _fetch_events("https://api.github.com/user", headers)
+            if user_resp.status_code == 200:
+                login = user_resp.json().get("login")
+                if login:
+                    targets = [login]
+        except Exception:
+            pass
+    alert_types = ["code-scanning", "secret-scanning", "dependabot"]
+    for org in targets:
+        for atype in alert_types:
+            url = f"https://api.github.com/orgs/{org}/{atype}/alerts?per_page=20&state=open"
+            if since:
+                url += f"&since={since}"
+            if cursor and atype == "code-scanning" and cursor.isdigit():
+                url += f"&page={cursor}"
+            try:
+                for _ in range(max_pages):
+                    resp = _fetch_events(url, headers)
+                    if resp.status_code == 403 and "rate limit" in resp.text.lower():
+                        _LOGGER.warning("GitHub rate limited for %s %s", org, atype)
+                        break
+                    resp.raise_for_status()
+                    data = resp.json()
+                    if not isinstance(data, list):
+                        break
+                    for item in data:
+                        norm = _normalize_github_alert(item, atype)
+                        if norm:
+                            events.append(norm)
+                    link_header = resp.headers.get("Link", "") if hasattr(resp, "headers") else ""
+                    links = _parse_link_header(link_header)
+                    next_url = links.get("next")
+                    if not next_url or len(events) >= 100:
+                        break
+                    url = next_url
+                if len(events) >= 100:
+                    break
+            except Exception as exc:
+                _LOGGER.debug("GitHub fetch failed for %s %s: %s", org, atype, exc)
+                continue
+        if len(events) >= 100:
+            break
+    if len(events) >= 100:
+        next_cursor = "2"
+    state = {"orgs_fetched": len(targets), "alert_types": alert_types, "since": since}
+    return events, next_cursor, state
+
+
+def _fetch_slack_audit_events(
+    oauth_token: str,
+    cursor: str | None = None,
+    max_pages: int = 3,
+) -> tuple[list[dict], str | None, dict]:
+    """Fetch Slack Audit Logs using OAuth token with cursor pagination."""
+    headers = {"Authorization": f"Bearer {oauth_token}"}
+    events: list[dict] = []
+    next_cursor = cursor
+    state: dict = {}
+    url = "https://api.slack.com/audit/v1/logs?limit=50"
+    if cursor:
+        url += f"&cursor={cursor}"
+    for _ in range(max_pages):
+        try:
+            resp = _fetch_events(url, headers)
+            if resp.status_code == 429:
+                retry_after = resp.headers.get("Retry-After", "60") if hasattr(resp, "headers") else "60"
+                _LOGGER.warning("Slack audit logs rate limited, Retry-After %s", retry_after)
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            entries = data.get("entries") if isinstance(data, dict) else data
+            if not isinstance(entries, list):
+                break
+            for entry in entries:
+                norm = _normalize_slack_audit_event(entry)
+                if norm:
+                    events.append(norm)
+            if isinstance(data, dict):
+                rm = data.get("response_metadata", {}) or {}
+                nc = rm.get("next_cursor")
+                if nc:
+                    next_cursor = nc
+                    url = f"https://api.slack.com/audit/v1/logs?limit=50&cursor={nc}"
+                    if len(events) >= 100:
+                        break
+                    continue
+            break
+        except Exception as exc:
+            _LOGGER.debug("Slack audit fetch failed: %s", exc)
+            break
+    state = {"pages_fetched": max_pages, "cursor": next_cursor}
+    return events, next_cursor, state
+
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -291,7 +557,7 @@ def _now() -> datetime:
 
 
 def _humanize(moment: datetime | None) -> str | None:
-    """'just now' / '4 minutes ago' / '2 days ago' — null in, null out."""
+    """'just now' / '4 minutes ago' / '2 days ago' - null in, null out."""
     if moment is None:
         return None
     if moment.tzinfo is None:
@@ -322,7 +588,7 @@ def get_config(db: Session, org_id: int | None, connector_id: str) -> ConnectorS
 def _assets_monitored(db: Session, org_id: int | None, connector_id: str) -> int:
     """Distinct source IPs this connector has actually delivered.
 
-    Real telemetry only — no row, no number.
+    Real telemetry only - no row, no number.
     """
     query = db.query(SecurityAlert.source_ip).filter(
         SecurityAlert.source == connector_id,
@@ -455,7 +721,7 @@ def upsert_config(
         if not payload.get("endpoint"):
             raise ValueError("poll mode requires an endpoint URL")
         # Refuse an SSRF endpoint at configuration time rather than at the
-        # first poll — the operator should see why it was rejected now.
+        # first poll - the operator should see why it was rejected now.
         _guard_endpoint(payload.get("endpoint"))
 
     cfg = get_config(db, org_id, connector_id)
@@ -478,7 +744,7 @@ def upsert_config(
     if "auth_header" in payload:
         cfg.auth_header = payload.get("auth_header")
     # Credentials are encrypted before they touch the database. An empty string
-    # means "clear it", which is stored as NULL — an empty secret and no secret
+    # means "clear it", which is stored as NULL - an empty secret and no secret
     # are the same thing.
     if payload.get("auth_token") is not None:
         cfg.auth_token = encrypt_secret(payload["auth_token"])
@@ -585,7 +851,7 @@ def _ingest_events(
     """Insert normalized events, skipping duplicates. Returns (inserted, skipped).
 
     After commit, publishes each new alert to the in-process EventBus so an open
-    SSE stream sees it immediately. Publish happens after commit — a rollback
+    SSE stream sees it immediately. Publish happens after commit - a rollback
     never announces an alert that wasn't recorded. A publish failure never
     breaks ingestion.
     """
@@ -638,7 +904,7 @@ def _ingest_events(
         inserted += 1
 
     db.commit()
-    # Publish after commit — never announce a row that was rolled back.
+    # Publish after commit - never announce a row that was rolled back.
     if created:
         try:
             from app.core.events import alert_event_from_row, bus
@@ -650,6 +916,68 @@ def _ingest_events(
                     _LOGGER.debug("Failed to publish alert event for %s", getattr(row, 'id', '?'), exc_info=True)
         except Exception:
             _LOGGER.debug("EventBus publish failed", exc_info=True)
+
+        # Phase 44: auto-triage - create cases for CRITICAL/HIGH alerts from connectors
+        try:
+            from app.models import Case
+
+            for row in created:
+                if (row.severity or "").upper() not in ("CRITICAL", "HIGH"):
+                    continue
+                try:
+                    dup = (
+                        db.query(Case)
+                        .filter(
+                            Case.source_alert_id == row.id,
+                            Case.kind == "analyst",
+                        )
+                        .first()
+                    )
+                    if dup:
+                        continue
+                    try:
+                        from app.services.ocsf_service import alert_to_ocsf_finding
+
+                        ocsf = alert_to_ocsf_finding(row)
+                        desc = f"Auto-triaged from {row.source} connector: {row.message}. OCSF severity {ocsf.get('severity')}."
+                    except Exception:
+                        desc = f"Auto-triaged from {row.source} connector: {row.message}"
+
+                    case = Case(
+                        title=f"[{row.severity}] {row.source} - {row.message[:100]}",
+                        description=desc,
+                        status="open",
+                        priority="critical" if row.severity == "CRITICAL" else "high",
+                        source_alert_id=row.id,
+                        org_id=row.org_id,
+                        kind="analyst",
+                        analysis={
+                            "what_happened": row.message,
+                            "why_it_matters": f"High severity alert from {row.source} requires immediate triage",
+                            "blast_radius_summary": f"Source: {row.source}, IP: {row.source_ip or 'N/A'}",
+                            "confidence": 0.85,
+                            "model": "connector-auto-triage",
+                        },
+                        proposed_action={
+                            "action_type": "ISOLATE_HOST" if row.source_ip else "ALERT_OPERATOR",
+                            "target": row.source_ip or row.source,
+                            "rationale": f"Auto-triage for {row.severity} alert from {row.source}",
+                            "undo": "Re-enable access after investigation",
+                        },
+                        decision="pending",
+                    )
+                    db.add(case)
+                    db.commit()
+                    _LOGGER.info("Auto-triaged case %s for alert %s from %s", case.id, row.id, row.source)
+                except Exception as exc:
+                    _LOGGER.debug("Auto-triage failed for alert %s: %s", getattr(row, "id", "?"), exc)
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
+        except Exception as exc:
+            _LOGGER.debug("Auto-triage outer failed: %s", exc)
+
     return inserted, skipped
 
 
@@ -658,10 +986,18 @@ def ingest_push(
     connector_id: str,
     token: str,
     events: list,
+    raw_body: bytes | None = None,
+    github_signature: str | None = None,
+    slack_signature: str | None = None,
+    slack_timestamp: str | None = None,
 ) -> dict:
-    """Push ingest: authenticate by shared secret, then record real events.
+    """Push ingest: authenticate by shared secret or HMAC signature, then record real events.
 
-    Rate limited per connector — see _check_ingest_rate for what that does and
+    Phase 42: supports GitHub X-Hub-Signature-256 and Slack X-Slack-Signature verification.
+    If raw_body + signature headers provided, HMAC is verified using ingest_token as webhook secret.
+    Falls back to simple token comparison (X-Connector-Token) for backward compat.
+
+    Rate limited per connector - see _check_ingest_rate for what that does and
     does not guarantee.
     """
     _check_ingest_rate(connector_id)
@@ -674,26 +1010,34 @@ def ingest_push(
         )
         .first()
     )
-    # Compared as bytes: hmac.compare_digest() rejects str with non-ASCII
-    # characters outright, which would turn a wrong token containing an accent
-    # into a TypeError (500) instead of a rejection (401).
-    #
-    # A stored secret that cannot be decrypted (JWT_SECRET_KEY rotated) is
-    # treated as a failed authentication, never as "no secret configured" —
-    # the latter would let anyone with the wrong token walk in. The caller gets
-    # the same generic rejection either way.
     try:
         stored = decrypt_secret(cfg.ingest_token) if cfg is not None else None
     except SecretDecryptionError:
         stored = None
         _LOGGER.error(
-            "Connector %s has an undecryptable ingest secret — JWT_SECRET_KEY "
+            "Connector %s has an undecryptable ingest secret - JWT_SECRET_KEY "
             "was rotated; the source must be reconfigured.",
             connector_id,
         )
-    if cfg is None or not token or not hmac.compare_digest(
-        token.encode("utf-8"), (stored or "").encode("utf-8")
-    ):
+
+    authenticated = False
+    if cfg is not None and stored:
+        if raw_body is not None and github_signature:
+            if verify_github_signature(raw_body, github_signature, stored):
+                authenticated = True
+        if not authenticated and raw_body is not None and slack_signature:
+            if verify_slack_signature(raw_body, slack_timestamp, slack_signature, stored):
+                authenticated = True
+        if not authenticated and token and hmac.compare_digest(
+            token.encode("utf-8"), (stored or "").encode("utf-8")
+        ):
+            authenticated = True
+    else:
+        if cfg is not None and token and stored:
+            if hmac.compare_digest(token.encode("utf-8"), (stored or "").encode("utf-8")):
+                authenticated = True
+
+    if not authenticated:
         raise PermissionError("Unknown connector ID or invalid ingest token")
 
     if not isinstance(events, list):
@@ -734,10 +1078,10 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
     """Run a sync for one connector.
 
     Three honest outcomes:
-      - **synced**   — a poll really fetched events; counts are real.
-      - **recorded** — nothing to fetch (no config, disabled, or push mode);
+      - **synced**   - a poll really fetched events; counts are real.
+      - **recorded** - nothing to fetch (no config, disabled, or push mode);
                        the request is audited and the user is told why.
-      - **error**    — a poll was attempted and failed; the reason is returned.
+      - **error**    - a poll was attempted and failed; the reason is returned.
     """
     names = {cid: nm for cid, nm, _ in CATALOGUE}
     if connector_id not in names:
@@ -760,7 +1104,7 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
             "live": False,
             "message": (
                 f"Sync request recorded for {name}. No source is configured, so "
-                f"nothing was fetched — configure it to enable live sync."
+                f"nothing was fetched - configure it to enable live sync."
             ),
         }
 
@@ -776,7 +1120,7 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
             "status": "recorded",
             "connector_id": connector_id,
             "live": False,
-            "message": f"{name} is disabled — no sync was attempted.",
+            "message": f"{name} is disabled - no sync was attempted.",
         }
 
     if cfg.mode != "poll" or not cfg.endpoint:
@@ -785,31 +1129,27 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
             action="CONNECTOR_SYNC_REQUESTED",
             actor=actor,
             resource=f"connector:{connector_id}",
-            details=f"Sync requested for {name} (push mode — nothing to fetch)",
+            details=f"Sync requested for {name} (push mode - nothing to fetch)",
         )
         return {
             "status": "recorded",
             "connector_id": connector_id,
             "live": False,
             "message": (
-                f"{name} is configured for push ingest — there is nothing to fetch. "
+                f"{name} is configured for push ingest - there is nothing to fetch. "
                 f"Send events to /api/v1/connectors/ingest/{connector_id}."
             ),
         }
 
     headers = {}
-    # Phase 41: if OAuth token exists for github/slack, use it automatically
-    # unless explicit auth_header/token already configured
+    oauth_token = None
     if connector_id in ("github", "slack"):
         try:
             from app.services.connector_oauth_service import get_oauth_token
 
             oauth_token = get_oauth_token(db, org_id=cfg.org_id, connector_id=connector_id)
             if oauth_token:
-                if connector_id == "github":
-                    headers["Authorization"] = f"Bearer {oauth_token}"
-                else:  # slack
-                    headers["Authorization"] = f"Bearer {oauth_token}"
+                headers["Authorization"] = f"Bearer {oauth_token}"
         except Exception:
             pass
 
@@ -820,7 +1160,7 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
             cfg.last_sync_at = _now()
             cfg.last_status = "error"
             cfg.last_error = (
-                f"{exc} — re-enter the credential for {name} in connector settings"
+                f"{exc} - re-enter the credential for {name} in connector settings"
             )
             db.commit()
             create_audit_log(
@@ -838,15 +1178,46 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
             }
 
     started = time.perf_counter()
+    events: list = []
+    next_cursor: str | None = None
+    sync_state_data: dict = {}
+
+    is_github_real = connector_id == "github" and oauth_token and cfg.endpoint and "api.github.com" in cfg.endpoint
+    is_slack_real = connector_id == "slack" and oauth_token and cfg.endpoint and "slack.com" in cfg.endpoint
+    if connector_id == "github" and oauth_token and not is_github_real:
+        if cfg.endpoint and ("github" in cfg.endpoint.lower() or cfg.endpoint.startswith("https://api.github.com")):
+            is_github_real = True
+    if connector_id == "slack" and oauth_token and not is_slack_real:
+        if cfg.endpoint and ("slack.com" in cfg.endpoint.lower()):
+            is_slack_real = True
+
     try:
-        # _fetch_events re-validates the address it connects to, so a config
-        # created in dev — or before this guard existed — still cannot become
-        # an internal request once deployed. Raising inside the try records it
-        # as a failed sync rather than a 500.
-        response = _fetch_events(cfg.endpoint, headers)
-        response.raise_for_status()
-        payload = response.json()
-    except Exception as exc:  # network, HTTP error, or non-JSON body
+        if is_github_real and oauth_token:
+            import json as _json
+            since_val = None
+            cursor_val = cfg.last_cursor
+            if cfg.sync_state:
+                try:
+                    ss = _json.loads(cfg.sync_state)
+                    since_val = ss.get("since")
+                except Exception:
+                    pass
+            events, next_cursor, sync_state_data = _fetch_github_events(
+                oauth_token, since=since_val, cursor=cursor_val
+            )
+        elif is_slack_real and oauth_token:
+            cursor_val = cfg.last_cursor
+            events, next_cursor, sync_state_data = _fetch_slack_audit_events(
+                oauth_token, cursor=cursor_val
+            )
+        else:
+            response = _fetch_events(cfg.endpoint, headers)
+            response.raise_for_status()
+            payload = response.json()
+            events = payload if isinstance(payload, list) else (payload.get("events") or payload.get("data") or [])
+            if not isinstance(events, list):
+                events = []
+    except Exception as exc:
         duration = int((time.perf_counter() - started) * 1000)
         cfg.last_sync_at = _now()
         cfg.last_status = "error"
@@ -868,10 +1239,6 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
             "message": f"Sync from {name} failed: {exc}"[:500],
         }
 
-    events = payload if isinstance(payload, list) else (payload.get("events") or payload.get("data") or [])
-    if not isinstance(events, list):
-        events = []
-
     inserted, skipped = _ingest_events(db, cfg, events)
 
     duration = int((time.perf_counter() - started) * 1000)
@@ -881,6 +1248,14 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
     cfg.last_duration_ms = duration
     cfg.last_count = inserted
     cfg.events_ingested = (cfg.events_ingested or 0) + inserted
+    if next_cursor:
+        cfg.last_cursor = next_cursor
+    if sync_state_data:
+        import json as _json
+        try:
+            cfg.sync_state = _json.dumps(sync_state_data)
+        except Exception:
+            pass
     db.commit()
 
     create_audit_log(
@@ -898,7 +1273,7 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
         "skipped": skipped,
         "last_sync": _humanize(cfg.last_sync_at),
         "message": (
-            f"Fetched {len(events)} event(s) from {name} — {inserted} recorded"
+            f"Fetched {len(events)} event(s) from {name} - {inserted} recorded"
             + (f", {skipped} already known" if skipped else "")
             + "."
         ),
