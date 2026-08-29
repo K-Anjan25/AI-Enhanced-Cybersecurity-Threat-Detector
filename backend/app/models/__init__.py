@@ -37,6 +37,9 @@ from app.models.finetune import FineTuneJob, FineTuneDataset
 from app.models.risk_based import Asset, RiskBasedRule, RiskScoreLog
 from app.models.purple_team import PurpleTeamExercise, PurpleTeamFinding
 from app.models.pdf_export import PDFExport
+from app.models.attack_coverage import AttackCoverage, AttackCoverageReport
+from app.models.agent_collab import AgentCollaboration, AgentMessage
+from app.models.soc_tv import SOCWallConfig, SOCWallMetric
 
 __all__ = [
     "Org",
@@ -134,4 +137,10 @@ __all__ = [
     "PurpleTeamExercise",
     "PurpleTeamFinding",
     "PDFExport",
+    "AttackCoverage",
+    "AttackCoverageReport",
+    "AgentCollaboration",
+    "AgentMessage",
+    "SOCWallConfig",
+    "SOCWallMetric",
 ]

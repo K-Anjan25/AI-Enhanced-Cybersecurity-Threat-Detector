@@ -54,6 +54,9 @@ from app.api.v1.endpoints import (
     risk_based,
     purple_team,
     pdf_export,
+    attack_coverage,
+    agent_collab,
+    soc_tv,
 )
 
 api_router = APIRouter()
@@ -117,3 +120,7 @@ api_router.include_router(finetune.router)
 api_router.include_router(risk_based.router)
 api_router.include_router(purple_team.router)
 api_router.include_router(pdf_export.router)
+# Phases 81-84
+api_router.include_router(attack_coverage.router)
+api_router.include_router(agent_collab.router)
+api_router.include_router(soc_tv.router)
