@@ -179,12 +179,14 @@ const CasePage: React.FC = () => {
       };
       setChatMessages((prev) => [...prev, analystMsg]);
     } catch (err: any) {
+      const is429 = err?.response?.status === 429;
+      const detail = err?.response?.data?.detail || "";
       setChatMessages((prev) => [
         ...prev,
         {
           id: `e-${Date.now()}`,
           sender: "axiom",
-          text: "I couldn't process that question right now. Please try again.",
+          text: is429 ? `Rate limited — ${detail}. Try again shortly.` : "I couldn't process that question right now. Please try again.",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);

@@ -11,10 +11,28 @@ from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_
 
+from app.core.config import settings
 from app.models import AuditLog, Case, SecurityAlert, Entity, SoarAction, User
 from app.services import case_service, report as report_service
 from app.services import soar
 from app.utils.helpers import paginate, create_audit_log
+from app.utils.rate_limit import RateLimiter
+
+# Chat rate limiting: per (org, user, case) to prevent abuse of LLM costs
+_chat_limiter = RateLimiter(limit=settings.ANALYST_CHAT_RATE_LIMIT, window_seconds=60)
+
+
+class ChatRateLimited(Exception):
+    def __init__(self, retry_after: int = 60):
+        super().__init__("Too many chat questions for this case")
+        self.retry_after = retry_after
+
+
+def _check_chat_rate(org_id: int | None, user_id: int | None, case_id: int) -> None:
+    key = f"{org_id}:{user_id}:{case_id}"
+    if not _chat_limiter.check(key):
+        raise ChatRateLimited()
+
 
 _DECIDED = ("approved", "declined", "reverted")
 
@@ -283,7 +301,7 @@ def list_notifications(db, org_id: int | None, limit: int = 20) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Interactive Case Chat & Connectors (Phase 19)
 # ---------------------------------------------------------------------------
-def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
+def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | None = None) -> dict:
     """Answer analyst questions about a specific case using LLM when available,
     falling back to deterministic keyword logic.
 
@@ -305,6 +323,12 @@ def chat_about_case(db, case: Case, question: str, actor: str) -> dict:
         )
         mitre_technique_id = getattr(alert_row, "mitre_technique_id", None)
         mitre_technique = getattr(alert_row, "mitre_technique", None)
+
+    # Rate limit (Phase 37) — prevents LLM cost abuse
+    try:
+        _check_chat_rate(case.org_id, actor_id, case.id)
+    except ChatRateLimited as exc:
+        raise exc
 
     # Try LLM first (Phase 36)
     answer: str | None = None
@@ -461,6 +485,45 @@ def decline_case(db, case: Case, actor: str, actor_id: int | None) -> Case:
         resource=f"case:{case.id}",
     )
     return case
+
+
+def bulk_decide(
+    db,
+    org_id: int | None,
+    case_ids: list[int],
+    decision: str,
+    actor: str,
+    actor_id: int | None,
+) -> dict:
+    """Bulk approve/decline for multiple pending cases.
+
+    Returns {decided: [ids], failed: [{id, reason}]}. Only pending cases are
+    acted upon; already-decided cases are reported as failed. This is honest:
+    it never silently skips.
+    """
+    if decision not in ("approved", "declined"):
+        raise ValueError("bulk decision must be 'approved' or 'declined'")
+
+    decided = []
+    failed = []
+    for cid in case_ids:
+        case = get_case(db, cid, org_id=org_id)
+        if not case:
+            failed.append({"id": cid, "reason": "not found"})
+            continue
+        if case.decision != "pending":
+            failed.append({"id": cid, "reason": f"already {case.decision}"})
+            continue
+        try:
+            if decision == "approved":
+                approve_case(db, case, actor=actor, actor_id=actor_id)
+            else:
+                decline_case(db, case, actor=actor, actor_id=actor_id)
+            decided.append(cid)
+        except Exception as exc:
+            failed.append({"id": cid, "reason": str(exc)})
+
+    return {"decided": decided, "failed": failed, "decision": decision}
 
 
 def revert_case(db, case: Case, actor: str, actor_id: int | None) -> Case:

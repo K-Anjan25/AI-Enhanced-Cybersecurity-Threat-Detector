@@ -45,7 +45,9 @@ class SecretDecryptionError(Exception):
 
 
 def _fernet() -> Fernet:
-    material = hashlib.sha256(_LABEL + settings.JWT_SECRET_KEY.encode("utf-8")).digest()
+    # Prefer dedicated encryption key when configured, else JWT secret for back-compat.
+    raw_key = settings.CONNECTOR_ENCRYPTION_KEY or settings.JWT_SECRET_KEY
+    material = hashlib.sha256(_LABEL + raw_key.encode("utf-8")).digest()
     return Fernet(base64.urlsafe_b64encode(material))
 
 

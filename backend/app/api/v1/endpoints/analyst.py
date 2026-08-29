@@ -1,13 +1,13 @@
-"""Autonomous-analyst API (Phases 18-19).
+"""Autonomous-analyst API (Phases 18-19, 36-37).
 
 The product surface: simulate incidents, read the calm brief + decision feed,
-open a case, make human decisions (approve / decline / revert), ask NOCTRA
+open a case, make human decisions (approve / decline / revert / bulk), ask NOCTRA
 questions, and monitor connected security integrations.
 """
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -22,6 +22,11 @@ router = APIRouter(prefix="/analyst", tags=["Analyst"])
 
 class ChatRequest(BaseModel):
     message: str
+
+
+class BulkDecideRequest(BaseModel):
+    case_ids: list[int] = Field(..., min_length=1, max_length=50, description="Case IDs to decide")
+    decision: str = Field(..., description="approved | declined")
 
 
 @router.get("/scenarios")
@@ -40,6 +45,9 @@ def simulate_incident(
     current_user: User = Depends(require_permission("alerts:write")),
 ):
     """Inject a simulated incident scenario and open a pending analyst case."""
+    valid = {c["id"] for c in scenario.list_scenarios()}
+    if scenario_type not in valid:
+        raise HTTPException(status_code=422, detail=f"Unknown scenario_type: {scenario_type}. Valid: {sorted(valid)}")
     case = scenario.run_scenario(
         db,
         scenario_type=scenario_type,
@@ -107,6 +115,30 @@ def sync_connector(
         raise HTTPException(status_code=404, detail=str(exc))
 
 
+@router.post("/bulk-decide")
+def bulk_decide(
+    payload: BulkDecideRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("alerts:write")),
+):
+    """Bulk approve or decline multiple pending cases (Phase 37).
+
+    Honest: only pending cases are acted upon; already-decided or missing
+    cases are returned in `failed` with a reason, never silently skipped.
+    """
+    try:
+        return analyst_service.bulk_decide(
+            db,
+            org_id=current_user.org_id,
+            case_ids=payload.case_ids,
+            decision=payload.decision,
+            actor=current_user.username,
+            actor_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @router.get("/cases/{case_id}")
 def get_case(
     case_id: int,
@@ -133,9 +165,12 @@ def chat_about_case(
         raise HTTPException(status_code=404, detail="Case not found")
     if not body.message or not body.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
-    return analyst_service.chat_about_case(
-        db, case=case, question=body.message.strip(), actor=current_user.username
-    )
+    try:
+        return analyst_service.chat_about_case(
+            db, case=case, question=body.message.strip(), actor=current_user.username, actor_id=current_user.id
+        )
+    except analyst_service.ChatRateLimited as exc:
+        raise HTTPException(status_code=429, detail=str(exc), headers={"Retry-After": str(exc.retry_after)})
 
 
 @router.post("/cases/{case_id}/approve")
