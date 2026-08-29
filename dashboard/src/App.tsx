@@ -42,6 +42,7 @@ const AdvancedPhasesPage = React.lazy(() => import("./features/advanced/pages/Ad
 const FinalPhasesPage = React.lazy(() => import("./features/advanced/pages/FinalPhasesPage"));
 const SOCWallPage = React.lazy(() => import("./features/advanced/pages/SOCWallPage"));
 const UltraPhasesPage = React.lazy(() => import("./features/advanced/pages/UltraPhasesPage"));
+const FederatedAutopilotPage = React.lazy(() => import("./features/advanced/pages/FederatedAutopilotPage"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -117,6 +118,7 @@ export default function App(): JSX.Element {
               <Route path="advanced-phases" element={<AdvancedPhasesPage />} />
               <Route path="final-phases" element={<FinalPhasesPage />} />
               <Route path="ultra-phases" element={<UltraPhasesPage />} />
+              <Route path="federated-autopilot" element={<FederatedAutopilotPage />} />
               <Route path="soc-tv-wall" element={<SOCWallPage />} />
               <Route path="data-lake" element={<AdvancedPhasesPage />} />
               <Route path="marketplace" element={<AdvancedPhasesPage />} />
@@ -130,6 +132,8 @@ export default function App(): JSX.Element {
               <Route path="hunt-notebooks" element={<UltraPhasesPage />} />
               <Route path="exposure" element={<UltraPhasesPage />} />
               <Route path="ai-redteam" element={<UltraPhasesPage />} />
+              <Route path="federated" element={<FederatedAutopilotPage />} />
+              <Route path="compliance-autopilot" element={<FederatedAutopilotPage />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<ModulePage />} />
               <Route path="vulns" element={<ModulePage />} />
