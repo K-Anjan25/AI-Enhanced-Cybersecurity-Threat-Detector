@@ -230,6 +230,22 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Transcendence P131-P140",
+    items: [
+      { name: "Multiverse P131", path: "/multiverse-soc", icon: Globe, badge: "P131" },
+      { name: "Q-Conscious P132", path: "/quantum-consciousness", icon: Brain, badge: "P132" },
+      { name: "Economy P133", path: "/autonomous-economy", icon: Store, badge: "P133" },
+      { name: "Neuro-Sym P134", path: "/neuro-symbolic", icon: Brain, badge: "P134" },
+      { name: "Replicator P135", path: "/self-replicating", icon: Boxes, badge: "P135" },
+      { name: "Temporal P136", path: "/temporal-defense", icon: ScrollText, badge: "P136" },
+      { name: "Univ Lang P137", path: "/universal-language", icon: Share2Icon, badge: "P137" },
+      { name: "∞ Learning P138", path: "/infinite-learning", icon: Brain, badge: "P138" },
+      { name: "X-Risk P139", path: "/existential-risk", icon: ShieldAlert, badge: "P139" },
+      { name: "Transcend P140", path: "/transcendence-os", icon: Layers, badge: "P140" },
+      { name: "Transcend All", path: "/transcendence", icon: Layers, badge: "P131-140" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,
