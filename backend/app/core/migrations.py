@@ -51,6 +51,9 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_sso_url TEXT",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_certificate TEXT",
     "ALTER TABLE sso_providers ADD COLUMN IF NOT EXISTS saml_nameid_format VARCHAR(255)",
+    # Phase 42: incremental sync for real connector fetch (GitHub, Slack)
+    "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS last_cursor TEXT",
+    "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS sync_state TEXT",
 ]
 
 

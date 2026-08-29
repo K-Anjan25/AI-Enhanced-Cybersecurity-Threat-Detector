@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import SsoScimPage from "./SsoScimPage";
 import * as ssoApi from "../../../api/ssoApi";
+import "../../../api/client";
 
 vi.mock("../../../api/ssoApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../api/ssoApi")>();
@@ -18,6 +19,14 @@ vi.mock("../../../api/ssoApi", async (importOriginal) => {
     deleteScimToken: vi.fn(),
   };
 });
+
+vi.mock("../../../api/client", () => ({
+  http: {
+    get: vi.fn().mockResolvedValue({ data: { data: [] } }),
+    post: vi.fn().mockResolvedValue({ data: {} }),
+    delete: vi.fn().mockResolvedValue({ data: {} }),
+  },
+}));
 
 const mocked = vi.mocked(ssoApi);
 

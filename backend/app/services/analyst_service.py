@@ -330,6 +330,24 @@ def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | N
     except ChatRateLimited as exc:
         raise exc
 
+    # Phase 44: grounding on recent connector alerts (OCSF)
+    connector_context = ""
+    try:
+        from app.services import ocsf_service
+
+        recent_alerts = (
+            db.query(SecurityAlert)
+            .filter(SecurityAlert.org_id == case.org_id)
+            .order_by(SecurityAlert.created_at.desc())
+            .limit(10)
+            .all()
+        )
+        if recent_alerts:
+            ocsf_batch = ocsf_service.alerts_to_ocsf_batch(recent_alerts)
+            connector_context = ocsf_service.ocsf_to_brief_summary(ocsf_batch["findings"])
+    except Exception:
+        connector_context = ""
+
     # Try LLM first (Phase 36)
     answer: str | None = None
     llm_used = False
@@ -352,6 +370,7 @@ def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | N
             "model": analysis.get("model", ""),
             "fallback": analysis.get("fallback", False),
             "entities": [f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:10]],
+            "connector_context": connector_context,
         }
         llm_answer = _llm.answer_case_question(context, question)
         if llm_answer:

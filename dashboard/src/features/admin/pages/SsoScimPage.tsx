@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { PageHeader, Card, Button } from "../../../components/ui";
 import { fetchSsoProviders, upsertSsoProvider, deleteSsoProvider, fetchScimTokens, createScimToken, deleteScimToken, type ScimTokenInfo } from "../../../api/ssoApi";
+import { http } from "../../../api/client";
 import { getApiError } from "../../../utils/getApiError";
 import { showSuccess } from "../../../utils/showSuccess";
 
@@ -27,6 +28,9 @@ export default function SsoScimPage(): React.ReactElement {
   const [scimTokens, setScimTokens] = useState<ScimTokenInfo[]>([]);
   const [newTokenName, setNewTokenName] = useState("SCIM Provisioning Token");
   const [lastCreatedToken, setLastCreatedToken] = useState<string | null>(null);
+  const [groupRoleMappings, setGroupRoleMappings] = useState<{ id: number; group_display_name: string; role: string }[]>([]);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupRole, setNewGroupRole] = useState<"USER" | "ANALYST">("ANALYST");
 
   const load = async () => {
     setLoading(true);
@@ -60,6 +64,12 @@ export default function SsoScimPage(): React.ReactElement {
 
       const scim = await fetchScimTokens();
       setScimTokens(scim.data || []);
+      try {
+        const mappings = await http.get("/admin/scim/groups/role-mappings");
+        setGroupRoleMappings(mappings.data.data || []);
+      } catch {
+        // ignore if not admin or endpoint not available
+      }
     } catch (err: any) {
       setError(getApiError(err, "Failed to load SSO/SCIM config"));
     } finally {
@@ -148,6 +158,32 @@ export default function SsoScimPage(): React.ReactElement {
     }
   };
 
+  const handleCreateGroupRoleMapping = async () => {
+    if (!newGroupName) {
+      setError("Group display name required");
+      return;
+    }
+    try {
+      await http.post("/admin/scim/groups/role-mappings", { group_display_name: newGroupName, role: newGroupRole });
+      showSuccess(`Mapped ${newGroupName} -> ${newGroupRole}`);
+      setNewGroupName("");
+      await load();
+    } catch (err: any) {
+      setError(getApiError(err, "Failed to create group role mapping"));
+    }
+  };
+
+  const handleDeleteGroupRoleMapping = async (id: number) => {
+    if (!confirm("Delete this group role mapping?")) return;
+    try {
+      await http.delete(`/admin/scim/groups/role-mappings/${id}`);
+      showSuccess("Group role mapping deleted");
+      await load();
+    } catch (err: any) {
+      setError(getApiError(err, "Failed to delete mapping"));
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -161,7 +197,7 @@ export default function SsoScimPage(): React.ReactElement {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         title="SSO & SCIM"
-        description="Configure OIDC + SAML single sign-on and SCIM provisioning (Users, Groups, Bulk) for enterprise IdPs. SAML verifies signature if xmlsec available, else logs warning and parses without verification — documented gap."
+        description="Configure OIDC + SAML (SP-initiated, xmlsec verification when cert present, require_signed optional), SCIM Users+Groups+Bulk, Groups→Roles mapping (Security Team → ANALYST), session revocation on deprovision."
       />
 
       {error && (
@@ -182,8 +218,8 @@ export default function SsoScimPage(): React.ReactElement {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* SSO */}
         <Card padded>
-          <h3 className="text-sm font-bold text-content-primary mb-1">Single Sign-On — OIDC + SAML 2.0 (Phase 41)</h3>
-          <p className="text-xs text-content-tertiary mb-4">OIDC Authorization Code + SAML SP-initiated. JIT creates USER/ANALYST (never ADMIN). Secrets encrypted at rest.</p>
+          <h3 className="text-sm font-bold text-content-primary mb-1">Single Sign-On — OIDC + SAML 2.0 (Phase 43 hardened)</h3>
+          <p className="text-xs text-content-tertiary mb-4">OIDC Authorization Code + SAML SP-initiated with xmlsec verification when cert present. Require signed assertions/response optional (fail closed). JIT USER/ANALYST never ADMIN.</p>
 
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -265,8 +301,8 @@ export default function SsoScimPage(): React.ReactElement {
 
         {/* SCIM */}
         <Card padded>
-          <h3 className="text-sm font-bold text-content-primary mb-1">SCIM 2.0 Provisioning — Users + Groups + Bulk (Phase 41)</h3>
-          <p className="text-xs text-content-tertiary mb-4">Bearer token per-org, hashed at rest. Endpoints: /scim/v2/Users, /Groups with membership sync, /Bulk (max 20 ops), discovery.</p>
+          <h3 className="text-sm font-bold text-content-primary mb-1">SCIM 2.0 Provisioning — Users + Groups + Bulk + Groups→Roles (Phase 43)</h3>
+          <p className="text-xs text-content-tertiary mb-4">Bearer token per-org, hashed at rest. Users+Groups+Bulk, Groups→Roles mapping (auto-upgrade USER→ANALYST), session revocation on deprovision, Enterprise extension.</p>
 
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -288,6 +324,31 @@ export default function SsoScimPage(): React.ReactElement {
                   </div>
                 ))
               )}
+            </div>
+
+            <div className="pt-3 border-t border-line-subtle space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-content-tertiary">Groups → Roles Mapping (Phase 43)</p>
+              <p className="text-[10px] text-content-tertiary">Map SCIM group displayName to internal role. When user added to group, role auto-upgraded (USER→ANALYST). ADMIN never via SCIM.</p>
+              <div className="flex gap-2">
+                <input className="flex-1 px-2 py-1 rounded bg-app-subtle border border-line-subtle text-xs" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="Group displayName e.g. Security Team" />
+                <select value={newGroupRole} onChange={(e) => setNewGroupRole(e.target.value as any)} className="px-2 py-1 rounded bg-app-subtle border border-line-subtle text-xs">
+                  <option value="USER">USER</option>
+                  <option value="ANALYST">ANALYST</option>
+                </select>
+                <Button variant="secondary" size="sm" onClick={handleCreateGroupRoleMapping}>Map</Button>
+              </div>
+              <div className="space-y-1">
+                {groupRoleMappings.length === 0 ? (
+                  <p className="text-[11px] text-content-tertiary">No mappings — e.g., map Security Team → ANALYST so IdP group members become analysts automatically.</p>
+                ) : (
+                  groupRoleMappings.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between p-1 rounded bg-app-subtle border border-line-subtle">
+                      <span className="text-[11px] text-content-secondary">{m.group_display_name} → {m.role}</span>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteGroupRoleMapping(m.id)}>Delete</Button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             <div className="pt-3 border-t border-line-subtle space-y-1">

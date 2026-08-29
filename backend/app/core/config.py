@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     SSO_SAML_ACS_URL: str | None = None
     SSO_SAML_SSO_URL: str | None = None
     SSO_SAML_CERTIFICATE: str | None = None
+    # SAML hardening (Phase 43) — when True, fail closed if signature invalid or xmlsec missing
+    SSO_SAML_REQUIRE_SIGNED_ASSERTIONS: bool = False
+    SSO_SAML_REQUIRE_SIGNED_RESPONSE: bool = False
+
+    # SCIM Groups→Roles mapping (Phase 43)
+    SCIM_GROUPS_ROLE_MAPPING_ENABLED: bool = True
 
     # Connector OAuth (Phase 41) — GitHub App + Slack OAuth
     GITHUB_OAUTH_CLIENT_ID: str | None = None

@@ -15,6 +15,8 @@ import { Button, PageHeader, SeverityBadge, SkeletonCard, SkeletonChart, StatusB
 import { Select } from "../../../components/ui/Select";
 import OnboardingChecklist, { type OnboardingStep } from "../../../components/OnboardingChecklist";
 import AnalystApi from "../../../api/analystApi";
+import OcsfApi from "../../../api/ocsfApi";
+import ComplianceApi from "../../../api/complianceApi";
 import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
 import { showSuccess } from "../../../utils/showSuccess";
@@ -77,6 +79,8 @@ const BriefPage: React.FC = () => {
   const [selectedScenario, setSelectedScenario] = useState("credential_leak");
   const [scenarios, setScenarios] = useState<{ id: string; label: string }[]>([]);
   const [configFor, setConfigFor] = useState<Connector | null>(null);
+  const [ocsfBrief, setOcsfBrief] = useState<{ summary: string; total: number } | null>(null);
+  const [chainStatus, setChainStatus] = useState<{ chain_valid: boolean; verified: number } | null>(null);
 
   /** Configuring a source writes alerts — gate it on the same permission the
    *  API enforces, so the button never promises a request that would 403. */
@@ -94,11 +98,13 @@ const BriefPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [briefData, connData, feedData, scenData] = await Promise.all([
+      const [briefData, connData, feedData, scenData, ocsfData, chainData] = await Promise.all([
         AnalystApi.fetchBrief(),
         AnalystApi.fetchConnectors().catch(() => []),
         AnalystApi.fetchFeed({ page: 1, limit: 100 }).catch(() => ({ data: [] as AnalystCase[] })),
         AnalystApi.fetchScenarios().catch(() => [] as any),
+        OcsfApi.fetchBrief(20).catch(() => null),
+        ComplianceApi.verifyAuditChain(100).catch(() => null),
       ]);
       setBrief(briefData);
       setConnectors(connData);
@@ -106,6 +112,8 @@ const BriefPage: React.FC = () => {
       if (Array.isArray(scenData) && scenData.length > 0) {
         setScenarios(scenData as any);
       }
+      if (ocsfData) setOcsfBrief(ocsfData);
+      if (chainData) setChainStatus(chainData);
     } catch (err: any) {
       setError(getApiError(err, "Failed to load your brief"));
     } finally {
@@ -545,6 +553,43 @@ const BriefPage: React.FC = () => {
         onClose={() => setConfigFor(null)}
         onSaved={loadData}
       />
+      </div>
+
+      {/* Phase 44/45: OCSF + Compliance */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
+          <h2 className="text-sm font-bold text-content-primary flex items-center gap-2 font-display">
+            <span className="text-accent-primary">OCSF</span> Connector Telemetry (Phase 44)
+          </h2>
+          <p className="text-xs text-content-tertiary mt-1">
+            Recent alerts normalized to OCSF Security Finding (class 2001). Auto-triage creates cases for CRITICAL/HIGH.
+          </p>
+          {ocsfBrief ? (
+            <div className="mt-3">
+              <p className="text-xs text-content-secondary">{ocsfBrief.summary}</p>
+              <p className="text-[11px] text-content-tertiary mt-1">{ocsfBrief.total} alerts in last 50, auto-triaged to analyst feed.</p>
+            </div>
+          ) : (
+            <p className="text-xs text-content-tertiary mt-3">No recent connector telemetry — configure a source or simulate.</p>
+          )}
+        </div>
+
+        <div className="bg-app-surface rounded-2xl border border-line-subtle p-6 shadow-card">
+          <h2 className="text-sm font-bold text-content-primary flex items-center gap-2 font-display">
+            <ShieldCheck size={16} className="text-accent-primary" /> Compliance Evidence (Phase 45)
+          </h2>
+          <p className="text-xs text-content-tertiary mt-1">
+            Tamper-evident audit chain (SHA256 hash chain), SOC2 controls mapping, chain-of-custody per case.
+          </p>
+          {chainStatus ? (
+            <div className="mt-3 flex items-center gap-2">
+              <StatusBadge tone={chainStatus.chain_valid ? "success" : "critical"} label={chainStatus.chain_valid ? "Chain valid" : "Chain broken"} />
+              <span className="text-[11px] text-content-tertiary">{chainStatus.verified} entries verified</span>
+            </div>
+          ) : (
+            <p className="text-xs text-content-tertiary mt-3">Chain status unavailable — admin only.</p>
+          )}
+        </div>
       </div>
     </div>
   );

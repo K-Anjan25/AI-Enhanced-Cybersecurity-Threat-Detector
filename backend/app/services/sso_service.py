@@ -640,29 +640,72 @@ def handle_saml_callback(
 
     email = email.lower().strip() if isinstance(email, str) else str(email).lower().strip()
 
-    # Verify signature if xmlsec available and cert configured
-    # Honest: if xmlsec not installed, we log warning and proceed without verification (documented gap)
-    try:
-        import xmlsec  # type: ignore
-
-        # Try to verify if cert is configured
-        saml_cfg = get_sso_config(db, org_id).get("saml")
-        cert = None
-        if saml_cfg:
-            # Get cert from DB provider
-            provider = _get_provider_by_type(db, org_id, "saml")
-            if provider and provider.saml_certificate:
-                cert = provider.saml_certificate
-            else:
-                cert = saml_cfg.get("certificate")
-
-        if cert and settings.SSO_SAML_CERTIFICATE:
-            # Verify logic would go here — for now log that verification is attempted
-            _LOGGER.info("SAML signature verification attempted with cert")
+    # Phase 43: SAML signature verification with xmlsec if available
+    saml_cfg = get_sso_config(db, org_id).get("saml")
+    cert = None
+    if saml_cfg:
+        provider = _get_provider_by_type(db, org_id, "saml")
+        if provider and provider.saml_certificate:
+            cert = provider.saml_certificate
         else:
-            _LOGGER.warning("SAML signature verification skipped — no certificate configured or xmlsec not fully configured")
-    except ImportError:
-        _LOGGER.warning("xmlsec not installed — SAML signature verification skipped (documented gap)")
+            cert = saml_cfg.get("certificate") or settings.SSO_SAML_CERTIFICATE
+
+    if not cert:
+        # Try env fallback
+        cert = settings.SSO_SAML_CERTIFICATE
+
+    raw_xml = parsed.get("raw_xml", "")
+    verified = False
+    verify_error = None
+
+    if cert:
+        try:
+            import xmlsec  # type: ignore
+            from lxml import etree  # type: ignore
+
+            # Parse with lxml for xmlsec
+            doc = etree.fromstring(raw_xml.encode() if isinstance(raw_xml, str) else raw_xml)
+            # Find Signature node
+            sig_nodes = doc.findall(".//{http://www.w3.org/2000/09/xmldsig#}Signature")
+            if not sig_nodes:
+                verify_error = "No Signature node found in SAMLResponse"
+                _LOGGER.warning("SAML: %s", verify_error)
+            else:
+                # Prepare cert — ensure PEM format
+                cert_pem = cert.strip()
+                if "BEGIN CERTIFICATE" not in cert_pem:
+                    # Assume base64 DER, wrap as PEM
+                    cert_pem = f"-----BEGIN CERTIFICATE-----\n{cert_pem}\n-----END CERTIFICATE-----"
+
+                # Create a signature context and load cert
+                ctx = xmlsec.SignatureContext()
+                # Load cert into Key
+                key = xmlsec.Key.from_memory(cert_pem.encode(), xmlsec.KeyFormat.CERT_PEM, None)
+                ctx.key = key
+
+                # Verify first signature
+                try:
+                    ctx.verify(sig_nodes[0])
+                    verified = True
+                    _LOGGER.info("SAML signature verification succeeded")
+                except Exception as ve:
+                    verify_error = str(ve)
+                    _LOGGER.warning("SAML signature verification failed: %s", verify_error)
+        except ImportError as ie:
+            verify_error = f"xmlsec or lxml not installed: {ie}"
+            _LOGGER.warning("xmlsec not installed — SAML signature verification skipped (documented gap): %s", verify_error)
+        except Exception as exc:
+            verify_error = str(exc)
+            _LOGGER.warning("SAML signature verification error: %s", verify_error)
+    else:
+        _LOGGER.warning("SAML signature verification skipped — no certificate configured (documented gap)")
+        verify_error = "No certificate configured"
+
+    # Enforce if required
+    if settings.SSO_SAML_REQUIRE_SIGNED_ASSERTIONS or settings.SSO_SAML_REQUIRE_SIGNED_RESPONSE:
+        if not verified:
+            raise ValueError(f"SAML signature verification required but failed: {verify_error or 'unknown'}")
+    # If not required, we allow unverified but log warning — honest gap documented
 
     # Find existing user
     user = (

@@ -84,6 +84,32 @@ def oauth_callback(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {exc}")
 
+    # Phase 42: auto-create poll config for this connector if not exists, so scheduler can pick it up
+    try:
+        from app.services import connector_service
+
+        cfg = connector_service.get_config(db, org_id=row.org_id, connector_id=connector_id)
+        if cfg is None:
+            endpoint = (
+                "https://api.github.com/orgs/{org}/code-scanning/alerts"
+                if connector_id == "github"
+                else "https://api.slack.com/audit/v1/logs"
+            )
+            connector_service.upsert_config(
+                db,
+                org_id=row.org_id,
+                connector_id=connector_id,
+                payload={
+                    "mode": "poll",
+                    "endpoint": endpoint,
+                    "enabled": True,
+                },
+                actor="oauth",
+            )
+    except Exception:
+        # Non-fatal — OAuth still connected, config can be created manually
+        pass
+
     # Redirect to frontend — show success
     frontend = settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "/"
     redirect_to = f"{frontend}/?oauth_connected={connector_id}" if frontend.startswith("http") else f"/?oauth_connected={connector_id}"
