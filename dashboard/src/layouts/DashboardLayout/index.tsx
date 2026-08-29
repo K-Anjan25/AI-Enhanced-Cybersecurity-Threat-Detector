@@ -246,6 +246,22 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Absolute P141-P150",
+    items: [
+      { name: "Omniverse P141", path: "/omniversal-soc", icon: Globe, badge: "P141" },
+      { name: "Reality P142", path: "/reality-fabric", icon: ShieldAlert, badge: "P142" },
+      { name: "Chrono P143", path: "/chrono-loop", icon: ScrollText, badge: "P143" },
+      { name: "Hive P144", path: "/unified-consciousness", icon: Brain, badge: "P144" },
+      { name: "Void P145", path: "/void-defense", icon: EyeOff, badge: "P145" },
+      { name: "Genesis P146", path: "/genesis-protocol", icon: Database, badge: "P146" },
+      { name: "Akashic P147", path: "/akashic-ledger", icon: FileDown, badge: "P147" },
+      { name: "Cosmic P148", path: "/cosmic-threat", icon: Globe, badge: "P148" },
+      { name: "Dimensional P149", path: "/dimensional-barrier", icon: Layers, badge: "P149" },
+      { name: "Absolute P150", path: "/absolute-os", icon: Layers, badge: "P150" },
+      { name: "Absolute All", path: "/absolute-infinity", icon: Layers, badge: "P141-150" },
+    ],
+  },
+  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,
