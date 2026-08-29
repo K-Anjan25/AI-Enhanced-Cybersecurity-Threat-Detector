@@ -96,6 +96,16 @@ from app.models.universal_language import UniversalLanguageModel, Translation, U
 from app.models.infinite_learning import InfiniteLearner, LearningTask, MemoryConsolidation
 from app.models.existential_risk import ExistentialRisk, XRiskMitigation, XRiskScenario
 from app.models.transcendence_os import TranscendenceConfig, TranscendenceMetric, TranscendenceLog
+from app.models.omniversal_soc import Omniverse, OmniverseBranch, CrossOmniverseIntel
+from app.models.reality_fabric import RealityFabric, RealityAnomaly, FabricPatch
+from app.models.chrono_loop import TimeLoop, LoopIteration, ChronoDefense
+from app.models.unified_consciousness import HiveMind, ConsciousnessNode, HiveDecision
+from app.models.void_defense import VoidSector, VoidEntity, VoidShield
+from app.models.genesis_protocol import GenesisUniverse, GenesisBlueprint, UniverseSeed
+from app.models.akashic_ledger import AkashicRecord, AkashicQuery, AkashicVerification
+from app.models.cosmic_threat import CosmicThreat, CosmicMitigation, CosmicSimulation
+from app.models.dimensional_barrier import DimensionalBarrier, DimensionalBreach, BarrierReinforcement
+from app.models.absolute_os import AbsoluteConfig, AbsoluteMetric, AbsoluteLog
 
 __all__ = [
     "Org",
@@ -368,4 +378,34 @@ __all__ = [
     "TranscendenceConfig",
     "TranscendenceMetric",
     "TranscendenceLog",
+    "Omniverse",
+    "OmniverseBranch",
+    "CrossOmniverseIntel",
+    "RealityFabric",
+    "RealityAnomaly",
+    "FabricPatch",
+    "TimeLoop",
+    "LoopIteration",
+    "ChronoDefense",
+    "HiveMind",
+    "ConsciousnessNode",
+    "HiveDecision",
+    "VoidSector",
+    "VoidEntity",
+    "VoidShield",
+    "GenesisUniverse",
+    "GenesisBlueprint",
+    "UniverseSeed",
+    "AkashicRecord",
+    "AkashicQuery",
+    "AkashicVerification",
+    "CosmicThreat",
+    "CosmicMitigation",
+    "CosmicSimulation",
+    "DimensionalBarrier",
+    "DimensionalBreach",
+    "BarrierReinforcement",
+    "AbsoluteConfig",
+    "AbsoluteMetric",
+    "AbsoluteLog",
 ]

@@ -48,6 +48,7 @@ const Beyond100Page = React.lazy(() => import("./features/advanced/pages/Beyond1
 const MetaSingularityPage = React.lazy(() => import("./features/advanced/pages/MetaSingularityPage"));
 const OmniSingularityPage = React.lazy(() => import("./features/advanced/pages/OmniSingularityPage"));
 const TranscendencePage = React.lazy(() => import("./features/advanced/pages/TranscendencePage"));
+const AbsoluteInfinityPage = React.lazy(() => import("./features/advanced/pages/AbsoluteInfinityPage"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -194,6 +195,17 @@ export default function App(): JSX.Element {
               <Route path="infinite-learning" element={<TranscendencePage />} />
               <Route path="existential-risk" element={<TranscendencePage />} />
               <Route path="transcendence-os" element={<TranscendencePage />} />
+              <Route path="absolute-infinity" element={<AbsoluteInfinityPage />} />
+              <Route path="omniversal-soc" element={<AbsoluteInfinityPage />} />
+              <Route path="reality-fabric" element={<AbsoluteInfinityPage />} />
+              <Route path="chrono-loop" element={<AbsoluteInfinityPage />} />
+              <Route path="unified-consciousness" element={<AbsoluteInfinityPage />} />
+              <Route path="void-defense" element={<AbsoluteInfinityPage />} />
+              <Route path="genesis-protocol" element={<AbsoluteInfinityPage />} />
+              <Route path="akashic-ledger" element={<AbsoluteInfinityPage />} />
+              <Route path="cosmic-threat" element={<AbsoluteInfinityPage />} />
+              <Route path="dimensional-barrier" element={<AbsoluteInfinityPage />} />
+              <Route path="absolute-os" element={<AbsoluteInfinityPage />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<ModulePage />} />
               <Route path="vulns" element={<ModulePage />} />

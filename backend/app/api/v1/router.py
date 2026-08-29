@@ -113,6 +113,16 @@ from app.api.v1.endpoints import (
     infinite_learning,
     existential_risk,
     transcendence_os,
+    omniversal_soc,
+    reality_fabric,
+    chrono_loop,
+    unified_consciousness,
+    void_defense,
+    genesis_protocol,
+    akashic_ledger,
+    cosmic_threat,
+    dimensional_barrier,
+    absolute_os,
 )
 
 api_router = APIRouter()
@@ -243,3 +253,14 @@ api_router.include_router(universal_language.router)
 api_router.include_router(infinite_learning.router)
 api_router.include_router(existential_risk.router)
 api_router.include_router(transcendence_os.router)
+# Phases 141-150 - Absolute Infinity
+api_router.include_router(omniversal_soc.router)
+api_router.include_router(reality_fabric.router)
+api_router.include_router(chrono_loop.router)
+api_router.include_router(unified_consciousness.router)
+api_router.include_router(void_defense.router)
+api_router.include_router(genesis_protocol.router)
+api_router.include_router(akashic_ledger.router)
+api_router.include_router(cosmic_threat.router)
+api_router.include_router(dimensional_barrier.router)
+api_router.include_router(absolute_os.router)
