@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Info, EyeOff, Clock } from "lucide-react";
 import apiClient from "../../../api/client";
+import { cn } from "../../../components/ui";
 import {
   Button,
   Card,
@@ -39,6 +40,14 @@ interface Metric {
   caveat: string | null;
 }
 
+interface SourceCoverage {
+  source: string;
+  alerts: number;
+  with_event_time: number;
+  percent: number;
+  note: string | null;
+}
+
 interface NotMeasured {
   metric: string;
   reason: string;
@@ -49,6 +58,7 @@ interface Report {
   cases_in_window: number;
   metrics: Metric[];
   open_backlog: { undecided_cases: number; oldest_undecided_minutes: number | null };
+  event_time_coverage: SourceCoverage[];
   not_measured: NotMeasured[];
 }
 
@@ -212,6 +222,46 @@ export default function ResponseTimesPage() {
                 <MetricCard key={m.metric} metric={m} />
               ))}
             </div>
+          )}
+
+          {/* Which connectors actually supply an event time. A source at 0%
+              means its timestamp mapping is wrong or the provider sends
+              nothing — the reason detection latency covers only a subset. */}
+          {report.event_time_coverage.length > 0 && (
+            <Card className="p-5">
+              <h2 className="text-sm font-bold font-display text-content-primary mb-1">
+                Event-time coverage by source
+              </h2>
+              <p className="text-xs text-content-tertiary mb-3">
+                Detection latency can only be measured for alerts whose source reports
+                when the event happened.
+              </p>
+              <div className="space-y-2">
+                {report.event_time_coverage.map((c) => (
+                  <div
+                    key={c.source}
+                    className="flex items-start justify-between gap-3 flex-wrap border-b border-line-subtle last:border-0 pb-2 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium text-content-primary">
+                        {c.source}
+                      </span>
+                      {c.note && (
+                        <p className="text-xs text-status-warning mt-0.5">{c.note}</p>
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-mono tabular-nums shrink-0",
+                        c.percent === 0 ? "text-status-critical" : "text-content-secondary",
+                      )}
+                    >
+                      {c.with_event_time}/{c.alerts} ({c.percent}%)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           {report.not_measured.length > 0 && (

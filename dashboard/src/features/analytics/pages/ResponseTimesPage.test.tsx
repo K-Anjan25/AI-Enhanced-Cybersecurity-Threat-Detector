@@ -33,6 +33,9 @@ const report = (over: Record<string, unknown> = {}) => ({
   cases_in_window: 12,
   metrics: [metric()],
   open_backlog: { undecided_cases: 3, oldest_undecided_minutes: 480 },
+  event_time_coverage: [
+    { source: "okta", alerts: 4, with_event_time: 4, percent: 100, note: null },
+  ],
   not_measured: [
     { metric: "cost_avoidance", reason: "depends on breach-cost assumptions" },
   ],
@@ -134,6 +137,29 @@ describe("ResponseTimesPage", () => {
     renderPage();
     expect(await screen.findByText("No cases in this window")).toBeInTheDocument();
     expect(screen.getByText(/real zero, not a failure/)).toBeInTheDocument();
+  });
+
+  it("flags a source whose timestamp mapping yields nothing", async () => {
+    get.mockResolvedValue({
+      data: report({
+        event_time_coverage: [
+          { source: "okta", alerts: 4, with_event_time: 4, percent: 100, note: null },
+          {
+            source: "sentinel",
+            alerts: 6,
+            with_event_time: 0,
+            percent: 0,
+            note: "no event time on any alert from this source — check the connector's timestamp mapping",
+          },
+        ],
+      }),
+    });
+    renderPage();
+
+    expect(await screen.findByText("Event-time coverage by source")).toBeInTheDocument();
+    expect(screen.getByText("4/4 (100%)")).toBeInTheDocument();
+    expect(screen.getByText("0/6 (0%)")).toBeInTheDocument();
+    expect(screen.getByText(/check the connector's timestamp mapping/)).toBeInTheDocument();
   });
 
   it("lists what cannot be measured and why", async () => {
