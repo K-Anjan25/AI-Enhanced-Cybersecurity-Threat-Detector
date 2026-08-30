@@ -36,9 +36,14 @@ def parse_kql(query: str) -> List[Dict[str, Any]]:
     if not query or not query.strip():
         return []
 
-    # Tokenize preserving quoted strings
-    # Split by AND/OR/NOT but keep logic
-    tokens = re.split(r'\s+(AND|OR|NOT)\s+', query, flags=re.IGNORECASE)
+    # Split on the boolean keywords, keeping them so each term knows which
+    # operator preceded it. The leading-NOT case needs its own alternative:
+    # `NOT severity:LOW` has no whitespace before the keyword, so a pattern
+    # requiring it swallowed NOT into the field name and the query silently
+    # matched what it was meant to exclude.
+    tokens = re.split(
+        r'(?:^|\s+)(AND|OR|NOT)(?=\s)', query.strip(), flags=re.IGNORECASE
+    )
     conditions = []
     next_logic = "AND"
     for token in tokens:
@@ -46,7 +51,12 @@ def parse_kql(query: str) -> List[Dict[str, Any]]:
             continue
         upper = token.strip().upper()
         if upper in ("AND", "OR", "NOT"):
-            next_logic = upper
+            # `AND NOT x` arrives as two keywords. NOT is the one that changes
+            # the meaning of the term, so it wins; a bare AND/OR after a NOT
+            # would otherwise discard the negation.
+            next_logic = "NOT" if upper == "NOT" else (
+                next_logic if next_logic == "NOT" else upper
+            )
             continue
 
         # field:value or free text
@@ -98,55 +108,66 @@ def execute_hunt_query(db: Session, org_id: int, query: str, limit: int = None) 
         "mitre_technique_id": SecurityAlert.mitre_technique_id,
     }
 
-    filters = []
-    for cond in conditions:
-        field = cond["field"]
-        op = cond["op"]
-        val = cond["value"]
+    def _expression(field: str, op: str, val: str):
+        """One condition as a SQLAlchemy expression, or None if unusable."""
         col = field_map.get(field)
-        if not col:
-            # unknown field -> search in message
-            col = SecurityAlert.message
-            # treat as contains
-            filters.append(col.ilike(f"%{val}%"))
-            continue
+        if col is None:
+            # An unknown field is a typo more often than an intention. Searching
+            # the message is a reasonable guess, and `unknown_fields` in the
+            # response tells the operator it was a guess.
+            return SecurityAlert.message.ilike(f"%{val}%")
 
-        if op == "==":
-            if field == "message":
-                filters.append(col.ilike(f"%{val}%"))
-            else:
-                filters.append(col == val.upper() if field == "severity" else val if field == "source_ip" else col.ilike(f"%{val}%") if field in ("source", "alert_type") else col == val)
-                # Simplify: for severity exact match, others ilike
-                # Re-evaluate for correctness
-                if field == "severity":
-                    filters[-1] = col == val.upper()
-                elif field in ("source", "alert_type"):
-                    filters[-1] = col.ilike(f"%{val}%")
-                elif field == "source_ip":
-                    filters[-1] = col == val
-                else:
-                    filters[-1] = col.ilike(f"%{val}%")
-        elif op == "contains":
-            filters.append(col.ilike(f"%{val}%"))
-        elif op in (">=", "<=", ">", "<"):
-            # only for score or created_at, simplified
+        if op in (">=", "<=", ">", "<"):
+            numeric = {"score": SecurityAlert.score}.get(field)
+            if numeric is None:
+                return None
             try:
-                if field == "score":
-                    num = float(val)
-                    if op == ">=":
-                        filters.append(SecurityAlert.score >= num)
-                    elif op == "<=":
-                        filters.append(SecurityAlert.score <= num)
-                    elif op == ">":
-                        filters.append(SecurityAlert.score > num)
-                    elif op == "<":
-                        filters.append(SecurityAlert.score < num)
+                num = float(val)
             except ValueError:
-                pass
+                return None
+            return {
+                ">=": numeric >= num, "<=": numeric <= num,
+                ">": numeric > num, "<": numeric < num,
+            }[op]
 
-    if filters:
-        # Combine with AND for simplicity (honest: OR/NOT logic not fully implemented, documented)
-        q = q.filter(and_(*filters))
+        if op == "contains" or field == "message":
+            return col.ilike(f"%{val}%")
+        if field == "severity":
+            return col == val.upper()
+        if field == "source_ip":
+            return col == val
+        if field in ("source", "alert_type"):
+            return col.ilike(f"%{val}%")
+        return col.ilike(f"%{val}%")
+
+    # Conditions carry the operator that *preceded* them. Previously every
+    # expression was ANDed regardless, so `severity:CRITICAL OR severity:LOW`
+    # asked for rows that were both at once and returned nothing, and `NOT x`
+    # matched x instead of excluding it. Both produced a confident empty or
+    # wrong answer rather than an error — the worst outcome for a hunt, because
+    # an analyst reads "no results" as "nothing to find".
+    combined = None
+    unknown_fields: list[str] = []
+    unsupported: list[str] = []
+    for cond in conditions:
+        field, op, val, logic = cond["field"], cond["op"], cond["value"], cond["logic"]
+        if field not in field_map and field != "score":
+            unknown_fields.append(field)
+        expression = _expression(field, op, val)
+        if expression is None:
+            unsupported.append(f"{field}{op}{val}")
+            continue
+        if logic == "NOT":
+            expression = ~expression
+        if combined is None:
+            combined = expression
+        elif logic == "OR":
+            combined = or_(combined, expression)
+        else:
+            combined = and_(combined, expression)
+
+    if combined is not None:
+        q = q.filter(combined)
 
     results = q.order_by(SecurityAlert.created_at.desc()).limit(limit).all()
     duration_ms = int((time.perf_counter() - start) * 1000)
@@ -169,7 +190,15 @@ def execute_hunt_query(db: Session, org_id: int, query: str, limit: int = None) 
             for r in results
         ],
         "duration_ms": duration_ms,
-        "honest_note": "KQL subset: field:value, AND only fully supported, OR/NOT partial; unknown fields search message; score numeric filters supported",
+        "truncated": len(results) >= limit,
+        "limit": limit,
+        "unknown_fields": sorted(set(unknown_fields)),
+        "unsupported": unsupported,
+        "honest_note": (
+            "KQL subset: field:value with AND, OR and NOT. Comparisons (>, >=, "
+            "<, <=) apply to score only. Unrecognised field names fall back to "
+            "a message search and are listed in unknown_fields."
+        ),
     }
 
 
