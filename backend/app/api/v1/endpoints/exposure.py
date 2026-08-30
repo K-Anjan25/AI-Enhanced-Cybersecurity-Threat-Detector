@@ -24,6 +24,10 @@ class DomainIn(BaseModel):
 class DiscoverIn(BaseModel):
     domain: Optional[str] = None
 
+class StatusIn(BaseModel):
+    status: str  # open | fixed | ignored
+    note: Optional[str] = None
+
 @router.get("/domains")
 def list_domains(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
@@ -82,6 +86,30 @@ def list_findings(db: Session = Depends(get_db), current_user: User = Depends(re
     except Exception as e:
         logger.exception("Unhandled error in %s", __name__)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/{exposure_id}/status")
+def set_status(
+    exposure_id: int,
+    payload: StatusIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("audit:read")),
+):
+    """Mark an exposure fixed or not a real finding.
+
+    Attack-path search only walks *open* exposures, so this is how an operator
+    stops a wrong entry generating routes to crown jewels.
+    """
+    try:
+        exposure = exposure_service.set_exposure_status(
+            db, current_user.org_id, exposure_id, payload.status, payload.note
+        )
+        return exposure_service.serialize_exposure(exposure)
+    except ValueError as e:
+        detail = str(e)
+        raise HTTPException(
+            status_code=404 if "not found" in detail.lower() else 400, detail=detail
+        )
 
 
 @router.get("/summary")

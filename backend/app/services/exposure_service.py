@@ -126,6 +126,46 @@ def list_findings(db: Session, org_id: int) -> List[ExposureFinding]:
     return db.query(ExposureFinding).filter(ExposureFinding.org_id == org_id, ExposureFinding.status == "open").order_by(ExposureFinding.severity.desc()).limit(50).all()
 
 
+_EXPOSURE_STATUSES = ("open", "fixed", "ignored")
+
+
+def set_exposure_status(
+    db: Session, org_id: int, exposure_id: int, status: str, note: str = None
+) -> ASM_AssetExposure:
+    """Close an exposure, or mark it as not a real finding.
+
+    Attack-path search treats every *open* exposure as a way in, so an entry
+    that is wrong — a hostname that resolves nowhere, a service that was
+    decommissioned — keeps generating routes to crown jewels until someone can
+    say so. Until now nothing could: the model had `fixed` and `ignored`
+    states and no code path set them.
+    """
+    if status not in _EXPOSURE_STATUSES:
+        raise ValueError(
+            f"Unknown status {status!r}. Expected one of: {', '.join(_EXPOSURE_STATUSES)}."
+        )
+
+    exposure = (
+        db.query(ASM_AssetExposure)
+        .filter(ASM_AssetExposure.id == exposure_id, ASM_AssetExposure.org_id == org_id)
+        .first()
+    )
+    if not exposure:
+        raise ValueError("Exposure not found")
+
+    exposure.status = status
+    if note:
+        # Keep the operator's reasoning next to the evidence that prompted it,
+        # so a later reader can tell why this was dismissed.
+        evidence = dict(exposure.evidence_json or {})
+        evidence["status_note"] = note
+        evidence["status_set_at"] = _now().isoformat()
+        exposure.evidence_json = evidence
+    db.commit()
+    db.refresh(exposure)
+    return exposure
+
+
 def get_exposure_summary(db: Session, org_id: int) -> Dict[str, Any]:
     total = db.query(ASM_AssetExposure).filter(ASM_AssetExposure.org_id == org_id).count()
     open_exp = db.query(ASM_AssetExposure).filter(ASM_AssetExposure.org_id == org_id, ASM_AssetExposure.status == "open").count()
@@ -133,11 +173,21 @@ def get_exposure_summary(db: Session, org_id: int) -> Dict[str, Any]:
     critical = db.query(ASM_AssetExposure).filter(ASM_AssetExposure.org_id == org_id, ASM_AssetExposure.severity == "CRITICAL", ASM_AssetExposure.status == "open").count()
     expired_certs = db.query(ASM_AssetExposure).filter(ASM_AssetExposure.org_id == org_id, ASM_AssetExposure.exposure_type == "expired_cert", ASM_AssetExposure.status == "open").count()
 
-    return {"total_exposures": total, "open_exposures": open_exp, "high": high, "critical": critical, "expired_certs": expired_certs, "risk_score": min(100, critical*20 + high*10)}
+    # `risk_score: critical*20 + high*10` was presented as a 0-100 score but is
+    # only a weighted count wearing a percentage's clothes — three criticals
+    # and nothing else reads as "60% at risk", which means nothing. The counts
+    # are the honest version, and the caller can weight them if it wants to.
+    return {
+        "total_exposures": total,
+        "open_exposures": open_exp,
+        "high": high,
+        "critical": critical,
+        "expired_certs": expired_certs,
+    }
 
 
 def serialize_exposure(e: ASM_AssetExposure) -> Dict[str, Any]:
-    return {"id": e.id, "name": e.name, "ip_address": e.ip_address, "port": e.port, "service": e.service, "exposure_type": e.exposure_type, "severity": e.severity, "description": e.description, "evidence": e.evidence_json, "status": e.status, "first_seen_at": e.first_seen_at.isoformat() if e.first_seen_at else None}
+    return {"id": e.id, "name": e.name, "ip_address": e.ip_address, "port": e.port, "service": e.service, "exposure_type": e.exposure_type, "severity": e.severity, "description": e.description, "evidence": e.evidence_json, "status": e.status, "first_seen_at": e.first_seen_at.isoformat() if e.first_seen_at else None, "last_seen_at": e.last_seen_at.isoformat() if e.last_seen_at else None}
 
 
 def serialize_finding(f: ExposureFinding) -> Dict[str, Any]:

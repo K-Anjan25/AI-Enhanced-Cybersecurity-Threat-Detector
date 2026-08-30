@@ -96,6 +96,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Investigate",
     items: [
       { name: "Threat Hunting", path: "/hunting", icon: Search },
+      { name: "Attack Surface", path: "/attack-surface", icon: Globe },
       { name: "Threat Intel", path: "/threat-intel", icon: Share2Icon },
       { name: "Forensics", path: "/forensics", icon: FileSearch },
       { name: "Identity Threats", path: "/itdr", icon: Fingerprint },
