@@ -35,6 +35,21 @@ def test_typosquat_candidates_are_real_variations():
     assert all(c["technique"] for c in candidates), "every candidate explains itself"
 
 
+def test_typosquat_includes_the_rn_m_confusable():
+    """'rn' for 'm' is the highest-yield lookalike in the wild."""
+    domains = [c["domain"] for c in drp_service.typosquat_candidates("acme.com")]
+    assert "acrne.com" in domains
+    assert domains.index("acrne.com") < 3, "must survive the result limit"
+
+
+def test_every_candidate_is_actually_registrable():
+    """An unregistrable candidate is a wasted CT lookup, not a finding."""
+    for source in ("acme.com", "microsoft.com", "my-shop.co.uk"):
+        for c in drp_service.typosquat_candidates(source, limit=200):
+            assert drp_service._is_registrable(c["domain"]), c["domain"]
+            assert "@" not in c["domain"], "@ is a font trick, not a domain"
+
+
 def test_typosquat_handles_degenerate_input():
     assert drp_service.typosquat_candidates("") == []
     assert drp_service.typosquat_candidates("localhost") != []
@@ -264,3 +279,110 @@ def test_recalculating_does_not_accumulate_stale_findings(db_session):
     second = len(posture_score_service.list_findings(db_session, ORG))
 
     assert first == second, "each reading replaces the previous findings"
+
+
+# ---------------------------------------------------------------------------
+# DRP + Certificate Transparency
+# ---------------------------------------------------------------------------
+
+def _org_with_domain(db):
+    db.add(Org(id=ORG, name="Acme Ltd", slug="acme"))
+    db.add(User(org_id=ORG, username="o", email="o@acme.com", password="x", role="ANALYST"))
+    db.commit()
+    drp_service.seed_monitors(db, ORG)
+
+
+def _stub_ct(monkeypatch, registered=(), fail_reason=None):
+    """Stand in for crt.sh: `registered` domains come back with a certificate."""
+    from app.services import ct_log_client
+
+    monkeypatch.setattr(ct_log_client, "is_enabled", lambda: True)
+
+    def fake_lookup_many(domains, limit=12):
+        out = []
+        for d in domains[:limit]:
+            if fail_reason:
+                out.append(ct_log_client.CTResult(domain=d, ok=False, reason=fail_reason))
+                break
+            if d in registered:
+                out.append(
+                    ct_log_client.CTResult(
+                        domain=d,
+                        ok=True,
+                        registered=True,
+                        certificates=[{
+                            "id": 1,
+                            "issuer": "Let's Encrypt",
+                            "not_before": "2026-02-01T00:00:00",
+                            "not_after": "2026-05-01T00:00:00",
+                            "names": [d],
+                        }],
+                    )
+                )
+            else:
+                out.append(ct_log_client.CTResult(domain=d, ok=True, registered=False))
+        return out
+
+    monkeypatch.setattr(ct_log_client, "lookup_many", fake_lookup_many)
+
+
+def test_ct_confirmed_lookalike_becomes_a_high_severity_finding(db_session, monkeypatch):
+    _org_with_domain(db_session)
+    _stub_ct(monkeypatch, registered={"acme-login.com"})
+
+    findings = drp_service.scan_drp(db_session, ORG)
+    confirmed = [f for f in findings if f.finding_type == "lookalike_domain_registered"]
+
+    assert len(confirmed) == 1, "a real certificate is a real finding"
+    f = confirmed[0]
+    assert f.severity == "HIGH", "an existing lookalike outranks a hypothetical one"
+    assert "acme-login.com" in f.title
+    assert f.source == "certificate_transparency"
+    assert f.evidence_json["registration_checked"] is True
+    assert f.evidence_json["first_seen"] == "2026-02-01T00:00:00"
+    assert f.evidence_json["issuers"] == ["Let's Encrypt"]
+    assert f.evidence_json["technique"], "explains which typo pattern produced it"
+    assert "crt.sh" in f.evidence_json["crtsh_url"]
+
+
+def test_clean_ct_sweep_downgrades_the_candidate_list(db_session, monkeypatch):
+    _org_with_domain(db_session)
+    _stub_ct(monkeypatch, registered=set())
+
+    drp_service.scan_drp(db_session, ORG)
+    candidate = next(
+        f for f in drp_service.list_findings(db_session, ORG)
+        if f.finding_type == "typosquat_candidate"
+    )
+
+    assert candidate.severity == "LOW", "verified-clean is less urgent than unverified"
+    assert candidate.evidence_json["registration_checked"] is True
+    assert candidate.evidence_json["registered_confirmed"] == []
+    assert "only covers publicly-trusted" in candidate.description, "states CT's blind spot"
+
+
+def test_failed_ct_lookup_never_reads_as_clean(db_session, monkeypatch):
+    """The trust-critical case: could-not-check must not look like nothing-found."""
+    _org_with_domain(db_session)
+    _stub_ct(monkeypatch, fail_reason="crt.sh rate limited this client (HTTP 429)")
+
+    drp_service.scan_drp(db_session, ORG)
+    candidate = next(
+        f for f in drp_service.list_findings(db_session, ORG)
+        if f.finding_type == "typosquat_candidate"
+    )
+
+    assert candidate.evidence_json["registration_checked"] is False
+    assert "rate limited" in candidate.evidence_json["verification_error"]
+    assert "not a clean result" in candidate.description
+    assert candidate.source == "local_analysis", "do not credit CT for a failed run"
+
+
+def test_coverage_note_credits_ct_when_it_ran(db_session, monkeypatch):
+    _org_with_domain(db_session)
+    _stub_ct(monkeypatch, registered=set())
+
+    report = drp_service.scan_report(db_session, ORG)
+    assert report["providers"]["certificate_transparency"]["enabled"] is True
+    assert "certificate_transparency" in report["coverage_note"]
+    assert "dark_web" in report["coverage_note"], "still names what was skipped"

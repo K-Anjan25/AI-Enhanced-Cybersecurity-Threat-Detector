@@ -152,7 +152,12 @@ class Settings(BaseSettings):
 
     # Digital Risk Protection external sources. Absent keys mean the provider
     # is reported unavailable — DRP never fabricates findings to fill the gap.
+    # Certificate Transparency. crt.sh is a free public CT log aggregator and
+    # needs no API key, so this is opt-in by configuration rather than by
+    # credential — it makes an outbound call, which some deployments forbid.
     DRP_CT_ENABLED: bool = False
+    DRP_CT_URL: str = "https://crt.sh/"
+    DRP_CT_TIMEOUT: float = 15.0
     DRP_DARKWEB_API_KEY: str | None = None
     DRP_BREACH_API_KEY: str | None = None
     THREAT_INTEL_ENABLED: bool = True

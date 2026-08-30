@@ -27,6 +27,7 @@ from app.core.config import settings
 from app.models.drp import DRP_Monitor, DRP_Finding, DRP_Takedown
 from app.models.user import User
 from app.models.org import Org
+from app.services import ct_log_client
 
 def _now():
     return datetime.now(timezone.utc)
@@ -34,16 +35,52 @@ def _now():
 
 # Characters that render near-identically in most sans-serif UI fonts, which is
 # what makes a lookalike domain work on a hurried reader.
+#
+# Only substitutions that produce a *registrable* domain belong here: the
+# hostname grammar allows a-z, 0-9 and hyphen, so "@" for "a" is a font trick
+# that cannot be bought and would only waste a lookup.
 _HOMOGLYPHS = {
     "o": ["0"],
     "l": ["1", "i"],
     "i": ["1", "l"],
     "e": ["3"],
-    "a": ["@"],
+    "a": ["4"],
     "s": ["5"],
     "g": ["9"],
     "b": ["6"],
+    "z": ["2"],
 }
+
+# Multi-character confusables. "rn" for "m" is the classic — it is the single
+# most effective lookalike in practice, because at UI font sizes "rn" and "m"
+# are nearly indistinguishable (acrne.com vs acme.com).
+_MULTI_HOMOGLYPHS = [
+    ("m", "rn"),
+    ("m", "nn"),
+    ("w", "vv"),
+    ("d", "cl"),
+    ("cl", "d"),
+    ("rn", "m"),
+    ("vv", "w"),
+]
+
+# A label may contain only these characters, and may not start or end with "-".
+_DOMAIN_LABEL_CHARS = set("abcdefghijklmnopqrstuvwxyz0123456789-")
+
+
+def _is_registrable(candidate: str) -> bool:
+    """Reject anything the DNS would not accept, before we spend a lookup."""
+    if "." not in candidate:
+        return False
+    labels = candidate.split(".")
+    if any(not label for label in labels):
+        return False
+    for label in labels:
+        if len(label) > 63 or not set(label) <= _DOMAIN_LABEL_CHARS:
+            return False
+        if label.startswith("-") or label.endswith("-"):
+            return False
+    return len(candidate) <= 253
 
 _COMMON_TLDS = ["com", "net", "co", "org", "info", "online", "app", "io"]
 
@@ -124,10 +161,21 @@ def typosquat_candidates(domain: str, limit: int = 12) -> List[Dict[str, str]]:
 
     def add(candidate: str, technique: str) -> None:
         candidate = candidate.lower()
-        if candidate in seen or not candidate:
+        if candidate in seen or not candidate or not _is_registrable(candidate):
             return
         seen.add(candidate)
         out.append({"domain": candidate, "technique": technique})
+
+    # Multi-character confusables first: "rn" for "m" is the highest-yield
+    # lookalike in the wild, so it should survive the result limit.
+    for src, repl in _MULTI_HOMOGLYPHS:
+        start = 0
+        while True:
+            i = name.find(src, start)
+            if i == -1:
+                break
+            add(f"{name[:i]}{repl}{name[i + len(src):]}.{tld}", f"'{src}' rendered as '{repl}'")
+            start = i + 1
 
     # Omission: dropping one character.
     for i in range(len(name)):
@@ -162,8 +210,8 @@ def provider_status() -> Dict[str, Any]:
     """Which external DRP sources are actually reachable with current config."""
     return {
         "certificate_transparency": {
-            "enabled": bool(getattr(settings, "DRP_CT_ENABLED", False)),
-            "reason": None if getattr(settings, "DRP_CT_ENABLED", False) else "DRP_CT_ENABLED is false",
+            "enabled": ct_log_client.is_enabled(),
+            "reason": None if ct_log_client.is_enabled() else "DRP_CT_ENABLED is false",
         },
         "dark_web": {
             "enabled": bool(getattr(settings, "DRP_DARKWEB_API_KEY", None)),
@@ -215,6 +263,129 @@ def _record_finding(
     return finding
 
 
+def _scan_domain_monitor(
+    db: Session,
+    org_id: int,
+    monitor: DRP_Monitor,
+    status: Dict[str, Any],
+) -> List[DRP_Finding]:
+    """Lookalike analysis for one domain, escalated by CT where available.
+
+    Without CT we can only say "these are the shapes an attacker would use".
+    With CT we can say "someone obtained a certificate for this one, on this
+    date, from this CA" — which is an actual event, and is raised to HIGH.
+    """
+    findings: List[DRP_Finding] = []
+    candidates = typosquat_candidates(monitor.keyword)
+    if not candidates:
+        return findings
+
+    ct_available = status["certificate_transparency"]["enabled"]
+    confirmed: List[Dict[str, Any]] = []
+    ct_failure: Optional[str] = None
+
+    if ct_available:
+        results = ct_log_client.lookup_many([c["domain"] for c in candidates])
+        technique_of = {c["domain"]: c["technique"] for c in candidates}
+        checked = 0
+
+        for result in results:
+            if not result.ok:
+                # First real failure describes the whole run; do not claim
+                # the remaining candidates were checked and found clean.
+                ct_failure = ct_failure or result.reason
+                continue
+            checked += 1
+            if not result.registered:
+                continue
+
+            confirmed.append({"domain": result.domain, "first_seen": result.first_seen})
+            created = _record_finding(
+                db,
+                org_id,
+                monitor,
+                finding_type="lookalike_domain_registered",
+                severity="HIGH",
+                title=f"Lookalike domain {result.domain} has a live TLS certificate",
+                description=(
+                    f"A certificate for {result.domain} appears in public Certificate "
+                    f"Transparency logs, so this lookalike of {monitor.keyword} is not "
+                    "hypothetical — someone has stood up infrastructure for it. Typical "
+                    "next step is a phishing campaign against your staff or customers. "
+                    "Verify whether your organisation owns it; if not, consider takedown "
+                    "and pre-emptively block the domain at your mail and web gateways."
+                ),
+                evidence={
+                    "source_domain": monitor.keyword,
+                    "lookalike_domain": result.domain,
+                    "technique": technique_of.get(result.domain),
+                    "first_seen": result.first_seen,
+                    "issuers": result.issuers,
+                    "certificate_count": len(result.certificates),
+                    "certificates": result.certificates[:5],
+                    "registration_checked": True,
+                    "crtsh_url": f"https://crt.sh/?q={result.domain}",
+                },
+                source="certificate_transparency",
+            )
+            if created:
+                findings.append(created)
+
+    # The candidate-list finding stays useful, but its wording and severity
+    # depend on whether we were actually able to verify anything.
+    if ct_available and not ct_failure:
+        description = (
+            f"Checked all {len(candidates)} plausible lookalikes of {monitor.keyword} "
+            "against public Certificate Transparency logs. "
+            + (
+                f"{len(confirmed)} had certificates and are reported separately."
+                if confirmed
+                else "None currently have a logged certificate. Note that CT only covers "
+                "publicly-trusted certificates, so a domain can be registered and hostile "
+                "without appearing here."
+            )
+        )
+        severity = "LOW" if not confirmed else "MEDIUM"
+    elif ct_available and ct_failure:
+        description = (
+            f"These are the registrable variations an attacker would most likely use to "
+            f"impersonate {monitor.keyword}. Certificate Transparency verification was "
+            f"attempted but did not complete ({ct_failure}), so registration status is "
+            "unconfirmed — this is not a clean result."
+        )
+        severity = "MEDIUM"
+    else:
+        description = (
+            "These are the registrable variations an attacker would most likely use to "
+            "impersonate this domain. Registration status is NOT checked — set "
+            "DRP_CT_ENABLED to confirm which of these actually exist."
+        )
+        severity = "MEDIUM"
+
+    created = _record_finding(
+        db,
+        org_id,
+        monitor,
+        finding_type="typosquat_candidate",
+        severity=severity,
+        title=f"{len(candidates)} lookalike domains possible for {monitor.keyword}",
+        description=description,
+        evidence={
+            "source_domain": monitor.keyword,
+            "candidates": candidates,
+            "sample": ", ".join(c["domain"] for c in candidates[:5]),
+            "registration_checked": bool(ct_available and not ct_failure),
+            "registered_confirmed": confirmed,
+            "verification_error": ct_failure,
+        },
+        source="certificate_transparency" if ct_available and not ct_failure else "local_analysis",
+    )
+    if created:
+        findings.append(created)
+
+    return findings
+
+
 def scan_drp(db: Session, org_id: int) -> List[DRP_Finding]:
     """Run every source that is genuinely available for this tenant."""
     monitors = list_monitors(db, org_id)
@@ -225,32 +396,7 @@ def scan_drp(db: Session, org_id: int) -> List[DRP_Finding]:
         monitor.last_checked_at = _now()
 
         if monitor.monitor_type == "domain":
-            # Locally computable: the lookalike namespace around a real domain.
-            candidates = typosquat_candidates(monitor.keyword)
-            if candidates:
-                shown = ", ".join(c["domain"] for c in candidates[:5])
-                created = _record_finding(
-                    db,
-                    org_id,
-                    monitor,
-                    finding_type="typosquat_candidate",
-                    severity="MEDIUM",
-                    title=f"{len(candidates)} lookalike domains possible for {monitor.keyword}",
-                    description=(
-                        "These are the registrable variations an attacker would most likely "
-                        "use to impersonate this domain. Registration status is NOT checked — "
-                        "enable certificate transparency to confirm which exist."
-                    ),
-                    evidence={
-                        "source_domain": monitor.keyword,
-                        "candidates": candidates,
-                        "sample": shown,
-                        "registration_checked": False,
-                    },
-                    source="local_analysis",
-                )
-                if created:
-                    findings.append(created)
+            findings.extend(_scan_domain_monitor(db, org_id, monitor, status))
 
         # External lookups stay silent rather than fabricating results.
         if monitor.monitor_type in ("email", "credential") and not status["breach_database"]["enabled"]:
@@ -269,15 +415,25 @@ def scan_report(db: Session, org_id: int) -> Dict[str, Any]:
     findings = scan_drp(db, org_id)
     status = provider_status()
     unavailable = [name for name, s in status.items() if not s["enabled"]]
+    available = [name for name, s in status.items() if s["enabled"]]
+
+    if not unavailable:
+        note = "All configured providers were consulted."
+    elif available:
+        note = (
+            f"Checked: {', '.join(available)}, plus locally computable brand risk. "
+            f"Not checked: {', '.join(unavailable)}."
+        )
+    else:
+        note = (
+            "Checked locally computable brand risk only. "
+            f"Not checked: {', '.join(unavailable)}."
+        )
+
     return {
         "findings": [serialize_finding(f) for f in findings],
         "providers": status,
-        "coverage_note": (
-            "Checked locally computable brand risk only. "
-            f"Not checked: {', '.join(unavailable)}."
-            if unavailable
-            else "All configured providers were consulted."
-        ),
+        "coverage_note": note,
     }
 
 

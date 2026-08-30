@@ -71,6 +71,7 @@ export default function Final10Page() {
   const [paths, setPaths] = useState<any[]>([]);
   const [monitors, setMonitors] = useState<any[]>([]);
   const [drpFindings, setDrpFindings] = useState<any[]>([]);
+  const [drpCoverage, setDrpCoverage] = useState<string | null>(null);
   const [posture, setPosture] = useState<any>(null);
   const [postureRecs, setPostureRecs] = useState<any[]>([]);
   const [osConfig, setOsConfig] = useState<any>(null);
@@ -135,8 +136,10 @@ export default function Final10Page() {
   const scanExternal = () =>
     run("drp", async () => {
       const res = await apiClient.post("/drp/scan");
-      setDrpFindings(asList(res.data));
-      push(`External scan found ${asList(res.data).length} item(s)`);
+      const found = asList(res.data?.findings);
+      setDrpFindings(found);
+      setDrpCoverage(res.data?.coverage_note ?? null);
+      push(`External scan found ${found.length} item(s)`);
     });
 
   const recalcPosture = () =>
@@ -430,6 +433,11 @@ export default function Final10Page() {
               </Panel>
 
               <Panel title="Findings" hint="Lookalike domains, leaked credentials and impersonation.">
+                {drpCoverage && (
+                  <p className="mb-3 text-[11px] text-content-tertiary border-l-2 border-line-subtle pl-2">
+                    {drpCoverage}
+                  </p>
+                )}
                 {drpFindings.length === 0 ? (
                   <EmptyState title="Nothing found" description="No brand abuse or leaked credentials detected." />
                 ) : (
@@ -442,6 +450,33 @@ export default function Final10Page() {
                           <Badge className="bg-app-subtle text-content-tertiary border-line-subtle">{f.finding_type}</Badge>
                         </div>
                         <div>{f.description}</div>
+                        {f.evidence?.registration_checked && f.evidence?.first_seen && (
+                          <div className="text-content-secondary">
+                            Certificate first seen{" "}
+                            <span className="font-mono">{String(f.evidence.first_seen).slice(0, 10)}</span>
+                            {Array.isArray(f.evidence.issuers) && f.evidence.issuers.length > 0 && (
+                              <> · issued by {f.evidence.issuers.join(", ")}</>
+                            )}
+                            {f.evidence.crtsh_url && (
+                              <>
+                                {" · "}
+                                <a
+                                  href={f.evidence.crtsh_url}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                  className="text-accent-primary hover:underline"
+                                >
+                                  view in CT log
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {f.evidence?.verification_error && (
+                          <div className="text-status-warning">
+                            Not verified: {f.evidence.verification_error}
+                          </div>
+                        )}
                         <div className="text-content-tertiary">Source: {f.source}</div>
                       </Row>
                     ))}
