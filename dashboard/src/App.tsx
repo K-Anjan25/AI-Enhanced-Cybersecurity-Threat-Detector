@@ -136,14 +136,8 @@ export default function App(): JSX.Element {
               <Route path="federated" element={<FederatedAutopilotPage />} />
               <Route path="compliance-autopilot" element={<FederatedAutopilotPage />} />
               <Route path="final10" element={<Final10Page />} />
-              <Route path="federated-intel" element={<Final10Page />} />
-              <Route path="quantum-safe" element={<Final10Page />} />
               <Route path="attack-path" element={<Final10Page />} />
-              <Route path="cart" element={<Final10Page />} />
-              <Route path="data-fabric" element={<Final10Page />} />
-              <Route path="soc-manager" element={<Final10Page />} />
               <Route path="drp" element={<Final10Page />} />
-              <Route path="cnapp" element={<Final10Page />} />
               <Route path="posture-score" element={<Final10Page />} />
               <Route path="noctra-os" element={<Final10Page />} />
               <Route path="ztna" element={<ModulePage />} />
