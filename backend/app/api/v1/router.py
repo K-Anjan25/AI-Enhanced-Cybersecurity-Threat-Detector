@@ -73,56 +73,6 @@ from app.api.v1.endpoints import (
     cnapp,
     posture_score,
     noctra_os,
-    global_federation,
-    predictive_soc,
-    hunt_swarm,
-    digital_twin,
-    quantum_comms,
-    ai_governance,
-    supply_chain_v2,
-    xr_soc,
-    deception_grid,
-    self_healing,
-    incident_commander,
-    insurance_risk,
-    actor_dna,
-    data_vault,
-    compliance_auditor_v2,
-    neural_copilot,
-    intel_mesh,
-    adversary_llm,
-    blockchain_audit,
-    meta_os,
-    interplanetary_soc,
-    agi_council,
-    legislation_engine,
-    synthetic_universe,
-    holographic_soc,
-    autonomous_workforce,
-    consciousness_monitor,
-    planetary_defense,
-    time_prophecy,
-    omni_os,
-    multiverse_soc,
-    quantum_consciousness,
-    autonomous_economy,
-    neuro_symbolic,
-    self_replicating,
-    temporal_defense,
-    universal_language,
-    infinite_learning,
-    existential_risk,
-    transcendence_os,
-    omniversal_soc,
-    reality_fabric,
-    chrono_loop,
-    unified_consciousness,
-    void_defense,
-    genesis_protocol,
-    akashic_ledger,
-    cosmic_threat,
-    dimensional_barrier,
-    absolute_os,
 )
 
 api_router = APIRouter()
@@ -210,57 +160,7 @@ api_router.include_router(cnapp.router)
 api_router.include_router(posture_score.router)
 api_router.include_router(noctra_os.router)
 # Phases 101-110 - Post-OS Singularity
-api_router.include_router(global_federation.router)
-api_router.include_router(predictive_soc.router)
-api_router.include_router(hunt_swarm.router)
-api_router.include_router(digital_twin.router)
-api_router.include_router(quantum_comms.router)
-api_router.include_router(ai_governance.router)
-api_router.include_router(supply_chain_v2.router)
-api_router.include_router(xr_soc.router)
-api_router.include_router(deception_grid.router)
-api_router.include_router(self_healing.router)
 # Phases 111-120 - Meta-Singularity
-api_router.include_router(incident_commander.router)
-api_router.include_router(insurance_risk.router)
-api_router.include_router(actor_dna.router)
-api_router.include_router(data_vault.router)
-api_router.include_router(compliance_auditor_v2.router)
-api_router.include_router(neural_copilot.router)
-api_router.include_router(intel_mesh.router)
-api_router.include_router(adversary_llm.router)
-api_router.include_router(blockchain_audit.router)
-api_router.include_router(meta_os.router)
 # Phases 121-130 - Omni-Singularity
-api_router.include_router(interplanetary_soc.router)
-api_router.include_router(agi_council.router)
-api_router.include_router(legislation_engine.router)
-api_router.include_router(synthetic_universe.router)
-api_router.include_router(holographic_soc.router)
-api_router.include_router(autonomous_workforce.router)
-api_router.include_router(consciousness_monitor.router)
-api_router.include_router(planetary_defense.router)
-api_router.include_router(time_prophecy.router)
-api_router.include_router(omni_os.router)
 # Phases 131-140 - Transcendence
-api_router.include_router(multiverse_soc.router)
-api_router.include_router(quantum_consciousness.router)
-api_router.include_router(autonomous_economy.router)
-api_router.include_router(neuro_symbolic.router)
-api_router.include_router(self_replicating.router)
-api_router.include_router(temporal_defense.router)
-api_router.include_router(universal_language.router)
-api_router.include_router(infinite_learning.router)
-api_router.include_router(existential_risk.router)
-api_router.include_router(transcendence_os.router)
 # Phases 141-150 - Absolute Infinity
-api_router.include_router(omniversal_soc.router)
-api_router.include_router(reality_fabric.router)
-api_router.include_router(chrono_loop.router)
-api_router.include_router(unified_consciousness.router)
-api_router.include_router(void_defense.router)
-api_router.include_router(genesis_protocol.router)
-api_router.include_router(akashic_ledger.router)
-api_router.include_router(cosmic_threat.router)
-api_router.include_router(dimensional_barrier.router)
-api_router.include_router(absolute_os.router)
