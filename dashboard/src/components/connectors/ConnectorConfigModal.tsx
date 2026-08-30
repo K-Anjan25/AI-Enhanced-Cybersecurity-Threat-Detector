@@ -39,6 +39,7 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
   const [authToken, setAuthToken] = useState("");
   const [ingestToken, setIngestToken] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [eventTimeZone, setEventTimeZone] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
         setAuthToken("");
         setIngestToken("");
         setEnabled(cfg.enabled);
+        setEventTimeZone(cfg.event_time_zone ?? "");
       })
       .catch(() => {
         // No configuration yet — that is the normal first-run state.
@@ -68,6 +70,7 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
         setAuthToken("");
         setIngestToken("");
         setEnabled(true);
+        setEventTimeZone("");
       })
       .finally(() => alive && setLoading(false));
     return () => {
@@ -86,6 +89,8 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
       if (authHeader.trim()) payload.auth_header = authHeader.trim();
       // Only send secrets when the operator typed a new one — a blank field
       // must never wipe a stored credential.
+      // Always sent, including empty, so the zone can be cleared back to UTC.
+      payload.event_time_zone = eventTimeZone.trim();
       if (authToken) payload.auth_token = authToken;
       if (ingestToken) payload.ingest_token = ingestToken;
       await ConnectorApi.saveConfig(connector.id, payload);
@@ -188,6 +193,31 @@ const ConnectorConfigModal: React.FC<Props> = ({ open, connector, onClose, onSav
                 { value: "poll", label: "Poll — NOCTRA fetches an endpoint" },
               ]}
             />
+          </div>
+
+          {/* Applies to both modes: a source can send bare local time however
+              it is wired up. Only naive timestamps are affected — anything
+              carrying its own offset is believed as sent. */}
+          <div>
+            <label
+              className="tech-label text-content-tertiary block mb-1.5"
+              htmlFor="conn-event-tz"
+            >
+              Source time zone
+            </label>
+            <input
+              id="conn-event-tz"
+              value={eventTimeZone}
+              onChange={(e) => setEventTimeZone(e.target.value)}
+              placeholder="UTC (default)"
+              className="w-full bg-app-subtle border border-line-subtle rounded-sm px-3 py-2 text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary font-mono"
+            />
+            <p className="text-[11px] text-content-tertiary mt-1">
+              IANA name, e.g. <code className="font-mono">America/New_York</code>. Only
+              used for timestamps this source sends without a UTC offset. Leave blank to
+              read them as UTC — set it if the source logs local time, or detection
+              latency will be out by the offset.
+            </p>
           </div>
 
           {mode === "poll" ? (

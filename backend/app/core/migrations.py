@@ -61,6 +61,7 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS org_id INTEGER REFERENCES orgs(id) ON DELETE CASCADE",
     "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS last_cursor TEXT",
     "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS sync_state TEXT",
+    "ALTER TABLE connector_sources ADD COLUMN IF NOT EXISTS event_time_zone VARCHAR(64)",
 ]
 
 

@@ -217,6 +217,8 @@ export interface ConnectorConfigInput {
   auth_token?: string;
   ingest_token?: string;
   enabled?: boolean;
+  /** IANA zone for timestamps this source sends without an offset. */
+  event_time_zone?: string;
 }
 
 /** Read model returned by the config endpoints — secrets are never included. */
@@ -230,6 +232,8 @@ export interface ConnectorConfig {
   has_auth_token: boolean;
   has_ingest_token: boolean;
   enabled: boolean;
+  /** null means naive timestamps from this source are read as UTC. */
+  event_time_zone: string | null;
   last_sync: string | null;
   last_status: string | null;
   last_error: string | null;
