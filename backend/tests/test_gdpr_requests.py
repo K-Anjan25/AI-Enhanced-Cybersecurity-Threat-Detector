@@ -109,3 +109,58 @@ def test_re_deciding_through_the_api_is_a_400(client, admin_headers):
     )
     assert again.status_code == 400
     assert "cannot be reversed" in again.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Archival must not claim to have archived
+# ---------------------------------------------------------------------------
+
+def test_archive_reports_eligible_not_archived(db_session):
+    """It counted rows, moved nothing, and logged success against a fake path."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.models import SecurityAlert
+
+    old = datetime.now(timezone.utc) - timedelta(days=400)
+    for _ in range(3):
+        db_session.add(
+            SecurityAlert(org_id=ORG, severity="LOW", source="t", message="old", created_at=old)
+        )
+    db_session.commit()
+
+    res = data_lifecycle_service.archive_old_data(db_session, ORG, data_type="alerts")
+
+    assert res["archived_count"] == 0, "nothing is archived without a destination"
+    assert res["eligible_count"] == 3
+    assert res["status"] == "not_configured"
+    assert "no archive destination" in res["reason"].lower()
+
+
+def test_archive_log_does_not_record_a_fabricated_path(db_session):
+    from app.models.data_lifecycle import DataArchiveLog
+
+    data_lifecycle_service.archive_old_data(db_session, ORG, data_type="alerts")
+    log = db_session.query(DataArchiveLog).order_by(DataArchiveLog.id.desc()).first()
+
+    assert log.status == "not_configured"
+    assert log.archive_path is None, "an s3:// path was invented for a file never written"
+
+
+def test_cases_under_legal_hold_are_excluded_from_eligible(db_session):
+    """The note claimed holds were respected; the query ignored them."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.case import Case
+
+    old = datetime.now(timezone.utc) - timedelta(days=400)
+    kept = Case(org_id=ORG, title="held", created_at=old)
+    other = Case(org_id=ORG, title="free", created_at=old)
+    db_session.add_all([kept, other])
+    db_session.commit()
+
+    data_lifecycle_service.create_legal_hold(
+        db_session, ORG, "Litigation", "reason", case_ids=[kept.id]
+    )
+
+    res = data_lifecycle_service.archive_old_data(db_session, ORG, data_type="cases")
+    assert res["eligible_count"] == 1, "the held case must not be eligible"

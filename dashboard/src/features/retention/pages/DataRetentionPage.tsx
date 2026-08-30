@@ -78,9 +78,25 @@ export default function DataRetentionPage() {
     setBusy(true);
     try {
       const res = await apiClient.post("/data-lifecycle/automation/run");
-      const results = asList<{ archived?: number }>(res.data?.results ?? res.data);
-      const total = results.reduce((n, r) => n + (r?.archived ?? 0), 0);
-      push(total > 0 ? `Archived ${total} record(s)` : "Nothing was old enough to archive");
+      const data = res.data as {
+        archived_total?: number;
+        eligible_total?: number;
+        status?: string;
+      } | null;
+      const archived = data?.archived_total ?? 0;
+      const eligible = data?.eligible_total ?? 0;
+      // "Archived N" was reported even though no archive destination exists
+      // and nothing had moved. Say what actually happened.
+      if (data?.status === "not_configured") {
+        push(
+          eligible > 0
+            ? `${eligible} record(s) are past their retention threshold, but no archive destination is configured — nothing was moved or deleted.`
+            : "Nothing is past its retention threshold yet.",
+          "warning",
+        );
+      } else {
+        push(archived > 0 ? `Archived ${archived} record(s)` : "Nothing was old enough to archive");
+      }
       await load();
     } catch (e) {
       push(getApiError(e, "Retention run failed"), "error");
@@ -304,7 +320,7 @@ export default function DataRetentionPage() {
         onConfirm={runAutomation}
         loading={busy}
         title="Run retention now?"
-        message="Records older than each policy's archive threshold will be archived. Anything under an active legal hold is skipped. This cannot be undone from the UI."
+        message="Records older than each policy's archive threshold are archived, and anything under an active legal hold is skipped. No archive destination is configured yet, so this run will report what is eligible without moving or deleting anything."
         confirmLabel="Run retention"
       />
     </div>

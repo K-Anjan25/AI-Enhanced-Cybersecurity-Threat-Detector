@@ -173,7 +173,10 @@ describe("DataRetentionPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: /run retention now/i }));
 
     expect(await screen.findByText("Run retention now?")).toBeInTheDocument();
-    expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
+    expect(screen.getByText(/active legal hold is skipped/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/report what is eligible without moving or deleting anything/i),
+    ).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 

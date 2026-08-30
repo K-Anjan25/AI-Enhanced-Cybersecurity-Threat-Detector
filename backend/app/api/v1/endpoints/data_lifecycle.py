@@ -77,7 +77,19 @@ def run_automation(db: Session = Depends(get_db), current_user: User = Depends(r
             ensure_partitions(engine)
         except Exception:
             pass
-        return {"status": "completed", "results": results, "note": "Respects legal holds, GDPR requests"}
+        archived = sum(r.get("archived_count", 0) for r in results)
+        eligible = sum(r.get("eligible_count", 0) for r in results)
+        return {
+            "status": "completed" if archived else "not_configured",
+            "results": results,
+            "archived_total": archived,
+            "eligible_total": eligible,
+            "note": (
+                "Cases under an active legal hold are excluded. No archive "
+                "destination is configured, so this run reported what is "
+                "eligible without moving or deleting anything."
+            ),
+        }
     except HTTPException:
         raise
     except Exception as e:

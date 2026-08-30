@@ -62,34 +62,50 @@ def archive_old_data(db: Session, org_id: int, data_type: str = "alerts") -> Dic
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=pol.archive_after_days or pol.retention_days)
 
-    archived_count = 0
+    # No archive destination is configured, so nothing is copied or deleted.
+    # What this can do honestly is report how much data is *eligible*, which is
+    # the number an operator needs before wiring up storage. Previously it
+    # returned that count as `archived_count` and wrote a log row claiming
+    # success against a fabricated s3:// path, so the dashboard reported
+    # "Archived N records" when nothing had moved.
+    eligible = 0
     if data_type == "alerts":
-        q = db.query(SecurityAlert).filter(SecurityAlert.org_id == org_id, SecurityAlert.created_at < cutoff)
-        archived_count = q.count()
-        # In real implementation, copy to S3 and delete; here we just log
-        # For honesty, we don't delete unless legal hold
-        holds = db.query(LegalHold).filter(LegalHold.org_id == org_id, LegalHold.is_active == True).all()  # noqa: E712
-        held_case_ids = set()
-        for hold in holds:
+        eligible = db.query(SecurityAlert).filter(
+            SecurityAlert.org_id == org_id, SecurityAlert.created_at < cutoff
+        ).count()
+    elif data_type == "cases":
+        held_case_ids: set[int] = set()
+        for hold in db.query(LegalHold).filter(
+            LegalHold.org_id == org_id, LegalHold.is_active.is_(True)
+        ).all():
             if hold.case_ids:
                 held_case_ids.update(hold.case_ids)
-
-        # If alerts linked to held cases, don't archive
-        # Simplified: just count
-    elif data_type == "cases":
         q = db.query(Case).filter(Case.org_id == org_id, Case.created_at < cutoff)
-        archived_count = q.count()
+        if held_case_ids:
+            q = q.filter(Case.id.notin_(held_case_ids))
+        eligible = q.count()
 
     log = DataArchiveLog(
         org_id=org_id,
         data_type=data_type,
-        archived_count=archived_count,
-        archive_path=f"s3://archive/{org_id}/{data_type}/{cutoff.date()}.json",
-        status="success",
+        archived_count=0,
+        archive_path=None,
+        status="not_configured",
     )
     db.add(log)
     db.commit()
-    return {"archived_count": archived_count, "data_type": data_type, "cutoff": cutoff.isoformat()}
+    return {
+        "data_type": data_type,
+        "archived_count": 0,
+        "eligible_count": eligible,
+        "cutoff": cutoff.isoformat(),
+        "status": "not_configured",
+        "reason": (
+            "No archive destination is configured, so nothing was copied or "
+            "deleted. This reports how many records are past their retention "
+            "threshold and would be archived once storage is set up."
+        ),
+    }
 
 
 def create_legal_hold(db: Session, org_id: int, name: str, description: str = None, case_ids: List[int] = None, user_id: int = None) -> LegalHold:
