@@ -127,6 +127,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Operate",
     collapsedByDefault: true,
     items: [
+      { name: "Approvals", path: "/approvals", icon: ShieldCheck },
       { name: "Response Times", path: "/response-times", icon: Timer },
       { name: "Detection Coverage", path: "/attack-coverage", icon: Radar },
       { name: "Asset Inventory", path: "/assets", icon: Boxes },

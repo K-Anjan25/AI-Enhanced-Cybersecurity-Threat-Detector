@@ -72,12 +72,53 @@ def list_instances(db: Session, org_id: int, status: str = None) -> List[Approva
     return q.order_by(ApprovalInstance.created_at.desc()).limit(100).all()
 
 
+_DECISIONS = ("approved", "rejected")
+
+
 def approve_instance(db: Session, org_id: int, instance_id: int, approver_user_id: int, decision: str = "approved", comment: str = None) -> ApprovalInstance:
+    """Record one person's decision on a pending approval.
+
+    Three rules are enforced here rather than in the UI, because an approval
+    control that can be bypassed by calling the API directly is not a control:
+
+    * Only "approved" or "rejected". Any other string used to be written into
+      the audit trail verbatim while counting as neither, leaving the request
+      stuck with a meaningless decision recorded against a named user.
+    * Nobody approves their own request. Otherwise the requester satisfies the
+      review themselves and the second pair of eyes is imaginary.
+    * Nobody decides the same request twice, at any step. Checking only the
+      current step was not enough: the first approval advances the instance, so
+      the same person passed the check again on step two and satisfied a
+      two-stage workflow alone — exactly what dual approval exists to prevent.
+    """
+    if decision not in _DECISIONS:
+        raise ValueError(
+            f"Unknown decision {decision!r}. Expected one of: {', '.join(_DECISIONS)}."
+        )
+
     inst = db.query(ApprovalInstance).filter(ApprovalInstance.id == instance_id, ApprovalInstance.org_id == org_id).first()
     if not inst:
         raise ValueError("Instance not found")
     if inst.status != "pending":
-        return inst
+        raise ValueError(
+            f"This request is already {inst.status} and cannot be decided again."
+        )
+
+    if inst.requested_by_user_id is not None and approver_user_id == inst.requested_by_user_id:
+        raise ValueError(
+            "You raised this request, so you cannot approve it. Separation of "
+            "duties requires a different approver."
+        )
+
+    already = [
+        a for a in (inst.approvals_json or [])
+        if a.get("user_id") == approver_user_id
+    ]
+    if already:
+        raise ValueError(
+            "You have already decided this request. Each stage needs a "
+            "different approver."
+        )
 
     wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == inst.workflow_id).first()
     steps = wf.steps_json or []
@@ -139,5 +180,26 @@ def serialize_workflow(w: ApprovalWorkflow) -> Dict[str, Any]:
     return {"id": w.id, "name": w.name, "description": w.description, "steps": w.steps_json, "trigger": w.trigger_json, "is_active": w.is_active, "created_at": w.created_at.isoformat() if w.created_at else None}
 
 
-def serialize_instance(i: ApprovalInstance) -> Dict[str, Any]:
-    return {"id": i.id, "workflow_id": i.workflow_id, "action_type": i.action_type, "target": i.target, "case_id": i.case_id, "current_step": i.current_step, "status": i.status, "approvals": i.approvals_json, "created_at": i.created_at.isoformat() if i.created_at else None, "decided_at": i.decided_at.isoformat() if i.decided_at else None}
+def serialize_instance(i: ApprovalInstance, workflow: ApprovalWorkflow = None) -> Dict[str, Any]:
+    """Instance for the queue.
+
+    Carries requested_by_user_id and total_steps so the UI can say who asked
+    and how far through review the request is — an approver needs both to
+    judge whether it is theirs to decide.
+    """
+    steps = (workflow.steps_json if workflow else None) or []
+    return {
+        "id": i.id,
+        "workflow_id": i.workflow_id,
+        "workflow_name": workflow.name if workflow else None,
+        "action_type": i.action_type,
+        "target": i.target,
+        "case_id": i.case_id,
+        "current_step": i.current_step,
+        "total_steps": len(steps) or None,
+        "status": i.status,
+        "requested_by_user_id": i.requested_by_user_id,
+        "approvals": i.approvals_json,
+        "created_at": i.created_at.isoformat() if i.created_at else None,
+        "decided_at": i.decided_at.isoformat() if i.decided_at else None,
+    }
