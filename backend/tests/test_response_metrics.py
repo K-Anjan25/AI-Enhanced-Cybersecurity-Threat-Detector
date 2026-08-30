@@ -141,7 +141,11 @@ def test_unmeasurable_metrics_are_named_with_reasons(db_session):
     report = response_metrics.compute(db_session, ORG)
     names = {n["metric"] for n in report["not_measured"]}
 
-    assert {"mean_time_to_detect", "cost_avoidance", "analyst_hours_saved"} <= names
+    # mean_time_to_detect moved out of this list once connectors began
+    # recording event_time; what remains genuinely unmeasurable is the gap
+    # before the source logged anything at all.
+    assert {"dwell_time_before_logging", "cost_avoidance", "analyst_hours_saved"} <= names
+    assert "mean_time_to_detect" not in names
     for entry in report["not_measured"]:
         assert entry["reason"]
 
@@ -234,7 +238,7 @@ def test_response_times_endpoint(client, admin_headers):
     body = r.json()
     assert body["window_days"] == 30
     assert {m["metric"] for m in body["metrics"]} == {
-        "time_to_triage", "time_to_decision", "time_to_contain",
+        "time_to_detect", "time_to_triage", "time_to_decision", "time_to_contain",
     }
 
 

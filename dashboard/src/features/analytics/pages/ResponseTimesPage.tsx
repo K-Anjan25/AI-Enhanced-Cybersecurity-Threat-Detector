@@ -53,6 +53,7 @@ interface Report {
 }
 
 const TITLES: Record<string, string> = {
+  time_to_detect: "Time to detect",
   time_to_triage: "Time to triage",
   time_to_decision: "Time to decision",
   time_to_contain: "Time to contain",
@@ -206,7 +207,7 @@ export default function ResponseTimesPage() {
               description={`Nothing has been triaged in the last ${report.window_days} days, so there is nothing to time. This is a real zero, not a failure.`}
             />
           ) : (
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-2">
               {report.metrics.map((m) => (
                 <MetricCard key={m.metric} metric={m} />
               ))}

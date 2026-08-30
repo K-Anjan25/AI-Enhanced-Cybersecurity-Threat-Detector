@@ -24,6 +24,13 @@ class SecurityAlert(Base):
     # Threat-intel enrichment context (v3): reputation of the source IP.
     threat_intel = Column(JSON, nullable=True)
 
+    # When the event actually happened at the source, as reported by the
+    # originating system. Distinct from created_at, which is only when we
+    # inserted the row. Nullable on purpose: many sources send nothing usable,
+    # and guessing would silently corrupt the detection-latency figures that
+    # depend on this. A NULL here means "not supplied", never "instant".
+    event_time = Column(DateTime, nullable=True, index=True)
+
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     user = relationship("User", back_populates="alerts")
 

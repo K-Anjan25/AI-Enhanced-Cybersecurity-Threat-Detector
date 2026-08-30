@@ -67,6 +67,30 @@ describe("ResponseTimesPage", () => {
     expect(screen.getByText("3.0 d")).toBeInTheDocument();
   });
 
+  it("labels detection latency and shows how much of the window it covers", async () => {
+    get.mockResolvedValue({
+      data: report({
+        metrics: [
+          metric({
+            metric: "time_to_detect",
+            measures: "event occurred at source → alert ingested",
+            median_minutes: 30,
+            caveat:
+              "Measured on 1 of 4 alert(s) whose source supplied an event time. " +
+              "Sources that send none are excluded rather than counted as zero latency.",
+          }),
+        ],
+      }),
+    });
+    renderPage();
+
+    expect(await screen.findByText("Time to detect")).toBeInTheDocument();
+    expect(screen.getByText(/Measured on 1 of 4 alert\(s\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/excluded rather than counted as zero latency/),
+    ).toBeInTheDocument();
+  });
+
   it("carries the caveat that this is not a true MTTD", async () => {
     get.mockResolvedValue({ data: report() });
     renderPage();
