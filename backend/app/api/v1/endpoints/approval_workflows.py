@@ -11,6 +11,10 @@ from app.core.abac import require_permission
 from app.models.user import User
 from app.services import approval_workflow_service
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/approval-workflows", tags=["Approval Workflows (Phase 85)"])
 
 class WorkflowIn(BaseModel):
@@ -36,24 +40,36 @@ def list_workflows(db: Session = Depends(get_db), current_user: User = Depends(r
         approval_workflow_service.seed_workflows(db, current_user.org_id)
         wfs = approval_workflow_service.list_workflows(db, current_user.org_id)
         return [approval_workflow_service.serialize_workflow(w) for w in wfs]
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/")
 def create_workflow(payload: WorkflowIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         wf = approval_workflow_service.create_workflow(db, current_user.org_id, payload.name, payload.description, payload.steps, payload.trigger, created_by_user_id=current_user.id)
         return approval_workflow_service.serialize_workflow(wf)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/instances")
 def list_instances(status: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         insts = approval_workflow_service.list_instances(db, current_user.org_id, status=status)
         return [approval_workflow_service.serialize_instance(i) for i in insts]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/request")
 def request_approval(payload: RequestIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):

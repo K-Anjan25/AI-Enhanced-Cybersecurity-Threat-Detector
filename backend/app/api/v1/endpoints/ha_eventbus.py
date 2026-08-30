@@ -1,6 +1,6 @@
 """Phase 74: HA Event Bus endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -10,6 +10,10 @@ from app.core.security import get_current_user
 from app.core.abac import require_permission
 from app.models.user import User
 from app.services.ha_eventbus_service import get_event_bus, serialize_message, serialize_node
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ha", tags=["HA EventBus (Phase 74)"])
 
@@ -30,8 +34,12 @@ def publish(payload: PublishIn, db: Session = Depends(get_db), current_user: Use
         bus = get_event_bus()
         msg = bus.publish(db, channel=payload.channel, event_type=payload.event_type, payload=payload.payload, org_id=current_user.org_id, region=payload.region)
         return serialize_message(msg)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/messages")
 def list_messages(channel: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
@@ -39,8 +47,12 @@ def list_messages(channel: Optional[str] = None, limit: int = 50, db: Session = 
         bus = get_event_bus()
         msgs = bus.list_messages(db, org_id=current_user.org_id, channel=channel, limit=limit)
         return [serialize_message(m) for m in msgs]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/heartbeat")
 def heartbeat(payload: HeartbeatIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
@@ -48,8 +60,12 @@ def heartbeat(payload: HeartbeatIn, db: Session = Depends(get_db), current_user:
         bus = get_event_bus()
         node = bus.heartbeat(db, node_id=payload.node_id, region=payload.region, role=payload.role)
         return serialize_node(node)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/nodes")
 def list_nodes(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
@@ -57,8 +73,12 @@ def list_nodes(db: Session = Depends(get_db), current_user: User = Depends(requi
         bus = get_event_bus()
         nodes = bus.list_nodes(db)
         return [serialize_node(n) for n in nodes]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/status")
 def ha_status(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):

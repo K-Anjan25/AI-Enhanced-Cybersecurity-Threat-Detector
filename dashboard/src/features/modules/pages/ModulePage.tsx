@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import apiClient from "../../../api/client";
 import {
   Button,
@@ -153,7 +153,11 @@ const pick = (row: Record<string, unknown>, keys: string[]): string | undefined 
 };
 
 /** Render one API response: a list of records, a scalar summary, or nothing. */
-const Section: React.FC<{ label: string; data: unknown }> = ({ label, data }) => {
+const Section: React.FC<{ label: string; data: unknown; error?: string | null }> = ({
+  label,
+  data,
+  error,
+}) => {
   const rows = Array.isArray(data) ? data : null;
   const isObject = !rows && data !== null && typeof data === "object";
   const scalars = isObject
@@ -173,7 +177,14 @@ const Section: React.FC<{ label: string; data: unknown }> = ({ label, data }) =>
         )}
       </div>
 
-      {rows ? (
+      {error ? (
+        <div className="flex items-start gap-2 text-xs text-status-critical">
+          <AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden />
+          <span>
+            Could not load this section — {error}. This is a failure, not an empty result.
+          </span>
+        </div>
+      ) : rows ? (
         rows.length === 0 ? (
           <p className="text-xs text-content-tertiary">Nothing recorded yet.</p>
         ) : (
@@ -215,7 +226,7 @@ const Section: React.FC<{ label: string; data: unknown }> = ({ label, data }) =>
         <p className="text-xs text-content-tertiary">No data returned.</p>
       )}
 
-      <RawData value={data} />
+      {!error && <RawData value={data} />}
     </Card>
   );
 };
@@ -223,7 +234,9 @@ const Section: React.FC<{ label: string; data: unknown }> = ({ label, data }) =>
 export default function ModulePage() {
   const path = useLocation().pathname;
   const matched = useMemo(() => matchFeed(path), [path]);
-  const [results, setResults] = useState<{ label: string; data: unknown }[]>([]);
+  const [results, setResults] = useState<
+    { label: string; data: unknown; error: string | null }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const { push } = useToast();
 
@@ -236,9 +249,13 @@ export default function ModulePage() {
     }
     setLoading(true);
     const settled = await Promise.allSettled(feed.sources.map((s) => apiClient.get(s.path)));
+    // A rejected source keeps its error. Rendering it as empty would tell the
+    // operator "there is nothing here" when the truth is "we do not know".
     const next = feed.sources.map((s, i) => {
       const r = settled[i];
-      return { label: s.label, data: r.status === "fulfilled" ? r.value.data : null };
+      return r.status === "fulfilled"
+        ? { label: s.label, data: r.value.data, error: null }
+        : { label: s.label, data: null, error: getApiError(r.reason, "Could not load") };
     });
     setResults(next);
     if (settled.every((r) => r.status === "rejected")) {
@@ -278,7 +295,9 @@ export default function ModulePage() {
       {loading ? (
         <SkeletonCard />
       ) : (
-        results.map((r) => <Section key={r.label} label={r.label} data={r.data} />)
+        results.map((r) => (
+          <Section key={r.label} label={r.label} data={r.data} error={r.error} />
+        ))
       )}
     </div>
   );
