@@ -50,6 +50,65 @@ describe("ConnectorConfigModal", () => {
     await waitFor(() => expect(screen.getByText(/POST.*\/api\/v1\/connectors\/ingest\/okta/)).toBeInTheDocument());
   });
 
+  it("offers a source time zone that defaults to UTC", async () => {
+    render(<ConnectorConfigModal open connector={connector} onClose={() => {}} onSaved={() => {}} />);
+
+    const field = await screen.findByLabelText(/Source time zone/i);
+    expect(field).toHaveValue("");
+    expect(screen.getByPlaceholderText("UTC (default)")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Only\s+used for timestamps this source sends without a UTC offset/),
+    ).toBeInTheDocument();
+  });
+
+  it("loads and saves the declared source time zone", async () => {
+    mocked.fetchConfig.mockResolvedValue({
+      connector_id: "okta",
+      mode: "push",
+      enabled: true,
+      has_ingest_token: false,
+      has_auth_token: false,
+      event_time_zone: "America/New_York",
+      events_ingested: 0,
+    } as never);
+
+    render(<ConnectorConfigModal open connector={connector} onClose={() => {}} onSaved={() => {}} />);
+
+    const field = await screen.findByLabelText(/Source time zone/i);
+    await waitFor(() => expect(field).toHaveValue("America/New_York"));
+
+    await userEvent.clear(field);
+    await userEvent.type(field, "Asia/Kolkata");
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => expect(mocked.saveConfig).toHaveBeenCalled());
+    expect(mocked.saveConfig.mock.calls[0][1]).toMatchObject({
+      event_time_zone: "Asia/Kolkata",
+    });
+  });
+
+  it("sends an empty zone so it can be cleared back to UTC", async () => {
+    mocked.fetchConfig.mockResolvedValue({
+      connector_id: "okta",
+      mode: "push",
+      enabled: true,
+      has_ingest_token: false,
+      has_auth_token: false,
+      event_time_zone: "America/New_York",
+      events_ingested: 0,
+    } as never);
+
+    render(<ConnectorConfigModal open connector={connector} onClose={() => {}} onSaved={() => {}} />);
+
+    const field = await screen.findByLabelText(/Source time zone/i);
+    await waitFor(() => expect(field).toHaveValue("America/New_York"));
+    await userEvent.clear(field);
+    await userEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => expect(mocked.saveConfig).toHaveBeenCalled());
+    expect(mocked.saveConfig.mock.calls[0][1]).toMatchObject({ event_time_zone: "" });
+  });
+
   it("never shows stored secret value — only has_*_token boolean", async () => {
     mocked.fetchConfig.mockResolvedValue({
       connector_id: "okta",

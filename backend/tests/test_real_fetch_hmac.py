@@ -137,7 +137,7 @@ def test_incremental_cursor_persisted(db_session, monkeypatch):
     )
 
     # Mock real fetch to return events with cursor
-    def fake_github(token, since=None, cursor=None, max_pages=3):
+    def fake_github(token, since=None, cursor=None, max_pages=3, tz=None):
         return ([{"message": "Test alert", "severity": "HIGH"}], "2", {"orgs_fetched": 1})
 
     monkeypatch.setattr(connector_service, "_fetch_github_events", fake_github)

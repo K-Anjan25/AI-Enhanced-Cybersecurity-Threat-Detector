@@ -293,3 +293,189 @@ def test_partial_coverage_is_distinguished_from_none(db_session):
 
 def test_coverage_is_empty_when_nothing_to_report(db_session):
     assert response_metrics.compute(db_session, ORG)["event_time_coverage"] == []
+
+
+# ---------------------------------------------------------------------------
+# Declared source time zone
+# ---------------------------------------------------------------------------
+
+from app.services.connector_service import _resolve_zone  # noqa: E402
+
+
+def test_naive_timestamp_uses_the_declared_zone():
+    """The caveat this closes: local time read as UTC is silently wrong."""
+    ny = _resolve_zone("America/New_York")
+    # 09:00 EST is 14:00 UTC.
+    got = _coerce_event_time("2026-01-15T09:00:00", ny)
+    assert got.isoformat() == "2026-01-15T14:00:00+00:00"
+
+
+def test_declared_zone_respects_daylight_saving():
+    ny = _resolve_zone("America/New_York")
+    # Same wall-clock time in July is EDT (-4), not EST (-5).
+    got = _coerce_event_time("2026-07-15T09:00:00", ny)
+    assert got.isoformat() == "2026-07-15T13:00:00+00:00"
+
+
+def test_an_explicit_offset_always_beats_the_declared_zone():
+    """A payload that states its own offset is authoritative."""
+    ny = _resolve_zone("America/New_York")
+    for value in ("2026-01-15T09:00:00Z", "2026-01-15T09:00:00+00:00"):
+        assert _coerce_event_time(value, ny).isoformat() == "2026-01-15T09:00:00+00:00"
+
+
+def test_epoch_values_ignore_the_declared_zone():
+    """Epoch is absolute; applying a zone would shift it wrongly."""
+    ny = _resolve_zone("America/New_York")
+    assert _coerce_event_time(1756530000, ny) == _coerce_event_time(1756530000)
+
+
+def test_without_a_declared_zone_naive_is_still_utc():
+    assert _coerce_event_time("2026-01-15T09:00:00").isoformat() == "2026-01-15T09:00:00+00:00"
+
+
+def test_result_is_always_normalised_to_utc():
+    """A local offset left on the value would be dropped by the naive column."""
+    got = _coerce_event_time("2026-01-15T09:00:00", _resolve_zone("Asia/Kolkata"))
+    assert got.utcoffset().total_seconds() == 0
+
+
+def test_unknown_zone_falls_back_to_utc_rather_than_failing():
+    """A configuration typo must not stop ingestion."""
+    assert _resolve_zone("Not/AZone") is None
+    assert _coerce_event_time("2026-01-15T09:00:00", _resolve_zone("Not/AZone")) is not None
+
+
+def test_normalizer_threads_the_zone_through():
+    ny = _resolve_zone("America/New_York")
+    normalized = _normalize_event(
+        {"message": "m", "severity": "HIGH", "timestamp": "2026-01-15T09:00:00"}, ny
+    )
+    assert normalized["event_time"].isoformat() == "2026-01-15T14:00:00+00:00"
+
+
+def test_config_rejects_an_unknown_zone(client, admin_headers):
+    """Better to fail at configuration than to shift every figure at ingest."""
+    r = client.put(
+        "/api/v1/connectors/okta/config",
+        headers=admin_headers,
+        json={"mode": "push", "event_time_zone": "Mars/Olympus"},
+    )
+    assert r.status_code == 422
+    assert "Unknown time zone" in r.json()["detail"]
+
+
+def test_config_accepts_and_returns_a_valid_zone(client, admin_headers):
+    r = client.put(
+        "/api/v1/connectors/okta/config",
+        headers=admin_headers,
+        json={"mode": "push", "event_time_zone": "America/New_York"},
+    )
+    assert r.status_code in (200, 201)
+
+    read = client.get("/api/v1/connectors/okta/config", headers=admin_headers)
+    assert read.json()["event_time_zone"] == "America/New_York"
+
+
+def test_zone_defaults_to_none_meaning_utc(client, admin_headers):
+    client.put(
+        "/api/v1/connectors/okta/config", headers=admin_headers, json={"mode": "push"}
+    )
+    read = client.get("/api/v1/connectors/okta/config", headers=admin_headers)
+    assert read.json()["event_time_zone"] is None
+
+
+def test_pollers_accept_the_zone_without_dropping_events():
+    """Regression: the zone was first read off a `cfg` not in scope.
+
+    Every normalise call raised inside a broad `except`, so each poller
+    returned zero events and the sync still reported success — silent data
+    loss rather than an error. Pinning the signatures keeps that from
+    recurring.
+    """
+    import inspect
+
+    from app.services import connector_service
+
+    for name in (
+        "_fetch_github_events",
+        "_fetch_slack_audit_events",
+        "_fetch_gworkspace_events",
+        "_fetch_azuread_events",
+    ):
+        params = inspect.signature(getattr(connector_service, name)).parameters
+        assert "tz" in params, f"{name} must take the source zone explicitly"
+        assert params["tz"].default is None, f"{name} must default to UTC"
+
+
+def test_github_poller_applies_the_declared_zone(monkeypatch):
+    from app.services import connector_service
+
+    def fake_fetch(url, headers=None, timeout=None):
+        class Resp:
+            status_code = 200
+            headers: dict = {}
+            text = "[]"
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                if "user/orgs" in url:
+                    return [{"login": "test-org"}]
+                if "code-scanning" in url:
+                    return [
+                        {
+                            "rule": {"description": "Test vuln", "severity": "error"},
+                            "html_url": "https://example/1",
+                            "repository": {"full_name": "o/r"},
+                            "severity": "high",
+                            # No offset: the declared zone decides what it means.
+                            "created_at": "2026-01-15T09:00:00",
+                        }
+                    ]
+                return []
+
+        return Resp()
+
+    monkeypatch.setattr(connector_service, "_fetch_events", fake_fetch)
+
+    events, _, _ = connector_service._fetch_github_events(
+        "tok", tz=_resolve_zone("America/New_York")
+    )
+    assert events, "poller must still return events when a zone is set"
+    assert events[0]["event_time"].isoformat() == "2026-01-15T14:00:00+00:00"
+
+
+def test_github_poller_without_a_zone_reads_naive_as_utc(monkeypatch):
+    from app.services import connector_service
+
+    def fake_fetch(url, headers=None, timeout=None):
+        class Resp:
+            status_code = 200
+            headers: dict = {}
+            text = "[]"
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                if "user/orgs" in url:
+                    return [{"login": "test-org"}]
+                if "code-scanning" in url:
+                    return [
+                        {
+                            "rule": {"description": "v", "severity": "error"},
+                            "repository": {"full_name": "o/r"},
+                            "severity": "high",
+                            "created_at": "2026-01-15T09:00:00",
+                        }
+                    ]
+                return []
+
+        return Resp()
+
+    monkeypatch.setattr(connector_service, "_fetch_events", fake_fetch)
+
+    events, _, _ = connector_service._fetch_github_events("tok")
+    assert events[0]["event_time"].isoformat() == "2026-01-15T09:00:00+00:00"

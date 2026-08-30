@@ -371,12 +371,35 @@ _MIN_EVENT_TIME = datetime(2000, 1, 1, tzinfo=timezone.utc)
 _FUTURE_TOLERANCE = timedelta(hours=24)
 
 
-def _coerce_event_time(value) -> datetime | None:
+def _resolve_zone(name: str | None):
+    """An IANA zone name, or None when unset/unknown.
+
+    An unrecognised name falls back to UTC rather than raising: a typo in
+    configuration must not stop ingestion, and the alert is still worth more
+    than the hour it may be out by.
+    """
+    if not name:
+        return None
+    try:
+        from zoneinfo import ZoneInfo
+
+        return ZoneInfo(str(name).strip())
+    except Exception:
+        _LOGGER.warning("Unknown event_time_zone %r; treating naive times as UTC", name)
+        return None
+
+
+def _coerce_event_time(value, tz=None) -> datetime | None:
     """Best-effort parse of a provider timestamp into aware UTC.
 
     Returns None rather than a guess. A wrong event time is worse than a
     missing one: detection latency is computed from this field, so a bad value
     silently corrupts the metric instead of being reported as unmeasured.
+
+    ``tz`` is the source's declared zone, applied *only* to timestamps that
+    carry no offset. A value that states its own offset is always believed;
+    the setting exists for sources that emit bare local time, which cannot be
+    distinguished from UTC by inspection.
     """
     if value is None or isinstance(value, bool):
         return None
@@ -386,6 +409,7 @@ def _coerce_event_time(value) -> datetime | None:
     if isinstance(value, datetime):
         parsed = value
     elif isinstance(value, (int, float)):
+        # Epoch values are absolute by definition; the zone never applies.
         parsed = _epoch_to_datetime(float(value))
     elif isinstance(value, str):
         text = value.strip()
@@ -404,11 +428,14 @@ def _coerce_event_time(value) -> datetime | None:
     if parsed is None:
         return None
     if parsed.tzinfo is None:
-        # A naive timestamp from a remote system is UTC by convention here;
-        # assuming local time would shift every metric by the host offset.
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    else:
-        parsed = parsed.astimezone(timezone.utc)
+        # No offset in the payload. Use the source's declared zone if it has
+        # one, else UTC — never the host's local time, which would make the
+        # figures depend on where the server happens to run.
+        parsed = parsed.replace(tzinfo=tz or timezone.utc)
+    # Always normalise to UTC before returning. The column is naive, so a value
+    # left at a local offset would have its tzinfo dropped on write and be
+    # stored as local time wearing a UTC label.
+    parsed = parsed.astimezone(timezone.utc)
 
     if parsed < _MIN_EVENT_TIME:
         return None
@@ -430,13 +457,13 @@ def _epoch_to_datetime(number: float) -> datetime | None:
         return None
 
 
-def _extract_event_time(raw: dict) -> datetime | None:
+def _extract_event_time(raw: dict, tz=None) -> datetime | None:
     """Pull the source event time out of a provider payload."""
     if not isinstance(raw, dict):
         return None
     for field in _EVENT_TIME_FIELDS:
         if field in raw:
-            parsed = _coerce_event_time(raw.get(field))
+            parsed = _coerce_event_time(raw.get(field), tz)
             if parsed is not None:
                 return parsed
     # Microsoft Graph nests the sign-in time one level down in some shapes.
@@ -445,7 +472,7 @@ def _extract_event_time(raw: dict) -> datetime | None:
         if isinstance(nested, dict):
             for field in _EVENT_TIME_FIELDS:
                 if field in nested:
-                    parsed = _coerce_event_time(nested.get(field))
+                    parsed = _coerce_event_time(nested.get(field), tz)
                     if parsed is not None:
                         return parsed
     return None
@@ -472,7 +499,7 @@ def _parse_link_header(link: str) -> dict:
     return links
 
 
-def _normalize_github_alert(raw: dict, alert_type: str = "code_scanning") -> dict | None:
+def _normalize_github_alert(raw: dict, alert_type: str = "code_scanning", tz=None) -> dict | None:
     """Map GitHub Advanced Security alert to our normalized event shape."""
     if not isinstance(raw, dict):
         return None
@@ -509,13 +536,13 @@ def _normalize_github_alert(raw: dict, alert_type: str = "code_scanning") -> dic
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
-        "event_time": _extract_event_time(raw),
+        "event_time": _extract_event_time(raw, tz),
         "github_alert_type": alert_type,
         "github_url": raw.get("html_url") or raw.get("url"),
     }
 
 
-def _normalize_slack_audit_event(raw: dict) -> dict | None:
+def _normalize_slack_audit_event(raw: dict, tz=None) -> dict | None:
     """Map Slack Audit Logs event to normalized shape."""
     if not isinstance(raw, dict):
         return None
@@ -545,7 +572,7 @@ def _normalize_slack_audit_event(raw: dict) -> dict | None:
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
-        "event_time": _extract_event_time(raw),
+        "event_time": _extract_event_time(raw, tz),
         "slack_action": action,
     }
 
@@ -555,6 +582,7 @@ def _fetch_github_events(
     since: str | None = None,
     cursor: str | None = None,
     max_pages: int = 3,
+    tz=None,
 ) -> tuple[list[dict], str | None, dict]:
     """Fetch GitHub Advanced Security alerts using OAuth token."""
     headers = {
@@ -603,7 +631,7 @@ def _fetch_github_events(
                     if not isinstance(data, list):
                         break
                     for item in data:
-                        norm = _normalize_github_alert(item, atype)
+                        norm = _normalize_github_alert(item, atype, tz)
                         if norm:
                             events.append(norm)
                     link_header = resp.headers.get("Link", "") if hasattr(resp, "headers") else ""
@@ -629,6 +657,7 @@ def _fetch_slack_audit_events(
     oauth_token: str,
     cursor: str | None = None,
     max_pages: int = 3,
+    tz=None,
 ) -> tuple[list[dict], str | None, dict]:
     """Fetch Slack Audit Logs using OAuth token with cursor pagination."""
     headers = {"Authorization": f"Bearer {oauth_token}"}
@@ -651,7 +680,7 @@ def _fetch_slack_audit_events(
             if not isinstance(entries, list):
                 break
             for entry in entries:
-                norm = _normalize_slack_audit_event(entry)
+                norm = _normalize_slack_audit_event(entry, tz)
                 if norm:
                     events.append(norm)
             if isinstance(data, dict):
@@ -670,7 +699,7 @@ def _fetch_slack_audit_events(
     state = {"pages_fetched": max_pages, "cursor": next_cursor}
     return events, next_cursor, state
 
-def _normalize_gworkspace_event(raw: dict) -> dict | None:
+def _normalize_gworkspace_event(raw: dict, tz=None) -> dict | None:
     if not isinstance(raw, dict):
         return None
     # Google Workspace Reports API activity
@@ -701,12 +730,12 @@ def _normalize_gworkspace_event(raw: dict) -> dict | None:
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
-        "event_time": _extract_event_time(raw),
+        "event_time": _extract_event_time(raw, tz),
         "gworkspace_action": action,
     }
 
 
-def _normalize_azuread_event(raw: dict) -> dict | None:
+def _normalize_azuread_event(raw: dict, tz=None) -> dict | None:
     if not isinstance(raw, dict):
         return None
     # Microsoft Graph signIns or auditLogs
@@ -729,7 +758,7 @@ def _normalize_azuread_event(raw: dict) -> dict | None:
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
-        "event_time": _extract_event_time(raw),
+        "event_time": _extract_event_time(raw, tz),
         "azuread_action": action,
     }
 
@@ -738,6 +767,7 @@ def _fetch_gworkspace_events(
     oauth_token: str,
     cursor: str | None = None,
     max_pages: int = 3,
+    tz=None,
 ) -> tuple[list[dict], str | None, dict]:
     headers = {"Authorization": f"Bearer {oauth_token}"}
     events: list[dict] = []
@@ -758,7 +788,7 @@ def _fetch_gworkspace_events(
             if not isinstance(items, list):
                 break
             for item in items:
-                norm = _normalize_gworkspace_event(item)
+                norm = _normalize_gworkspace_event(item, tz)
                 if norm:
                     events.append(norm)
             nc = data.get("nextPageToken") if isinstance(data, dict) else None
@@ -780,6 +810,7 @@ def _fetch_azuread_events(
     oauth_token: str,
     cursor: str | None = None,
     max_pages: int = 3,
+    tz=None,
 ) -> tuple[list[dict], str | None, dict]:
     headers = {"Authorization": f"Bearer {oauth_token}"}
     events: list[dict] = []
@@ -800,7 +831,7 @@ def _fetch_azuread_events(
             if not isinstance(items, list):
                 break
             for item in items:
-                norm = _normalize_azuread_event(item)
+                norm = _normalize_azuread_event(item, tz)
                 if norm:
                     events.append(norm)
             # Pagination via @odata.nextLink
@@ -891,6 +922,8 @@ def serialize_config(cfg: ConnectorSource) -> dict:
         "has_auth_token": bool(cfg.auth_token),
         "has_ingest_token": bool(cfg.ingest_token),
         "enabled": cfg.enabled,
+        # None means naive timestamps from this source are read as UTC.
+        "event_time_zone": cfg.event_time_zone,
         "last_sync": _humanize(cfg.last_sync_at),
         "last_status": cfg.last_status,
         "last_error": cfg.last_error,
@@ -1031,6 +1064,24 @@ def upsert_config(
         cfg.ingest_token = encrypt_secret(payload["ingest_token"])
     if payload.get("enabled") is not None:
         cfg.enabled = bool(payload["enabled"])
+    if "event_time_zone" in payload:
+        zone = (payload.get("event_time_zone") or "").strip()
+        if zone:
+            # Reject an unknown zone here rather than silently falling back to
+            # UTC at ingest time, where a typo would quietly shift every
+            # detection-latency figure from this source.
+            try:
+                from zoneinfo import ZoneInfo
+
+                ZoneInfo(zone)
+            except Exception as exc:
+                raise ValueError(
+                    f"Unknown time zone {zone!r}. Use an IANA name such as "
+                    "'America/New_York'."
+                ) from exc
+            cfg.event_time_zone = zone
+        else:
+            cfg.event_time_zone = None
 
     db.commit()
     db.refresh(cfg)
@@ -1114,7 +1165,7 @@ def delete_config(db: Session, org_id: int | None, connector_id: str, actor: str
 # ---------------------------------------------------------------------------
 
 
-def _normalize_event(raw: dict) -> dict | None:
+def _normalize_event(raw: dict, tz=None) -> dict | None:
     """Map an arbitrary provider event onto a SecurityAlert shape.
 
     Deliberately tolerant: providers disagree on field names. Anything we
@@ -1167,7 +1218,7 @@ def _normalize_event(raw: dict) -> dict | None:
         "mitre_tactic": raw.get("mitre_tactic") or mitre.get("tactic"),
         "mitre_technique_id": raw.get("mitre_technique_id") or mitre.get("technique_id"),
         "mitre_technique": raw.get("mitre_technique") or mitre.get("technique"),
-        "event_time": _extract_event_time(raw),
+        "event_time": _extract_event_time(raw, tz),
     }
 
 
@@ -1189,8 +1240,10 @@ def _ingest_events(
 
     seen: set[tuple[str, str | None]] = set()
     created: list[SecurityAlert] = []
+    # Resolved once: parsing hundreds of events should not rebuild the zone.
+    source_tz = _resolve_zone(getattr(cfg, "event_time_zone", None))
     for raw in events:
-        normalized = _normalize_event(raw)
+        normalized = _normalize_event(raw, source_tz)
         if normalized is None:
             skipped += 1
             continue
@@ -1594,6 +1647,10 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
         if cfg.endpoint and ("graph.microsoft.com" in cfg.endpoint.lower() or "azuread" in cfg.endpoint.lower()):
             is_azuread_real = True
 
+    # Declared zone for this source, applied to any timestamp it sends without
+    # an offset. Resolved once per sync rather than per event.
+    source_tz = _resolve_zone(getattr(cfg, "event_time_zone", None))
+
     try:
         if is_github_real and oauth_token:
             import json as _json
@@ -1606,22 +1663,22 @@ def sync(db: Session, org_id: int | None, connector_id: str, actor: str) -> dict
                 except Exception:
                     pass
             events, next_cursor, sync_state_data = _fetch_github_events(
-                oauth_token, since=since_val, cursor=cursor_val
+                oauth_token, since=since_val, cursor=cursor_val, tz=source_tz
             )
         elif is_slack_real and oauth_token:
             cursor_val = cfg.last_cursor
             events, next_cursor, sync_state_data = _fetch_slack_audit_events(
-                oauth_token, cursor=cursor_val
+                oauth_token, cursor=cursor_val, tz=source_tz
             )
         elif is_gworkspace_real and oauth_token:
             cursor_val = cfg.last_cursor
             events, next_cursor, sync_state_data = _fetch_gworkspace_events(
-                oauth_token, cursor=cursor_val
+                oauth_token, cursor=cursor_val, tz=source_tz
             )
         elif is_azuread_real and oauth_token:
             cursor_val = cfg.last_cursor
             events, next_cursor, sync_state_data = _fetch_azuread_events(
-                oauth_token, cursor=cursor_val
+                oauth_token, cursor=cursor_val, tz=source_tz
             )
         else:
             response = _fetch_events(cfg.endpoint, headers)
