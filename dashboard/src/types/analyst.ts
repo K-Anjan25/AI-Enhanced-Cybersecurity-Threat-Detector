@@ -67,6 +67,46 @@ export interface AnalystCase {
   decided_at?: string | null;
   soar_action_id?: string | null;
   report?: string | null;
+  /**
+   * What this case means for *this* org, joined from the risk modules
+   * (attack paths, posture, DRP). Keys are absent when a module has no real
+   * data — never populated with placeholders.
+   */
+  context?: CaseContext | null;
+  /** Plain-English lines derived from `context`, ready to render. */
+  context_summary?: string[] | null;
+}
+
+export interface CaseContext {
+  crown_jewel_reach?: {
+    path_id: number;
+    hops: number;
+    crown_jewel: string;
+    risk_score?: number;
+    techniques?: string[];
+    route?: string[];
+  };
+  posture?: {
+    current_score: number;
+    points_at_risk: number;
+    projected_score: number;
+    trend?: string;
+  };
+  leaked_credentials?: {
+    finding_id: number;
+    identity: string;
+    finding_type: string;
+    severity: string;
+    title: string;
+    source: string;
+  }[];
+  affected_assets?: {
+    id: number;
+    name: string;
+    criticality: number;
+    business_unit?: string | null;
+    owner?: string | null;
+  }[];
 }
 
 export interface Brief {

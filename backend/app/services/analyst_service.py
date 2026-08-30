@@ -13,7 +13,7 @@ from sqlalchemy import and_, or_
 
 from app.core.config import settings
 from app.models import AuditLog, Case, SecurityAlert, Entity, SoarAction, User
-from app.services import case_service, report as report_service
+from app.services import case_context, case_service, report as report_service
 from app.services import soar
 from app.utils.helpers import paginate, create_audit_log
 from app.utils.rate_limit import RateLimiter
@@ -114,14 +114,28 @@ def get_brief(db, org_id: int | None) -> dict:
     except Exception:  # pragma: no cover - datetime backend quirks
         alerts_today, auto_recorded_today = 0, 0
 
+    # Top pending cases carry their org context so the inbox can lead with
+    # business impact ("2 hops from the DC") instead of only the headline.
     top = pending.order_by(Case.created_at.desc()).limit(5).all()
+    top_serialized = []
+    for c in top:
+        row = case_service.serialize_case(c)
+        try:
+            ctx = case_context.build(db, c)
+            row["context"] = ctx
+            row["context_summary"] = case_context.summarize(ctx)
+        except Exception:  # pragma: no cover - enrichment is best-effort
+            row["context"] = {}
+            row["context_summary"] = []
+        top_serialized.append(row)
+
     return {
         "pending_count": pending_count,
         "handled_today": handled_today,
         "watching": watching,
         "alerts_today": alerts_today,
         "auto_recorded_today": auto_recorded_today,
-        "top_cases": [case_service.serialize_case(c) for c in top],
+        "top_cases": top_serialized,
     }
 
 
@@ -348,6 +362,13 @@ def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | N
     except Exception:
         connector_context = ""
 
+    # Business context from the risk-reduction modules (attack paths, posture,
+    # DRP). Best-effort: an empty list simply grounds the answer on less.
+    try:
+        org_context_lines = case_context.summarize(case_context.build(db, case))
+    except Exception:  # pragma: no cover - enrichment is best-effort
+        org_context_lines = []
+
     # Try LLM first (Phase 36)
     answer: str | None = None
     llm_used = False
@@ -371,6 +392,9 @@ def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | N
             "fallback": analysis.get("fallback", False),
             "entities": [f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:10]],
             "connector_context": connector_context,
+            # Business context for this org: reach to crown jewels, posture at
+            # risk, already-leaked credentials. Empty when no module has data.
+            "org_context": " ".join(org_context_lines),
         }
         llm_answer = _llm.answer_case_question(context, question)
         if llm_answer:
@@ -382,12 +406,22 @@ def chat_about_case(db, case: Case, question: str, actor: str, actor_id: int | N
     if not answer:
         q_lower = question.lower()
 
-        if "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
+        if (
+            "impact" in q_lower
+            or "posture" in q_lower
+            or "crown" in q_lower
+            or "leak" in q_lower
+            or "business" in q_lower
+        ) and org_context_lines:
+            answer = " ".join(org_context_lines)
+        elif "blast radius" in q_lower or "entity" in q_lower or "affected" in q_lower:
             node_names = ", ".join([f"{n.get('entity_type')}:{n.get('value')}" for n in nodes[:5]])
             answer = (
                 f"The blast radius contains {len(nodes)} identified entities: {node_names}. "
                 f"The root entity is connected to key assets and accounts."
             )
+            if org_context_lines:
+                answer += " " + " ".join(org_context_lines)
         elif "action" in q_lower or "why" in q_lower or "recommend" in q_lower or "remediat" in q_lower:
             answer = (
                 f"The recommended action is {proposed.get('action_type', 'REVOKE_CREDENTIALS')} on {proposed.get('target')}. "

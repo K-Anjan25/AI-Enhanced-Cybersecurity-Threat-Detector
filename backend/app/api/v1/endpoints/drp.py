@@ -36,11 +36,18 @@ def create_monitor(payload: MonitorIn, db: Session = Depends(get_db), current_us
 
 @router.post("/scan")
 def scan(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
+    """Run every genuinely available source and report what was skipped."""
     try:
-        findings = drp_service.scan_drp(db, current_user.org_id)
-        return [drp_service.serialize_finding(f) for f in findings]
+        drp_service.seed_monitors(db, current_user.org_id)
+        return drp_service.scan_report(db, current_user.org_id)
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+
+
+@router.get("/providers")
+def providers(current_user: User = Depends(require_permission("audit:read"))):
+    """Which external DRP sources are configured and reachable."""
+    return drp_service.provider_status()
 
 @router.get("/findings")
 def list_findings(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
