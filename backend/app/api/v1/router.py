@@ -47,22 +47,14 @@ from app.api.v1.endpoints import (
     tip,
     compliance_continuous,
     exec_risk,
-    data_lake,
     ha_eventbus,
-    marketplace,
-    finetune,
     risk_based,
     purple_team,
-    pdf_export,
     attack_coverage,
-    agent_collab,
     soc_tv,
     approval_workflows,
     hunt_notebooks,
     exposure,
-    ai_redteam,
-    federated,
-    compliance_autopilot,
     attack_path,
     drp,
     posture_score,
@@ -123,25 +115,17 @@ api_router.include_router(tip.router)
 api_router.include_router(compliance_continuous.router)
 api_router.include_router(exec_risk.router)
 # Phases 73-80
-api_router.include_router(data_lake.router)
 api_router.include_router(ha_eventbus.router)
-api_router.include_router(marketplace.router)
-api_router.include_router(finetune.router)
 api_router.include_router(risk_based.router)
 api_router.include_router(purple_team.router)
-api_router.include_router(pdf_export.router)
 # Phases 81-84
 api_router.include_router(attack_coverage.router)
-api_router.include_router(agent_collab.router)
 api_router.include_router(soc_tv.router)
 # Phases 85-88
 api_router.include_router(approval_workflows.router)
 api_router.include_router(hunt_notebooks.router)
 api_router.include_router(exposure.router)
-api_router.include_router(ai_redteam.router)
 # Phases 89-90
-api_router.include_router(federated.router)
-api_router.include_router(compliance_autopilot.router)
 # Phases 91-100
 api_router.include_router(attack_path.router)
 api_router.include_router(drp.router)
