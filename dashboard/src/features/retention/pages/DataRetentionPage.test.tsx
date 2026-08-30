@@ -1,13 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DataRetentionPage from "./DataRetentionPage";
 import { ToastProvider } from "../../../components/ui/Toast";
 
 const get = vi.fn();
 const post = vi.fn();
+const del = vi.fn();
 vi.mock("../../../api/client", () => ({
-  default: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) },
+  default: {
+    get: (...a: unknown[]) => get(...a),
+    post: (...a: unknown[]) => post(...a),
+    delete: (...a: unknown[]) => del(...a),
+  },
 }));
 
 const renderPage = () =>
@@ -38,8 +43,10 @@ const mockLoad = (policies: unknown, holds: unknown = []) => {
 
 describe("DataRetentionPage", () => {
   beforeEach(() => {
+    cleanup();
     get.mockReset();
     post.mockReset();
+    del.mockReset();
   });
 
   it("shows each policy's retention thresholds", async () => {
@@ -74,6 +81,89 @@ describe("DataRetentionPage", () => {
     mockLoad([policy()], [{ id: 7, name: "Litigation 2026", reason: "pending case", is_active: true }]);
     renderPage();
     expect(await screen.findByText("Litigation 2026")).toBeInTheDocument();
+  });
+
+  it("renders the hold fields the API actually returns", async () => {
+    // Regression: the page declared `reason`/`data_type`, which the endpoint
+    // never sends, so every hold rendered with a blank detail line.
+    mockLoad([policy()], [
+      {
+        id: 7,
+        name: "Litigation 2026",
+        description: "Preserve mailbox exports",
+        case_ids: [11, 12],
+        is_active: true,
+      },
+    ]);
+    renderPage();
+
+    expect(await screen.findByText("Litigation 2026")).toBeInTheDocument();
+    expect(screen.getByText("Preserve mailbox exports")).toBeInTheDocument();
+    expect(screen.getByText(/2 cases/)).toBeInTheDocument();
+  });
+
+  it("creates a legal hold and reloads", async () => {
+    mockLoad([policy()], []);
+    post.mockResolvedValue({ data: { id: 1 } });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /new hold/i }));
+    await userEvent.type(screen.getByLabelText(/name/i), "Acme litigation");
+    await userEvent.type(screen.getByLabelText(/reason/i), "Preserve everything");
+    await userEvent.click(screen.getByRole("button", { name: /create hold/i }));
+
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    expect(post.mock.calls[0][0]).toBe("/data-lifecycle/legal-holds");
+    expect(post.mock.calls[0][1]).toMatchObject({
+      name: "Acme litigation",
+      description: "Preserve everything",
+    });
+  });
+
+  it("will not create a hold with no name", async () => {
+    mockLoad([policy()], []);
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /new hold/i }));
+    expect(screen.getByRole("button", { name: /create hold/i })).toBeDisabled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("warns what releasing a hold exposes before doing it", async () => {
+    mockLoad([policy()], [{ id: 7, name: "Litigation 2026", is_active: true }]);
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /release/i }));
+
+    expect(await screen.findByText("Release this legal hold?")).toBeInTheDocument();
+    expect(
+      screen.getByText(/may archive or delete records this hold was preserving/),
+    ).toBeInTheDocument();
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it("releases a hold once confirmed", async () => {
+    mockLoad([policy()], [{ id: 7, name: "Litigation 2026", is_active: true }]);
+    del.mockResolvedValue({ data: { status: "released" } });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /^release$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /release hold/i }));
+
+    await waitFor(() =>
+      expect(del).toHaveBeenCalledWith("/data-lifecycle/legal-holds/7"),
+    );
+  });
+
+  it("reports a failed release instead of implying the hold is gone", async () => {
+    mockLoad([policy()], [{ id: 7, name: "Litigation 2026", is_active: true }]);
+    del.mockRejectedValue({ response: { data: { detail: "hold is locked" } } });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /^release$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /release hold/i }));
+
+    expect(await screen.findByText("hold is locked")).toBeInTheDocument();
   });
 
   it("requires confirmation before running retention, and warns it is irreversible", async () => {

@@ -59,6 +59,79 @@ describe("AssetInventoryPage", () => {
     expect(screen.queryByText(/Domain Controller/i)).not.toBeInTheDocument();
   });
 
+  it("filters the inventory by a free-text search", async () => {
+    get.mockResolvedValue({
+      data: [
+        asset(),
+        asset({ id: 2, name: "Domain controller", hostname: "dc01", ip_address: "10.0.0.5" }),
+      ],
+    });
+    renderPage();
+
+    await screen.findByText("Primary file server");
+    await userEvent.type(screen.getByLabelText(/search assets/i), "dc01");
+
+    expect(screen.getByText("Domain controller")).toBeInTheDocument();
+    expect(screen.queryByText("Primary file server")).not.toBeInTheDocument();
+  });
+
+  it("searches across hostname, IP and owner, not just the name", async () => {
+    get.mockResolvedValue({ data: [asset()] });
+    renderPage();
+    await screen.findByText("Primary file server");
+
+    await userEvent.type(screen.getByLabelText(/search assets/i), "10.0.0.20");
+    expect(screen.getByText("Primary file server")).toBeInTheDocument();
+  });
+
+  it("narrows to crown jewels by criticality", async () => {
+    get.mockResolvedValue({
+      data: [
+        asset({ id: 1, name: "Laptop", criticality: 2 }),
+        asset({ id: 2, name: "Prod database", criticality: 5 }),
+      ],
+    });
+    renderPage();
+    await screen.findByText("Prod database");
+
+    await userEvent.selectOptions(screen.getByLabelText(/minimum criticality/i), "5");
+
+    expect(screen.getByText("Prod database")).toBeInTheDocument();
+    expect(screen.queryByText("Laptop")).not.toBeInTheDocument();
+  });
+
+  it("sorts the most critical assets first", async () => {
+    get.mockResolvedValue({
+      data: [
+        asset({ id: 1, name: "Low value", criticality: 1 }),
+        asset({ id: 2, name: "Crown jewel", criticality: 5 }),
+        asset({ id: 3, name: "Middling", criticality: 3 }),
+      ],
+    });
+    renderPage();
+    await screen.findByText("Crown jewel");
+
+    // Scope to exact names: "Crown jewels" (stat card) and "Crown jewels only"
+    // (filter option) would otherwise match too.
+    const rendered = screen
+      .getAllByText(/^(Low value|Crown jewel|Middling)$/)
+      .map((n) => n.textContent);
+    expect(rendered).toEqual(["Crown jewel", "Middling", "Low value"]);
+  });
+
+  it("says the filter is empty rather than implying no assets exist", async () => {
+    get.mockResolvedValue({ data: [asset()] });
+    renderPage();
+    await screen.findByText("Primary file server");
+
+    await userEvent.type(screen.getByLabelText(/search assets/i), "nothing-matches-this");
+
+    expect(screen.getByText(/No asset matches this filter/)).toBeInTheDocument();
+    expect(screen.getByText(/1 recorded in total/)).toBeInTheDocument();
+    // The "no assets recorded" empty state would be a different, wrong message.
+    expect(screen.queryByText("No assets recorded")).not.toBeInTheDocument();
+  });
+
   it("creates an asset and refreshes the list", async () => {
     get.mockResolvedValueOnce({ data: [] });
     post.mockResolvedValue({ data: asset() });

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Archive, Gavel, Play } from "lucide-react";
+import { Archive, Gavel, Play, Plus } from "lucide-react";
 import apiClient from "../../../api/client";
 import {
   Button,
   Card,
   ConfirmDialog,
   EmptyState,
+  Modal,
   PageHeader,
   SkeletonCard,
   Badge,
@@ -30,12 +31,16 @@ interface Policy {
   is_active: boolean;
 }
 
+/** Matches GET /data-lifecycle/legal-holds. The earlier `reason`/`data_type`
+ *  fields never existed on the response, so a hold's detail always rendered
+ *  blank. */
 interface LegalHold {
   id: number;
   name?: string | null;
-  reason?: string | null;
-  data_type?: string | null;
+  description?: string | null;
+  case_ids?: number[] | null;
   is_active?: boolean;
+  created_at?: string | null;
 }
 
 const asList = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -46,6 +51,10 @@ export default function DataRetentionPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmRun, setConfirmRun] = useState(false);
+  const [confirmRelease, setConfirmRelease] = useState<LegalHold | null>(null);
+  const [holdOpen, setHoldOpen] = useState(false);
+  const [holdName, setHoldName] = useState("");
+  const [holdDescription, setHoldDescription] = useState("");
   const { push } = useToast();
 
   const load = useCallback(async () => {
@@ -81,6 +90,44 @@ export default function DataRetentionPage() {
   };
 
   const activeHolds = holds.filter((h) => h.is_active !== false);
+
+  const createHold = async () => {
+    const name = holdName.trim();
+    if (!name) return;
+    setBusy(true);
+    try {
+      await apiClient.post("/data-lifecycle/legal-holds", {
+        name,
+        description: holdDescription.trim() || null,
+      });
+      push(`Legal hold "${name}" created — retention will skip this data`);
+      setHoldOpen(false);
+      setHoldName("");
+      setHoldDescription("");
+      await load();
+    } catch (e) {
+      // Keep the form open so the operator does not retype it.
+      push(getApiError(e, "Could not create the legal hold"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const releaseHold = async () => {
+    const hold = confirmRelease;
+    if (!hold) return;
+    setConfirmRelease(null);
+    setBusy(true);
+    try {
+      await apiClient.delete(`/data-lifecycle/legal-holds/${hold.id}`);
+      push(`Released "${hold.name ?? `Hold #${hold.id}`}" — this data is eligible for retention again`, "warning");
+      await load();
+    } catch (e) {
+      push(getApiError(e, "Could not release the hold"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -138,9 +185,16 @@ export default function DataRetentionPage() {
           </Card>
 
           <Card className="p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Gavel size={15} className="text-content-tertiary" aria-hidden />
-              <h2 className="text-sm font-bold font-display text-content-primary">Legal holds</h2>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <Gavel size={15} className="text-content-tertiary" aria-hidden />
+                <h2 className="text-sm font-bold font-display text-content-primary">
+                  Legal holds
+                </h2>
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setHoldOpen(true)}>
+                <Plus size={13} className="mr-1.5" /> New hold
+              </Button>
             </div>
             {activeHolds.length === 0 ? (
               <p className="text-xs text-content-tertiary">
@@ -150,11 +204,30 @@ export default function DataRetentionPage() {
               <div className="space-y-2">
                 {activeHolds.map((h) => (
                   <div key={h.id} className="text-xs border-l-2 border-status-warning/40 pl-3">
-                    <span className="text-content-primary font-medium">{h.name ?? `Hold #${h.id}`}</span>
-                    {h.data_type && (
-                      <span className="text-content-tertiary"> · {h.data_type}</span>
-                    )}
-                    {h.reason && <p className="text-content-tertiary mt-0.5">{h.reason}</p>}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="text-content-primary font-medium">
+                          {h.name ?? `Hold #${h.id}`}
+                        </span>
+                        {h.case_ids && h.case_ids.length > 0 && (
+                          <span className="text-content-tertiary">
+                            {" "}· {h.case_ids.length} case
+                            {h.case_ids.length === 1 ? "" : "s"}
+                          </span>
+                        )}
+                        {h.description && (
+                          <p className="text-content-tertiary mt-0.5">{h.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmRelease(h)}
+                        disabled={busy}
+                      >
+                        Release
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -162,6 +235,68 @@ export default function DataRetentionPage() {
           </Card>
         </>
       )}
+
+      <Modal open={holdOpen} onClose={() => setHoldOpen(false)} title="New legal hold">
+        <div className="space-y-4">
+          <p className="text-xs text-content-secondary">
+            While a hold is active, retention skips the data it covers — nothing is
+            archived or deleted until the hold is released.
+          </p>
+          <div>
+            <label
+              className="tech-label text-content-tertiary block mb-1.5"
+              htmlFor="hold-name"
+            >
+              Name
+            </label>
+            <input
+              id="hold-name"
+              value={holdName}
+              onChange={(e) => setHoldName(e.target.value)}
+              placeholder="Acme litigation 2026"
+              className="w-full bg-app-subtle border border-line-subtle rounded-sm px-3 py-2 text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
+            />
+          </div>
+          <div>
+            <label
+              className="tech-label text-content-tertiary block mb-1.5"
+              htmlFor="hold-description"
+            >
+              Reason
+            </label>
+            <textarea
+              id="hold-description"
+              value={holdDescription}
+              onChange={(e) => setHoldDescription(e.target.value)}
+              rows={3}
+              placeholder="Why this data must be preserved"
+              className="w-full bg-app-subtle border border-line-subtle rounded-sm px-3 py-2 text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setHoldOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={createHold} disabled={busy || !holdName.trim()}>
+              {busy ? "Saving…" : "Create hold"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={confirmRelease !== null}
+        onCancel={() => setConfirmRelease(null)}
+        onConfirm={releaseHold}
+        loading={busy}
+        tone="danger"
+        title="Release this legal hold?"
+        message={
+          `"${confirmRelease?.name ?? ""}" will stop protecting its data. ` +
+          "The next retention run may archive or delete records this hold was preserving."
+        }
+        confirmLabel="Release hold"
+      />
 
       <ConfirmDialog
         open={confirmRun}
