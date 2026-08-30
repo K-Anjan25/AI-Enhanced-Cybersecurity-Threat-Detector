@@ -34,6 +34,7 @@ import { fetchAlerts } from "../../../api/alertApi";
 import type { Alert } from "../../../types/alert";
 import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
+import CaseImpact from "../../../components/CaseImpact";
 
 type DialogKind = "approve" | "decline" | "revert" | null;
 
@@ -361,6 +362,10 @@ const CasePage: React.FC = () => {
           </h3>
           <p className="text-content-secondary leading-relaxed">{analysis?.why_it_matters}</p>
         </div>
+
+        {/* Org-specific impact, joined from the attack-path, posture and
+            exposure modules. Renders nothing when those have no real data. */}
+        <CaseImpact context={data.context} className="pt-1" />
       </div>
 
       {/* Evidence — the observed source alert, on the night canvas. */}

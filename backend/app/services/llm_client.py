@@ -263,9 +263,16 @@ def answer_case_question(case_context: dict, question: str) -> str | None:
         f"MITRE: {case_context.get('mitre_id')} {case_context.get('mitre_name')}",
         f"Confidence: {case_context.get('confidence')} model: {case_context.get('model')} fallback: {case_context.get('fallback')}",
         f"Entities: {', '.join(case_context.get('entities', []))}",
-        "",
-        f"QUESTION: {question}",
     ]
+
+    # Org-specific impact from the risk modules (attack paths, posture, DRP).
+    # These are evidence-backed facts, so the model may quote them directly.
+    if case_context.get("org_context"):
+        user_lines.append(f"Business impact for this org: {case_context['org_context']}")
+    if case_context.get("connector_context"):
+        user_lines.append(f"Recent related telemetry: {case_context['connector_context']}")
+
+    user_lines += ["", f"QUESTION: {question}"]
 
     url = f"{settings.ANTHROPIC_BASE_URL.rstrip('/')}/v1/messages"
     headers = {

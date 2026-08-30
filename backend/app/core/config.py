@@ -149,6 +149,12 @@ class Settings(BaseSettings):
     ABUSEIPDB_API_KEY: str | None = None
     SHODAN_API_KEY: str | None = None
     OTX_API_KEY: str | None = None
+
+    # Digital Risk Protection external sources. Absent keys mean the provider
+    # is reported unavailable — DRP never fabricates findings to fill the gap.
+    DRP_CT_ENABLED: bool = False
+    DRP_DARKWEB_API_KEY: str | None = None
+    DRP_BREACH_API_KEY: str | None = None
     THREAT_INTEL_ENABLED: bool = True
     THREAT_INTEL_CACHE_TTL_SECONDS: int = 3600  # 1 hour
     THREAT_INTEL_TIMEOUT: float = 5.0
