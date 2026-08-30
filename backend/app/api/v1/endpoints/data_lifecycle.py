@@ -114,7 +114,7 @@ def list_gdpr(db: Session = Depends(get_db), current_user: User = Depends(requir
     # Simplified
     from app.models.data_lifecycle import GDPRDeletionRequest
     rows = db.query(GDPRDeletionRequest).filter(GDPRDeletionRequest.org_id == current_user.org_id).order_by(GDPRDeletionRequest.created_at.desc()).limit(50).all()
-    return [{"id": r.id, "target_email": r.target_email, "status": r.status, "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
+    return [{"id": r.id, "target_email": r.target_email, "reason": r.reason, "status": r.status, "created_at": r.created_at.isoformat() if r.created_at else None, "completed_at": r.completed_at.isoformat() if r.completed_at else None} for r in rows]
 
 @router.post("/gdpr")
 def create_gdpr(payload: GDPRIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
@@ -133,5 +133,10 @@ def process_gdpr(req_id: int, action: str, db: Session = Depends(get_db), curren
     try:
         req = data_lifecycle_service.process_gdpr_request(db, current_user.org_id, req_id, action=action)
         return {"id": req.id, "status": req.status}
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        # "not found" is a 404; a bad action or an already-decided request is a
+        # client error the operator can act on, not a missing resource.
+        detail = str(e)
+        raise HTTPException(
+            status_code=404 if "not found" in detail.lower() else 400, detail=detail
+        )
