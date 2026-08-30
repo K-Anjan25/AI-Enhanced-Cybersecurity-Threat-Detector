@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.attack_coverage import AttackCoverage, AttackCoverageReport
@@ -38,8 +39,19 @@ ATTACK_TECHNIQUES = [
 
 def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
     """Evaluate ATT&CK coverage from detection rules, hunts and playbooks."""
-    # Get existing artifacts
-    alerts = db.query(SecurityAlert).filter(SecurityAlert.org_id == org_id).all()
+    # Count alerts per technique in the database rather than loading every row
+    # and rescanning the list once per technique. At 26k alerts that was 14 full
+    # passes over the whole table in Python and took over a minute; the grouped
+    # count is one query returning at most a few dozen rows.
+    detection_counts = dict(
+        db.query(SecurityAlert.mitre_technique_id, func.count(SecurityAlert.id))
+        .filter(
+            SecurityAlert.org_id == org_id,
+            SecurityAlert.mitre_technique_id.isnot(None),
+        )
+        .group_by(SecurityAlert.mitre_technique_id)
+        .all()
+    )
 
     hunts = db.query(Hunt).filter(Hunt.org_id == org_id).all()
     hunt_text = " ".join([h.query or "" for h in hunts]).lower()
@@ -49,6 +61,13 @@ def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
 
     rules = db.query(DetectionRule).filter(DetectionRule.org_id == org_id).all() if hasattr(DetectionRule, 'org_id') else []
     # For simplicity, check if rule name contains technique
+
+    # Existing rows fetched once; the loop previously issued one SELECT per
+    # technique on every evaluation.
+    existing_rows = {
+        r.mitre_technique_id: r
+        for r in db.query(AttackCoverage).filter(AttackCoverage.org_id == org_id).all()
+    }
 
     results = []
     for tech in ATTACK_TECHNIQUES:
@@ -62,7 +81,7 @@ def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
         has_hunt = tid.lower() in hunt_text or tid.split(".")[0].lower() in hunt_text
         has_playbook = tid.lower() in playbook_text
 
-        detection_count = sum(1 for a in alerts if a.mitre_technique_id == tid)
+        detection_count = detection_counts.get(tid, 0)
 
         # Three real signals, weighted evenly. A fourth signal (purple-team
         # exercises) was removed: running an exercise wrote synthetic HIGH
@@ -89,7 +108,7 @@ def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
             recommendation = f"Create a detection rule and a hunt for {tid}"
 
         # Upsert
-        existing = db.query(AttackCoverage).filter(AttackCoverage.org_id == org_id, AttackCoverage.mitre_technique_id == tid).first()
+        existing = existing_rows.get(tid)
         if existing:
             existing.has_detection_rule = has_rule
             existing.has_hunt = has_hunt
@@ -99,7 +118,6 @@ def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
             existing.gap_reason = gap_reason
             existing.recommendation = recommendation
             existing.last_evaluated_at = _now()
-            db.commit()
             results.append(existing)
         else:
             cov = AttackCoverage(
@@ -116,9 +134,15 @@ def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
                 recommendation=recommendation,
             )
             db.add(cov)
-            db.commit()
-            db.refresh(cov)
             results.append(cov)
+
+    # One commit for the whole evaluation. Committing inside the loop meant a
+    # transaction per technique — 14 round trips for work that is a single
+    # logical update, and a partial write if any of them failed.
+    # A refresh per row would reintroduce the per-technique round trip. The
+    # caller only reads attributes already populated here, and SQLAlchemy
+    # reloads lazily if anything else is touched.
+    db.commit()
 
     return results
 

@@ -467,8 +467,13 @@ def _extract_event_time(raw: dict, tz=None) -> datetime | None:
             if parsed is not None:
                 return parsed
     # Microsoft Graph nests the sign-in time one level down in some shapes.
-    for container in ("status", "activity", "details"):
+    # Google Workspace Reports nests the event time under `id.time`; Microsoft
+    # Graph nests it under `status` in some shapes. Neither is reachable from
+    # the top level, so a source can look entirely silent while sending a
+    # perfectly good timestamp one level down.
+    for container in ("id", "status", "activity", "details", "context"):
         nested = raw.get(container)
+        # `id` is a scalar on most providers and a dict on Google Workspace.
         if isinstance(nested, dict):
             for field in _EVENT_TIME_FIELDS:
                 if field in nested:
@@ -542,6 +547,18 @@ def _normalize_github_alert(raw: dict, alert_type: str = "code_scanning", tz=Non
     }
 
 
+def _slack_source_ip(raw: dict) -> str | None:
+    """Slack's address, wherever this payload shape happens to keep it."""
+    for candidate in (raw.get("ip_address"), raw.get("ip")):
+        if candidate:
+            return candidate
+    for container in ("context", "actor"):
+        nested = raw.get(container)
+        if isinstance(nested, dict) and nested.get("ip_address"):
+            return nested["ip_address"]
+    return None
+
+
 def _normalize_slack_audit_event(raw: dict, tz=None) -> dict | None:
     """Map Slack Audit Logs event to normalized shape."""
     if not isinstance(raw, dict):
@@ -567,7 +584,11 @@ def _normalize_slack_audit_event(raw: dict, tz=None) -> dict | None:
         "message": str(message)[:2000],
         "severity": sev,
         "alert_type": "log",
-        "source_ip": raw.get("ip_address") or raw.get("ip") or (raw.get("actor", {}).get("ip_address") if isinstance(raw.get("actor"), dict) else None),
+        # Slack reports the address under `context.ip_address`; the top-level
+        # and actor lookups only ever matched hand-rolled payloads. Without it
+        # the alert has no source IP, so threat-intel enrichment and the
+        # correlation signal both go quiet for every Slack event.
+        "source_ip": _slack_source_ip(raw),
         "score": None,
         "mitre_tactic": None,
         "mitre_technique_id": None,
