@@ -79,15 +79,19 @@ def run_automation(db: Session = Depends(get_db), current_user: User = Depends(r
             pass
         archived = sum(r.get("archived_count", 0) for r in results)
         eligible = sum(r.get("eligible_count", 0) for r in results)
+        failures = [r for r in results if r.get("status") == "failed"]
+        destination = data_lifecycle_service.archive_store.describe_destination()
         return {
-            "status": "completed" if archived else "not_configured",
+            "status": "failed" if failures else "completed",
             "results": results,
             "archived_total": archived,
             "eligible_total": eligible,
+            "destination": destination,
             "note": (
-                "Cases under an active legal hold are excluded. No archive "
-                "destination is configured, so this run reported what is "
-                "eligible without moving or deleting anything."
+                "Records past their threshold are copied to "
+                f"{destination['detail']}. Cases under an active legal hold are "
+                "excluded. Nothing is deleted — archiving and deletion are "
+                "separate decisions."
             ),
         }
     except HTTPException:

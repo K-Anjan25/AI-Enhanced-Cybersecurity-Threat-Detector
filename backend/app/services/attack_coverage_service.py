@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.attack_coverage import AttackCoverage, AttackCoverageReport
@@ -142,7 +143,18 @@ def evaluate_coverage(db: Session, org_id: int) -> List[AttackCoverage]:
     # A refresh per row would reintroduce the per-technique round trip. The
     # caller only reads attributes already populated here, and SQLAlchemy
     # reloads lazily if anything else is touched.
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Another evaluation inserted the same techniques first. The unique
+        # constraint on (org_id, technique) is what stops duplicate rows;
+        # losing the race is normal, so re-read its work rather than failing.
+        db.rollback()
+        return (
+            db.query(AttackCoverage)
+            .filter(AttackCoverage.org_id == org_id)
+            .all()
+        )
 
     return results
 

@@ -81,3 +81,7 @@ backend/uploads/
 *.db
 *.sqlite
 *.sqlite3
+
+# Retention and compliance archives written by archive_store when no object
+# storage is configured. Real exported data; never committed.
+backend/archives/

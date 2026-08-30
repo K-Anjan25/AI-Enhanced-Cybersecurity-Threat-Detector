@@ -115,11 +115,21 @@ def test_re_deciding_through_the_api_is_a_400(client, admin_headers):
 # Archival must not claim to have archived
 # ---------------------------------------------------------------------------
 
-def test_archive_reports_eligible_not_archived(db_session):
-    """It counted rows, moved nothing, and logged success against a fake path."""
+def test_archive_writes_the_records_it_reports(db_session, tmp_path, monkeypatch):
+    """Superseded behaviour: it used to count rows and archive nothing.
+
+    Now a run writes a real file, so the count and the file must agree. The
+    honesty rule is unchanged — archived_count may only be non-zero when
+    something was actually written.
+    """
+    import json
     from datetime import datetime, timedelta, timezone
+    from pathlib import Path
 
     from app.models import SecurityAlert
+    from app.services import archive_store
+
+    monkeypatch.setattr(archive_store, "ARCHIVE_ROOT", tmp_path / "archives")
 
     old = datetime.now(timezone.utc) - timedelta(days=400)
     for _ in range(3):
@@ -130,20 +140,38 @@ def test_archive_reports_eligible_not_archived(db_session):
 
     res = data_lifecycle_service.archive_old_data(db_session, ORG, data_type="alerts")
 
-    assert res["archived_count"] == 0, "nothing is archived without a destination"
+    assert res["status"] == "archived"
+    assert res["archived_count"] == 3
     assert res["eligible_count"] == 3
-    assert res["status"] == "not_configured"
-    assert "no archive destination" in res["reason"].lower()
+    assert len(json.loads(Path(res["path"]).read_text())) == 3
 
 
-def test_archive_log_does_not_record_a_fabricated_path(db_session):
+def test_archive_log_points_at_a_file_that_exists(db_session, tmp_path, monkeypatch):
+    """It used to record an s3:// path for a file that was never written."""
+    from datetime import datetime, timedelta, timezone
+    from pathlib import Path
+
+    from app.models import SecurityAlert
     from app.models.data_lifecycle import DataArchiveLog
+    from app.services import archive_store
+
+    monkeypatch.setattr(archive_store, "ARCHIVE_ROOT", tmp_path / "archives")
+
+    db_session.add(
+        SecurityAlert(
+            org_id=ORG, severity="LOW", source="t", message="old",
+            created_at=datetime.now(timezone.utc) - timedelta(days=400),
+        )
+    )
+    db_session.commit()
 
     data_lifecycle_service.archive_old_data(db_session, ORG, data_type="alerts")
     log = db_session.query(DataArchiveLog).order_by(DataArchiveLog.id.desc()).first()
 
-    assert log.status == "not_configured"
-    assert log.archive_path is None, "an s3:// path was invented for a file never written"
+    assert log.status == "success"
+    assert log.archive_path is not None
+    assert Path(log.archive_path).exists()
+    assert not log.archive_path.startswith("s3://archive/")
 
 
 def test_cases_under_legal_hold_are_excluded_from_eligible(db_session):

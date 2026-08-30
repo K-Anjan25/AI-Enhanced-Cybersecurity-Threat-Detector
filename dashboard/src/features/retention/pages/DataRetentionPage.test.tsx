@@ -175,7 +175,7 @@ describe("DataRetentionPage", () => {
     expect(await screen.findByText("Run retention now?")).toBeInTheDocument();
     expect(screen.getByText(/active legal hold is skipped/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/report what is eligible without moving or deleting anything/i),
+      screen.getByText(/archiving and deletion are separate decisions/i),
     ).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
@@ -189,6 +189,66 @@ describe("DataRetentionPage", () => {
 
     await waitFor(() => expect(screen.queryByText("Run retention now?")).not.toBeInTheDocument());
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it("says where the records were archived to", async () => {
+    mockLoad([policy()]);
+    post.mockResolvedValue({
+      data: {
+        status: "completed",
+        archived_total: 12,
+        eligible_total: 12,
+        destination: { detail: "/srv/archives" },
+      },
+    });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /run retention now/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^run retention$/i }));
+
+    expect(
+      await screen.findByText(/Archived 12 record\(s\) to \/srv\/archives/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Nothing was deleted/)).toBeInTheDocument();
+  });
+
+  it("tells the operator to run again when the batch was capped", async () => {
+    mockLoad([policy()]);
+    post.mockResolvedValue({
+      data: {
+        status: "completed",
+        archived_total: 5000,
+        eligible_total: 21000,
+        destination: { detail: "/srv/archives" },
+      },
+    });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /run retention now/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^run retention$/i }));
+
+    expect(
+      await screen.findByText(/Archived 5000 of 21000 eligible record\(s\)/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Run again to continue/)).toBeInTheDocument();
+  });
+
+  it("reports a failed archive write rather than a count", async () => {
+    mockLoad([policy()]);
+    post.mockResolvedValue({
+      data: {
+        status: "failed",
+        archived_total: 0,
+        eligible_total: 12,
+        results: [{ error: "disk full" }],
+      },
+    });
+    renderPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /run retention now/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^run retention$/i }));
+
+    expect(await screen.findByText(/Retention run failed — disk full/)).toBeInTheDocument();
   });
 
   it("runs the automation once confirmed and reloads", async () => {
