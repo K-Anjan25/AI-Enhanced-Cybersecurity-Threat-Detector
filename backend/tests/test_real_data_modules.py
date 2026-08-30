@@ -386,3 +386,94 @@ def test_coverage_note_credits_ct_when_it_ran(db_session, monkeypatch):
     assert report["providers"]["certificate_transparency"]["enabled"] is True
     assert "certificate_transparency" in report["coverage_note"]
     assert "dark_web" in report["coverage_note"], "still names what was skipped"
+
+
+# ---------------------------------------------------------------------------
+# ASM exposure discovery
+# ---------------------------------------------------------------------------
+
+def test_exposure_discovery_invents_nothing_when_ct_is_off(db_session):
+    """This mock was the worst one: fake exposures became fake attack paths."""
+    from app.services import exposure_service
+    from app.models.exposure import ASM_AssetExposure
+
+    assert exposure_service.discover_exposures(db_session, ORG, domain="acme.com") == []
+    assert db_session.query(ASM_AssetExposure).count() == 0
+
+
+def test_exposure_discovery_records_ct_published_hostnames(db_session, monkeypatch):
+    from app.services import ct_log_client, exposure_service
+
+    monkeypatch.setattr(ct_log_client, "is_enabled", lambda: True)
+    monkeypatch.setattr(
+        ct_log_client,
+        "lookup_domain",
+        lambda d, timeout=None: ct_log_client.CTResult(
+            domain=d,
+            ok=True,
+            registered=True,
+            certificates=[{
+                "id": 1,
+                "issuer": "Let's Encrypt",
+                "not_before": "2026-01-01T00:00:00",
+                "not_after": "2026-04-01T00:00:00",
+                "names": ["acme.com", "vpn.acme.com"],
+            }],
+        ),
+    )
+
+    exposures = exposure_service.discover_exposures(db_session, ORG, domain="acme.com")
+    names = {e.name for e in exposures}
+
+    assert names == {"acme.com", "vpn.acme.com"}
+    for e in exposures:
+        assert e.severity == "LOW", "visibility is not vulnerability"
+        assert e.evidence_json["port_scanned"] is False
+        assert "NOT checked" in e.description
+        assert not e.ip_address or not e.ip_address.startswith("203.0.113."), "no fake IPs"
+
+
+def test_exposure_discovery_is_idempotent(db_session, monkeypatch):
+    from app.services import ct_log_client, exposure_service
+
+    monkeypatch.setattr(ct_log_client, "is_enabled", lambda: True)
+    monkeypatch.setattr(
+        ct_log_client,
+        "lookup_domain",
+        lambda d, timeout=None: ct_log_client.CTResult(
+            domain=d, ok=True, registered=True,
+            certificates=[{"id": 1, "issuer": "X", "not_before": None,
+                           "not_after": None, "names": ["acme.com"]}],
+        ),
+    )
+
+    first = exposure_service.discover_exposures(db_session, ORG, domain="acme.com")
+    second = exposure_service.discover_exposures(db_session, ORG, domain="acme.com")
+    assert len(first) == 1
+    assert second == [], "an already-known hostname is not rediscovered"
+
+
+def test_failed_ct_lookup_discovers_nothing(db_session, monkeypatch):
+    from app.services import ct_log_client, exposure_service
+
+    monkeypatch.setattr(ct_log_client, "is_enabled", lambda: True)
+    monkeypatch.setattr(
+        ct_log_client,
+        "lookup_domain",
+        lambda d, timeout=None: ct_log_client.CTResult(
+            domain=d, ok=False, reason="crt.sh unreachable"
+        ),
+    )
+    assert exposure_service.discover_exposures(db_session, ORG, domain="acme.com") == []
+
+
+# ---------------------------------------------------------------------------
+# Asset inventory
+# ---------------------------------------------------------------------------
+
+def test_seed_assets_no_longer_fabricates_a_ceo_laptop(db_session):
+    """Assets are ground truth for crown jewels; inventing them poisons everything."""
+    from app.services import risk_based_service
+
+    assert risk_based_service.seed_assets(db_session, ORG) == []
+    assert db_session.query(Asset).count() == 0

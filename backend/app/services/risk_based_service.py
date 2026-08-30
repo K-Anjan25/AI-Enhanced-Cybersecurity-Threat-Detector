@@ -31,20 +31,18 @@ def list_assets(db: Session, org_id: int, criticality: int = None) -> List[Asset
 
 
 def seed_assets(db: Session, org_id: int) -> List[Asset]:
-    existing = db.query(Asset).filter(Asset.org_id == org_id).count()
-    if existing > 0:
-        return list_assets(db, org_id)
-    defaults = [
-        {"name": "Domain Controller", "asset_type": "host", "ip_address": "10.0.0.1", "hostname": "dc01", "criticality": 5, "business_unit": "IT"},
-        {"name": "Prod DB", "asset_type": "host", "ip_address": "10.0.0.10", "hostname": "prod-db", "criticality": 5, "business_unit": "Engineering"},
-        {"name": "CEO Laptop", "asset_type": "host", "ip_address": "10.0.0.50", "hostname": "ceo-laptop", "criticality": 4, "business_unit": "Executive"},
-        {"name": "Web Server", "asset_type": "host", "ip_address": "10.0.1.10", "hostname": "web01", "criticality": 3, "business_unit": "Engineering"},
-    ]
-    created = []
-    for d in defaults:
-        a = create_asset(db, org_id=org_id, **d)
-        created.append(a)
-    return created
+    """Deliberately creates nothing.
+
+    This used to invent a "Domain Controller", "Prod DB" and "CEO Laptop" on
+    first read. That was actively harmful: assets are the ground truth for
+    attack-path search and the posture score, so fabricated rows produced
+    fabricated crown jewels and fabricated blast radius. An empty asset
+    inventory is a true statement about a new tenant; four fake hosts are not.
+
+    Assets arrive from connectors or the create endpoint. Kept as a no-op so
+    existing callers stay valid.
+    """
+    return list_assets(db, org_id)
 
 
 def create_risk_rule(db: Session, org_id: int, name: str, conditions: Dict[str, Any], action: str = "escalate", risk_multiplier: float = 1.5) -> RiskBasedRule:

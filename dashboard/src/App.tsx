@@ -35,14 +35,10 @@ const SsoScimPage = React.lazy(() => import("./features/admin/pages/SsoScimPage"
 const ApiKeysPage = React.lazy(() => import("./features/admin/pages/ApiKeysPage"));
 const CompliancePage = React.lazy(() => import("./features/admin/pages/CompliancePage"));
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
-const AdvancedHubPage = React.lazy(() => import("./features/advanced/pages/AdvancedHubPage"));
-const NextPhasesPage = React.lazy(() => import("./features/advanced/pages/NextPhasesPage"));
-const FuturePhasesPage = React.lazy(() => import("./features/advanced/pages/FuturePhasesPage"));
-const AdvancedPhasesPage = React.lazy(() => import("./features/advanced/pages/AdvancedPhasesPage"));
-const FinalPhasesPage = React.lazy(() => import("./features/advanced/pages/FinalPhasesPage"));
 const SOCWallPage = React.lazy(() => import("./features/advanced/pages/SOCWallPage"));
-const UltraPhasesPage = React.lazy(() => import("./features/advanced/pages/UltraPhasesPage"));
-const FederatedAutopilotPage = React.lazy(() => import("./features/advanced/pages/FederatedAutopilotPage"));
+const AttackCoveragePage = React.lazy(() => import("./features/coverage/pages/AttackCoveragePage"));
+const AssetInventoryPage = React.lazy(() => import("./features/assets/pages/AssetInventoryPage"));
+const DataRetentionPage = React.lazy(() => import("./features/retention/pages/DataRetentionPage"));
 const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
@@ -113,28 +109,10 @@ export default function App(): JSX.Element {
               <Route path="incidents" element={<IncidentsPage />} />
               <Route path="entities" element={<EntitiesPage />} />
               <Route path="soar" element={<SoarPage />} />
-              <Route path="advanced" element={<AdvancedHubPage />} />
-              <Route path="next" element={<NextPhasesPage />} />
-              <Route path="future" element={<FuturePhasesPage />} />
-              <Route path="advanced-phases" element={<AdvancedPhasesPage />} />
-              <Route path="final-phases" element={<FinalPhasesPage />} />
-              <Route path="ultra-phases" element={<UltraPhasesPage />} />
-              <Route path="federated-autopilot" element={<FederatedAutopilotPage />} />
               <Route path="soc-tv-wall" element={<SOCWallPage />} />
-              <Route path="data-lake" element={<AdvancedPhasesPage />} />
-              <Route path="marketplace" element={<AdvancedPhasesPage />} />
-              <Route path="finetune" element={<AdvancedPhasesPage />} />
-              <Route path="risk-based" element={<AdvancedPhasesPage />} />
-              <Route path="purple-team" element={<AdvancedPhasesPage />} />
-              <Route path="pdf-export" element={<AdvancedPhasesPage />} />
-              <Route path="attack-coverage" element={<FinalPhasesPage />} />
-              <Route path="agent-collab" element={<FinalPhasesPage />} />
-              <Route path="approval-workflows" element={<UltraPhasesPage />} />
-              <Route path="hunt-notebooks" element={<UltraPhasesPage />} />
-              <Route path="exposure" element={<UltraPhasesPage />} />
-              <Route path="ai-redteam" element={<UltraPhasesPage />} />
-              <Route path="federated" element={<FederatedAutopilotPage />} />
-              <Route path="compliance-autopilot" element={<FederatedAutopilotPage />} />
+              <Route path="attack-coverage" element={<AttackCoveragePage />} />
+              <Route path="assets" element={<AssetInventoryPage />} />
+              <Route path="retention" element={<DataRetentionPage />} />
               <Route path="final10" element={<Final10Page />} />
               <Route path="attack-path" element={<Final10Page />} />
               <Route path="drp" element={<Final10Page />} />

@@ -1,53 +1,277 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import FuturePhasesPage, { type Tab as FutureTab } from "../../advanced/pages/FuturePhasesPage";
-import NextPhasesPage, { type Tab as NextTab } from "../../advanced/pages/NextPhasesPage";
-import AdvancedHubPage from "../../advanced/pages/AdvancedHubPage";
+import { RefreshCw } from "lucide-react";
+import apiClient from "../../../api/client";
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  RawData,
+  SkeletonCard,
+  StatCard,
+  Badge,
+  SeverityBadge,
+} from "../../../components/ui";
+import { useToast } from "../../../components/ui/Toast";
+import { getApiError } from "../../../utils/getApiError";
 
 /**
- * Several nav entries share a tabbed hub page rather than having a page each.
+ * Capability pages that are read-oriented enough to share one shell.
  *
- * Jakob's Law: people expect a navigation item to land on the thing it names.
- * Previously every one of these routes opened its hub on the hub's *first*
- * tab — clicking "Vulnerabilities" showed ZTNA, and clicking "Forensics"
- * showed ITDR. The route now selects the matching tab, so the destination
- * always matches the label the operator clicked.
+ * These used to be a routing shim that dumped the operator into a tabbed
+ * "Labs" hub showing raw JSON. Each route now fetches its own data and renders
+ * it as records, with the payload available behind a disclosure rather than as
+ * the primary interface.
+ *
+ * A route is only listed here if its backend computes from real rows. Anything
+ * that fabricated data was removed rather than given a nicer wrapper.
  */
 
-const NEXT_TABS: Record<string, NextTab> = {
-  "/ztna": "ztna",
-  "/hunting": "hunt",
-  "/vulns": "vuln",
-  "/ai-agent": "agent",
+interface Feed {
+  /** Human name for the capability. */
+  title: string;
+  description: string;
+  /** Endpoints to pull, in display order. `label` heads each section. */
+  sources: { label: string; path: string }[];
+}
+
+const FEEDS: Record<string, Feed> = {
+  "/ztna": {
+    title: "Zero trust access",
+    description: "Network segments and the policies governing traffic between them.",
+    sources: [
+      { label: "Segments", path: "/ztna/segments" },
+      { label: "Policies", path: "/ztna/policies" },
+    ],
+  },
+  "/hunting": {
+    title: "Threat hunting",
+    description: "Saved hunts and the queries behind them.",
+    sources: [{ label: "Hunts", path: "/hunts" }],
+  },
+  "/vulns": {
+    title: "Vulnerabilities",
+    description: "Known vulnerabilities across your assets, ranked by risk.",
+    sources: [
+      { label: "Risk summary", path: "/vulns/risk/summary" },
+      { label: "Vulnerabilities", path: "/vulns" },
+    ],
+  },
+  "/cspm": {
+    title: "Cloud posture",
+    description: "Connected cloud accounts and the misconfigurations found in them.",
+    sources: [
+      { label: "Accounts", path: "/cspm/accounts" },
+      { label: "Violations", path: "/cspm/violations" },
+    ],
+  },
+  "/sbom": {
+    title: "Software supply chain",
+    description: "Software bills of materials and the risk carried by your dependencies.",
+    sources: [
+      { label: "SBOMs", path: "/sbom/" },
+      { label: "Risks", path: "/sbom/risks" },
+    ],
+  },
+  "/deception": {
+    title: "Deception",
+    description: "Decoys placed to catch lateral movement, and what has touched them.",
+    sources: [{ label: "Decoys", path: "/deception/decoys" }],
+  },
+  "/forensics": {
+    title: "Forensics",
+    description: "Evidence collected during investigations.",
+    sources: [{ label: "Evidence", path: "/forensics/evidence" }],
+  },
+  "/itdr": {
+    title: "Identity threats",
+    description: "Identity-based attacks and risky sign-in activity.",
+    sources: [
+      { label: "Threats", path: "/itdr/threats" },
+      { label: "Risky sign-ins", path: "/itdr/risky-signins" },
+    ],
+  },
+  "/tip": {
+    title: "Threat intel platform",
+    description: "Indicators and feeds NOCTRA enriches alerts against.",
+    sources: [{ label: "Indicators", path: "/tip/indicators" }],
+  },
+  "/threat-intel": {
+    title: "Threat intel",
+    description: "Enrichment provider status and cached lookups.",
+    sources: [{ label: "Providers", path: "/threat-intel/status" }],
+  },
+  "/attack-navigator": {
+    title: "ATT&CK navigator",
+    description: "Technique activity mapped onto the ATT&CK matrix.",
+    sources: [{ label: "Heatmap", path: "/attack-navigator/heatmap" }],
+  },
+  "/compliance-continuous": {
+    title: "Continuous compliance",
+    description: "Control status evaluated continuously rather than at audit time.",
+    sources: [{ label: "Controls", path: "/compliance-continuous/controls" }],
+  },
+  "/exec-risk": {
+    title: "Executive risk",
+    description: "The board-level view: risk metrics and programme return.",
+    sources: [
+      { label: "Metrics", path: "/exec-risk/metrics" },
+      { label: "ROI", path: "/exec-risk/roi" },
+    ],
+  },
+  "/ai-agent": {
+    title: "AI agent",
+    description: "The autonomous investigator's status and tool use.",
+    sources: [{ label: "Status", path: "/ai-agent/status" }],
+  },
 };
 
-const FUTURE_TABS: Record<string, FutureTab> = {
-  "/itdr": "itdr",
-  "/cspm": "cspm",
-  "/sbom": "sbom",
-  "/deception": "deception",
-  "/forensics": "forensics",
-  "/tip": "tip",
-  "/compliance-continuous": "compliance",
-  "/exec-risk": "exec",
+const matchFeed = (path: string): [string, Feed] | undefined => {
+  const key = Object.keys(FEEDS).find((p) => path === p || path.startsWith(`${p}/`));
+  return key ? [key, FEEDS[key]] : undefined;
 };
 
-const matchPrefix = <T,>(path: string, table: Record<string, T>): T | undefined => {
-  const key = Object.keys(table).find((p) => path === p || path.startsWith(`${p}/`));
-  return key ? table[key] : undefined;
+const TITLE_KEYS = ["title", "name", "hostname", "cve_id", "technique_id", "indicator", "id"];
+const DETAIL_KEYS = ["description", "detail", "summary", "reason", "recommendation", "query", "status"];
+
+const pick = (row: Record<string, unknown>, keys: string[]): string | undefined => {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim()) return v;
+    if (typeof v === "number") return String(v);
+  }
+  return undefined;
+};
+
+/** Render one API response: a list of records, a scalar summary, or nothing. */
+const Section: React.FC<{ label: string; data: unknown }> = ({ label, data }) => {
+  const rows = Array.isArray(data) ? data : null;
+  const isObject = !rows && data !== null && typeof data === "object";
+  const scalars = isObject
+    ? Object.entries(data as Record<string, unknown>).filter(
+        ([, v]) => typeof v === "number" || typeof v === "string" || typeof v === "boolean",
+      )
+    : [];
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h2 className="text-sm font-bold font-display text-content-primary">{label}</h2>
+        {rows && (
+          <Badge className="bg-app-subtle text-content-tertiary border-line-subtle">
+            {rows.length}
+          </Badge>
+        )}
+      </div>
+
+      {rows ? (
+        rows.length === 0 ? (
+          <p className="text-xs text-content-tertiary">Nothing recorded yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {rows.slice(0, 50).map((row, i) => {
+              const r = (row ?? {}) as Record<string, unknown>;
+              const title = pick(r, TITLE_KEYS) ?? `Record ${i + 1}`;
+              const detail = pick(r, DETAIL_KEYS);
+              const severity = typeof r.severity === "string" ? r.severity : undefined;
+              return (
+                <div
+                  key={i}
+                  className="border-b border-line-subtle last:border-0 pb-2 last:pb-0 text-xs"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {severity && <SeverityBadge severity={severity} />}
+                    <span className="font-medium text-content-primary">{title}</span>
+                  </div>
+                  {detail && detail !== title && (
+                    <p className="text-content-secondary mt-0.5">{detail}</p>
+                  )}
+                </div>
+              );
+            })}
+            {rows.length > 50 && (
+              <p className="text-[11px] text-content-tertiary pt-1">
+                Showing the first 50 of {rows.length}.
+              </p>
+            )}
+          </div>
+        )
+      ) : scalars.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {scalars.slice(0, 9).map(([k, v]) => (
+            <StatCard key={k} label={k.replace(/_/g, " ")} value={String(v)} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-content-tertiary">No data returned.</p>
+      )}
+
+      <RawData value={data} />
+    </Card>
+  );
 };
 
 export default function ModulePage() {
   const path = useLocation().pathname;
+  const matched = useMemo(() => matchFeed(path), [path]);
+  const [results, setResults] = useState<{ label: string; data: unknown }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { push } = useToast();
 
-  const nextTab = matchPrefix(path, NEXT_TABS);
-  if (nextTab) return <NextPhasesPage initialTab={nextTab} />;
+  const feed = matched?.[1];
 
-  const futureTab = matchPrefix(path, FUTURE_TABS);
-  if (futureTab) return <FuturePhasesPage initialTab={futureTab} />;
+  const load = useCallback(async () => {
+    if (!feed) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const settled = await Promise.allSettled(feed.sources.map((s) => apiClient.get(s.path)));
+    const next = feed.sources.map((s, i) => {
+      const r = settled[i];
+      return { label: s.label, data: r.status === "fulfilled" ? r.value.data : null };
+    });
+    setResults(next);
+    if (settled.every((r) => r.status === "rejected")) {
+      const first = settled[0];
+      push(
+        getApiError(first.status === "rejected" ? first.reason : null, "Could not load this view"),
+        "error",
+      );
+    }
+    setLoading(false);
+  }, [feed, push]);
 
-  if (path.startsWith("/threat-intel") || path.startsWith("/attack-navigator")) {
-    return <AdvancedHubPage />;
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (!feed) {
+    return (
+      <EmptyState
+        title="Not available"
+        description={`There is no view for ${path}. It may have been removed.`}
+      />
+    );
   }
 
-  return <div className="p-6 text-sm text-content-secondary">Module {path} — view in Advanced Hub</div>;
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={feed.title}
+        description={feed.description}
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw size={13} className="mr-1.5" /> Refresh
+          </Button>
+        }
+      />
+      {loading ? (
+        <SkeletonCard />
+      ) : (
+        results.map((r) => <Section key={r.label} label={r.label} data={r.data} />)
+      )}
+    </div>
+  );
 }

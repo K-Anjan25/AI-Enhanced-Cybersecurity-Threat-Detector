@@ -27,49 +27,89 @@ def list_domains(db: Session, org_id: int) -> List[ASM_Domain]:
 
 
 def discover_exposures(db: Session, org_id: int, domain: str = None) -> List[ASM_AssetExposure]:
-    """Mock ASM discovery - in real would query Shodan, Censys, cert transparency."""
-    exposures = []
-    # Mock exposures for demo
-    mock_data = [
-        {"name": f"{domain or 'example.com'}", "ip_address": "203.0.113.10", "port": 443, "service": "https", "exposure_type": "open_port", "severity": "LOW", "description": "HTTPS open - expected"},
-        {"name": f"{domain or 'example.com'}", "ip_address": "203.0.113.10", "port": 22, "service": "ssh", "exposure_type": "open_port", "severity": "MEDIUM", "description": "SSH exposed to internet - review"},
-        {"name": f"admin.{domain or 'example.com'}", "ip_address": "203.0.113.11", "port": 8080, "service": "http", "exposure_type": "exposed_service", "severity": "HIGH", "description": "Admin panel exposed without auth"},
-        {"name": f"{domain or 'example.com'}", "ip_address": "203.0.113.10", "port": 443, "service": "https", "exposure_type": "expired_cert", "severity": "MEDIUM", "description": "Certificate expires in 7 days", "evidence": {"cert_expiry": (_now() + timedelta(days=7)).isoformat()}},
-    ]
+    """Discover internet-facing surface from Certificate Transparency.
 
-    domain_obj = None
-    if domain:
-        domain_obj = db.query(ASM_Domain).filter(ASM_Domain.org_id == org_id, ASM_Domain.domain == domain).first()
-        if not domain_obj:
-            domain_obj = add_domain(db, org_id, domain)
+    This used to invent four exposures against 203.0.113.x — including an
+    "admin panel exposed without auth" — for any domain asked about. That was
+    the most damaging mock in the codebase: attack-path search treats open
+    exposures as the attacker's way in, so fabricated exposures produced
+    fabricated attack paths against real assets.
 
-    for mock in mock_data:
+    CT logs are a genuine source of externally-visible hostnames: every
+    publicly-trusted certificate is logged, so subdomains with a cert are
+    demonstrably published. We record those as discovered hostnames at LOW
+    severity — a name being visible is a fact; calling it "vulnerable" would
+    require a port scan we do not perform.
+
+    Returns an empty list when CT is disabled or the lookup fails. An empty
+    result means "nothing discovered", never "nothing exists".
+    """
+    if not domain:
+        return []
+
+    from app.services import ct_log_client
+
+    if not ct_log_client.is_enabled():
+        return []
+
+    result = ct_log_client.lookup_domain(domain)
+    if not result.ok or not result.certificates:
+        return []
+
+    domain_obj = (
+        db.query(ASM_Domain)
+        .filter(ASM_Domain.org_id == org_id, ASM_Domain.domain == domain)
+        .first()
+    )
+    if not domain_obj:
+        domain_obj = add_domain(db, org_id, domain, discovery_method="certificate_transparency")
+
+    # Collect every distinct hostname the certificates actually cover.
+    hostnames: List[str] = []
+    for cert in result.certificates:
+        for name in cert.get("names", []):
+            if name and name not in hostnames:
+                hostnames.append(name)
+
+    existing = {
+        e.name
+        for e in db.query(ASM_AssetExposure)
+        .filter(ASM_AssetExposure.org_id == org_id, ASM_AssetExposure.status == "open")
+        .all()
+    }
+
+    exposures: List[ASM_AssetExposure] = []
+    for hostname in hostnames:
+        if hostname in existing:
+            continue
         exp = ASM_AssetExposure(
             org_id=org_id,
-            domain_id=domain_obj.id if domain_obj else None,
+            domain_id=domain_obj.id,
             asset_type="host",
-            name=mock["name"],
-            ip_address=mock["ip_address"],
-            port=mock["port"],
-            service=mock["service"],
-            exposure_type=mock["exposure_type"],
-            severity=mock["severity"],
-            description=mock["description"],
-            evidence_json=mock.get("evidence", {}),
+            name=hostname,
+            port=443,
+            service="https",
+            exposure_type="published_hostname",
+            severity="LOW",
+            description=(
+                f"{hostname} has a publicly logged TLS certificate, so it is "
+                "advertised to the internet. Reachability and open ports are NOT "
+                "checked — this records visibility, not vulnerability."
+            ),
+            evidence_json={
+                "source": "certificate_transparency",
+                "issuers": result.issuers,
+                "first_seen": result.first_seen,
+                "port_scanned": False,
+            },
+            status="open",
         )
         db.add(exp)
         exposures.append(exp)
+
     db.commit()
     for e in exposures:
         db.refresh(e)
-
-    # Create findings for HIGH
-    for exp in exposures:
-        if exp.severity in ("HIGH", "CRITICAL"):
-            finding = ExposureFinding(org_id=org_id, exposure_id=exp.id, title=f"{exp.exposure_type} on {exp.name}:{exp.port}", finding_type=exp.exposure_type, severity=exp.severity, description=exp.description, remediation="Restrict access, add WAF, or close port")
-            db.add(finding)
-    db.commit()
-
     return exposures
 
 

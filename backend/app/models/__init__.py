@@ -30,22 +30,14 @@ from app.models.forensics import ForensicCase, ForensicArtifact, TimelineEvent
 from app.models.tip import IntelFeed, STIXObject, MISPEvent
 from app.models.compliance_continuous import ComplianceControl, ComplianceEvidence, ComplianceAssessment
 from app.models.exec_risk import RiskMetric, ExecReport, ROIMetric
-from app.models.data_lake import DataLakeExport, DataLakeQuery
 from app.models.ha_eventbus import EventBusMessage, HANode
-from app.models.marketplace import MarketplacePlaybook, MarketplaceInstall
-from app.models.finetune import FineTuneJob, FineTuneDataset
 from app.models.risk_based import Asset, RiskBasedRule, RiskScoreLog
 from app.models.purple_team import PurpleTeamExercise, PurpleTeamFinding
-from app.models.pdf_export import PDFExport
 from app.models.attack_coverage import AttackCoverage, AttackCoverageReport
-from app.models.agent_collab import AgentCollaboration, AgentMessage
 from app.models.soc_tv import SOCWallConfig, SOCWallMetric
 from app.models.approval_workflow import ApprovalWorkflow, ApprovalInstance, ApprovalTask
 from app.models.hunt_notebook import HuntNotebook, NotebookCell, NotebookExecution
 from app.models.exposure import ASM_Domain, ASM_AssetExposure, ASM_Certificate, ExposureFinding
-from app.models.ai_redteam import RedTeamJob, RedTeamPrompt, RedTeamFinding
-from app.models.federated import FederatedJob, FederatedRound, OrgModelUpdate, FederatedModel
-from app.models.compliance_autopilot import AutopilotRule, AutopilotExecution, AutopilotFinding
 from app.models.attack_path import AttackPath, AttackPathFinding
 from app.models.drp import DRP_Monitor, DRP_Finding, DRP_Takedown
 from app.models.posture_score import PostureScore, PostureFinding, PostureRecommendation
@@ -133,24 +125,15 @@ __all__ = [
     "RiskMetric",
     "ExecReport",
     "ROIMetric",
-    "DataLakeExport",
-    "DataLakeQuery",
     "EventBusMessage",
     "HANode",
-    "MarketplacePlaybook",
-    "MarketplaceInstall",
-    "FineTuneJob",
-    "FineTuneDataset",
     "Asset",
     "RiskBasedRule",
     "RiskScoreLog",
     "PurpleTeamExercise",
     "PurpleTeamFinding",
-    "PDFExport",
     "AttackCoverage",
     "AttackCoverageReport",
-    "AgentCollaboration",
-    "AgentMessage",
     "SOCWallConfig",
     "SOCWallMetric",
     "ApprovalWorkflow",
@@ -163,16 +146,6 @@ __all__ = [
     "ASM_AssetExposure",
     "ASM_Certificate",
     "ExposureFinding",
-    "RedTeamJob",
-    "RedTeamPrompt",
-    "RedTeamFinding",
-    "FederatedJob",
-    "FederatedRound",
-    "OrgModelUpdate",
-    "FederatedModel",
-    "AutopilotRule",
-    "AutopilotExecution",
-    "AutopilotFinding",
     "AttackPath",
     "AttackPathFinding",
     "DRP_Monitor",
