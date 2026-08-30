@@ -17,7 +17,7 @@ from it, named by the button or page where possible — and classifies it.
 | Route groups | 66 |
 | Reachable from the UI | 183 paths |
 | No UI caller | 75 paths |
-| Backend tests | 471 passing, 2 skipped (27 files) |
+| Backend tests | 489 passing, 2 skipped (29 files) |
 | Frontend tests | 137 passing (19 files) |
 | Type check / build | clean |
 
@@ -113,7 +113,7 @@ Each is honest in the API today; none reports a fabricated result.
 | **Sigma matching** | Keyword matching, not a full Sigma engine. Docstring says so. |
 | **Jira ticketing** | Simplified issue creation. |
 | **Dark web / breach lookup** | No client exists. Reports `enabled: false` regardless of whether an API key is set. |
-| **Connector field mappings** | Written from provider documentation, not verified against live payloads. A wrong mapping shows as 0% event-time coverage for that source. |
+| **Connector field mappings** | Verified against realistic payloads in each provider's documented shape (`test_provider_payloads.py`); this found and fixed two real bugs. Not verified against live traffic, which needs paid tenants. A wrong mapping shows as 0% event-time coverage for that source. |
 | **Naive timestamps** | Read as UTC unless the connector declares a zone. |
 | **Pre-logging dwell time** | Not measurable by anything downstream of the log. |
 
@@ -134,7 +134,7 @@ outcomes. The main functional gap is approval workflows (§5).
 | Auditability | Confidence arithmetic is reproducible; audit log covers admin actions. |
 | Multi-tenancy | `org_id` scoping throughout; verified by tests. |
 | Security | ABAC permissions, encrypted connector secrets, SSRF guard on poll endpoints, HMAC on webhooks. |
-| Performance | Untested under load. Metrics verified at 300 alerts / 250 cases; no benchmark beyond that. |
+| Performance | Measured to 26k alerts / 10.5k cases. Coverage evaluation was 66s and is now 6ms; response times 612ms; reasoning 5ms. Query counts pinned by `test_metrics_scale.py`. Not load-tested for concurrency. |
 | Reliability | No retry/backoff review; `ha` module exists but is unexercised. |
 
 ---
@@ -143,10 +143,11 @@ outcomes. The main functional gap is approval workflows (§5).
 
 1. **Expose exposure findings** — operators cannot audit inputs that already
    drive attack-path conclusions.
-2. **Verify connector mappings against one live payload each** — needs
-   credentials; cannot be done from a sandbox.
-3. **Load-test the metrics paths** — response-time and coverage queries scan
-   per request and have never been measured against a realistic tenant.
-4. **Wire an archive destination**, or remove the archive action until there is
+2. **Wire an archive destination**, or remove the archive action until there is
    one.
-5. **Hunt execution from the UI** — hunts can be written but not run.
+3. **Hunt execution from the UI** — hunts can be written but not run.
+4. **Concurrency testing** — single-request cost is now known; behaviour under
+   parallel load is not.
+5. **Confirm mappings against live traffic** when a tenant is available. The
+   payload-shape tests cover the parsing; only real traffic proves the provider
+   sends what its documentation says.
