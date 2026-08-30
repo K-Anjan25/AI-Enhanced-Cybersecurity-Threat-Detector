@@ -49,36 +49,14 @@ export default function NextPhasesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Next Phases 61-63 + AI Agent 70" description="Zero Trust, Threat Hunting Workbench, Vuln Management, and Autonomous AI Analyst v2 with tool use" />
+      <PageHeader title="Detection & Response Labs" description="Zero trust access, the threat hunting workbench, vulnerability management and the autonomous analyst with tool use." />
       
-      <div className="p-4 bg-accent-primary/10 border border-accent-primary/30 rounded text-sm">
-        <div className="font-bold mb-2">My understanding of Autonomous AI Analyst (current + next):</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li><b>Product loop:</b> Sense (ingest via connectors/Kafka) → Reason (ML + LLM) → Propose (reversible SOAR) → Approve (human) → Report (tamper-evident). You employ an analyst; you don't operate a dashboard.</li>
-          <li><b>LLM reasoning:</b> Anthropic Claude via Messages API when LLM_ENABLED + ANTHROPIC_API_KEY set, else deterministic fallback template so demo works end-to-end. Never raises — resilience contract.</li>
-          <li><b>Chat grounding:</b> chat_about_case includes recent 10 alerts OCSF summary as connector_context, blast radius nodes, MITRE mapping, confidence. Rate-limited per org:user:case to prevent cost abuse.</li>
-          <li><b>Analysis contract:</b> headline, what_happened, why_it_matters, blast_radius_summary, recommended_action [action_type, target, rationale, undo], confidence, model, fallback.</li>
-          <li><b>Auto-triage:</b> CRITICAL/HIGH alerts from connectors auto-create analyst cases with OCSF context.</li>
-          <li><b>Next evolution (Phase 70):</b> Multi-step agent with tool use — hunt KQL, vuln_risk, ztna_evaluate, threat_intel, attack_heatmap, case_timeline. Memory trace in AgentMemory, tasks in AgentTask, max steps bounded, honest: never auto-executes SOAR unless AI_AGENT_AUTO_APPROVE_LOW_RISK + LOW severity.</li>
-        </ul>
-        <div className="mt-3 font-bold">Doubts / Need inputs:</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li>Do you want agent to auto-approve LOW risk? Currently flag false — should we enable for demo?</li>
-          <li>LLM tool use: Should we implement full Anthropic tool_use API (beta) or keep prompt-based simulation? Full requires parsing tool_use blocks.</li>
-          <li>Memory: Should agent remember across cases (org-level) or per-case only? Current per-case with TTL 24h.</li>
-          <li>Hunting: Do you want saved hunts to auto-run on schedule (cron) and create cases when results &gt; threshold?</li>
-          <li>ZTNA: Do you have real network segments (CIDRs) to import, or should we seed defaults (10.0.0.0/24 internal, 0.0.0.0/0 external)?</li>
-          <li>Vuln: Should we integrate real scanner (Trivy API) or keep mock ingestion? S3 bucket for reports?</li>
-          <li>Should AI Agent have a dedicated UI chat (like ChatGPT) with streaming, or keep embedded in case view?</li>
-        </ul>
-      </div>
-
       <div className="flex flex-wrap gap-2">
         {[
-          { id: "ztna", label: "ZTNA P61", icon: Shield },
-          { id: "hunt", label: "Hunting P62", icon: Search },
-          { id: "vuln", label: "Vulns P63", icon: Bug },
-          { id: "agent", label: "AI Agent P70", icon: Bot },
+          { id: "ztna", label: "ZTNA", icon: Shield },
+          { id: "hunt", label: "Hunting", icon: Search },
+          { id: "vuln", label: "Vulns", icon: Bug },
+          { id: "agent", label: "AI Agent", icon: Bot },
         ].map(t => {
           const Icon = t.icon;
           return (
@@ -127,7 +105,7 @@ function ZtnaView({ data, extra, setExtra }: any) {
         <input value={dst} onChange={e=>setDst(e.target.value)} className="px-2 py-1 bg-app-subtle border rounded text-xs w-32" placeholder="dst ip" />
         <Button size="sm" onClick={async()=>{ const r=await nextApi.ztnaEvaluate(src,dst); setExtra(r.data); }}>Evaluate</Button>
       </div>
-      <p className="text-xs text-content-tertiary">Phase 61: CIDR validation, segment matching, policy priority eval, decision log, microseg graph for visualization.</p>
+      <p className="text-xs text-content-tertiary">CIDR validation, segment matching, policy priority eval, decision log, microseg graph for visualization.</p>
     </div>
   );
 }
@@ -140,7 +118,7 @@ function HuntView({ data, extra, setExtra }: any) {
         <Button size="sm" onClick={async()=>{ const r=await nextApi.huntExecute(q); setExtra(r.data); }}>Run Hunt</Button>
       </div>
       <div className="text-xs">Saved hunts: {Array.isArray(data) ? data.length : 0}</div>
-      <p className="text-xs text-content-tertiary">Phase 62: KQL subset parser (field:value, AND, free text), translates to SQLAlchemy filters, honest note about OR/NOT partial.</p>
+      <p className="text-xs text-content-tertiary">KQL subset parser (field:value, AND, free text), translates to SQLAlchemy filters, honest note about OR/NOT partial.</p>
     </div>
   );
 }
@@ -153,7 +131,7 @@ function VulnView({ data }: any) {
         <div className="p-2 bg-orange-500/20 rounded border">High: {data?.open_by_severity?.high}</div>
         <div className="p-2 bg-app-subtle rounded border">Risk: {data?.risk_score} ({data?.risk_band})</div>
       </div>
-      <p className="text-xs text-content-tertiary">Phase 63: Vuln ingestion (Trivy/Nessus), risk scoring CVSS, correlation with alerts, top assets.</p>
+      <p className="text-xs text-content-tertiary">Vuln ingestion (Trivy/Nessus), risk scoring CVSS, correlation with alerts, top assets.</p>
     </div>
   );
 }
@@ -170,7 +148,7 @@ function AgentView({ data, extra, setExtra }: any) {
         <input value={caseId} onChange={e=>setCaseId(e.target.value)} className="px-2 py-1 bg-app-subtle border rounded text-xs w-20" placeholder="case id" />
         <Button size="sm" onClick={async()=>{ const r=await nextApi.aiInvestigate(Number(caseId)); setExtra(r.data); }}>Autonomous Investigate</Button>
       </div>
-      <p className="text-xs text-content-tertiary">Phase 70: Agentic loop up to {data?.max_steps} steps, tool registry, memory trace, fallback deterministic if no LLM key. Honest: never auto-executes unless flag + LOW.</p>
+      <p className="text-xs text-content-tertiary">Agentic loop up to {data?.max_steps} steps, tool registry, memory trace, fallback deterministic if no LLM key. Honest: never auto-executes unless flag + LOW.</p>
     </div>
   );
 }

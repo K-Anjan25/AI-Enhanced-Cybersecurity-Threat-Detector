@@ -52,33 +52,19 @@ export default function AdvancedPhasesPage() {
   useEffect(() => { load(tab); }, [tab]);
 
   const tabs = [
-    { id: "partition", label: "Partition P73", icon: Database },
-    { id: "datalake", label: "Data Lake P73", icon: Database },
-    { id: "ha", label: "HA Bus P74", icon: Radio },
-    { id: "marketplace", label: "Marketplace P75", icon: Store },
-    { id: "finetune", label: "FineTune P76", icon: Brain },
-    { id: "risk", label: "Risk-Based P77", icon: ShieldAlert },
-    { id: "purple", label: "Purple Team P78-79", icon: Swords },
-    { id: "pdf", label: "PDF Export P80", icon: FileDown },
+    { id: "partition", label: "Partition", icon: Database },
+    { id: "datalake", label: "Data Lake", icon: Database },
+    { id: "ha", label: "HA Bus", icon: Radio },
+    { id: "marketplace", label: "Marketplace", icon: Store },
+    { id: "finetune", label: "FineTune", icon: Brain },
+    { id: "risk", label: "Risk-Based", icon: ShieldAlert },
+    { id: "purple", label: "Purple Team", icon: Swords },
+    { id: "pdf", label: "PDF Export", icon: FileDown },
   ] as const;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Advanced Phases 73-80" description="Partitioning, Data Lake S3 Parquet, HA Redis Event Bus, SOAR Marketplace, LLM Fine-tune, Risk-Based Alerting, Purple Team, PDF Board Pack" />
-
-      <div className="p-4 bg-accent-primary/10 border border-accent-primary/30 rounded text-sm">
-        <div className="font-bold mb-2">Understanding 73-80:</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li><b>73 Partitioning:</b> Monthly RANGE partitions for security_alerts, audit_logs, scanned_alerts, hunt_executions, vuln_scans, event_bus_messages. Postgres only, guarded by DB_PARTITIONING_ENABLED. Ensures partition pruning via org_id + created_at composite index. Script in app/core/partitioning.py creates next 3 months.</li>
-          <li><b>73 Data Lake:</b> Export alerts to S3 Parquet s3://noctra-datalake/datalake/org_id=1/year=2026/month=08/alerts.parquet (pyarrow+boto3 mock), DataLakeExport metadata, Athena SQL mock query (SELECT * FROM security_alerts WHERE org_id=1).</li>
-          <li><b>74 HA Bus:</b> Redis pub/sub + DB persistence fallback. EventBus.publish(channel, event_type, payload) writes EventBusMessage + redis.publish. HANode heartbeat for multi-region primary/replica. /ha/status shows redis_connected.</li>
-          <li><b>75 Marketplace:</b> MarketplacePlaybook (name, category response/enrichment/containment, tags, playbook_json steps, downloads, rating, verified), seed 4 defaults (Auto Block IP, VT Enrich, Isolate Host, Phishing Response), install creates local SoarPlaybook + increments downloads.</li>
-          <li><b>76 Fine-tune:</b> FineTuneDataset from cases/alerts (record_count, preview), FineTuneJob base_model claude-sonnet-5, config epochs/lr, mock training progress 100% + metrics loss 0.12 acc 0.94, result_model_id ft-...</li>
-          <li><b>77 Risk-Based:</b> Asset (host/user/service/cloud_resource) criticality 1-5, RiskBasedRule conditions_json min_severity/min_criticality, risk_multiplier, calculate_risk_score: base severity map LOW2 MEDIUM5 HIGH8 CRITICAL10 * criticality factor 0.5+crit*0.3 * rule multipliers. Seed Domain Controller 5, Prod DB 5, CEO Laptop 4.</li>
-          <li><b>78-79 Purple Team:</b> PurpleTeamExercise MITRE tactic/technique T1059.001/T1078/T1053.005, steps_json action/command/expected_detection, run creates SecurityAlert purple_team, score 85 if detected, PurpleTeamFinding detection_gap if score &lt;70.</li>
-          <li><b>80 PDF Export:</b> PDFExport linked ExecReport, s3://noctra-exports/exports/org_id=1/pdf/board_pack_*.pdf, mock 12 pages 250KB, includes_charts true, real impl would use reportlab/weasyprint.</li>
-        </ul>
-      </div>
+      <PageHeader title="Data & Resilience Labs" description="Storage partitioning, data lake export, high-availability event bus, playbook marketplace, model fine-tuning, risk-based alerting, purple team and board-pack export." />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => {

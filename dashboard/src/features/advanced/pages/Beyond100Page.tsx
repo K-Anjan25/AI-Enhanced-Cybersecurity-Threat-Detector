@@ -87,30 +87,37 @@ export default function Beyond100Page() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Beyond 100 — P101 to P110 Singularity</h1>
+      <div>
+        <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">Planetary Defense</h1>
+        <p className="text-sm text-content-secondary mt-1">Federation, prediction, hunt swarms, digital twins and self-healing infrastructure — research concepts.</p>
+      </div>
+      <div className="flex items-start gap-2 p-3 rounded-sm border border-status-warning/40 bg-status-warning/10 text-xs text-content-secondary">
+        <span className="font-bold text-status-warning shrink-0">CONCEPT</span>
+        <span>Speculative research surface. The data below is simulated and is not connected to your live environment — nothing here detects, decides or acts on real security events.</span>
+      </div>
       <div className="text-xs p-3 bg-violet-900 text-white rounded">Post-OS Singularity: Global Federation → Predictive → Swarm → Digital Twin → Quantum Comms → AI Governance → Supply Chain v2 → XR SOC → Deception Grid v2 → Self-Healing. NOCTRA OS now orchestrates planetary-scale autonomous defense.</div>
       <div className="flex gap-2 flex-wrap">
         {[
-          ["fed","P101 Global Fed"],
-          ["pred","P102 Predictive"],
-          ["swarm","P103 Hunt Swarm"],
-          ["twin","P104 Digital Twin"],
-          ["qcomms","P105 Q-Comms"],
-          ["gov","P106 AI Gov"],
-          ["supply","P107 Supply v2"],
-          ["xr","P108 XR SOC"],
-          ["decep","P109 Deception v2"],
-          ["heal","P110 Self-Heal"],
+          ["fed","Global Fed"],
+          ["pred","Predictive"],
+          ["swarm","Hunt Swarm"],
+          ["twin","Digital Twin"],
+          ["qcomms","Q-Comms"],
+          ["gov","AI Gov"],
+          ["supply","Supply v2"],
+          ["xr","XR SOC"],
+          ["decep","Deception v2"],
+          ["heal","Self-Heal"],
         ].map(([k,l])=>(
-          <button key={k} onClick={()=>setTab(k as any)} className={`px-3 py-1 rounded border text-xs ${tab===k?'bg-violet-600 text-white border-violet-600':'bg-white'}`}>{l}</button>
+          <button key={k} onClick={()=>setTab(k as any)} className={`px-3 py-1 rounded border text-xs ${tab===k?'bg-accent-primary text-brand-ink border-violet-600':'bg-app-surface'}`}>{l}</button>
         ))}
       </div>
 
       {tab==="fed" && (
         <div className="space-y-3">
-          <button onClick={createFed} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Global Federation (GDPR regions data_residency)</button>
+          <button onClick={createFed} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Global Federation (GDPR regions data_residency)</button>
           <div className="grid gap-2">
-            {feds.map((f:any)=>(<div key={f.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{f.name} {f.status}</div><div>Regions {f.regions?.join(", ")} Compliance {f.compliance?.join(", ")}</div><div>Residency {JSON.stringify(f.data_residency)}</div></div>))}
+            {feds.map((f:any)=>(<div key={f.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{f.name} {f.status}</div><div>Regions {f.regions?.join(", ")} Compliance {f.compliance?.join(", ")}</div><div>Residency {JSON.stringify(f.data_residency)}</div></div>))}
           </div>
           <div className="text-xs">Tenants: {tenants.map((t:any)=>`${t.tenant_name} ${t.region} trust ${t.trust_score}`).join(", ")}</div>
         </div>
@@ -118,75 +125,75 @@ export default function Beyond100Page() {
 
       {tab==="pred" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={forecast} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Run Threat Forecast (breach likelihood 7d)</button></div>
+          <div className="flex gap-2"><button onClick={forecast} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Run Threat Forecast (breach likelihood 7d)</button></div>
           <div>Models: {models.map((m:any)=>`${m.name} ${m.model_type} acc ${m.accuracy}`).join(", ")}</div>
-          <div className="grid gap-2">{forecasts.map((f:any)=>(<div key={f.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{f.forecast_type} prob {(f.predicted_probability*100).toFixed(1)}% {f.predicted_timeframe} conf {f.confidence}</div><div>{f.contributing_factors?.join(", ")}</div></div>))}</div>
+          <div className="grid gap-2">{forecasts.map((f:any)=>(<div key={f.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{f.forecast_type} prob {(f.predicted_probability*100).toFixed(1)}% {f.predicted_timeframe} conf {f.confidence}</div><div>{f.contributing_factors?.join(", ")}</div></div>))}</div>
         </div>
       )}
 
       {tab==="swarm" && (
         <div className="space-y-3">
-          <button onClick={createSwarm} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Hunt Swarm (5 agents consensus)</button>
-          <div className="grid gap-2">{swarms.map((s:any)=>(<div key={s.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{s.name} {s.status}</div><div>{s.objective} size {s.swarm_size} strat {s.coordination_strategy}</div></div><button onClick={()=>launchSwarm(s.id)} className="px-2 py-1 bg-orange-600 text-white rounded">Launch Swarm (hunter/enricher/correlator consensus)</button></div>))}</div>
-          <div className="grid gap-2">{findings.map((f:any)=>(<div key={f.id} className="border p-2 rounded bg-white text-xs"><div className="font-bold">{f.title} {f.severity} conf {f.confidence} consensus {f.consensus_score}</div><pre className="bg-gray-50 p-1">{JSON.stringify(f.evidence,null,2)}</pre></div>))}</div>
+          <button onClick={createSwarm} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Hunt Swarm (5 agents consensus)</button>
+          <div className="grid gap-2">{swarms.map((s:any)=>(<div key={s.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{s.name} {s.status}</div><div>{s.objective} size {s.swarm_size} strat {s.coordination_strategy}</div></div><button onClick={()=>launchSwarm(s.id)} className="px-2 py-1 bg-status-warning/20 text-status-warning border border-status-warning/40 rounded">Launch Swarm (hunter/enricher/correlator consensus)</button></div>))}</div>
+          <div className="grid gap-2">{findings.map((f:any)=>(<div key={f.id} className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">{f.title} {f.severity} conf {f.confidence} consensus {f.consensus_score}</div><pre className="bg-app-subtle p-1">{JSON.stringify(f.evidence,null,2)}</pre></div>))}</div>
         </div>
       )}
 
       {tab==="twin" && (
         <div className="space-y-3">
-          <button onClick={createTwin} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Digital Twin (infra fidelity 88%)</button>
-          <div className="grid gap-2">{twins.map((t:any)=>(<div key={t.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{t.name} {t.twin_type} fidelity {t.fidelity_score}</div></div><button onClick={()=>simTwin(t.id)} className="px-2 py-1 bg-violet-600 text-white rounded">Simulate ransomware (blast_radius recovery)</button></div>))}</div>
+          <button onClick={createTwin} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Digital Twin (infra fidelity 88%)</button>
+          <div className="grid gap-2">{twins.map((t:any)=>(<div key={t.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{t.name} {t.twin_type} fidelity {t.fidelity_score}</div></div><button onClick={()=>simTwin(t.id)} className="px-2 py-1 bg-accent-primary text-brand-ink rounded">Simulate ransomware (blast_radius recovery)</button></div>))}</div>
         </div>
       )}
 
       {tab==="qcomms" && (
         <div className="space-y-3">
-          <button onClick={createChannel} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Quantum Channel (Kyber+BB84 hybrid)</button>
-          <div className="grid gap-2">{channels.map((c:any)=>(<div key={c.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{c.name} {c.channel_type} {c.protocol}</div><div>{c.endpoint_a} → {c.endpoint_b}</div></div><button onClick={()=>sendMsg(c.id)} className="px-2 py-1 bg-green-600 text-white rounded">Send Q-Safe Msg (Kyber-1024)</button></div>))}</div>
+          <button onClick={createChannel} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Quantum Channel (Kyber+BB84 hybrid)</button>
+          <div className="grid gap-2">{channels.map((c:any)=>(<div key={c.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{c.name} {c.channel_type} {c.protocol}</div><div>{c.endpoint_a} → {c.endpoint_b}</div></div><button onClick={()=>sendMsg(c.id)} className="px-2 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded">Send Q-Safe Msg (Kyber-1024)</button></div>))}</div>
           <div className="text-xs">Messages: {messages.map((m:any)=>`${m.sender}→${m.recipient} ${m.algorithm} hash ${m.encrypted_payload_hash?.slice(0,8)}`).join(", ")}</div>
         </div>
       )}
 
       {tab==="gov" && (
         <div className="space-y-3">
-          <button onClick={createCard} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create AI Model Card (purpose training_data limitations ethics)</button>
-          <div className="grid gap-2">{cards.map((c:any)=>(<div key={c.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{c.model_name} v{c.model_version}</div><div>{c.purpose}</div><div className="text-[10px]">{c.limitations}</div></div><button onClick={()=>auditCard(c.id)} className="px-2 py-1 bg-yellow-600 text-white rounded">Run Bias Audit (fairness drift)</button></div>))}</div>
+          <button onClick={createCard} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create AI Model Card (purpose training_data limitations ethics)</button>
+          <div className="grid gap-2">{cards.map((c:any)=>(<div key={c.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{c.model_name} v{c.model_version}</div><div>{c.purpose}</div><div className="text-[10px]">{c.limitations}</div></div><button onClick={()=>auditCard(c.id)} className="px-2 py-1 bg-yellow-600 text-white rounded">Run Bias Audit (fairness drift)</button></div>))}</div>
         </div>
       )}
 
       {tab==="supply" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createGraph} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Supply Chain Graph (depth 4 150 deps)</button><button onClick={assessVendor} className="px-3 py-1 bg-orange-600 text-white rounded text-xs">Assess Vendor Risk (SLSA attestation)</button></div>
+          <div className="flex gap-2"><button onClick={createGraph} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Supply Chain Graph (depth 4 150 deps)</button><button onClick={assessVendor} className="px-3 py-1 bg-status-warning/20 text-status-warning border border-status-warning/40 rounded text-xs">Assess Vendor Risk (SLSA attestation)</button></div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Graphs</div>{graphs.map((g:any)=>(<div key={g.id}>{g.name} root {g.root_component} deps {g.total_dependencies} risky {g.risky_dependencies} depth {g.depth}</div>))}</div>
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Vendors</div>{vendors.map((v:any)=>(<div key={v.id}>{v.vendor_name} risk {v.risk_score} SBOM {String(v.sbom_compliance)} att {v.attestation_status}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Graphs</div>{graphs.map((g:any)=>(<div key={g.id}>{g.name} root {g.root_component} deps {g.total_dependencies} risky {g.risky_dependencies} depth {g.depth}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Vendors</div>{vendors.map((v:any)=>(<div key={v.id}>{v.vendor_name} risk {v.risk_score} SBOM {String(v.sbom_compliance)} att {v.attestation_status}</div>))}</div>
           </div>
         </div>
       )}
 
       {tab==="xr" && (
         <div className="space-y-3">
-          <button onClick={createXR} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create XR SOC Session (VR war room Meta Quest 3)</button>
-          <div className="grid gap-2">{xrSessions.map((s:any)=>(<div key={s.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{s.session_name} {s.xr_type} {s.device}</div><div>{JSON.stringify(s.environment)}</div></div><button onClick={()=>spawnXR(s.id)} className="px-2 py-1 bg-violet-600 text-white rounded">Spawn Spatial Alerts (x,y,z)</button></div>))}</div>
+          <button onClick={createXR} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create XR SOC Session (VR war room Meta Quest 3)</button>
+          <div className="grid gap-2">{xrSessions.map((s:any)=>(<div key={s.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{s.session_name} {s.xr_type} {s.device}</div><div>{JSON.stringify(s.environment)}</div></div><button onClick={()=>spawnXR(s.id)} className="px-2 py-1 bg-accent-primary text-brand-ink rounded">Spawn Spatial Alerts (x,y,z)</button></div>))}</div>
         </div>
       )}
 
       {tab==="decep" && (
         <div className="space-y-3">
-          <button onClick={createGrid} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Deception Grid (enterprise AI adaptation 82%)</button>
+          <button onClick={createGrid} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Deception Grid (enterprise AI adaptation 82%)</button>
           <div className="grid grid-cols-2 gap-2">
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Grids</div>{grids.map((g:any)=>(<div key={g.id}>{g.name} {g.grid_type} evolution {String(g.evolution_enabled)} score {g.ai_adaptation_score}</div>))}</div>
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Nodes</div>{nodes.map((n:any)=>(<div key={n.id} className="flex justify-between"><span>{n.name} {n.node_type} interactions {n.interaction_count}</span><button onClick={()=>simulateNode(n.id)} className="px-1 py-0.5 bg-red-600 text-white rounded text-[10px]">Sim Attack T1078</button></div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Grids</div>{grids.map((g:any)=>(<div key={g.id}>{g.name} {g.grid_type} evolution {String(g.evolution_enabled)} score {g.ai_adaptation_score}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Nodes</div>{nodes.map((n:any)=>(<div key={n.id} className="flex justify-between"><span>{n.name} {n.node_type} interactions {n.interaction_count}</span><button onClick={()=>simulateNode(n.id)} className="px-1 py-0.5 bg-status-critical/20 text-status-critical border border-status-critical/40 rounded text-[10px]">Sim Attack T1078</button></div>))}</div>
           </div>
         </div>
       )}
 
       {tab==="heal" && (
         <div className="space-y-3">
-          <button onClick={createPolicy} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Self-Healing Policy (isolate_host rotate_credentials rollback)</button>
-          <div className="grid gap-2">{policies.map((p:any)=>(<div key={p.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{p.name} trigger {p.trigger_type} autonomy {p.autonomy_level}</div><div>Actions {JSON.stringify(p.healing_actions)}</div></div><button onClick={()=>execPolicy(p.id)} className="px-2 py-1 bg-green-600 text-white rounded">Execute Healing (4.2s + verify)</button></div>))}</div>
-          <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Executions</div>{execs.map((e:any)=>(<div key={e.id}>{e.triggered_by} {e.status} {e.duration_seconds}s {JSON.stringify(e.result)}</div>))}</div>
-          <div className="border p-4 rounded bg-gradient-to-r from-green-900 to-emerald-900 text-white text-xs">
+          <button onClick={createPolicy} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Self-Healing Policy (isolate_host rotate_credentials rollback)</button>
+          <div className="grid gap-2">{policies.map((p:any)=>(<div key={p.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{p.name} trigger {p.trigger_type} autonomy {p.autonomy_level}</div><div>Actions {JSON.stringify(p.healing_actions)}</div></div><button onClick={()=>execPolicy(p.id)} className="px-2 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded">Execute Healing (4.2s + verify)</button></div>))}</div>
+          <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Executions</div>{execs.map((e:any)=>(<div key={e.id}>{e.triggered_by} {e.status} {e.duration_seconds}s {JSON.stringify(e.result)}</div>))}</div>
+          <div className="border border-line-subtle p-4 rounded-sm bg-gradient-to-r from-green-900 to-emerald-900 text-white text-xs">
             <div className="text-lg font-bold">Self-Healing Infra P110 - Autonomous Remediation</div>
             <div>Policy: trigger on HIGH alert asset criticality high → isolate_host + rotate_credentials → rollback plan unisolate → verification health_check passed → 4.2s MTTR. This is the final singularity: infrastructure heals itself before human notices.</div>
           </div>

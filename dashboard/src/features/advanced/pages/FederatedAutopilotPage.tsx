@@ -41,21 +41,13 @@ export default function FederatedAutopilotPage() {
   useEffect(() => { load(tab); }, [tab]);
 
   const tabs = [
-    { id: "federated", label: "Federated Learning P89", icon: Share2 },
-    { id: "autopilot", label: "Compliance Autopilot P90", icon: Wrench },
+    { id: "federated", label: "Federated Learning", icon: Share2 },
+    { id: "autopilot", label: "Compliance Autopilot", icon: Wrench },
   ] as const;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Final 89-90: Federated + Autopilot" description="Federated Learning across orgs (privacy-preserving) + Compliance Autopilot auto-remediate CIS" />
-
-      <div className="p-4 bg-accent-primary/10 border border-accent-primary/30 rounded text-sm">
-        <div className="font-bold mb-2">Understanding 89-90:</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li><b>89 Federated Learning:</b> FederatedJob name model_type threat_detection base_model noctra-ml-v1 config [rounds 5, min_orgs 2, aggregation fedavg, dp_noise 0.1] status pending/running/aggregating/completed current_round/total_rounds global_model_id global_metrics accuracy/f1 participating_orgs. FederatedRound round_number status training/aggregating/completed metrics avg_accuracy/f1. OrgModelUpdate job_id round_id org_id update_json weights_hash sample_count metrics accuracy/f1 status pending/submitted/aggregated is_private DP noise + secure aggregation. FederatedModel version model_id s3_key is_global. Flow: create job - start round creates pending updates for 5 orgs - orgs submit update (weights_hash + metrics) - aggregate FedAvg avg_accuracy - if last round create global model. Privacy: raw data never leaves org, only model deltas, DP noise 0.1.</li>
-          <li><b>90 Compliance Autopilot:</b> AutopilotRule name control_id CIS-2.1/CIS-4.1/CIS-3.1/CIS-1.4 benchmark CIS severity remediation_json [action_type close_s3_public/restrict_sg_ingress/enable_cloudtrail/rotate_iam_keys params approval_required rollback_action] is_active dry_run require_approval auto_remediate_count. Seed 4: Auto close S3 public CRITICAL dry_run true require_approval true, Auto restrict SG 0.0.0.0/0 HIGH dry_run false, Enable CloudTrail MEDIUM, Rotate IAM keys MEDIUM dry_run true. AutopilotExecution rule_id violation_id action_type target status pending/approved/executed/failed/dry_run result_json success/before/after/rollback_id executed_by approval_instance_id. evaluate_violations matches open CSPM violations by control_id/benchmark creates executions, if require_approval and CRITICAL/HIGH creates ApprovalWorkflow instance (Critical Action). execute_autopilot checks approval, if dry_run only logs would_execute, else marks executed, marks violation fixed, increments rule counter, creates finding. Summary total_rules/total_executions/executed/dry_run/pending/open_violations auto_remediation_rate.</li>
-        </ul>
-      </div>
+      <PageHeader title="Federation & Autopilot Labs" description="Privacy-preserving learning across tenants and automatic remediation of compliance drift." />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => {
