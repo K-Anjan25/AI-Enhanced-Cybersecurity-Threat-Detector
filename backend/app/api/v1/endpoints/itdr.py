@@ -11,6 +11,10 @@ from app.core.abac import require_permission
 from app.models.user import User
 from app.services import itdr_service
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/itdr", tags=["itdr"])
 
 class ImpossibleTravelIn(BaseModel):
@@ -35,8 +39,12 @@ def detect_impossible_travel(payload: ImpossibleTravelIn, db: Session = Depends(
         if threat:
             return itdr_service.serialize_threat(threat)
         return {"status": "ok", "message": "No impossible travel detected"}
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/threats")
 def list_threats(status: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):

@@ -35,20 +35,16 @@ const SsoScimPage = React.lazy(() => import("./features/admin/pages/SsoScimPage"
 const ApiKeysPage = React.lazy(() => import("./features/admin/pages/ApiKeysPage"));
 const CompliancePage = React.lazy(() => import("./features/admin/pages/CompliancePage"));
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
-const AdvancedHubPage = React.lazy(() => import("./features/advanced/pages/AdvancedHubPage"));
-const NextPhasesPage = React.lazy(() => import("./features/advanced/pages/NextPhasesPage"));
-const FuturePhasesPage = React.lazy(() => import("./features/advanced/pages/FuturePhasesPage"));
-const AdvancedPhasesPage = React.lazy(() => import("./features/advanced/pages/AdvancedPhasesPage"));
-const FinalPhasesPage = React.lazy(() => import("./features/advanced/pages/FinalPhasesPage"));
 const SOCWallPage = React.lazy(() => import("./features/advanced/pages/SOCWallPage"));
-const UltraPhasesPage = React.lazy(() => import("./features/advanced/pages/UltraPhasesPage"));
-const FederatedAutopilotPage = React.lazy(() => import("./features/advanced/pages/FederatedAutopilotPage"));
+const AttackCoveragePage = React.lazy(() => import("./features/coverage/pages/AttackCoveragePage"));
+const ResponseTimesPage = React.lazy(() => import("./features/analytics/pages/ResponseTimesPage"));
+const GdprRequestsPage = React.lazy(() => import("./features/retention/pages/GdprRequestsPage"));
+const ApprovalsPage = React.lazy(() => import("./features/approvals/pages/ApprovalsPage"));
+const HuntConsolePage = React.lazy(() => import("./features/hunting/pages/HuntConsolePage"));
+const AttackSurfacePage = React.lazy(() => import("./features/exposure/pages/AttackSurfacePage"));
+const AssetInventoryPage = React.lazy(() => import("./features/assets/pages/AssetInventoryPage"));
+const DataRetentionPage = React.lazy(() => import("./features/retention/pages/DataRetentionPage"));
 const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
-const Beyond100Page = React.lazy(() => import("./features/advanced/pages/Beyond100Page"));
-const MetaSingularityPage = React.lazy(() => import("./features/advanced/pages/MetaSingularityPage"));
-const OmniSingularityPage = React.lazy(() => import("./features/advanced/pages/OmniSingularityPage"));
-const TranscendencePage = React.lazy(() => import("./features/advanced/pages/TranscendencePage"));
-const AbsoluteInfinityPage = React.lazy(() => import("./features/advanced/pages/AbsoluteInfinityPage"));
 const ModulePage = React.lazy(() => import("./features/modules/pages/ModulePage"));
 const AgentChatPage = React.lazy(() => import("./features/modules/pages/AgentChatPage"));
 
@@ -118,96 +114,21 @@ export default function App(): JSX.Element {
               <Route path="incidents" element={<IncidentsPage />} />
               <Route path="entities" element={<EntitiesPage />} />
               <Route path="soar" element={<SoarPage />} />
-              <Route path="advanced" element={<AdvancedHubPage />} />
-              <Route path="next" element={<NextPhasesPage />} />
-              <Route path="future" element={<FuturePhasesPage />} />
-              <Route path="advanced-phases" element={<AdvancedPhasesPage />} />
-              <Route path="final-phases" element={<FinalPhasesPage />} />
-              <Route path="ultra-phases" element={<UltraPhasesPage />} />
-              <Route path="federated-autopilot" element={<FederatedAutopilotPage />} />
               <Route path="soc-tv-wall" element={<SOCWallPage />} />
-              <Route path="data-lake" element={<AdvancedPhasesPage />} />
-              <Route path="marketplace" element={<AdvancedPhasesPage />} />
-              <Route path="finetune" element={<AdvancedPhasesPage />} />
-              <Route path="risk-based" element={<AdvancedPhasesPage />} />
-              <Route path="purple-team" element={<AdvancedPhasesPage />} />
-              <Route path="pdf-export" element={<AdvancedPhasesPage />} />
-              <Route path="attack-coverage" element={<FinalPhasesPage />} />
-              <Route path="agent-collab" element={<FinalPhasesPage />} />
-              <Route path="approval-workflows" element={<UltraPhasesPage />} />
-              <Route path="hunt-notebooks" element={<UltraPhasesPage />} />
-              <Route path="exposure" element={<UltraPhasesPage />} />
-              <Route path="ai-redteam" element={<UltraPhasesPage />} />
-              <Route path="federated" element={<FederatedAutopilotPage />} />
-              <Route path="compliance-autopilot" element={<FederatedAutopilotPage />} />
+              <Route path="attack-coverage" element={<AttackCoveragePage />} />
+              <Route path="response-times" element={<ResponseTimesPage />} />
+              <Route path="erasure-requests" element={<GdprRequestsPage />} />
+              <Route path="approvals" element={<ApprovalsPage />} />
+              <Route path="assets" element={<AssetInventoryPage />} />
+              <Route path="retention" element={<DataRetentionPage />} />
               <Route path="final10" element={<Final10Page />} />
-              <Route path="federated-intel" element={<Final10Page />} />
-              <Route path="quantum-safe" element={<Final10Page />} />
               <Route path="attack-path" element={<Final10Page />} />
-              <Route path="cart" element={<Final10Page />} />
-              <Route path="data-fabric" element={<Final10Page />} />
-              <Route path="soc-manager" element={<Final10Page />} />
               <Route path="drp" element={<Final10Page />} />
-              <Route path="cnapp" element={<Final10Page />} />
               <Route path="posture-score" element={<Final10Page />} />
               <Route path="noctra-os" element={<Final10Page />} />
-              <Route path="beyond100" element={<Beyond100Page />} />
-              <Route path="global-federation" element={<Beyond100Page />} />
-              <Route path="predictive-soc" element={<Beyond100Page />} />
-              <Route path="hunt-swarm" element={<Beyond100Page />} />
-              <Route path="digital-twin" element={<Beyond100Page />} />
-              <Route path="quantum-comms" element={<Beyond100Page />} />
-              <Route path="ai-governance" element={<Beyond100Page />} />
-              <Route path="supply-chain-v2" element={<Beyond100Page />} />
-              <Route path="xr-soc" element={<Beyond100Page />} />
-              <Route path="deception-grid" element={<Beyond100Page />} />
-              <Route path="self-healing" element={<Beyond100Page />} />
-              <Route path="meta-singularity" element={<MetaSingularityPage />} />
-              <Route path="incident-commander" element={<MetaSingularityPage />} />
-              <Route path="insurance-risk" element={<MetaSingularityPage />} />
-              <Route path="actor-dna" element={<MetaSingularityPage />} />
-              <Route path="data-vault" element={<MetaSingularityPage />} />
-              <Route path="compliance-auditor-v2" element={<MetaSingularityPage />} />
-              <Route path="neural-copilot" element={<MetaSingularityPage />} />
-              <Route path="intel-mesh" element={<MetaSingularityPage />} />
-              <Route path="adversary-llm" element={<MetaSingularityPage />} />
-              <Route path="blockchain-audit" element={<MetaSingularityPage />} />
-              <Route path="meta-os" element={<MetaSingularityPage />} />
-              <Route path="omni-singularity" element={<OmniSingularityPage />} />
-              <Route path="interplanetary-soc" element={<OmniSingularityPage />} />
-              <Route path="agi-council" element={<OmniSingularityPage />} />
-              <Route path="legislation-engine" element={<OmniSingularityPage />} />
-              <Route path="synthetic-universe" element={<OmniSingularityPage />} />
-              <Route path="holographic-soc" element={<OmniSingularityPage />} />
-              <Route path="autonomous-workforce" element={<OmniSingularityPage />} />
-              <Route path="consciousness-monitor" element={<OmniSingularityPage />} />
-              <Route path="planetary-defense" element={<OmniSingularityPage />} />
-              <Route path="time-prophecy" element={<OmniSingularityPage />} />
-              <Route path="omni-os" element={<OmniSingularityPage />} />
-              <Route path="transcendence" element={<TranscendencePage />} />
-              <Route path="multiverse-soc" element={<TranscendencePage />} />
-              <Route path="quantum-consciousness" element={<TranscendencePage />} />
-              <Route path="autonomous-economy" element={<TranscendencePage />} />
-              <Route path="neuro-symbolic" element={<TranscendencePage />} />
-              <Route path="self-replicating" element={<TranscendencePage />} />
-              <Route path="temporal-defense" element={<TranscendencePage />} />
-              <Route path="universal-language" element={<TranscendencePage />} />
-              <Route path="infinite-learning" element={<TranscendencePage />} />
-              <Route path="existential-risk" element={<TranscendencePage />} />
-              <Route path="transcendence-os" element={<TranscendencePage />} />
-              <Route path="absolute-infinity" element={<AbsoluteInfinityPage />} />
-              <Route path="omniversal-soc" element={<AbsoluteInfinityPage />} />
-              <Route path="reality-fabric" element={<AbsoluteInfinityPage />} />
-              <Route path="chrono-loop" element={<AbsoluteInfinityPage />} />
-              <Route path="unified-consciousness" element={<AbsoluteInfinityPage />} />
-              <Route path="void-defense" element={<AbsoluteInfinityPage />} />
-              <Route path="genesis-protocol" element={<AbsoluteInfinityPage />} />
-              <Route path="akashic-ledger" element={<AbsoluteInfinityPage />} />
-              <Route path="cosmic-threat" element={<AbsoluteInfinityPage />} />
-              <Route path="dimensional-barrier" element={<AbsoluteInfinityPage />} />
-              <Route path="absolute-os" element={<AbsoluteInfinityPage />} />
               <Route path="ztna" element={<ModulePage />} />
-              <Route path="hunting" element={<ModulePage />} />
+              <Route path="hunting" element={<HuntConsolePage />} />
+              <Route path="attack-surface" element={<AttackSurfacePage />} />
               <Route path="vulns" element={<ModulePage />} />
               <Route path="cspm" element={<ModulePage />} />
               <Route path="sbom" element={<ModulePage />} />

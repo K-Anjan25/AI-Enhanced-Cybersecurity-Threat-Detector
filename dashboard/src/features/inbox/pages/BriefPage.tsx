@@ -21,6 +21,7 @@ import type { Brief, Connector, AnalystCase } from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
 import { showSuccess } from "../../../utils/showSuccess";
 import ConnectorConfigModal from "../../../components/connectors/ConnectorConfigModal";
+import CaseImpact from "../../../components/CaseImpact";
 
 /**
  * Home — the Analyst Inbox (spec §7, §21).
@@ -313,6 +314,8 @@ const BriefPage: React.FC = () => {
                   </div>
                 )}
 
+                <CaseImpact context={latestCase.context} className="mb-3" />
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-content-tertiary">Affected</p>
@@ -420,8 +423,11 @@ const BriefPage: React.FC = () => {
                       onClick={() => navigate(`/case/${c.id}`)}
                       className="w-full flex items-center justify-between gap-3 text-left py-2.5 group"
                     >
-                      <span className="text-xs font-medium text-content-secondary group-hover:text-content-primary transition truncate">
-                        {c.analysis?.headline || c.title}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-medium text-content-secondary group-hover:text-content-primary transition truncate">
+                          {c.analysis?.headline || c.title}
+                        </span>
+                        <CaseImpact context={c.context} variant="compact" className="mt-1" />
                       </span>
                       <span className="flex items-center gap-2 shrink-0">
                         <SeverityBadge severity={c.priority} />

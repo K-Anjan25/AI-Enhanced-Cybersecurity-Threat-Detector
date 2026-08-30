@@ -1,6 +1,6 @@
 """Phase 87: Exposure Management endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -11,6 +11,10 @@ from app.core.abac import require_permission
 from app.models.user import User
 from app.services import exposure_service
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/exposure", tags=["Exposure ASM (Phase 87)"])
 
 class DomainIn(BaseModel):
@@ -20,49 +24,100 @@ class DomainIn(BaseModel):
 class DiscoverIn(BaseModel):
     domain: Optional[str] = None
 
+class StatusIn(BaseModel):
+    status: str  # open | fixed | ignored
+    note: Optional[str] = None
+
 @router.get("/domains")
 def list_domains(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         domains = exposure_service.list_domains(db, current_user.org_id)
         return [{"id": d.id, "domain": d.domain, "discovery_method": d.discovery_method, "is_verified": d.is_verified} for d in domains]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/domains")
 def add_domain(payload: DomainIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         d = exposure_service.add_domain(db, current_user.org_id, payload.domain, payload.discovery_method)
         return {"id": d.id, "domain": d.domain}
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/discover")
 def discover(payload: DiscoverIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         exps = exposure_service.discover_exposures(db, current_user.org_id, domain=payload.domain)
         return [exposure_service.serialize_exposure(e) for e in exps]
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/")
 def list_exposures(severity: Optional[str] = None, status: str = "open", db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         exps = exposure_service.list_exposures(db, current_user.org_id, severity=severity, status=status)
         return [exposure_service.serialize_exposure(e) for e in exps]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/findings")
 def list_findings(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         findings = exposure_service.list_findings(db, current_user.org_id)
         return [exposure_service.serialize_finding(f) for f in findings]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/{exposure_id}/status")
+def set_status(
+    exposure_id: int,
+    payload: StatusIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("audit:read")),
+):
+    """Mark an exposure fixed or not a real finding.
+
+    Attack-path search only walks *open* exposures, so this is how an operator
+    stops a wrong entry generating routes to crown jewels.
+    """
+    try:
+        exposure = exposure_service.set_exposure_status(
+            db, current_user.org_id, exposure_id, payload.status, payload.note
+        )
+        return exposure_service.serialize_exposure(exposure)
+    except ValueError as e:
+        detail = str(e)
+        raise HTTPException(
+            status_code=404 if "not found" in detail.lower() else 400, detail=detail
+        )
+
 
 @router.get("/summary")
 def summary(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         return exposure_service.get_exposure_summary(db, current_user.org_id)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e

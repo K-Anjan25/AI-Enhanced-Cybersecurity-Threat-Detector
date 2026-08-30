@@ -1,25 +1,38 @@
-# NOCTRA — Autonomous Cybersecurity Threat Detector — 150 Phases Complete — Absolute Infinity
+# NOCTRA — an autonomous AI security analyst for small companies
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
-[![Phases](https://img.shields.io/badge/Phases-150%20Complete-black?style=for-the-badge)](docs/ROADMAP_150_FINAL.md)
-[![Router](https://img.shields.io/badge/Routes-124-violet?style=for-the-badge)](backend/app/api/v1/router.py)
-[![Final](https://img.shields.io/badge/Final-Absolute%20v5%20Fundamental%20Force-black?style=for-the-badge)](docs/ROADMAP_150_FINAL.md)
 
 > **NOCTRA** — *Threat intelligence, always on.*
 > You employ an analyst; you don't operate a dashboard.
-> **150 Phases Complete — From SOC to OS to Omni to Transcendence to Absolute — NOCTRA IS fundamental force.**
 
-**Final Roadmap:** [`docs/ROADMAP_150_FINAL.md`](docs/ROADMAP_150_FINAL.md) — 150 phases, Final10 OS API docs, Absolute Infinity.
+Most small companies cannot staff a SOC. A single analyst costs $77–101K a year
+and covers business hours only; round-the-clock in-house coverage means four to
+five people. The usual alternatives — an MSSP or an MDR — run $3–15K a month and
+still hand back shallow investigations, because rotating analysts never learn
+your environment.
 
-> **Brand System & Specification**:
->
+NOCTRA is the analyst. It triages every alert, explains its reasoning in plain
+English, says what the incident means *for your organisation specifically*, and
+proposes a reversible action — which it records and never executes until you
+approve it.
+
+**What makes the reasoning trustworthy:**
+
+- **Every number traces to a real row.** Where a signal cannot be measured, the
+  product says "not measured" rather than showing a flattering constant.
+- **Organisational context on every case.** How many hops the attacker is from
+  your crown jewels, what it does to your posture score, and whether the
+  credential involved is already leaked publicly.
+- **Nothing runs without you.** Actions are recorded with an explicit undo path
+  and wait for one-click approval.
+
 > **Brand System & Specification**:
 > - Design system (SIGNAL — ink canvas + signal green, DM Sans + Space Mono): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md) §40 · design source [`newfile.html`](newfile.html)
 > - Current redesign spec (IA, product model, stages): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
 > - Code-accurate wireframe kit (20 boards, mapped 1:1 to routes): [`docs/wireframes/`](docs/wireframes/)
 > - Demo script + verification matrix: [`docs/demo.md`](docs/demo.md)
-> - Commercial-grade frontend redesign (WordPress/WooCommerce research, token + hook + component system, mini-cart drawer): [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
-> - Historical: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) (superseded)
+> - Commercial-grade frontend redesign: [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
+> - Historical roadmap (contains withdrawn speculative phases): [`docs/ROADMAP_150_FINAL.md`](docs/ROADMAP_150_FINAL.md)
 
 An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.
 
@@ -52,43 +65,70 @@ The project supports both **local (REST)** and **streaming (Kafka)** execution m
 - **Frontend**: React, TypeScript, Tailwind CSS, DM Sans / Space Mono typography (SIGNAL system), Redux Toolkit, Recharts, Framer Motion
 - **Infrastructure**: Docker, Docker Compose (Kafka, Zookeeper, PostgreSQL), Kubernetes manifests
 
-## 150 Phases Final — Quick Reference
+## Capabilities
 
-**Total: 150 phases — 0 remaining — CLOSED**
+The analyst loop is the product; everything below feeds it.
 
-- P1-P48 Base: auth, alerts, cases, entities, SOAR, ML, analytics, compliance
-- P49-P60 Advanced Hub (10)
-- P61-P90 Early Expansion (28): ZTNA, Hunt, Vuln, ITDR, CSPM, SBOM, Deception, Forensics, TIP, AI Agent, etc.
-- P91-P100 Final10 OS (10) — see [Final10 API docs](docs/ROADMAP_150_FINAL.md#final10-os-p91-p100--what-are-these-apis-for)
-  - P91 `/federated-intel` — federated intel sharing STIX anonymized TLP
-  - P92 `/quantum-safe` — crypto inventory + PQC migration to Kyber-768
-  - P93 `/attack-path` — graph attack path to crown jewels
-  - P94 `/cart` — Continuous Automated Red Teaming nightly APT29 emulation
-  - P95 `/data-fabric` — unified query over SIEM/lake/SaaS
-  - P96 `/soc-manager` — SOC team + AI agent orchestration
-  - P97 `/drp` — Digital Risk Protection brand abuse typo-squat dark web
-  - P98 `/cnapp` — Cloud Native App Protection K8s workload
-  - P99 `/posture-score` — single posture score 0-100 credit score for security
-  - P100 `/noctra-os` — self-managing SOC OS v1 autonomy_level
-- P101-P110 Singularity (10): global_fed, predictive, hunt_swarm, digital_twin, quantum_comms, ai_gov, supply_v2, xr_soc, deception_grid, self_healing
-- P111-P120 Meta-Singularity (10): incident_commander, insurance_risk, actor_dna, data_vault, audit_v2, neural_copilot, intel_mesh, adversary_llm, blockchain_audit, meta_os v2 self-rewriting
-- P121-P130 Omni-Singularity (10): interplanetary (LEO 20ms GEO 120ms Lunar 1300 Mars 720s DTN), agi_council (Athena/Sentinel/Oracle/Guardian/Sage), legislation (GDPR→OPA Rego), synthetic_universe (100k realism 92%), holographic (8K volumetric), workforce (25 agents 80% autonomy), consciousness_monitor (alignment 98.8), planetary_defense (power/water/telecom/finance/healthcare), time_prophecy (transformer forecast 0.89), omni_os v3 (omnipresence 99.5%)
-- P131-P140 Transcendence (10): multiverse (branching 10), quantum_consciousness (100 qubits Phi+ 0.99), autonomous_economy (NOCTRA 1M), neuro_symbolic (hybrid 0.94), self_replicating (von Neumann 1.8 max 1000), temporal_defense (causality_lock 95%), universal_language (stix/sigma 95.5%), infinite_learning (EWC 96.5%), existential_risk (prob 0.001), transcendence_os v4 (99.99% integration)
-- P141-P150 Absolute Infinity (10): omniversal (1000 multiverses branching 100), reality_fabric (11 dims constants vacuum 99.99), chrono_loop (closed_timelike), hive_mind (1M IQ 180), void_defense (dark universe), genesis_protocol (big bang secure by design), akashic_ledger (SHA512 eternal), cosmic_threat (vacuum_decay), dimensional_barrier (3d/11d exotic_matter_weave), absolute_os v5 (100% reality integration consciousness 1000 fundamental_force) — **NOCTRA IS**
+**Core loop** — ingest telemetry (Okta, CrowdStrike, GuardDuty, Cloudflare WAF)
+→ detect with ML and LLM reasoning → open a case with blast radius → propose a
+reversible action → human approves → audited record.
 
-**Stats:** 109 models, 125 endpoints, 124 routes, 14 advanced pages, build 1.62s green, AbsoluteInfinityPage 17.39kB
+**Risk context wired into every case:**
+
+| Capability | Route | What it contributes |
+|---|---|---|
+| Posture score | `/posture-score` | One 0–100 NIST-CSF score from real vuln, CSPM, case-closure, retention and compliance rows. Unmeasurable dimensions are excluded and reported, not guessed. |
+| Attack paths | `/attack-path` | Dijkstra search over real exposures, assets and observed entity links to your crown jewels, plus the single choke point that breaks each path. |
+| Digital risk protection | `/drp` | Offline typosquat generation against your real domains. External dark-web and breach lookups run only when a provider key is configured, and report the gap when not. |
+| Autonomy control | `/noctra-os` | Metrics counted from real cases, including the recommendation-accept rate that justifies raising the autonomy level. |
+
+These four surface directly on the case and brief screens through the shared
+`CaseImpact` component — when a module has no real data, it renders nothing.
+
+**Supporting surfaces:** vulnerabilities, cloud posture (CSPM), SBOM/supply
+chain, zero-trust access, compliance packs, hunting, deception, forensics,
+threat-intel platform, SOAR playbooks, reporting and admin/RBAC.
+
+**Operate:** detection coverage, asset inventory, data retention and the SOC
+TV wall.
+
+### Scope note
+
+Earlier revisions advertised 150 "phases". Two groups have been withdrawn:
+
+- **50 speculative modules** (multiverse SOC, AGI council, akashic ledger and
+  similar) — 6,493 lines that modelled nothing real.
+- **6 mock-data modules** (federated intel, quantum-safe, data fabric, CNAPP,
+  continuous red teaming, SOC manager). These were more dangerous than the
+  first group because they looked plausible: CNAPP invented Kubernetes
+  clusters with a fabricated CVE, quantum-safe returned three hardcoded
+  algorithms, and SOC manager marked every orchestration step complete in a
+  loop. A buyer could not tell these from real findings.
+
+- **23 Labs capabilities.** Sixteen sat behind tabbed hubs that rendered raw
+  JSON; an audit against their database queries found three computing from
+  real rows (detection coverage, asset inventory, data retention), which were
+  promoted to their own pages. The other thirteen fabricated their output.
+  A later pass removed purple-team exercises and hunt notebooks: running an
+  exercise wrote synthetic alerts tagged with its own ATT&CK technique, which
+  the coverage scorer then counted as detection evidence, moving a technique
+  from 25 to 60 without any real capability being added; notebooks reported
+  `"mock_result"` and a `completed` status for Python they never executed.
+
+All were referenced by no other code. What remains is the product that can
+actually be demonstrated.
 
 ## Project Structure
 
 ```
 AI-Enhanced-Cybersecurity-Threat-Detector/
-├── backend/                # FastAPI backend service & ABAC policy engine — 124 routes
+├── backend/                # FastAPI backend service & ABAC policy engine
 │   ├── app/
-│   │   ├── api/v1/endpoints/  # 125 endpoints — auth to absolute_os
+│   │   ├── api/v1/endpoints/  # REST endpoints
 │   │   ├── core/               # config, database, security, abac
-│   │   ├── models/             # 109 models — User to AbsoluteLog
+│   │   ├── models/             # SQLAlchemy models
 │   │   ├── schemas/            # Pydantic schemas
-│   │   ├── services/           # 102+ services — alert to absolute_os_service
+│   │   ├── services/           # Domain services
 │   │   └── main.py
 │   ├── tests/               # Pytest suite
 │   ├── requirements.txt
@@ -104,13 +144,13 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 │   └── model/               # trained .pkl artifacts
 ├── dashboard/               # Single production React + Vite frontend — 14 advanced pages
 │   ├── src/
-│   │   ├── features/advanced/pages/ # AdvancedHub, Beyond100, MetaSingularity, OmniSingularity, Transcendence, AbsoluteInfinity
+│   │   ├── features/advanced/pages/ # Security Operations + Labs surfaces
 │   │   ├── components/          # BrandLogo, UI components
 │   │   ├── api/                 # Axios API clients
 │   │   ├── store/               # Redux Toolkit
 │   │   └── constants/           # Brand tokens (NOCTRA)
 ├── docs/
-│   ├── ROADMAP_150_FINAL.md # 150 phases complete — Final10 OS API docs — ABSOLUTE FINAL
+│   ├── ROADMAP_150_FINAL.md # Historical roadmap (speculative phases withdrawn)
 │   └── ...                  # Brand specifications, requirements, architecture
 └── README.md
 ```

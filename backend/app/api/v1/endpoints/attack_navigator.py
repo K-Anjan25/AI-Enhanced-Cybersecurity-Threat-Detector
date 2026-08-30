@@ -22,14 +22,6 @@ class ActorCreate(BaseModel):
     country: Optional[str] = None
 
 
-@router.get("/matrix")
-def get_matrix(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return attack_service.get_attack_matrix()
-
-
 @router.get("/heatmap")
 def get_heatmap(
     db: Session = Depends(get_db),
@@ -44,7 +36,7 @@ def attribute_actor(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("alerts:read")),
 ):
-    result = attack_service.attribute_actor(db, org_id=current_user.org_id, techniques=techniques)
+    result = attack_service.attribute_actor(db, org_id=current_user.org_id, technique_ids=techniques)
     return result
 
 

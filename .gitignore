@@ -76,3 +76,12 @@ backend/noctra_preview.db
 
 # Uploaded assets (profile images, ingest artifacts)
 backend/uploads/
+
+# Local preview / scratch databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Retention and compliance archives written by archive_store when no object
+# storage is configured. Real exported data; never committed.
+backend/archives/
