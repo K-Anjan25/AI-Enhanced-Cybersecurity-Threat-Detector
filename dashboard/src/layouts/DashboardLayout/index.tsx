@@ -134,17 +134,6 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Research (concept)",
-    collapsedByDefault: true,
-    items: [
-      { name: "Planetary Defense", path: "/beyond100", icon: Globe },
-      { name: "Self-Rewriting OS", path: "/meta-singularity", icon: Brain },
-      { name: "Omni-Singularity", path: "/omni-singularity", icon: Boxes },
-      { name: "Transcendence", path: "/transcendence", icon: Store },
-      { name: "Absolute Infinity", path: "/absolute-infinity", icon: Swords },
-    ],
-  },
-  {
     label: "System",
     adminOnly: true,
     collapsedByDefault: true,
