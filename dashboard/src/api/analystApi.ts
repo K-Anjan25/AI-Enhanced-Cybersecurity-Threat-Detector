@@ -5,6 +5,7 @@ import type {
   ReportResponse,
   Connector,
   TimelineResponse,
+  ReasoningResponse,
   NotificationsResponse,
 } from "../types/analyst";
 import type { PaginatedResponse } from "../types/pagination";
@@ -119,6 +120,12 @@ export const fetchTimeline = async (id: number | string): Promise<TimelineRespon
   return data;
 };
 
+/** Why a case carries the confidence it does: signals, weights, and blind spots. */
+export const fetchReasoning = async (id: number | string): Promise<ReasoningResponse> => {
+  const { data } = await api.get<ReasoningResponse>(`/analyst/cases/${id}/reasoning`);
+  return data;
+};
+
 /** Derived notifications: pending decisions + outcomes from the last 24 h. */
 export const fetchNotifications = async (): Promise<NotificationsResponse> => {
   const { data } = await api.get<NotificationsResponse>("/analyst/notifications");
@@ -141,6 +148,7 @@ export const AnalystApi = {
   bulkDecide,
   fetchReport,
   fetchTimeline,
+  fetchReasoning,
   fetchNotifications,
 };
 

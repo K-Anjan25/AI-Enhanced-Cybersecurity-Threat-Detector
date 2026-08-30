@@ -125,6 +125,34 @@ export interface TimelineEntry {
   detail?: string | null;
 }
 
+/** One signal that moved (or could have moved) a case's confidence. */
+export interface ReasoningSignal {
+  signal: string;
+  label: string;
+  contribution: number;
+  detail: string;
+  evidence: Record<string, unknown>;
+}
+
+/** A signal that could not be consulted, and why. Never means "clean". */
+export interface UnavailableSignal {
+  signal: string;
+  label: string;
+  reason: string;
+}
+
+export interface ReasoningResponse {
+  base: number;
+  signals: ReasoningSignal[];
+  unavailable: UnavailableSignal[];
+  confidence: number | null;
+  confidence_cap?: number;
+  capped?: boolean;
+  coverage?: string;
+  summary: string;
+  error?: string;
+}
+
 export interface TimelineResponse {
   case_id: number;
   entries: TimelineEntry[];

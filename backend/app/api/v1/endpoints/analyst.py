@@ -14,7 +14,13 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.abac import require_permission
 from app.models import User
-from app.services import analyst_service, case_context, connector_service, scenario
+from app.services import (
+    analyst_service,
+    case_context,
+    connector_service,
+    scenario,
+    verdict_reasoning,
+)
 from app.services.case_service import serialize_case
 
 router = APIRouter(prefix="/analyst", tags=["Analyst"])
@@ -258,6 +264,25 @@ def get_timeline(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return {"case_id": case.id, "entries": analyst_service.case_timeline(db, case)}
+
+
+@router.get("/cases/{case_id}/reasoning")
+def get_reasoning(
+    case_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Why this case carries the confidence it does.
+
+    Returns each signal that contributed, what it was worth, and every signal
+    that could not be consulted along with the reason. Recomputed live rather
+    than read from the stored analysis, so the answer reflects the evidence
+    available now — enrich an IP or add an asset and the reasoning changes.
+    """
+    case = analyst_service.get_case(db, case_id, org_id=current_user.org_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return verdict_reasoning.explain(db, case)
 
 
 @router.get("/cases/{case_id}/export")

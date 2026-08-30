@@ -32,8 +32,16 @@ import AnalystApi from "../../../api/analystApi";
 import { api } from "../../../api/axios";
 import { fetchAlerts } from "../../../api/alertApi";
 import type { Alert } from "../../../types/alert";
-import type { AnalystCase, BlastNode, Decision, ChatMessage, TimelineEntry } from "../../../types/analyst";
+import type {
+  AnalystCase,
+  BlastNode,
+  Decision,
+  ChatMessage,
+  TimelineEntry,
+  ReasoningResponse,
+} from "../../../types/analyst";
 import { getApiError } from "../../../utils/getApiError";
+import ReasoningPanel from "../components/ReasoningPanel";
 import CaseImpact from "../../../components/CaseImpact";
 
 type DialogKind = "approve" | "decline" | "revert" | null;
@@ -88,6 +96,9 @@ const CasePage: React.FC = () => {
   // Server-side case record (timeline) — composed by the backend from real
   // rows only; hidden if unavailable rather than fabricated client-side.
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  const [reasoning, setReasoning] = useState<ReasoningResponse | null>(null);
+  const [reasoningLoading, setReasoningLoading] = useState(false);
+  const [reasoningError, setReasoningError] = useState<string | null>(null);
 
   const loadCase = useCallback(async () => {
     if (!id) return;
@@ -135,6 +146,33 @@ const CasePage: React.FC = () => {
       alive = false;
     };
   }, [data?.id, data?.decision, data?.decided_at]);
+
+  // Why the case carries the confidence it does. Recomputed server-side from
+  // whatever evidence exists now, so enriching an IP or adding an asset
+  // changes the answer.
+  useEffect(() => {
+    let alive = true;
+    if (!data?.id) {
+      setReasoning(null);
+      return;
+    }
+    setReasoningLoading(true);
+    setReasoningError(null);
+    AnalystApi.fetchReasoning(data.id)
+      .then((res) => {
+        if (alive) setReasoning(res);
+      })
+      .catch((e) => {
+        // A failure to explain must be visible, not rendered as "no signals".
+        if (alive) setReasoningError(getApiError(e, "Could not load reasoning"));
+      })
+      .finally(() => {
+        if (alive) setReasoningLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [data?.id]);
 
   // Resolve the linked source alert for the evidence panel (best-effort: the
   // alert list is the only read surface; missing rows are stated honestly).
@@ -525,6 +563,13 @@ const CasePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* The audit trail behind the confidence figure above. */}
+      <ReasoningPanel
+        reasoning={reasoning}
+        loading={reasoningLoading}
+        error={reasoningError}
+      />
 
       {/* Ask NOCTRA — interactive analyst chat (night canvas) */}
       <div className="night console-panel text-content-primary rounded-sm overflow-hidden">

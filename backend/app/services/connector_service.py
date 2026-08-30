@@ -1191,7 +1191,12 @@ def _ingest_events(
                             "what_happened": row.message,
                             "why_it_matters": f"High severity alert from {row.source} requires immediate triage",
                             "blast_radius_summary": f"Source: {row.source}, IP: {row.source_ip or 'N/A'}",
-                            "confidence": 0.85,
+                            # Confidence is computed from real signals once the
+                            # case exists (it needs an id to look context up).
+                            # A hardcoded 0.85 used to be stamped here, which
+                            # told the operator the same thing about every
+                            # single auto-triaged alert.
+                            "confidence": None,
                             "model": "connector-auto-triage",
                         },
                         proposed_action={
@@ -1204,6 +1209,17 @@ def _ingest_events(
                     )
                     db.add(case)
                     db.commit()
+
+                    # Explain the verdict now that the case has an id.
+                    from app.services import verdict_reasoning
+
+                    reasoning = verdict_reasoning.explain(db, case)
+                    analysis = dict(case.analysis or {})
+                    analysis["reasoning"] = reasoning
+                    analysis["confidence"] = reasoning.get("confidence")
+                    case.analysis = analysis
+                    db.commit()
+
                     _LOGGER.info("Auto-triaged case %s for alert %s from %s", case.id, row.id, row.source)
                 except Exception as exc:
                     _LOGGER.debug("Auto-triage failed for alert %s: %s", getattr(row, "id", "?"), exc)
