@@ -17,8 +17,8 @@ from it, named by the button or page where possible — and classifies it.
 | Route groups | 66 |
 | Reachable from the UI | 183 paths |
 | No UI caller | 75 paths |
-| Backend tests | 489 passing, 2 skipped (29 files) |
-| Frontend tests | 137 passing (19 files) |
+| Backend tests | 520 passing, 2 skipped (32 files) |
+| Frontend tests | 153 passing (20 files) |
 | Type check / build | clean |
 
 "No UI caller" is not the same as "broken". Of the 79, roughly half are
@@ -62,6 +62,7 @@ Real features with real data behind them, reachable from the UI.
 | Asset inventory | **Operate → Asset Inventory** | Your machines and who owns them, with search and a crown-jewel filter. Feeds attack-path and blast-radius. |
 | Data retention | **Operate → Data Retention** | How long each kind of record is kept. Legal holds can be placed and released here. |
 | Erasure requests | **Operate → Erasure Requests** | GDPR right-to-erasure queue, with the one-month deadline tracked. |
+| Threat hunting | **Threat Hunting** | Ask a question of the alert history — `severity:CRITICAL AND source:okta` — and see what matches. Saves queries for reuse, and says when it did not understand part of one. |
 | Approvals | **Operate → Approvals** | Actions waiting on a second pair of eyes before they run. Shows what is blocked, for how long, and which review stage it is at. You cannot approve a request you raised. |
 | Attack paths | Case context, `/attack-path` | The route an attacker could take from an exposed service to something valuable. |
 | Posture score | **Dashboard** | A single NIST-CSF-shaped number for how well set up you are, with the dimensions behind it. |
@@ -95,7 +96,6 @@ Ordered by how much the absence costs.
 |---|---|---|
 | **Risk scoring rules** | 2 | You can record which assets are critical, but not the rules that turn criticality into alert priority. Half the feature is exposed. |
 | **Attack surface (exposure)** | 5 | Hostnames discovered from Certificate Transparency. Feeds attack-path search, so operators cannot see or correct the inputs to a conclusion the product draws. |
-| **Hunt execution** | 3 | Hunts can be written and listed but not run or reviewed from the UI. |
 | **Posture history / findings** | 2 | The score is shown; the trend and the individual findings behind it are not. |
 | **Threat-intel export (STIX/MISP)** | 4 | Sharing indicators with other tools. Common ask in procurement. |
 | **Alert export / clear** | 2 | Bulk operations an analyst expects. |
@@ -109,7 +109,7 @@ Each is honest in the API today; none reports a fabricated result.
 
 | Area | State |
 |---|---|
-| **Archival** | Counts what is *eligible*; moves nothing. No archive destination is configured. Reported as `status: "not_configured"` with the reason. |
+| **Archival** | Writes real files via `archive_store` — object storage when S3 is configured, local disk otherwise. Capped at 5000 rows per run. Nothing is deleted. |
 | **Sigma matching** | Keyword matching, not a full Sigma engine. Docstring says so. |
 | **Jira ticketing** | Simplified issue creation. |
 | **Dark web / breach lookup** | No client exists. Reports `enabled: false` regardless of whether an API key is set. |
@@ -135,7 +135,7 @@ outcomes. The main functional gap is approval workflows (§5).
 | Multi-tenancy | `org_id` scoping throughout; verified by tests. |
 | Security | ABAC permissions, encrypted connector secrets, SSRF guard on poll endpoints, HMAC on webhooks. |
 | Performance | Measured to 26k alerts / 10.5k cases. Coverage evaluation was 66s and is now 6ms; response times 612ms; reasoning 5ms. Query counts pinned by `test_metrics_scale.py`. Not load-tested for concurrency. |
-| Reliability | No retry/backoff review; `ha` module exists but is unexercised. |
+| Reliability | Decision paths are race-safe (row locks plus guarded updates). No retry/backoff review; `ha` module exists but is unexercised. |
 
 ---
 
