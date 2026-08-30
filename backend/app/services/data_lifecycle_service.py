@@ -137,10 +137,28 @@ def create_gdpr_request(db: Session, org_id: int, target_email: str, reason: str
     return req
 
 
+_GDPR_ACTIONS = ("approve", "reject", "complete")
+
+# Once approved, the subject's account is anonymised in place. There is no undo,
+# so a decided request must not be re-decided into a different outcome.
+_GDPR_DECIDED = ("approved", "completed", "rejected")
+
+
 def process_gdpr_request(db: Session, org_id: int, request_id: int, action: str = "approve") -> GDPRDeletionRequest:
+    if action not in _GDPR_ACTIONS:
+        # Previously any unknown action fell through every branch and returned
+        # the unchanged request with HTTP 200 — the caller saw success for a
+        # decision that never happened.
+        raise ValueError(
+            f"Unknown action {action!r}. Expected one of: {', '.join(_GDPR_ACTIONS)}."
+        )
     req = db.query(GDPRDeletionRequest).filter(GDPRDeletionRequest.id == request_id, GDPRDeletionRequest.org_id == org_id).first()
     if not req:
         raise ValueError("GDPR request not found")
+    if action in ("approve", "reject") and req.status in _GDPR_DECIDED:
+        raise ValueError(
+            f"Request is already {req.status}; erasure cannot be reversed or re-decided."
+        )
     if action == "approve":
         req.status = "approved"
         # In real implementation, anonymize user data
