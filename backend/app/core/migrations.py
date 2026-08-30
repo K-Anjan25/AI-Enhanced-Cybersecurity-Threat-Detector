@@ -7,6 +7,7 @@ tables gain the ABAC subject-attribute columns and the multi-tenant org_id FK.
 """
 
 import logging
+import re
 
 from sqlalchemy import text
 
@@ -26,6 +27,7 @@ ADDITIVE_MIGRATIONS = [
     "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS mitre_tactic VARCHAR(100)",
     "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS mitre_technique_id VARCHAR(20)",
     "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS mitre_technique VARCHAR(150)",
+    "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS event_time TIMESTAMP",
     # Threat-intel enrichment (v3): JSON blob with source-IP reputation context.
     "ALTER TABLE security_alerts ADD COLUMN IF NOT EXISTS threat_intel JSON",
     # Autonomous analyst (v4, Phase 18): additive columns so the "Feed of
@@ -88,11 +90,48 @@ def ensure_default_org(engine) -> None:
         )
 
 
+_ADD_COLUMN_RE = re.compile(
+    r"ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+(\w+)\s+(.*)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _existing_columns(conn, table: str) -> set[str]:
+    try:
+        return {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+    except Exception:  # pragma: no cover - table may not exist yet
+        return set()
+
+
+def _rewrite_for_sqlite(statement: str, conn) -> str | None:
+    """Translate `ADD COLUMN IF NOT EXISTS` for SQLite, which lacks it.
+
+    SQLite rejects the `IF NOT EXISTS` clause outright, so every additive
+    migration raised and was swallowed by the warning below — meaning existing
+    SQLite databases never received a new column, while a fresh one got it from
+    create_all(). The divergence only showed up as a missing attribute at
+    runtime, long after startup looked clean.
+    """
+    match = _ADD_COLUMN_RE.match(statement.strip())
+    if not match:
+        return statement
+    table, column, definition = match.group(1), match.group(2), match.group(3)
+    if column in _existing_columns(conn, table):
+        return None  # already applied; genuinely nothing to do
+    return f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+
+
 def run_additive_migrations(engine) -> None:
     """Apply idempotent additive migrations to the live database."""
+    is_sqlite = engine.dialect.name == "sqlite"
     with engine.begin() as conn:
         for statement in ADDITIVE_MIGRATIONS:
             try:
-                conn.execute(text(statement))
+                effective = statement
+                if is_sqlite:
+                    effective = _rewrite_for_sqlite(statement, conn)
+                    if effective is None:
+                        continue
+                conn.execute(text(effective))
             except Exception as exc:  # pragma: no cover - non-critical on startup
                 _LOGGER.warning("Migration skipped (%s): %s", statement, exc)

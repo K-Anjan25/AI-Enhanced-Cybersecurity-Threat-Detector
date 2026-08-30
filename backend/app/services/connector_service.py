@@ -349,6 +349,108 @@ def verify_slack_signature(
 # ---------------------------------------------------------------------------
 
 
+# Field names each provider uses for "when this actually happened". Checked in
+# order; the first that parses wins.
+_EVENT_TIME_FIELDS = (
+    "event_time",          # our own normalized shape / generic webhooks
+    "date_create",         # Slack audit logs (epoch seconds)
+    "activityDateTime",    # Microsoft Graph auditLogs
+    "createdDateTime",     # Microsoft Graph signIns
+    "created_at",          # GitHub
+    "updated_at",          # GitHub (fallback when created_at is absent)
+    "timestamp",           # generic
+    "time",                # generic
+    "@timestamp",          # Elastic-style
+    "eventTime",           # generic camelCase
+)
+
+# Anything outside this band is a parsing artefact, not a real event time:
+# epoch 0, a year-9999 sentinel, or seconds misread as milliseconds. Accepting
+# them would produce absurd detection latencies that look like real outliers.
+_MIN_EVENT_TIME = datetime(2000, 1, 1, tzinfo=timezone.utc)
+_FUTURE_TOLERANCE = timedelta(hours=24)
+
+
+def _coerce_event_time(value) -> datetime | None:
+    """Best-effort parse of a provider timestamp into aware UTC.
+
+    Returns None rather than a guess. A wrong event time is worse than a
+    missing one: detection latency is computed from this field, so a bad value
+    silently corrupts the metric instead of being reported as unmeasured.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+
+    parsed: datetime | None = None
+
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, (int, float)):
+        parsed = _epoch_to_datetime(float(value))
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        # Numeric string: epoch seconds (Slack) or milliseconds.
+        try:
+            parsed = _epoch_to_datetime(float(text))
+        except ValueError:
+            # ISO 8601. Python < 3.11 rejects the trailing "Z".
+            try:
+                parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        # A naive timestamp from a remote system is UTC by convention here;
+        # assuming local time would shift every metric by the host offset.
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    else:
+        parsed = parsed.astimezone(timezone.utc)
+
+    if parsed < _MIN_EVENT_TIME:
+        return None
+    if parsed > datetime.now(timezone.utc) + _FUTURE_TOLERANCE:
+        return None
+    return parsed
+
+
+def _epoch_to_datetime(number: float) -> datetime | None:
+    """Interpret a number as epoch seconds, or milliseconds when too large."""
+    if number <= 0:
+        return None
+    # ~2001-09-09 in seconds; anything above is milliseconds.
+    if number > 1_000_000_000_000:
+        number = number / 1000.0
+    try:
+        return datetime.fromtimestamp(number, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _extract_event_time(raw: dict) -> datetime | None:
+    """Pull the source event time out of a provider payload."""
+    if not isinstance(raw, dict):
+        return None
+    for field in _EVENT_TIME_FIELDS:
+        if field in raw:
+            parsed = _coerce_event_time(raw.get(field))
+            if parsed is not None:
+                return parsed
+    # Microsoft Graph nests the sign-in time one level down in some shapes.
+    for container in ("status", "activity", "details"):
+        nested = raw.get(container)
+        if isinstance(nested, dict):
+            for field in _EVENT_TIME_FIELDS:
+                if field in nested:
+                    parsed = _coerce_event_time(nested.get(field))
+                    if parsed is not None:
+                        return parsed
+    return None
+
+
 def _parse_link_header(link: str) -> dict:
     """Parse GitHub Link header for pagination: <url>; rel="next", ..."""
     links = {}
@@ -407,6 +509,7 @@ def _normalize_github_alert(raw: dict, alert_type: str = "code_scanning") -> dic
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
+        "event_time": _extract_event_time(raw),
         "github_alert_type": alert_type,
         "github_url": raw.get("html_url") or raw.get("url"),
     }
@@ -442,6 +545,7 @@ def _normalize_slack_audit_event(raw: dict) -> dict | None:
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
+        "event_time": _extract_event_time(raw),
         "slack_action": action,
     }
 
@@ -597,6 +701,7 @@ def _normalize_gworkspace_event(raw: dict) -> dict | None:
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
+        "event_time": _extract_event_time(raw),
         "gworkspace_action": action,
     }
 
@@ -624,6 +729,7 @@ def _normalize_azuread_event(raw: dict) -> dict | None:
         "mitre_tactic": None,
         "mitre_technique_id": None,
         "mitre_technique": None,
+        "event_time": _extract_event_time(raw),
         "azuread_action": action,
     }
 
@@ -1061,6 +1167,7 @@ def _normalize_event(raw: dict) -> dict | None:
         "mitre_tactic": raw.get("mitre_tactic") or mitre.get("tactic"),
         "mitre_technique_id": raw.get("mitre_technique_id") or mitre.get("technique_id"),
         "mitre_technique": raw.get("mitre_technique") or mitre.get("technique"),
+        "event_time": _extract_event_time(raw),
     }
 
 
@@ -1119,6 +1226,10 @@ def _ingest_events(
             mitre_tactic=normalized["mitre_tactic"],
             mitre_technique_id=normalized["mitre_technique_id"],
             mitre_technique=normalized["mitre_technique"],
+            # None when the provider sent nothing parseable. Left NULL rather
+            # than defaulted to now(), which would report zero detection
+            # latency for sources that never supplied a time at all.
+            event_time=normalized.get("event_time"),
         )
         db.add(alert)
         created.append(alert)

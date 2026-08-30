@@ -15,14 +15,16 @@ Everything here is computed from timestamps the system actually records:
 
 Two honesty constraints are load-bearing.
 
-**We cannot measure true MTTD.** True mean-time-to-detect runs from when the
-attacker acted to when the event was detected. No alert row carries a source
-event time — `SecurityAlert.created_at` is when the row was inserted, not when
-the thing happened. Every window this module reports therefore *starts at
-ingest*, and each metric says so in its own `measures` field. Publishing an
-ingest-to-triage number under the label "MTTD" would flatter the product by
-excluding the entire dwell time before ingest, which is usually the largest
-part. The metric is named `time_to_triage` for that reason.
+**MTTD is measured only where the source supplied a time.** True
+mean-time-to-detect runs from when the event happened to when it was detected.
+That needs `SecurityAlert.event_time`, which connectors now populate from the
+originating system — but only when the provider sends something parseable.
+Alerts without one are excluded from `time_to_detect` rather than falling back
+to `created_at`, which would report zero latency and drag the median toward
+zero precisely for the sources with the worst visibility. The metric therefore
+carries `coverage`: how many alerts in the window could be measured at all.
+`time_to_triage` remains, measuring ingest→triage, because the two answer
+different questions and conflating them hides ingestion lag.
 
 **A percentile needs a sample.** With three cases, a median is an anecdote. Each
 metric carries its `sample_size`, and anything below `_MIN_SAMPLE` is returned
@@ -137,12 +139,23 @@ def compute(db: Session, org_id: Optional[int], window_days: int = 30) -> Dict[s
         rows = db.query(SecurityAlert).filter(SecurityAlert.id.in_(alert_ids)).all()
         alerts_by_id = {a.id: a for a in rows}
 
+    detect_samples: List[float] = []
+    detect_eligible = 0
     triage_samples: List[float] = []
     decision_samples: List[float] = []
     end_to_end_samples: List[float] = []
 
     for case in cases:
         alert = alerts_by_id.get(case.source_alert_id) if case.source_alert_id else None
+
+        # True detection latency: the event happened, then we saw it.
+        if alert is not None:
+            detect_eligible += 1
+            event_to_ingest = _elapsed_minutes(
+                getattr(alert, "event_time", None), alert.created_at
+            )
+            if event_to_ingest is not None:
+                detect_samples.append(event_to_ingest)
 
         ingest_to_triage = (
             _elapsed_minutes(alert.created_at, case.created_at) if alert else None
@@ -167,6 +180,26 @@ def compute(db: Session, org_id: Optional[int], window_days: int = 30) -> Dict[s
         "cases_in_window": len(cases),
         "metrics": [
             _summarize(
+                detect_samples,
+                name="time_to_detect",
+                measures="event occurred at source → alert ingested",
+                caveat=(
+                    (
+                        f"Measured on {len(detect_samples)} of {detect_eligible} "
+                        "alert(s) whose source supplied an event time. Sources that "
+                        "send none are excluded rather than counted as zero latency."
+                    )
+                    if detect_samples
+                    else (
+                        "No alerts in this window carried a source event time, so "
+                        f"none of the {detect_eligible} alert(s) could be measured. "
+                        "This is missing instrumentation, not instant detection."
+                    )
+                    if detect_eligible
+                    else "No alerts in this window."
+                ),
+            ),
+            _summarize(
                 triage_samples,
                 name="time_to_triage",
                 measures="alert ingested → case raised",
@@ -186,8 +219,11 @@ def compute(db: Session, org_id: Optional[int], window_days: int = 30) -> Dict[s
                 name="time_to_contain",
                 measures="alert ingested → decision executed",
                 caveat=(
-                    "Measures the decision being recorded, not confirmation that the "
-                    "containment action took effect on the endpoint."
+                    "Starts at ingest, not at the event, so that every decided case "
+                    "is comparable — only some sources supply an event time. Add "
+                    "time_to_detect for elapsed time since the event. Measures the "
+                    "decision being recorded, not confirmation that the containment "
+                    "action took effect on the endpoint."
                 ),
             ),
         ],
@@ -223,11 +259,11 @@ def _not_measured() -> List[Dict[str, str]]:
     """
     return [
         {
-            "metric": "mean_time_to_detect",
+            "metric": "dwell_time_before_logging",
             "reason": (
-                "no source event time is recorded on alerts, so the interval "
-                "between the attacker acting and the event arriving cannot be "
-                "measured. Connectors would need to preserve the origin timestamp."
+                "time_to_detect starts when the source system logged the event. "
+                "If an attacker acted before anything was logged, that interval "
+                "is invisible to every system downstream of the log."
             ),
         },
         {
