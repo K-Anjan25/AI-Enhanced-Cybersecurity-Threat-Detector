@@ -37,6 +37,7 @@ const CompliancePage = React.lazy(() => import("./features/admin/pages/Complianc
 const LandingPage = React.lazy(() => import("./features/landing/pages/LandingPage"));
 const SOCWallPage = React.lazy(() => import("./features/advanced/pages/SOCWallPage"));
 const AttackCoveragePage = React.lazy(() => import("./features/coverage/pages/AttackCoveragePage"));
+const ResponseTimesPage = React.lazy(() => import("./features/analytics/pages/ResponseTimesPage"));
 const AssetInventoryPage = React.lazy(() => import("./features/assets/pages/AssetInventoryPage"));
 const DataRetentionPage = React.lazy(() => import("./features/retention/pages/DataRetentionPage"));
 const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
@@ -111,6 +112,7 @@ export default function App(): JSX.Element {
               <Route path="soar" element={<SoarPage />} />
               <Route path="soc-tv-wall" element={<SOCWallPage />} />
               <Route path="attack-coverage" element={<AttackCoveragePage />} />
+              <Route path="response-times" element={<ResponseTimesPage />} />
               <Route path="assets" element={<AssetInventoryPage />} />
               <Route path="retention" element={<DataRetentionPage />} />
               <Route path="final10" element={<Final10Page />} />

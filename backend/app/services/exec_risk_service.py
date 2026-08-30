@@ -27,15 +27,30 @@ def calculate_risk_metrics(db: Session, org_id: int) -> List[RiskMetric]:
     db.add(m1)
     metrics.append(m1)
 
-    # Mean time to detect (simplified: avg case creation delay)
-    cases = db.query(Case).filter(Case.org_id == org_id).all()
-    mttd = 0.0
-    if cases:
-        # Simplified
-        mttd = 2.5  # hours
-    m2 = RiskMetric(org_id=org_id, metric_name="mean_time_to_detect_hours", metric_value=mttd)
-    db.add(m2)
-    metrics.append(m2)
+    # Response time, measured rather than asserted. This used to be the
+    # literal `mttd = 2.5  # hours` — the number a buyer benchmarks against,
+    # typed in by hand. It is now the observed median, recorded only when
+    # there is a real sample behind it, and named for what it actually
+    # measures: ingest to triage, not attacker-action to detection.
+    from app.services import response_metrics
+
+    timings = response_metrics.compute(db, org_id)
+    triage = next(
+        (m for m in timings["metrics"] if m["metric"] == "time_to_triage"), None
+    )
+    if triage and triage["median_minutes"] is not None:
+        m2 = RiskMetric(
+            org_id=org_id,
+            metric_name="median_time_to_triage_minutes",
+            metric_value=float(triage["median_minutes"]),
+            trend_json={
+                "sample_size": triage["sample_size"],
+                "reliable": triage["reliable"],
+                "measures": triage["measures"],
+            },
+        )
+        db.add(m2)
+        metrics.append(m2)
 
     # Vuln risk score avg
     vulns = db.query(Vulnerability).filter(Vulnerability.org_id == org_id).all()
@@ -56,11 +71,20 @@ def generate_board_pack(db: Session, org_id: int, generated_by_user_id: int = No
     open_cases = db.query(Case).filter(Case.org_id == org_id, Case.status != "closed").count()
     total_alerts = db.query(SecurityAlert).filter(SecurityAlert.org_id == org_id).count()
 
+    from app.services import response_metrics
+
+    timings = response_metrics.compute(db, org_id)
+
     report_data = {
-        "executive_summary": f"Security posture: {open_cases} open cases, {total_alerts} total alerts. Risk metrics calculated.",
+        "executive_summary": f"Security posture: {open_cases} open cases, {total_alerts} total alerts.",
         "risk_trends": [{"metric_name": m.metric_name, "value": m.metric_value, "recorded_at": m.recorded_at.isoformat() if m.recorded_at else None} for m in metrics],
         "incidents": {"open_cases": open_cases, "total_alerts": total_alerts},
-        "roi": {"analyst_hours_saved": 120, "auto_triaged_percent": 65, "cost_avoidance": 50000},
+        # Measured response times replace the previous "roi" block, which
+        # asserted 120 analyst hours saved, 65% auto-triaged and $50,000 of
+        # cost avoidance. None of those three figures were computed from
+        # anything — in a document addressed to a board.
+        "response_times": timings,
+        "not_measured": timings["not_measured"],
         "recommendations": ["Increase patching for critical vulns", "Review ZTNA policies", "Enable continuous compliance"],
     }
 
@@ -76,21 +100,50 @@ def list_reports(db: Session, org_id: int) -> List[ExecReport]:
 
 
 def calculate_roi(db: Session, org_id: int) -> Dict[str, Any]:
-    """Calculate ROI metrics."""
-    # Simplified ROI
-    roi_metrics = [
-        {"metric_name": "analyst_hours_saved", "value": 120, "unit": "hours"},
-        {"metric_name": "auto_triaged_cases", "value": 45, "unit": "cases"},
-        {"metric_name": "mean_time_saved_per_case_minutes", "value": 30, "unit": "minutes"},
-        {"metric_name": "cost_avoidance", "value": 50000, "unit": "dollars"},
+    """Report what can be counted, and name what cannot.
+
+    This returned four hardcoded figures — 120 analyst hours saved, 45
+    auto-triaged cases, 30 minutes saved per case, $50,000 cost avoidance —
+    and persisted them as ROIMetric rows, so invented numbers accumulated a
+    history that looked like evidence.
+
+    Return on investment cannot be derived without a pre-automation baseline,
+    which was never captured. What *is* countable is how many cases the system
+    triaged on its own and how long decisions took.
+    """
+    from app.services import response_metrics
+
+    auto_triaged = (
+        db.query(Case)
+        .filter(Case.org_id == org_id, Case.kind == "analyst")
+        .count()
+    )
+    total_cases = db.query(Case).filter(Case.org_id == org_id).count()
+    timings = response_metrics.compute(db, org_id)
+
+    counted = [
+        {"metric_name": "auto_triaged_cases", "value": auto_triaged, "unit": "cases"},
+        {"metric_name": "total_cases", "value": total_cases, "unit": "cases"},
     ]
-    # Persist
-    for rm in roi_metrics:
-        db.add(ROIMetric(org_id=org_id, metric_name=rm["metric_name"], value=rm["value"], unit=rm["unit"]))
+    for rm in counted:
+        db.add(
+            ROIMetric(
+                org_id=org_id,
+                metric_name=rm["metric_name"],
+                value=float(rm["value"]),
+                unit=rm["unit"],
+            )
+        )
     db.commit()
 
-    total_hours = sum(r["value"] for r in roi_metrics if r["unit"] == "hours")
-    return {"roi_metrics": roi_metrics, "total_hours_saved": total_hours, "estimated_cost_savings": 50000}
+    return {
+        "counted": counted,
+        "auto_triaged_percent": (
+            round(100.0 * auto_triaged / total_cases, 1) if total_cases else None
+        ),
+        "response_times": timings,
+        "not_measured": timings["not_measured"],
+    }
 
 
 def serialize_report(r: ExecReport) -> Dict[str, Any]:
