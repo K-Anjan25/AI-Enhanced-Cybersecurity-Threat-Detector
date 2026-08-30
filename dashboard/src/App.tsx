@@ -41,6 +41,7 @@ const ResponseTimesPage = React.lazy(() => import("./features/analytics/pages/Re
 const GdprRequestsPage = React.lazy(() => import("./features/retention/pages/GdprRequestsPage"));
 const ApprovalsPage = React.lazy(() => import("./features/approvals/pages/ApprovalsPage"));
 const HuntConsolePage = React.lazy(() => import("./features/hunting/pages/HuntConsolePage"));
+const AttackSurfacePage = React.lazy(() => import("./features/exposure/pages/AttackSurfacePage"));
 const AssetInventoryPage = React.lazy(() => import("./features/assets/pages/AssetInventoryPage"));
 const DataRetentionPage = React.lazy(() => import("./features/retention/pages/DataRetentionPage"));
 const Final10Page = React.lazy(() => import("./features/advanced/pages/Final10Page"));
@@ -127,6 +128,7 @@ export default function App(): JSX.Element {
               <Route path="noctra-os" element={<Final10Page />} />
               <Route path="ztna" element={<ModulePage />} />
               <Route path="hunting" element={<HuntConsolePage />} />
+              <Route path="attack-surface" element={<AttackSurfacePage />} />
               <Route path="vulns" element={<ModulePage />} />
               <Route path="cspm" element={<ModulePage />} />
               <Route path="sbom" element={<ModulePage />} />
