@@ -26,7 +26,6 @@ const row = (over: Record<string, unknown> = {}) => ({
   has_rule: true,
   has_hunt: false,
   has_playbook: false,
-  has_exercise: false,
   detection_count: 3,
   coverage_score: 25,
   gap_reason: null,

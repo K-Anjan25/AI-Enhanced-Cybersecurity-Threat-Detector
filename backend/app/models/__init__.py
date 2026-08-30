@@ -32,11 +32,9 @@ from app.models.compliance_continuous import ComplianceControl, ComplianceEviden
 from app.models.exec_risk import RiskMetric, ExecReport, ROIMetric
 from app.models.ha_eventbus import EventBusMessage, HANode
 from app.models.risk_based import Asset, RiskBasedRule, RiskScoreLog
-from app.models.purple_team import PurpleTeamExercise, PurpleTeamFinding
 from app.models.attack_coverage import AttackCoverage, AttackCoverageReport
 from app.models.soc_tv import SOCWallConfig, SOCWallMetric
 from app.models.approval_workflow import ApprovalWorkflow, ApprovalInstance, ApprovalTask
-from app.models.hunt_notebook import HuntNotebook, NotebookCell, NotebookExecution
 from app.models.exposure import ASM_Domain, ASM_AssetExposure, ASM_Certificate, ExposureFinding
 from app.models.attack_path import AttackPath, AttackPathFinding
 from app.models.drp import DRP_Monitor, DRP_Finding, DRP_Takedown
@@ -130,8 +128,6 @@ __all__ = [
     "Asset",
     "RiskBasedRule",
     "RiskScoreLog",
-    "PurpleTeamExercise",
-    "PurpleTeamFinding",
     "AttackCoverage",
     "AttackCoverageReport",
     "SOCWallConfig",
@@ -139,9 +135,6 @@ __all__ = [
     "ApprovalWorkflow",
     "ApprovalInstance",
     "ApprovalTask",
-    "HuntNotebook",
-    "NotebookCell",
-    "NotebookExecution",
     "ASM_Domain",
     "ASM_AssetExposure",
     "ASM_Certificate",

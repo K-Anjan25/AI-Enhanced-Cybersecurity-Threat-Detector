@@ -89,8 +89,8 @@ These four surface directly on the case and brief screens through the shared
 chain, zero-trust access, compliance packs, hunting, deception, forensics,
 threat-intel platform, SOAR playbooks, reporting and admin/RBAC.
 
-**Labs** (exploratory, clearly labelled in the UI): SOC TV wall and the
-remaining research surfaces.
+**Operate:** detection coverage, asset inventory, data retention and the SOC
+TV wall.
 
 ### Scope note
 
@@ -105,7 +105,17 @@ Earlier revisions advertised 150 "phases". Two groups have been withdrawn:
   algorithms, and SOC manager marked every orchestration step complete in a
   loop. A buyer could not tell these from real findings.
 
-All 56 were referenced by no other code. What remains is the product that can
+- **23 Labs capabilities.** Sixteen sat behind tabbed hubs that rendered raw
+  JSON; an audit against their database queries found three computing from
+  real rows (detection coverage, asset inventory, data retention), which were
+  promoted to their own pages. The other thirteen fabricated their output.
+  A later pass removed purple-team exercises and hunt notebooks: running an
+  exercise wrote synthetic alerts tagged with its own ATT&CK technique, which
+  the coverage scorer then counted as detection evidence, moving a technique
+  from 25 to 60 without any real capability being added; notebooks reported
+  `"mock_result"` and a `completed` status for Python they never executed.
+
+All were referenced by no other code. What remains is the product that can
 actually be demonstrated.
 
 ## Project Structure
