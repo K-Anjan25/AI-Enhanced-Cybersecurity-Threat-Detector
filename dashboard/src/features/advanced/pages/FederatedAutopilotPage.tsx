@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, Button, PageHeader, Spinner } from "../../../components/ui";
+import { RawData } from "../../../components/ui";
 import { Share2, Wrench } from "lucide-react";
 import apiClient from "../../../api/client";
 
@@ -79,8 +80,8 @@ export default function FederatedAutopilotPage() {
               {tab === "autopilot" && <><p>Summary: {data?.total_rules ?? 0} rules, {data?.executed ?? 0} executed, {data?.pending ?? 0} pending, {data?.open_violations ?? 0} open violations, rate {data?.auto_remediation_rate?.toFixed(1) ?? 0}%</p><p className="text-content-tertiary">Auto-remediate CIS: close S3 public, restrict SG, enable CloudTrail, rotate IAM keys, dry_run + approval for CRITICAL, rollback_id</p></>}
             </div>
 
-            <pre className="mt-6 p-4 bg-app-subtle rounded text-xs overflow-auto max-h-[400px] border border-line-subtle">{JSON.stringify(data, null, 2)}</pre>
-            {extra && <pre className="mt-3 p-4 bg-app-surface border border-accent-primary/30 rounded text-xs overflow-auto max-h-[300px]">{JSON.stringify(extra, null, 2)}</pre>}
+            <RawData value={data} />
+            <RawData value={extra} label="Result" />
           </div>
         )}
       </Card>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, Button, PageHeader, Spinner } from "../../../components/ui";
+import { RawData } from "../../../components/ui";
 import { Shield, Search, Bug, Bot, Fingerprint, Cloud, Package, EyeOff, FileSearch, Share2, FileCheck, BarChart3 } from "lucide-react";
 import apiClient from "../../../api/client";
 
@@ -19,10 +20,10 @@ const api = {
   execRoi: () => apiClient.get("/exec-risk/roi"),
 };
 
-type Tab = "itdr" | "cspm" | "sbom" | "deception" | "forensics" | "tip" | "compliance" | "exec";
+export type Tab = "itdr" | "cspm" | "sbom" | "deception" | "forensics" | "tip" | "compliance" | "exec";
 
-export default function FuturePhasesPage() {
-  const [tab, setTab] = useState<Tab>("itdr");
+export default function FuturePhasesPage({ initialTab }: { initialTab?: Tab } = {}) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? "itdr");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +104,8 @@ export default function FuturePhasesPage() {
             {tab === "compliance" && <div className="text-xs space-y-2"><p>Controls: {Array.isArray(data) ? data.length : 0}</p><p className="text-content-tertiary">SOC2 CC6.1/6.2/7.2/8.1, evidence from audit_logs, score compliant/total*100.</p></div>}
             {tab === "exec" && <div className="text-xs space-y-2"><p>Metrics: {Array.isArray(data) ? data.length : 0}</p><p className="text-content-tertiary">MTTD, high alerts, avg vuln risk, board pack JSON, ROI hours/dollars.</p></div>}
 
-            <pre className="mt-6 p-4 bg-app-subtle rounded text-xs overflow-auto max-h-[400px] border border-line-subtle">{JSON.stringify(data, null, 2)}</pre>
-            {extra && <pre className="mt-3 p-4 bg-app-surface border border-accent-primary/30 rounded text-xs overflow-auto max-h-[300px]">{JSON.stringify(extra, null, 2)}</pre>}
+            <RawData value={data} />
+            <RawData value={extra} label="Result" />
           </div>
         )}
       </Card>

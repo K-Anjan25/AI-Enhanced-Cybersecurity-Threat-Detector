@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, Button, PageHeader, Spinner } from "../../../components/ui";
+import { RawData } from "../../../components/ui";
 import { Shield, Users, Monitor, FileArchive, Layers } from "lucide-react";
 import apiClient from "../../../api/client";
 
@@ -86,8 +87,8 @@ export default function FinalPhasesPage() {
               {tab === "tv" && <><p>Live: {data?.total_alerts ?? 0} alerts, {data?.open_cases ?? 0} open cases, {data?.alerts_per_minute ?? 0}/min</p><p className="text-content-tertiary">TV wall black theme, auto-refresh 5s, widgets alert_feed/open_cases/risk_metrics/heatmap</p></>}
             </div>
 
-            <pre className="mt-6 p-4 bg-app-subtle rounded text-xs overflow-auto max-h-[400px] border border-line-subtle">{JSON.stringify(data, null, 2)}</pre>
-            {extra && <pre className="mt-3 p-4 bg-app-surface border border-accent-primary/30 rounded text-xs overflow-auto max-h-[300px]">{JSON.stringify(extra, null, 2)}</pre>}
+            <RawData value={data} />
+            <RawData value={extra} label="Result" />
           </div>
         )}
       </Card>

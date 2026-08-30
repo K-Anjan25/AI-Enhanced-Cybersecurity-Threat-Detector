@@ -1,23 +1,53 @@
-import React from "react";
 import { useLocation } from "react-router-dom";
-import FuturePhasesPage from "../../advanced/pages/FuturePhasesPage";
-import NextPhasesPage from "../../advanced/pages/NextPhasesPage";
+import FuturePhasesPage, { type Tab as FutureTab } from "../../advanced/pages/FuturePhasesPage";
+import NextPhasesPage, { type Tab as NextTab } from "../../advanced/pages/NextPhasesPage";
 import AdvancedHubPage from "../../advanced/pages/AdvancedHubPage";
-import ThreatAlertsPage from "../../alerts/pages/ThreatAlertsPage";
+
+/**
+ * Several nav entries share a tabbed hub page rather than having a page each.
+ *
+ * Jakob's Law: people expect a navigation item to land on the thing it names.
+ * Previously every one of these routes opened its hub on the hub's *first*
+ * tab — clicking "Vulnerabilities" showed ZTNA, and clicking "Forensics"
+ * showed ITDR. The route now selects the matching tab, so the destination
+ * always matches the label the operator clicked.
+ */
+
+const NEXT_TABS: Record<string, NextTab> = {
+  "/ztna": "ztna",
+  "/hunting": "hunt",
+  "/vulns": "vuln",
+  "/ai-agent": "agent",
+};
+
+const FUTURE_TABS: Record<string, FutureTab> = {
+  "/itdr": "itdr",
+  "/cspm": "cspm",
+  "/sbom": "sbom",
+  "/deception": "deception",
+  "/forensics": "forensics",
+  "/tip": "tip",
+  "/compliance-continuous": "compliance",
+  "/exec-risk": "exec",
+};
+
+const matchPrefix = <T,>(path: string, table: Record<string, T>): T | undefined => {
+  const key = Object.keys(table).find((p) => path === p || path.startsWith(`${p}/`));
+  return key ? table[key] : undefined;
+};
 
 export default function ModulePage() {
-  const loc = useLocation();
-  const path = loc.pathname;
+  const path = useLocation().pathname;
 
-  // Map path to which hub to show
-  if (path.startsWith("/ztna") || path.startsWith("/hunting") || path.startsWith("/vulns") || path.startsWith("/ai-agent")) {
-    return <NextPhasesPage />;
-  }
-  if (path.startsWith("/cspm") || path.startsWith("/sbom") || path.startsWith("/deception") || path.startsWith("/forensics") || path.startsWith("/itdr") || path.startsWith("/tip") || path.startsWith("/compliance-continuous") || path.startsWith("/exec-risk")) {
-    return <FuturePhasesPage />;
-  }
+  const nextTab = matchPrefix(path, NEXT_TABS);
+  if (nextTab) return <NextPhasesPage initialTab={nextTab} />;
+
+  const futureTab = matchPrefix(path, FUTURE_TABS);
+  if (futureTab) return <FuturePhasesPage initialTab={futureTab} />;
+
   if (path.startsWith("/threat-intel") || path.startsWith("/attack-navigator")) {
     return <AdvancedHubPage />;
   }
+
   return <div className="p-6 text-sm text-content-secondary">Module {path} — view in Advanced Hub</div>;
 }

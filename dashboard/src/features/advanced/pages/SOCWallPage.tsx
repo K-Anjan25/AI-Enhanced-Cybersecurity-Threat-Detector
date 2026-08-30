@@ -88,7 +88,6 @@ export default function SOCWallPage() {
             </div>
           </Card>
 
-          <pre className="p-4 bg-app-void rounded-sm text-[10px] font-mono overflow-auto max-h-[200px] border border-line-subtle text-content-secondary">{JSON.stringify(metrics, null, 2)}</pre>
         </>
       )}
     </div>

@@ -62,12 +62,6 @@ const Row: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const Json: React.FC<{ value: unknown }> = ({ value }) => (
-  <pre className="text-[11px] font-mono bg-app-subtle border border-line-subtle rounded-sm p-2 overflow-auto max-h-48 text-content-secondary">
-    {JSON.stringify(value, null, 2)}
-  </pre>
-);
-
 export default function Final10Page() {
   const { push } = useToast();
   const [tab, setTab] = useState<TabId>("posture");
