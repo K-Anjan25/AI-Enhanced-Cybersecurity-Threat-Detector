@@ -45,11 +45,6 @@ const FEEDS: Record<string, Feed> = {
       { label: "Policies", path: "/ztna/policies" },
     ],
   },
-  "/hunting": {
-    title: "Threat hunting",
-    description: "Saved hunts and the queries behind them.",
-    sources: [{ label: "Hunts", path: "/hunts" }],
-  },
   "/vulns": {
     title: "Vulnerabilities",
     description: "Known vulnerabilities across your assets, ranked by risk.",
