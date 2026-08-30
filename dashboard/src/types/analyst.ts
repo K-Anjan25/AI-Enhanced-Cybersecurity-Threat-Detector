@@ -67,6 +67,46 @@ export interface AnalystCase {
   decided_at?: string | null;
   soar_action_id?: string | null;
   report?: string | null;
+  /**
+   * What this case means for *this* org, joined from the risk modules
+   * (attack paths, posture, DRP). Keys are absent when a module has no real
+   * data — never populated with placeholders.
+   */
+  context?: CaseContext | null;
+  /** Plain-English lines derived from `context`, ready to render. */
+  context_summary?: string[] | null;
+}
+
+export interface CaseContext {
+  crown_jewel_reach?: {
+    path_id: number;
+    hops: number;
+    crown_jewel: string;
+    risk_score?: number;
+    techniques?: string[];
+    route?: string[];
+  };
+  posture?: {
+    current_score: number;
+    points_at_risk: number;
+    projected_score: number;
+    trend?: string;
+  };
+  leaked_credentials?: {
+    finding_id: number;
+    identity: string;
+    finding_type: string;
+    severity: string;
+    title: string;
+    source: string;
+  }[];
+  affected_assets?: {
+    id: number;
+    name: string;
+    criticality: number;
+    business_unit?: string | null;
+    owner?: string | null;
+  }[];
 }
 
 export interface Brief {
@@ -83,6 +123,34 @@ export interface TimelineEntry {
   kind: "evidence" | "opened" | "action_recorded" | "decision" | "report" | "chat" | string;
   label: string;
   detail?: string | null;
+}
+
+/** One signal that moved (or could have moved) a case's confidence. */
+export interface ReasoningSignal {
+  signal: string;
+  label: string;
+  contribution: number;
+  detail: string;
+  evidence: Record<string, unknown>;
+}
+
+/** A signal that could not be consulted, and why. Never means "clean". */
+export interface UnavailableSignal {
+  signal: string;
+  label: string;
+  reason: string;
+}
+
+export interface ReasoningResponse {
+  base: number;
+  signals: ReasoningSignal[];
+  unavailable: UnavailableSignal[];
+  confidence: number | null;
+  confidence_cap?: number;
+  capped?: boolean;
+  coverage?: string;
+  summary: string;
+  error?: string;
 }
 
 export interface TimelineResponse {
@@ -149,6 +217,8 @@ export interface ConnectorConfigInput {
   auth_token?: string;
   ingest_token?: string;
   enabled?: boolean;
+  /** IANA zone for timestamps this source sends without an offset. */
+  event_time_zone?: string;
 }
 
 /** Read model returned by the config endpoints — secrets are never included. */
@@ -162,6 +232,8 @@ export interface ConnectorConfig {
   has_auth_token: boolean;
   has_ingest_token: boolean;
   enabled: boolean;
+  /** null means naive timestamps from this source are read as UTC. */
+  event_time_zone: string | null;
   last_sync: string | null;
   last_status: string | null;
   last_error: string | null;

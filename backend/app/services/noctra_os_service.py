@@ -36,27 +36,47 @@ def update_autonomy(db: Session, org_id: int, level: str) -> NOCTRA_OS_Config:
     db.commit()
     return cfg
 
+# Median minutes a human analyst spends triaging one alert by hand. Used only
+# to express saved effort in hours; the underlying count is real.
+_MINUTES_PER_MANUAL_TRIAGE = 20
+
+
 def get_os_metrics(db: Session, org_id: int) -> Dict[str, Any]:
+    """Operating metrics, every one counted from real rows.
+
+    Anything we cannot measure (uptime, for instance, which lives in the
+    platform's monitoring rather than this database) is omitted rather than
+    asserted — a made-up 99.9% is a promise the product cannot keep.
+    """
     total_alerts = db.query(SecurityAlert).filter(SecurityAlert.org_id == org_id).count()
     open_cases = db.query(Case).filter(Case.org_id == org_id, Case.status != "closed").count()
     closed_cases = db.query(Case).filter(Case.org_id == org_id, Case.status == "closed").count()
 
-    # Mock OS metrics
-    metrics = {
-        "autonomy_score": 75,
-        "cases_auto_resolved": closed_cases,
-        "analyst_hours_saved": closed_cases * 0.5,
+    analyst_cases = db.query(Case).filter(Case.org_id == org_id, Case.kind == "analyst")
+    total_analyst = analyst_cases.count()
+    decided = analyst_cases.filter(Case.decision.in_(("approved", "declined", "reverted"))).count()
+    approved = analyst_cases.filter(Case.decision == "approved").count()
+
+    cfg = get_or_create_config(db, org_id)
+
+    metrics: Dict[str, Any] = {
         "total_alerts": total_alerts,
         "open_cases": open_cases,
-        "auto_triage_rate": 65,
-        "modules_enabled": 42,  # P49-90 = 42 modules
-        "uptime_percent": 99.9,
+        "closed_cases": closed_cases,
+        # Share of alerts NOCTRA turned into a reasoned case on its own.
+        "auto_triage_rate": round((total_analyst / total_alerts) * 100.0, 1) if total_alerts else 0.0,
+        # Of the cases it proposed, how many a human agreed with. This is the
+        # trust metric: it is what justifies raising the autonomy level.
+        "recommendation_accept_rate": round((approved / decided) * 100.0, 1) if decided else 0.0,
+        "cases_awaiting_decision": total_analyst - decided,
+        "analyst_hours_saved": round((total_analyst * _MINUTES_PER_MANUAL_TRIAGE) / 60.0, 1),
+        "autonomy_level": cfg.autonomy_level,
+        "modules_enabled": len(cfg.modules_json or []),
     }
 
-    # Persist
     for name, value in metrics.items():
-        m = NOCTRA_OS_Metric(org_id=org_id, metric_name=name, metric_value=float(value))
-        db.add(m)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            db.add(NOCTRA_OS_Metric(org_id=org_id, metric_name=name, metric_value=float(value)))
     db.commit()
 
     return metrics

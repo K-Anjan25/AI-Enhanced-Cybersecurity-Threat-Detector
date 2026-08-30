@@ -1,6 +1,6 @@
 """Phase 82: ATT&CK Coverage Dashboard."""
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, JSON, Float
+from sqlalchemy import UniqueConstraint, Column, Integer, String, DateTime, Boolean, Text, ForeignKey, JSON, Float
 from datetime import datetime, timezone
 from app.core.database import Base
 
@@ -9,6 +9,14 @@ def _now():
 
 class AttackCoverage(Base):
     __tablename__ = "attack_coverage"
+    # One row per technique per tenant. Evaluation upserts, and two evaluations
+    # running at once would each miss the other's insert and create duplicates,
+    # double-counting the coverage percentage. The database is the only place
+    # that can enforce this across concurrent sessions.
+    __table_args__ = (
+        UniqueConstraint("org_id", "mitre_technique_id", name="uq_attack_coverage_org_technique"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     org_id = Column(Integer, ForeignKey("orgs.id"), nullable=False, index=True)
     mitre_tactic = Column(String(50), nullable=False)  # initial-access, execution, etc
@@ -18,7 +26,6 @@ class AttackCoverage(Base):
     has_detection_rule = Column(Boolean, default=False)
     has_hunt = Column(Boolean, default=False)
     has_playbook = Column(Boolean, default=False)
-    has_purple_exercise = Column(Boolean, default=False)
     detection_count = Column(Integer, default=0)  # how many alerts mapped
     coverage_score = Column(Float, default=0.0)  # 0-100
     # Gap analysis

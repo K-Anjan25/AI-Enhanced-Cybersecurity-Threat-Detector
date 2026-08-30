@@ -27,6 +27,13 @@ class ConnectorConfigRequest(BaseModel):
     auth_token: Optional[str] = None
     ingest_token: Optional[str] = None
     enabled: Optional[bool] = None
+    event_time_zone: Optional[str] = Field(
+        None,
+        description=(
+            "IANA zone for timestamps this source sends without an offset, e.g. "
+            "'America/New_York'. Leave unset to read them as UTC."
+        ),
+    )
 
 
 class IngestRequest(BaseModel):

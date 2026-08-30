@@ -10,6 +10,10 @@ from app.core.abac import require_permission
 from app.models.user import User
 from app.services import noctra_os_service
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/noctra-os", tags=["NOCTRA OS (Phase 100)"])
 
 class AutonomyIn(BaseModel):
@@ -20,8 +24,12 @@ def get_config(db: Session = Depends(get_db), current_user: User = Depends(requi
     try:
         cfg = noctra_os_service.get_or_create_config(db, current_user.org_id)
         return noctra_os_service.serialize_config(cfg)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/autonomy")
 def set_autonomy(payload: AutonomyIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
@@ -30,20 +38,31 @@ def set_autonomy(payload: AutonomyIn, db: Session = Depends(get_db), current_use
         return noctra_os_service.serialize_config(cfg)
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/metrics")
 def get_metrics(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         return noctra_os_service.get_os_metrics(db, current_user.org_id)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/logs")
 def list_logs(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         logs = noctra_os_service.list_logs(db, current_user.org_id)
         return [noctra_os_service.serialize_log(l) for l in logs]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e

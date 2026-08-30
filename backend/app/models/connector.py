@@ -63,6 +63,14 @@ class ConnectorSource(Base):
     events_ingested = Column(Integer, default=0, nullable=False)
 
     # Phase 42: incremental sync — cursor/pagination state for real APIs (GitHub, Slack, etc)
+    # IANA zone (e.g. "America/New_York") for timestamps this source sends
+    # without an offset. Naive timestamps are otherwise read as UTC, which is
+    # right for every provider wired up so far but silently wrong for one
+    # emitting local time — and unlike a bad field mapping, that produces a
+    # plausible number rather than a NULL, so nothing downstream can detect it.
+    # There is no way to infer this from the payload, so it must be declared.
+    event_time_zone = Column(String(64), nullable=True)
+
     last_cursor = Column(Text, nullable=True)  # opaque cursor for next page / incremental sync
     sync_state = Column(Text, nullable=True)  # JSON blob for provider-specific state (etag, since, etc)
 

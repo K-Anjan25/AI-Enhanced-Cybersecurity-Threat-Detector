@@ -1,6 +1,6 @@
 """Phase 84: SOC TV Wall endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -10,6 +10,10 @@ from app.core.security import get_current_user
 from app.core.abac import require_permission
 from app.models.user import User
 from app.services import soc_tv_service
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/soc-tv", tags=["SOC TV Wall (Phase 84)"])
 
@@ -24,16 +28,24 @@ def list_configs(db: Session = Depends(get_db), current_user: User = Depends(req
         soc_tv_service.seed_default_wall(db, current_user.org_id)
         configs = soc_tv_service.list_wall_configs(db, current_user.org_id)
         return [soc_tv_service.serialize_config(c) for c in configs]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/configs")
 def create_config(payload: WallConfigIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         cfg = soc_tv_service.create_wall_config(db, current_user.org_id, payload.name, payload.widgets, payload.is_default, created_by_user_id=current_user.id)
         return soc_tv_service.serialize_config(cfg)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/live")
 def get_live_metrics(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
@@ -47,5 +59,8 @@ def stream_metrics(db: Session = Depends(get_db), current_user: User = Depends(r
     """For TV wall, returns live metrics - frontend polls every 5s or uses SSE."""
     try:
         return soc_tv_service.get_live_metrics(db, current_user.org_id)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
