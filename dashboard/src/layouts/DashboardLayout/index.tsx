@@ -35,6 +35,7 @@ import {
   Network,
   Boxes,
   Radar,
+  Timer,
   Archive,
   Gavel,
   Database,
@@ -125,6 +126,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Operate",
     collapsedByDefault: true,
     items: [
+      { name: "Response Times", path: "/response-times", icon: Timer },
       { name: "Detection Coverage", path: "/attack-coverage", icon: Radar },
       { name: "Asset Inventory", path: "/assets", icon: Boxes },
       { name: "Data Retention", path: "/retention", icon: Archive },

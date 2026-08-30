@@ -33,9 +33,14 @@ export const Select: React.FC<SelectProps> = ({
     className
   );
 
+  // In inline mode the visible label is dropped, which previously left the
+  // control with no accessible name at all. Fall back to aria-label so screen
+  // readers (and tests) can still identify it.
+  const accessibleName = props["aria-label"] ?? (inline ? label : undefined);
+
   const select = (
     <div className="relative">
-      <select className={field} {...props}>
+      <select className={field} aria-label={accessibleName} {...props}>
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
