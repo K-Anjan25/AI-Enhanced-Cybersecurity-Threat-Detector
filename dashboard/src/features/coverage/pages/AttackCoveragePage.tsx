@@ -18,7 +18,7 @@ import { getApiError } from "../../../utils/getApiError";
  *
  * Every row is derived from real artefacts in this tenant: alerts carrying a
  * technique ID, hunt queries mentioning it, named playbooks and purple-team
- * exercises. A technique with no matching artefact is reported as a gap rather
+ * playbooks. A technique with no matching artefact is reported as a gap rather
  * than quietly scored as covered.
  */
 
@@ -30,7 +30,6 @@ interface CoverageRow {
   has_rule: boolean;
   has_hunt: boolean;
   has_playbook: boolean;
-  has_exercise: boolean;
   detection_count: number;
   coverage_score: number;
   gap_reason?: string | null;
@@ -108,7 +107,7 @@ export default function AttackCoveragePage() {
     <div className="space-y-6">
       <PageHeader
         title="Detection coverage"
-        description="Which ATT&CK techniques you could actually catch, based on the rules, hunts, playbooks and exercises that exist in this tenant."
+        description="Which ATT&CK techniques you could actually catch, based on the detection rules, hunts and playbooks that exist in this tenant."
         actions={
           <Button variant="secondary" size="sm" onClick={reevaluate} disabled={busy || loading}>
             <RefreshCw size={13} className="mr-1.5" /> Re-evaluate
@@ -180,7 +179,6 @@ export default function AttackCoveragePage() {
                         <Signal on={r.has_rule} label="rule" />
                         <Signal on={r.has_hunt} label="hunt" />
                         <Signal on={r.has_playbook} label="playbook" />
-                        <Signal on={r.has_exercise} label="exercise" />
                         <span
                           className={`text-xs font-mono font-bold w-10 text-right ${scoreTone(r.coverage_score)}`}
                         >

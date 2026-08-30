@@ -49,11 +49,9 @@ from app.api.v1.endpoints import (
     exec_risk,
     ha_eventbus,
     risk_based,
-    purple_team,
     attack_coverage,
     soc_tv,
     approval_workflows,
-    hunt_notebooks,
     exposure,
     attack_path,
     drp,
@@ -117,13 +115,11 @@ api_router.include_router(exec_risk.router)
 # Phases 73-80
 api_router.include_router(ha_eventbus.router)
 api_router.include_router(risk_based.router)
-api_router.include_router(purple_team.router)
 # Phases 81-84
 api_router.include_router(attack_coverage.router)
 api_router.include_router(soc_tv.router)
 # Phases 85-88
 api_router.include_router(approval_workflows.router)
-api_router.include_router(hunt_notebooks.router)
 api_router.include_router(exposure.router)
 # Phases 89-90
 # Phases 91-100

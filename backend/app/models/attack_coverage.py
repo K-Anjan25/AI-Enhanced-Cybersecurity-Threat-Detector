@@ -18,7 +18,6 @@ class AttackCoverage(Base):
     has_detection_rule = Column(Boolean, default=False)
     has_hunt = Column(Boolean, default=False)
     has_playbook = Column(Boolean, default=False)
-    has_purple_exercise = Column(Boolean, default=False)
     detection_count = Column(Integer, default=0)  # how many alerts mapped
     coverage_score = Column(Float, default=0.0)  # 0-100
     # Gap analysis

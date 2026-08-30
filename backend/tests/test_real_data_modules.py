@@ -477,3 +477,117 @@ def test_seed_assets_no_longer_fabricates_a_ceo_laptop(db_session):
 
     assert risk_based_service.seed_assets(db_session, ORG) == []
     assert db_session.query(Asset).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Attack coverage scoring
+# ---------------------------------------------------------------------------
+
+def test_coverage_score_cannot_be_raised_by_simulated_alerts(db_session):
+    """Purple-team runs used to inflate the score they were measuring.
+
+    run_exercise() wrote synthetic HIGH alerts tagged with the exercise's own
+    technique. evaluate_coverage() then counted those alerts as detection
+    evidence for that technique, so one simulated run moved it from 25 to 60
+    with no real detection capability added. The exercise signal is gone; only
+    rules, hunts and playbooks count.
+    """
+    from app.services import attack_coverage_service
+    from app.models import SecurityAlert
+
+    rows = attack_coverage_service.evaluate_coverage(db_session, ORG)
+    baseline = {r.mitre_technique_id: r.coverage_score for r in rows}
+    target = rows[0].mitre_technique_id
+
+    # Simulate what run_exercise did: write an alert for the technique.
+    db_session.add(
+        SecurityAlert(
+            org_id=ORG,
+            severity="HIGH",
+            source="purple_team",
+            message="simulated step",
+            alert_type="purple_team",
+            mitre_technique_id=target,
+        )
+    )
+    db_session.commit()
+
+    after = {
+        r.mitre_technique_id: r.coverage_score
+        for r in attack_coverage_service.evaluate_coverage(db_session, ORG)
+    }
+
+    # An observed alert may corroborate (+10) but must not manufacture the
+    # 25-point jump a fake "exercise covered this" signal used to grant.
+    assert after[target] - baseline[target] <= 10
+
+
+def test_serialized_coverage_no_longer_advertises_exercises(db_session):
+    from app.services import attack_coverage_service
+
+    rows = attack_coverage_service.evaluate_coverage(db_session, ORG)
+    payload = attack_coverage_service.serialize_coverage(rows[0])
+    assert "has_exercise" not in payload
+    assert {"has_rule", "has_hunt", "has_playbook"} <= set(payload)
+
+
+def test_uncovered_technique_scores_zero(db_session):
+    """A fresh tenant has no rules, hunts or playbooks — that is a real zero."""
+    from app.services import attack_coverage_service
+
+    rows = attack_coverage_service.evaluate_coverage(db_session, ORG)
+    assert all(r.coverage_score == 0 for r in rows), "nothing should be covered yet"
+
+
+# ---------------------------------------------------------------------------
+# DRP provider honesty
+# ---------------------------------------------------------------------------
+
+def test_api_key_alone_does_not_enable_an_unimplemented_provider(monkeypatch):
+    """Setting a key used to flip `enabled` for a scanner that does not exist.
+
+    The scan loop then skipped its "not checked" guard, stamped the monitor as
+    checked, and looked up nothing — a silent false clean on exactly the
+    monitors an operator most wants to trust.
+    """
+    from app.core.config import settings
+    from app.services import drp_service
+
+    monkeypatch.setattr(settings, "DRP_DARKWEB_API_KEY", "sk-live-whatever", raising=False)
+    monkeypatch.setattr(settings, "DRP_BREACH_API_KEY", "sk-live-whatever", raising=False)
+
+    status = drp_service.provider_status()
+    assert status["dark_web"]["enabled"] is False
+    assert status["breach_database"]["enabled"] is False
+    for provider in ("dark_web", "breach_database"):
+        assert "does not enable" in status[provider]["reason"]
+
+
+def test_unimplemented_monitors_are_not_stamped_as_checked(db_session, monkeypatch):
+    from app.core.config import settings
+    from app.models.drp import DRP_Monitor
+    from app.services import drp_service
+
+    monkeypatch.setattr(settings, "DRP_BREACH_API_KEY", "sk-live-whatever", raising=False)
+
+    monitor = DRP_Monitor(
+        org_id=ORG, name="CEO mailbox", monitor_type="email",
+        keyword="ceo@acme.com", is_active=True,
+    )
+    db_session.add(monitor)
+    db_session.commit()
+
+    drp_service.scan_drp(db_session, ORG)
+    db_session.refresh(monitor)
+
+    assert monitor.last_checked_at is None, (
+        "an unchecked monitor must not claim it was checked"
+    )
+
+
+def test_scan_report_names_what_it_could_not_check(db_session):
+    from app.services import drp_service
+
+    report = drp_service.scan_report(db_session, ORG)
+    assert "dark_web" in report["coverage_note"]
+    assert "breach_database" in report["coverage_note"]

@@ -213,13 +213,24 @@ def provider_status() -> Dict[str, Any]:
             "enabled": ct_log_client.is_enabled(),
             "reason": None if ct_log_client.is_enabled() else "DRP_CT_ENABLED is false",
         },
+        # No client has been written for either of these yet. Reporting
+        # "enabled" from the mere presence of an API key would be a false
+        # clean: the scan loop has nothing to call, so every monitor would be
+        # stamped as checked while nothing was looked up. They stay disabled
+        # until a real lookup exists, whatever the configuration says.
         "dark_web": {
-            "enabled": bool(getattr(settings, "DRP_DARKWEB_API_KEY", None)),
-            "reason": None if getattr(settings, "DRP_DARKWEB_API_KEY", None) else "DRP_DARKWEB_API_KEY not set",
+            "enabled": False,
+            "reason": (
+                "no dark-web lookup is implemented; DRP_DARKWEB_API_KEY alone "
+                "does not enable one"
+            ),
         },
         "breach_database": {
-            "enabled": bool(getattr(settings, "DRP_BREACH_API_KEY", None)),
-            "reason": None if getattr(settings, "DRP_BREACH_API_KEY", None) else "DRP_BREACH_API_KEY not set",
+            "enabled": False,
+            "reason": (
+                "no breach-database lookup is implemented; DRP_BREACH_API_KEY "
+                "alone does not enable one"
+            ),
         },
     }
 
@@ -393,16 +404,21 @@ def scan_drp(db: Session, org_id: int) -> List[DRP_Finding]:
     status = provider_status()
 
     for monitor in monitors:
-        monitor.last_checked_at = _now()
-
         if monitor.monitor_type == "domain":
+            # Only the domain monitor has a real implementation behind it.
+            monitor.last_checked_at = _now()
             findings.extend(_scan_domain_monitor(db, org_id, monitor, status))
+            continue
 
-        # External lookups stay silent rather than fabricating results.
-        if monitor.monitor_type in ("email", "credential") and not status["breach_database"]["enabled"]:
-            continue
-        if monitor.monitor_type == "dark_web" and not status["dark_web"]["enabled"]:
-            continue
+        # Everything else depends on a provider that does not exist yet.
+        # Leaving last_checked_at untouched is deliberate: stamping it would
+        # tell the operator this monitor was examined and found clean.
+        if monitor.monitor_type in ("email", "credential"):
+            if not status["breach_database"]["enabled"]:
+                continue
+        elif monitor.monitor_type == "dark_web":
+            if not status["dark_web"]["enabled"]:
+                continue
 
     db.commit()
     for f in findings:
