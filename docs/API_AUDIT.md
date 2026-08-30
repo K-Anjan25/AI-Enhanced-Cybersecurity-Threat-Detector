@@ -17,8 +17,8 @@ from it, named by the button or page where possible — and classifies it.
 | Route groups | 66 |
 | Reachable from the UI | 183 paths |
 | No UI caller | 75 paths |
-| Backend tests | 520 passing, 2 skipped (32 files) |
-| Frontend tests | 153 passing (20 files) |
+| Backend tests | 531 passing, 2 skipped (33 files) |
+| Frontend tests | 162 passing (21 files) |
 | Type check / build | clean |
 
 "No UI caller" is not the same as "broken". Of the 79, roughly half are
@@ -62,6 +62,7 @@ Real features with real data behind them, reachable from the UI.
 | Asset inventory | **Operate → Asset Inventory** | Your machines and who owns them, with search and a crown-jewel filter. Feeds attack-path and blast-radius. |
 | Data retention | **Operate → Data Retention** | How long each kind of record is kept. Legal holds can be placed and released here. |
 | Erasure requests | **Operate → Erasure Requests** | GDPR right-to-erasure queue, with the one-month deadline tracked. |
+| Attack surface | **Attack Surface** | Hosts and services visible from outside, with the evidence for each. Dismissing a wrong record withdraws the attack paths built on it. |
 | Threat hunting | **Threat Hunting** | Ask a question of the alert history — `severity:CRITICAL AND source:okta` — and see what matches. Saves queries for reuse, and says when it did not understand part of one. |
 | Approvals | **Operate → Approvals** | Actions waiting on a second pair of eyes before they run. Shows what is blocked, for how long, and which review stage it is at. You cannot approve a request you raised. |
 | Attack paths | Case context, `/attack-path` | The route an attacker could take from an exposed service to something valuable. |
@@ -95,7 +96,6 @@ Ordered by how much the absence costs.
 | Capability | Endpoints | Why it matters |
 |---|---|---|
 | **Risk scoring rules** | 2 | You can record which assets are critical, but not the rules that turn criticality into alert priority. Half the feature is exposed. |
-| **Attack surface (exposure)** | 5 | Hostnames discovered from Certificate Transparency. Feeds attack-path search, so operators cannot see or correct the inputs to a conclusion the product draws. |
 | **Posture history / findings** | 2 | The score is shown; the trend and the individual findings behind it are not. |
 | **Threat-intel export (STIX/MISP)** | 4 | Sharing indicators with other tools. Common ask in procurement. |
 | **Alert export / clear** | 2 | Bulk operations an analyst expects. |
@@ -141,13 +141,26 @@ outcomes. The main functional gap is approval workflows (§5).
 
 ## 8. What next
 
-1. **Expose exposure findings** — operators cannot audit inputs that already
-   drive attack-path conclusions.
-2. **Wire an archive destination**, or remove the archive action until there is
-   one.
-3. **Hunt execution from the UI** — hunts can be written but not run.
-4. **Concurrency testing** — single-request cost is now known; behaviour under
-   parallel load is not.
-5. **Confirm mappings against live traffic** when a tenant is available. The
-   payload-shape tests cover the parsing; only real traffic proves the provider
-   sends what its documentation says.
+Everything reachable from a sandbox has been closed. What remains is either
+blocked on external access or genuinely lower value.
+
+**Blocked on a tenant**
+
+1. **Confirm connector mappings against live traffic.** `test_provider_payloads.py`
+   verifies each provider's documented shape and found two real bugs, but only
+   real traffic proves a provider sends what its documentation says. A free
+   GitHub account covers the highest-value case in about ten minutes; Slack
+   audit logs need Enterprise Grid and Entra sign-in logs need P1, so those are
+   not worth buying for this.
+
+**Worth doing, not urgent**
+
+2. **Board pack and threat-intel export UIs.** Both backends work and neither
+   has a page. The board pack now carries measured response times instead of
+   invented ROI, so it is worth exposing.
+3. **Sustained-throughput testing.** Single-request cost is measured and three
+   concurrency races are fixed, but no sustained load profile has been run.
+4. **Retry and backoff review.** Connector polling and outbound calls have no
+   documented retry policy; the `ha` module exists but is unexercised.
+5. **Delete-after-archive.** Archival copies data out and deliberately deletes
+   nothing. Closing that loop needs a verified-copy check before any deletion.
