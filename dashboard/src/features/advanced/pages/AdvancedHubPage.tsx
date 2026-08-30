@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { advancedApi } from "../../../api/advancedApi";
-import { Card, Badge, Button, PageHeader, Spinner } from "../../../components/ui";
+import { Card, Badge, Button, PageHeader, Spinner, RawData } from "../../../components/ui";
 import { Shield, Zap, MessageSquare, FileCode, Package, Users, Brain, Map, Archive, Server, Smartphone, CreditCard } from "lucide-react";
 
 type Tab = "threat" | "soar" | "collab" | "sigma" | "compliance" | "teams" | "ml" | "attack" | "retention" | "ha" | "pwa" | "billing";
@@ -98,11 +98,7 @@ export default function AdvancedHubPage() {
             {tab === "billing" && <BillingView data={data} />}
             {tab === "collab" && <CollabView />}
             
-            {tab !== "collab" && (
-              <pre className="mt-6 p-4 bg-app-subtle rounded text-xs overflow-auto max-h-[400px] border border-line-subtle">
-                {JSON.stringify(data, null, 2)}
-              </pre>
-            )}
+            {tab !== "collab" && <RawData value={data} />}
           </div>
         )}
       </Card>
@@ -126,7 +122,7 @@ function ThreatIntelView({ data }: { data: any }) {
         <div className="p-3 bg-app-subtle rounded border"><div className="text-xs text-content-tertiary">Shodan</div><div className="font-bold">{data?.providers?.shodan?.configured ? "Configured" : "No key"}</div></div>
         <div className="p-3 bg-app-subtle rounded border"><div className="text-xs text-content-tertiary">OTX</div><div className="font-bold">{data?.providers?.otx?.configured ? "Configured" : "No key"}</div></div>
       </div>
-      {result && <pre className="p-3 bg-app-subtle rounded text-xs overflow-auto max-h-60">{JSON.stringify(result,null,2)}</pre>}
+      <RawData value={result} label="Enrichment result" />
       <p className="text-xs text-content-tertiary">Without API keys, enrichment returns not_configured and cache only. Aggregation risk 0-100 from VT malicious*suspicious + AbuseIPDB confidence + Shodan vulns + OTX pulses.</p>
     </div>
   );
@@ -212,10 +208,12 @@ function AttackView({ data }: { data: any }) {
   );
 }
 function RetentionView({ data }: { data: any }) {
+  const [archive, setArchive] = useState<any>(null);
   return (
     <div className="space-y-3">
       {Array.isArray(data) && data.map((p:any)=><div key={p.id} className="p-3 bg-app-subtle rounded border text-sm"><div className="font-bold">{p.data_type} — {p.retention_days}d retain / {p.archive_after_days}d archive / {p.delete_after_days}d delete</div><div className="text-xs text-content-tertiary">{p.description}</div></div>)}
-      <Button size="sm" onClick={()=>advancedApi.runArchive(true).then(r=>alert(JSON.stringify(r.data)))}>Dry-run Archive</Button>
+      <Button size="sm" onClick={() => { void advancedApi.runArchive(true).then((r) => setArchive(r.data)).catch((e) => setArchive({ error: e?.message ?? "Dry-run failed" })); }}>Dry-run Archive</Button>
+      <RawData value={archive} label="Dry-run result" />
       <p className="text-xs text-content-tertiary">Retention policies (alerts 90/60/90), legal hold prevents archival, GDPR anonymization.</p>
     </div>
   );

@@ -15,4 +15,4 @@ export { BackButton } from "./BackButton";
 export { Breadcrumbs } from "./Breadcrumbs";
 export { SectionLabel } from "./SectionLabel";
 export { TrustPill } from "./TrustPill";
-export { Term } from "./Term";
+export { Term } from "./Term";export { RawData } from "./RawData";

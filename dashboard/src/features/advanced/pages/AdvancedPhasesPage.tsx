@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, Button, PageHeader, Spinner } from "../../../components/ui";
+import { RawData } from "../../../components/ui";
 import { Database, Radio, Store, Brain, ShieldAlert, Swords, FileDown, Layers } from "lucide-react";
 import apiClient from "../../../api/client";
 
@@ -102,8 +103,8 @@ export default function AdvancedPhasesPage() {
               {tab === "pdf" && <><p>PDFs: {Array.isArray(data) ? data.length : 0}</p><p className="text-content-tertiary">Board pack PDF 12 pages, s3://noctra-exports, includes charts</p></>}
             </div>
 
-            <pre className="mt-6 p-4 bg-app-subtle rounded text-xs overflow-auto max-h-[400px] border border-line-subtle">{JSON.stringify(data, null, 2)}</pre>
-            {extra && <pre className="mt-3 p-4 bg-app-surface border border-accent-primary/30 rounded text-xs overflow-auto max-h-[300px]">{JSON.stringify(extra, null, 2)}</pre>}
+            <RawData value={data} />
+            <RawData value={extra} label="Result" />
           </div>
         )}
       </Card>

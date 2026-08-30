@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, Badge, Button, PageHeader, Spinner } from "../../../components/ui";
+import { RawData } from "../../../components/ui";
 import { Shield, Search, Bug, Bot } from "lucide-react";
 import { advancedApi } from "../../../api/advancedApi";
 import apiClient from "../../../api/client";
@@ -17,10 +18,10 @@ const nextApi = {
   aiInvestigate: (caseId: number) => apiClient.post("/ai-agent/investigate", { case_id: caseId }),
 };
 
-type Tab = "ztna" | "hunt" | "vuln" | "agent";
+export type Tab = "ztna" | "hunt" | "vuln" | "agent";
 
-export default function NextPhasesPage() {
-  const [tab, setTab] = useState<Tab>("ztna");
+export default function NextPhasesPage({ initialTab }: { initialTab?: Tab } = {}) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? "ztna");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,8 +83,8 @@ export default function NextPhasesPage() {
             {tab === "vuln" && <VulnView data={data} />}
             {tab === "agent" && <AgentView data={data} setExtra={setExtra} extra={extra} />}
 
-            <pre className="mt-6 p-4 bg-app-subtle rounded text-xs overflow-auto max-h-[400px] border border-line-subtle">{JSON.stringify(data, null, 2)}</pre>
-            {extra && <pre className="mt-3 p-4 bg-app-surface border border-accent-primary/30 rounded text-xs overflow-auto max-h-[300px]">{JSON.stringify(extra, null, 2)}</pre>}
+            <RawData value={data} />
+            <RawData value={extra} label="Result" />
           </div>
         )}
       </Card>
