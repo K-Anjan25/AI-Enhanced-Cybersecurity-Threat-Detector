@@ -76,3 +76,8 @@ backend/noctra_preview.db
 
 # Uploaded assets (profile images, ingest artifacts)
 backend/uploads/
+
+# Local preview / scratch databases
+*.db
+*.sqlite
+*.sqlite3
