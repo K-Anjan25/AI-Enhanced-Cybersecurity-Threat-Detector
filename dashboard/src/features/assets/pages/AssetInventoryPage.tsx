@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Server } from "lucide-react";
+import { Plus, Server, Search } from "lucide-react";
 import apiClient from "../../../api/client";
 import {
   Button,
@@ -49,6 +49,8 @@ export default function AssetInventoryPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [minCriticality, setMinCriticality] = useState(1);
   const { push } = useToast();
 
   const [name, setName] = useState("");
@@ -114,6 +116,20 @@ export default function AssetInventoryPage() {
 
   const crownJewels = useMemo(() => assets.filter((a) => a.criticality >= 5), [assets]);
 
+  // An inventory is only useful if you can find the host you are looking at.
+  // Sorted by criticality so the assets that matter most are not buried.
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return assets
+      .filter((a) => {
+        if (minCriticality > 1 && (a.criticality ?? 0) < minCriticality) return false;
+        if (!needle) return true;
+        return [a.name, a.hostname, a.ip_address, a.business_unit, a.owner]
+          .some((v) => (v ?? "").toLowerCase().includes(needle));
+      })
+      .sort((a, b) => (b.criticality ?? 0) - (a.criticality ?? 0));
+  }, [assets, query, minCriticality]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -146,8 +162,42 @@ export default function AssetInventoryPage() {
           </div>
 
           <Card className="p-5">
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search
+                  size={14}
+                  aria-hidden
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary"
+                />
+                <input
+                  aria-label="Search assets"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search name, hostname, IP, owner…"
+                  className="w-full bg-app-subtle border border-line-subtle rounded-sm pl-9 pr-3 py-2 text-sm text-content-primary placeholder-content-tertiary focus:outline-none focus:border-accent-primary"
+                />
+              </div>
+              <Select
+                inline
+                label="Minimum criticality"
+                value={String(minCriticality)}
+                onChange={(e) => setMinCriticality(Number(e.target.value))}
+                options={[
+                  { value: "1", label: "Any criticality" },
+                  { value: "3", label: "3+ " },
+                  { value: "4", label: "4+ " },
+                  { value: "5", label: "Crown jewels only" },
+                ]}
+              />
+            </div>
+
+            {visible.length === 0 ? (
+              <p className="text-xs text-content-tertiary">
+                No asset matches this filter. {assets.length} recorded in total.
+              </p>
+            ) : (
             <div className="space-y-2">
-              {assets.map((a) => (
+              {visible.map((a) => (
                 <div
                   key={a.id}
                   className="flex items-center justify-between gap-3 flex-wrap border-b border-line-subtle last:border-0 pb-2 last:pb-0"
@@ -178,6 +228,7 @@ export default function AssetInventoryPage() {
                 </div>
               ))}
             </div>
+            )}
           </Card>
         </>
       )}

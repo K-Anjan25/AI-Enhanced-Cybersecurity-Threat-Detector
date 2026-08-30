@@ -118,4 +118,34 @@ describe("AttackCoveragePage", () => {
     renderPage();
     expect(await screen.findByText("No coverage evaluated yet")).toBeInTheDocument();
   });
+
+  it("collapses the matrix to uncovered techniques on request", async () => {
+    get.mockResolvedValue({
+      data: [
+        row({ id: 1, technique_id: "T1190", technique_name: "Exploit Public-Facing Application", coverage_score: 0 }),
+        row({ id: 2, technique_id: "T1078", technique_name: "Valid Accounts", coverage_score: 67, has_rule: true }),
+      ],
+    });
+    renderPage();
+    await screen.findByText("Valid Accounts");
+
+    await userEvent.click(screen.getByLabelText(/only uncovered/i));
+
+    expect(screen.queryByText("Valid Accounts")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Exploit Public-Facing Application").length).toBeGreaterThan(0);
+  });
+
+  it("says so when the gaps filter leaves nothing", async () => {
+    get.mockResolvedValue({
+      data: [row({ id: 1, coverage_score: 67, has_rule: true })],
+    });
+    renderPage();
+    await screen.findByText(/Coverage by tactic/);
+
+    await userEvent.click(screen.getByLabelText(/only uncovered/i));
+
+    expect(
+      screen.getByText(/Every tracked technique has at least one detection artefact/),
+    ).toBeInTheDocument();
+  });
 });

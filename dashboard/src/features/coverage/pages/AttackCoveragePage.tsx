@@ -60,6 +60,7 @@ const Signal: React.FC<{ on: boolean; label: string }> = ({ on, label }) => (
 
 export default function AttackCoveragePage() {
   const [rows, setRows] = useState<CoverageRow[]>([]);
+  const [gapsOnly, setGapsOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const { push } = useToast();
@@ -98,7 +99,11 @@ export default function AttackCoveragePage() {
   const gaps = rows.filter((r) => r.coverage_score === 0);
   const percent = rows.length ? Math.round((covered.length / rows.length) * 100) : 0;
 
-  const byTactic = rows.reduce<Record<string, CoverageRow[]>>((acc, r) => {
+  // Reviewing coverage almost always means looking at what is missing, so the
+  // matrix can be collapsed to just the uncovered techniques. Tactics that
+  // become empty are dropped rather than rendered as empty headings.
+  const shown = gapsOnly ? rows.filter((r) => r.coverage_score === 0) : rows;
+  const byTactic = shown.reduce<Record<string, CoverageRow[]>>((acc, r) => {
     (acc[r.tactic] ??= []).push(r);
     return acc;
   }, {});
@@ -152,6 +157,29 @@ export default function AttackCoveragePage() {
             </Card>
           )}
 
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-sm font-bold font-display text-content-primary">
+              Coverage by tactic
+            </h2>
+            <label className="flex items-center gap-2 text-xs text-content-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={gapsOnly}
+                onChange={(e) => setGapsOnly(e.target.checked)}
+                className="accent-accent-primary"
+              />
+              Show only uncovered techniques
+            </label>
+          </div>
+
+          {Object.keys(byTactic).length === 0 ? (
+            <Card className="p-5">
+              <p className="text-xs text-content-secondary">
+                Every tracked technique has at least one detection artefact. Clear the
+                filter to see the full matrix.
+              </p>
+            </Card>
+          ) : (
           <div className="space-y-4">
             {Object.entries(byTactic).map(([tactic, techniques]) => (
               <Card key={tactic} className="p-5">
@@ -191,6 +219,7 @@ export default function AttackCoveragePage() {
               </Card>
             ))}
           </div>
+          )}
         </>
       )}
     </div>
