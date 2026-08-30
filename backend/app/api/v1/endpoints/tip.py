@@ -1,6 +1,6 @@
 """Phase 69: TIP endpoints."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
@@ -10,6 +10,10 @@ from app.core.security import get_current_user
 from app.core.abac import require_permission
 from app.models.user import User
 from app.services import tip_service
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tip", tags=["tip"])
 
@@ -35,53 +39,80 @@ def list_feeds(db: Session = Depends(get_db), current_user: User = Depends(requi
     try:
         feeds = tip_service.list_feeds(db, current_user.org_id)
         return [{"id": f.id, "name": f.name, "feed_type": f.feed_type, "url": f.url, "status": f.status} for f in feeds]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/feeds")
 def create_feed(payload: FeedIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         feed = tip_service.create_feed(db, current_user.org_id, payload.name, payload.feed_type, payload.url, payload.config)
         return {"id": feed.id, "name": feed.name, "feed_type": feed.feed_type}
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/stix/ingest")
 def ingest_stix(payload: STIXBundleIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         objs = tip_service.ingest_stix_bundle(db, current_user.org_id, payload.bundle, payload.feed_id)
         return [tip_service.serialize_stix(o) for o in objs]
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/stix")
 def list_stix(stix_type: Optional[str] = None, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         objs = tip_service.list_stix(db, current_user.org_id, stix_type=stix_type, limit=limit)
         return [tip_service.serialize_stix(o) for o in objs]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/stix/export")
 def export_stix(db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         bundle = tip_service.export_stix_bundle(db, current_user.org_id)
         return bundle
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/misp")
 def list_misp(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         evs = tip_service.list_misp_events(db, current_user.org_id, limit=limit)
         return [tip_service.serialize_misp(ev) for ev in evs]
-    except Exception:
-        return []
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/misp")
 def create_misp(payload: MISPEventIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         ev = tip_service.create_misp_event(db, current_user.org_id, payload.info, payload.threat_level, payload.analysis, payload.distribution, payload.attributes)
         return tip_service.serialize_misp(ev)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e

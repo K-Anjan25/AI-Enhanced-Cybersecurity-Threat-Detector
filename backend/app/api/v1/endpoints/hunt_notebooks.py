@@ -11,6 +11,10 @@ from app.core.abac import require_permission
 from app.models.user import User
 from app.services import hunt_notebook_service
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/hunt-notebooks", tags=["Hunt Notebooks (Phase 86)"])
 
 class NotebookIn(BaseModel):
@@ -30,16 +34,24 @@ def list_notebooks(db: Session = Depends(get_db), current_user: User = Depends(r
         hunt_notebook_service.seed_notebooks(db, current_user.org_id)
         nbs = hunt_notebook_service.list_notebooks(db, current_user.org_id)
         return [hunt_notebook_service.serialize_notebook(n) for n in nbs]
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.post("/")
 def create_notebook(payload: NotebookIn, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
     try:
         nb = hunt_notebook_service.create_notebook(db, current_user.org_id, payload.name, payload.description, payload.kernel, payload.tags, created_by_user_id=current_user.id)
         return hunt_notebook_service.serialize_notebook(nb)
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        logger.exception("Unhandled error in %s", __name__)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/{notebook_id}/cells")
 def list_cells(notebook_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_permission("audit:read"))):
