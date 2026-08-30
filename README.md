@@ -89,16 +89,24 @@ These four surface directly on the case and brief screens through the shared
 chain, zero-trust access, compliance packs, hunting, deception, forensics,
 threat-intel platform, SOAR playbooks, reporting and admin/RBAC.
 
-**Labs** (exploratory, clearly labelled in the UI): unified search, work
-routing, intel sharing, continuous red teaming, crypto readiness, SOC TV wall.
+**Labs** (exploratory, clearly labelled in the UI): SOC TV wall and the
+remaining research surfaces.
 
 ### Scope note
 
-Earlier revisions advertised 150 "phases" including speculative modules
-(multiverse SOC, AGI council, akashic ledger and similar). Those 50 modules —
-6,493 lines of backend code and five dashboard pages — modelled nothing real,
-were referenced by no other code, and have been removed. What remains is the
-product that can actually be demonstrated to a buyer.
+Earlier revisions advertised 150 "phases". Two groups have been withdrawn:
+
+- **50 speculative modules** (multiverse SOC, AGI council, akashic ledger and
+  similar) — 6,493 lines that modelled nothing real.
+- **6 mock-data modules** (federated intel, quantum-safe, data fabric, CNAPP,
+  continuous red teaming, SOC manager). These were more dangerous than the
+  first group because they looked plausible: CNAPP invented Kubernetes
+  clusters with a fabricated CVE, quantum-safe returned three hardcoded
+  algorithms, and SOC manager marked every orchestration step complete in a
+  loop. A buyer could not tell these from real findings.
+
+All 56 were referenced by no other code. What remains is the product that can
+actually be demonstrated.
 
 ## Project Structure
 

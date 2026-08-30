@@ -46,14 +46,8 @@ from app.models.exposure import ASM_Domain, ASM_AssetExposure, ASM_Certificate, 
 from app.models.ai_redteam import RedTeamJob, RedTeamPrompt, RedTeamFinding
 from app.models.federated import FederatedJob, FederatedRound, OrgModelUpdate, FederatedModel
 from app.models.compliance_autopilot import AutopilotRule, AutopilotExecution, AutopilotFinding
-from app.models.federated_intel import IntelSharePackage, IntelShareConsent
-from app.models.quantum_safe import CryptoInventory, QuantumMigrationPlan
 from app.models.attack_path import AttackPath, AttackPathFinding
-from app.models.cart import CART_Job, CART_Execution, CART_Finding
-from app.models.data_fabric import DataFabricSource, DataFabricQuery, DataFabricView
-from app.models.soc_manager import SOCManagerDashboard, AgentOrchestration, AgentPerformance
 from app.models.drp import DRP_Monitor, DRP_Finding, DRP_Takedown
-from app.models.cnapp import CNAPP_Cluster, CNAPP_Workload, CNAPP_Policy, CNAPP_Finding
 from app.models.posture_score import PostureScore, PostureFinding, PostureRecommendation
 from app.models.noctra_os import NOCTRA_OS_Config, NOCTRA_OS_Metric, NOCTRA_OS_Log
 
@@ -179,28 +173,11 @@ __all__ = [
     "AutopilotRule",
     "AutopilotExecution",
     "AutopilotFinding",
-    "IntelSharePackage",
-    "IntelShareConsent",
-    "CryptoInventory",
-    "QuantumMigrationPlan",
     "AttackPath",
     "AttackPathFinding",
-    "CART_Job",
-    "CART_Execution",
-    "CART_Finding",
-    "DataFabricSource",
-    "DataFabricQuery",
-    "DataFabricView",
-    "SOCManagerDashboard",
-    "AgentOrchestration",
-    "AgentPerformance",
     "DRP_Monitor",
     "DRP_Finding",
     "DRP_Takedown",
-    "CNAPP_Cluster",
-    "CNAPP_Workload",
-    "CNAPP_Policy",
-    "CNAPP_Finding",
     "PostureScore",
     "PostureFinding",
     "PostureRecommendation",

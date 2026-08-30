@@ -63,14 +63,8 @@ from app.api.v1.endpoints import (
     ai_redteam,
     federated,
     compliance_autopilot,
-    federated_intel,
-    quantum_safe,
     attack_path,
-    cart,
-    data_fabric,
-    soc_manager,
     drp,
-    cnapp,
     posture_score,
     noctra_os,
 )
@@ -149,14 +143,8 @@ api_router.include_router(ai_redteam.router)
 api_router.include_router(federated.router)
 api_router.include_router(compliance_autopilot.router)
 # Phases 91-100
-api_router.include_router(federated_intel.router)
-api_router.include_router(quantum_safe.router)
 api_router.include_router(attack_path.router)
-api_router.include_router(cart.router)
-api_router.include_router(data_fabric.router)
-api_router.include_router(soc_manager.router)
 api_router.include_router(drp.router)
-api_router.include_router(cnapp.router)
 api_router.include_router(posture_score.router)
 api_router.include_router(noctra_os.router)
 # Phases 101-110 - Post-OS Singularity
