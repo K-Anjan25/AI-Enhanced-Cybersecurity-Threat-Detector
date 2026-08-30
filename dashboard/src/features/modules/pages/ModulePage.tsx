@@ -77,12 +77,18 @@ const FEEDS: Record<string, Feed> = {
   "/deception": {
     title: "Deception",
     description: "Decoys placed to catch lateral movement, and what has touched them.",
-    sources: [{ label: "Decoys", path: "/deception/decoys" }],
+    sources: [
+      { label: "Honeypots", path: "/deception/honeypots" },
+      { label: "Decoy alerts", path: "/deception/alerts" },
+    ],
   },
   "/forensics": {
     title: "Forensics",
     description: "Evidence collected during investigations.",
-    sources: [{ label: "Evidence", path: "/forensics/evidence" }],
+    sources: [
+      { label: "Cases", path: "/forensics/cases" },
+      { label: "Artifacts", path: "/forensics/artifacts" },
+    ],
   },
   "/itdr": {
     title: "Identity threats",
@@ -95,7 +101,7 @@ const FEEDS: Record<string, Feed> = {
   "/tip": {
     title: "Threat intel platform",
     description: "Indicators and feeds NOCTRA enriches alerts against.",
-    sources: [{ label: "Indicators", path: "/tip/indicators" }],
+    sources: [{ label: "Feeds", path: "/tip/feeds" }],
   },
   "/threat-intel": {
     title: "Threat intel",
@@ -105,7 +111,9 @@ const FEEDS: Record<string, Feed> = {
   "/attack-navigator": {
     title: "ATT&CK navigator",
     description: "Technique activity mapped onto the ATT&CK matrix.",
-    sources: [{ label: "Heatmap", path: "/attack-navigator/heatmap" }],
+    sources: [
+      { label: "Heatmap", path: "/attack/heatmap" },
+    ],
   },
   "/compliance-continuous": {
     title: "Continuous compliance",
