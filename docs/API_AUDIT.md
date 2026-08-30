@@ -15,10 +15,10 @@ from it, named by the button or page where possible — and classifies it.
 |---|---|
 | API paths | 258 |
 | Route groups | 66 |
-| Reachable from the UI | 179 paths |
-| No UI caller | 79 paths |
-| Backend tests | 459 passing, 2 skipped (26 files) |
-| Frontend tests | 125 passing (18 files) |
+| Reachable from the UI | 183 paths |
+| No UI caller | 75 paths |
+| Backend tests | 471 passing, 2 skipped (27 files) |
+| Frontend tests | 137 passing (19 files) |
 | Type check / build | clean |
 
 "No UI caller" is not the same as "broken". Of the 79, roughly half are
@@ -62,6 +62,7 @@ Real features with real data behind them, reachable from the UI.
 | Asset inventory | **Operate → Asset Inventory** | Your machines and who owns them, with search and a crown-jewel filter. Feeds attack-path and blast-radius. |
 | Data retention | **Operate → Data Retention** | How long each kind of record is kept. Legal holds can be placed and released here. |
 | Erasure requests | **Operate → Erasure Requests** | GDPR right-to-erasure queue, with the one-month deadline tracked. |
+| Approvals | **Operate → Approvals** | Actions waiting on a second pair of eyes before they run. Shows what is blocked, for how long, and which review stage it is at. You cannot approve a request you raised. |
 | Attack paths | Case context, `/attack-path` | The route an attacker could take from an exposed service to something valuable. |
 | Posture score | **Dashboard** | A single NIST-CSF-shaped number for how well set up you are, with the dimensions behind it. |
 | Vulnerabilities, CSPM, SBOM, ZTNA, ITDR, deception, forensics, threat intel | **Modules** pages | Each shows the records that capability holds for your tenant. All 22 configured endpoints verified reachable. |
@@ -92,7 +93,6 @@ Ordered by how much the absence costs.
 
 | Capability | Endpoints | Why it matters |
 |---|---|---|
-| **Approval workflows** | 4 | A second pair of eyes on high-impact actions. The backend supports requesting and deciding approvals; nothing surfaces them, so a queued approval is invisible. Directly relevant to the human-on-the-loop model. |
 | **Risk scoring rules** | 2 | You can record which assets are critical, but not the rules that turn criticality into alert priority. Half the feature is exposed. |
 | **Attack surface (exposure)** | 5 | Hostnames discovered from Certificate Transparency. Feeds attack-path search, so operators cannot see or correct the inputs to a conclusion the product draws. |
 | **Hunt execution** | 3 | Hunts can be written and listed but not run or reviewed from the UI. |
@@ -141,13 +141,12 @@ outcomes. The main functional gap is approval workflows (§5).
 
 ## 8. What next
 
-1. **Approval workflow UI** — the largest functional gap, and it is core to the
-   human-on-the-loop story rather than a side feature.
-2. **Expose exposure findings** — operators cannot audit inputs that already
+1. **Expose exposure findings** — operators cannot audit inputs that already
    drive attack-path conclusions.
-3. **Verify connector mappings against one live payload each** — needs
+2. **Verify connector mappings against one live payload each** — needs
    credentials; cannot be done from a sandbox.
-4. **Load-test the metrics paths** — response-time and coverage queries scan
+3. **Load-test the metrics paths** — response-time and coverage queries scan
    per request and have never been measured against a realistic tenant.
-5. **Wire an archive destination**, or remove the archive action until there is
+4. **Wire an archive destination**, or remove the archive action until there is
    one.
+5. **Hunt execution from the UI** — hunts can be written but not run.
