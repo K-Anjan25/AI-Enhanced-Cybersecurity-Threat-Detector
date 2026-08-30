@@ -43,25 +43,15 @@ export default function FinalPhasesPage() {
   useEffect(() => { load(tab); }, [tab]);
 
   const tabs = [
-    { id: "retention", label: "Retention P81", icon: FileArchive },
-    { id: "coverage", label: "ATT&CK Coverage P82", icon: Shield },
-    { id: "collab", label: "Agent-to-Agent P83", icon: Users },
-    { id: "tv", label: "SOC TV Wall P84", icon: Monitor },
+    { id: "retention", label: "Retention", icon: FileArchive },
+    { id: "coverage", label: "ATT&CK Coverage", icon: Shield },
+    { id: "collab", label: "Agent-to-Agent", icon: Users },
+    { id: "tv", label: "SOC TV Wall", icon: Monitor },
   ] as const;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Final Phases 81-84" description="Data Retention & Legal Hold automation, ATT&CK Coverage Dashboard, Agent-to-Agent collaboration, Real-time SOC TV wall" />
-
-      <div className="p-4 bg-accent-primary/10 border border-accent-primary/30 rounded text-sm">
-        <div className="font-bold mb-2">Understanding 81-84:</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li><b>81 Retention & Legal Hold:</b> DataRetentionPolicy data_type retention_days archive_after_days delete_after_days, DataArchiveLog s3://archive/[org_id]/[data_type]/[date].json, LegalHold name case_ids is_active, GDPRDeletionRequest target_email status. Automation run archives old data respecting legal holds (held case_ids not archived), ensures partitions via ensure_partitions(). Endpoint /data-lifecycle/automation/run.</li>
-          <li><b>82 ATT&CK Coverage:</b> ATT&CK matrix subset 14 techniques (T1078 Valid Accounts, T1059.001 PowerShell, T1053.005 Scheduled Task, T1003.001 LSASS, etc). AttackCoverage per technique has_detection_rule/hunt/playbook/purple_exercise detection_count coverage_score 0-100 (25 per type +10 if alerts). Gap analysis if score&lt;50. Report total/covered/percent + tactic breakdown + gaps list.</li>
-          <li><b>83 Agent-to-Agent:</b> AgentCollaboration case_id name agents_json [hunter,enricher,responder,compliance_checker,risk_analyst] status running/completed result_json consensus/votes consensus_score, AgentMessage from_agent/to_agent message_type proposal/vote/tool_result content tool_name/tool_output confidence. Run round: hunter runs hunt query, enricher threat intel, responder propose isolate, risk_analyst metrics, then voting consensus escalate if majority.</li>
-          <li><b>84 SOC TV Wall:</b> SOCWallConfig name widgets_json [[type alert_feed/open_cases/risk_metrics/attack_heatmap/agent_status/world_map position x,y,w,h config] is_default, SOCWallMetric metric_name metric_value recorded_at. Seed default wall 6 widgets. Live metrics: total_alerts, alerts_last_hour/24h, open_cases, critical, alerts_per_minute, top_sources, severity_breakdown, recent_alerts 10. TV page polls 5s, black background for wall display.</li>
-        </ul>
-      </div>
+      <PageHeader title="Coverage & Collaboration Labs" description="Data retention and legal hold, ATT&CK coverage, agent-to-agent collaboration and the live SOC wall." />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => {

@@ -80,10 +80,17 @@ export default function TranscendencePage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent">Transcendence P131-P140 — Beyond Omni-Singularity to Universe Integration</h1>
+      <div>
+        <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">Transcendence</h1>
+        <p className="text-sm text-content-secondary mt-1">Multiverse modelling, neuro-symbolic reasoning and continual learning — research concepts.</p>
+      </div>
+      <div className="flex items-start gap-2 p-3 rounded-sm border border-status-warning/40 bg-status-warning/10 text-xs text-content-secondary">
+        <span className="font-bold text-status-warning shrink-0">CONCEPT</span>
+        <span>Speculative research surface. The data below is simulated and is not connected to your live environment — nothing here detects, decides or acts on real security events.</span>
+      </div>
       <div className="text-xs p-3 bg-gradient-to-r from-violet-950 via-fuchsia-900 to-black text-white rounded">P131 Multiverse SOC (branching 10 coherence 92 outcomes contained/breach/catastrophic) → P132 Quantum Consciousness (100 qubits entanglement 0.95 superposition Phi+ fidelity 0.99) → P133 Autonomous Economy (NOCTRA 1M compute/intel/defense/healing markets) → P134 Neuro-Symbolic (transformer+prolog+opa hybrid 0.94 rule breach(X):-failed_logins,priv_esc) → P135 Self-Replicating (von Neumann rate 1.8 max 1000 exponential) → P136 Temporal Defense (integrity 100 paradox retrocausal_attack causality_lock 95%) → P137 Universal Language (stix/misp/ocsf/sigma/yara acc 95.5) → P138 Infinite Learning (forgetting 0.005 forward 0.88 EWC replay 96.5%) → P139 Existential Risk (ai/bio/nano prob 0.001 extinction) → P140 Transcendence OS v4 cosmic/universal/multiversal/transcendence omnipresent omniscient omnibenevolent 99.99% integration consciousness 100 transcended.</div>
 
-      <div className="border rounded bg-white p-3 text-xs">
+      <div className="border rounded bg-app-surface p-3 text-xs">
         <div className="font-bold text-violet-600">NOCTRA Transcendence v4 {transcendence?.version||"4.0.0"} {transcendence?.transcendence_level||"transcendence"} omnipresent {String(transcendence?.omnipresent)} omniscient {String(transcendence?.omniscient)} omnibenevolent {String(transcendence?.omnibenevolent)} integration {transcendence?.universe_integration||99.99}% consciousness {transcendence?.consciousness_level||100}% {transcendence?.status}</div>
         <div className="flex gap-2 flex-wrap mt-2">{metrics.map((m:any,i:number)=><span key={i} className="px-2 py-0.5 bg-violet-100 rounded">{m.name}: {m.value} [{m.dimension}]</span>)}</div>
         {fullState?.final_message && <div className="mt-2 p-2 bg-black text-violet-300 rounded italic">{fullState.final_message}</div>}
@@ -91,91 +98,91 @@ export default function TranscendencePage() {
 
       <div className="flex gap-2 flex-wrap">
         {[
-          ["mv","P131 Multiverse"],
-          ["q","P132 Q-Conscious"],
-          ["eco","P133 Economy"],
-          ["neuro","P134 Neuro-Sym"],
-          ["rep","P135 Replicator"],
-          ["temp","P136 Temporal"],
-          ["ul","P137 Univ Lang"],
-          ["inf","P138 ∞ Learning"],
-          ["xr","P139 X-Risk"],
-          ["trans","P140 Transcend"],
+          ["mv","Multiverse"],
+          ["q","Q-Conscious"],
+          ["eco","Economy"],
+          ["neuro","Neuro-Sym"],
+          ["rep","Replicator"],
+          ["temp","Temporal"],
+          ["ul","Univ Lang"],
+          ["inf","∞ Learning"],
+          ["xr","X-Risk"],
+          ["trans","Transcend"],
         ].map(([k,l])=>(
-          <button key={k} onClick={()=>setTab(k as any)} className={`px-3 py-1 rounded border text-xs ${tab===k?'bg-violet-600 text-white border-violet-600':'bg-white'}`}>{l}</button>
+          <button key={k} onClick={()=>setTab(k as any)} className={`px-3 py-1 rounded border text-xs ${tab===k?'bg-accent-primary text-brand-ink border-violet-600':'bg-app-surface'}`}>{l}</button>
         ))}
       </div>
 
       {tab==="mv" && (
         <div className="space-y-3">
-          <button onClick={createMV} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create Multiverse branching 10 → 10 UniverseBranch outcomes contained/breach/catastrophic prob 0.1 coherence 92</button>
-          <div className="grid gap-2">{mvs.map((mv:any)=>(<div key={mv.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{mv.name} branching {mv.branching_factor} coherence {mv.coherence_score}% divergence {mv.divergence_point} {mv.status}</div></div>))}</div>
+          <button onClick={createMV} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Multiverse branching 10 → 10 UniverseBranch outcomes contained/breach/catastrophic prob 0.1 coherence 92</button>
+          <div className="grid gap-2">{mvs.map((mv:any)=>(<div key={mv.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{mv.name} branching {mv.branching_factor} coherence {mv.coherence_score}% divergence {mv.divergence_point} {mv.status}</div></div>))}</div>
           <div className="text-xs font-bold">Branches 5 outcomes</div>
-          <div className="grid gap-1">{branches.map((b:any)=>(<div key={b.id} className="border p-2 rounded bg-white text-[11px]"><span className="px-1 bg-orange-100 rounded">{b.threat_outcome}</span> prob {b.probability} divergence {b.divergence_score}% {JSON.stringify(b.timeline_json)?.slice(0,120)}</div>))}</div>
+          <div className="grid gap-1">{branches.map((b:any)=>(<div key={b.id} className="border border-line-subtle p-2 rounded-sm bg-app-surface text-[11px]"><span className="px-1 bg-orange-100 rounded">{b.threat_outcome}</span> prob {b.probability} divergence {b.divergence_score}% {JSON.stringify(b.timeline_json)?.slice(0,120)}</div>))}</div>
         </div>
       )}
 
       {tab==="q" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createQNode} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create QuantumConsciousnessNode 100 qubits ent 0.95 superposition entangled</button><button onClick={entangle} className="px-3 py-1 bg-fuchsia-600 text-white rounded text-xs">Entangle Phi+ fidelity 0.99</button></div>
-          <div className="grid gap-2">{qnodes.map((n:any)=>(<div key={n.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{n.node_name} qubits {n.qubit_count} ent {n.entanglement_degree} state {n.consciousness_state} coherence {n.coherence_time_ms}ms</div><div>superpos {JSON.stringify(n.superposition_state)?.slice(0,100)}</div></div>))}</div>
+          <div className="flex gap-2"><button onClick={createQNode} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create QuantumConsciousnessNode 100 qubits ent 0.95 superposition entangled</button><button onClick={entangle} className="px-3 py-1 bg-accent-secondary text-brand-ink rounded text-xs">Entangle Phi+ fidelity 0.99</button></div>
+          <div className="grid gap-2">{qnodes.map((n:any)=>(<div key={n.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{n.node_name} qubits {n.qubit_count} ent {n.entanglement_degree} state {n.consciousness_state} coherence {n.coherence_time_ms}ms</div><div>superpos {JSON.stringify(n.superposition_state)?.slice(0,100)}</div></div>))}</div>
         </div>
       )}
 
       {tab==="eco" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createEcon} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create CyberEconomy NOCTRA 1M supply 600k circ treasury 150k TVL</button><button onClick={transact} className="px-3 py-1 bg-green-600 text-white rounded text-xs">Transact intel 100 NOCTRA</button></div>
-          <div className="grid gap-2">{economies.map((e:any)=>(<div key={e.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{e.name} {e.token_name} total {e.total_supply} circ {e.circulating_supply} treasury {e.treasury} TVL {e.tvl}</div></div>))}</div>
-          <div className="grid gap-1">{markets.map((m:any)=>(<div key={m.id} className="border p-2 rounded bg-white text-[11px]"><span className="px-1 bg-blue-100 rounded">{m.market_type}</span> supply {m.supply} demand {m.demand} price {m.price} vol {m.volume}</div>))}</div>
+          <div className="flex gap-2"><button onClick={createEcon} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create CyberEconomy NOCTRA 1M supply 600k circ treasury 150k TVL</button><button onClick={transact} className="px-3 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded text-xs">Transact intel 100 NOCTRA</button></div>
+          <div className="grid gap-2">{economies.map((e:any)=>(<div key={e.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{e.name} {e.token_name} total {e.total_supply} circ {e.circulating_supply} treasury {e.treasury} TVL {e.tvl}</div></div>))}</div>
+          <div className="grid gap-1">{markets.map((m:any)=>(<div key={m.id} className="border border-line-subtle p-2 rounded-sm bg-app-surface text-[11px]"><span className="px-1 bg-blue-100 rounded">{m.market_type}</span> supply {m.supply} demand {m.demand} price {m.price} vol {m.volume}</div>))}</div>
         </div>
       )}
 
       {tab==="neuro" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createEngine} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create NeuroSymbolicEngine transformer + prolog+opa hybrid 0.94</button><button onClick={doReason} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Reason breach(X) :- failed_logins(X,high), priv_esc(X)</button></div>
-          <div className="grid gap-2">{engines.map((e:any)=>(<div key={e.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{e.name} neural {e.neural_model} symbolic {e.symbolic_engine} hybrid {e.hybrid_accuracy} rules {e.rules_count} traces {e.traces_count}</div></div>))}</div>
-          {reasonResult && <div className="border p-3 rounded bg-white text-xs"><div>neural_thought: {reasonResult.neural_thought}</div><div>symbolic_proof: {reasonResult.symbolic_proof}</div><div>answer: <span className="px-1 bg-green-100 rounded">{reasonResult.final_answer}</span> conf {reasonResult.confidence}</div></div>}
+          <div className="flex gap-2"><button onClick={createEngine} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create NeuroSymbolicEngine transformer + prolog+opa hybrid 0.94</button><button onClick={doReason} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Reason breach(X) :- failed_logins(X,high), priv_esc(X)</button></div>
+          <div className="grid gap-2">{engines.map((e:any)=>(<div key={e.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{e.name} neural {e.neural_model} symbolic {e.symbolic_engine} hybrid {e.hybrid_accuracy} rules {e.rules_count} traces {e.traces_count}</div></div>))}</div>
+          {reasonResult && <div className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div>neural_thought: {reasonResult.neural_thought}</div><div>symbolic_proof: {reasonResult.symbolic_proof}</div><div>answer: <span className="px-1 bg-green-100 rounded">{reasonResult.final_answer}</span> conf {reasonResult.confidence}</div></div>}
         </div>
       )}
 
       {tab==="rep" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createFleet} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create ReplicatorFleet defense_probe rate 1.8 max 1000 von Neumann</button><button onClick={doReplicate} className="px-3 py-1 bg-green-600 text-white rounded text-xs">Replicate ×2 exponential generation+1</button></div>
-          <div className="grid gap-2">{fleets.map((f:any)=>(<div key={f.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{f.fleet_name} {f.replicator_type} rate {f.replication_rate} max {f.max_replicas} current {f.current_count} <span className={`px-1 rounded ${f.status==='replicating'?'bg-green-100':'bg-gray-100'}`}>{f.status}</span></div></div>))}</div>
+          <div className="flex gap-2"><button onClick={createFleet} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create ReplicatorFleet defense_probe rate 1.8 max 1000 von Neumann</button><button onClick={doReplicate} className="px-3 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded text-xs">Replicate ×2 exponential generation+1</button></div>
+          <div className="grid gap-2">{fleets.map((f:any)=>(<div key={f.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{f.fleet_name} {f.replicator_type} rate {f.replication_rate} max {f.max_replicas} current {f.current_count} <span className={`px-1 rounded ${f.status==='replicating'?'bg-green-100':'bg-app-subtle'}`}>{f.status}</span></div></div>))}</div>
         </div>
       )}
 
       {tab==="temp" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createTL} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create Timeline primary integrity 100 paradox 0 causality_lock 95%</button><button onClick={detectAnomaly} className="px-3 py-1 bg-red-600 text-white rounded text-xs">Detect retrocausal_attack temporal_coordinates causality_violation</button></div>
-          <div className="grid gap-2">{timelines.map((t:any)=>(<div key={t.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{t.name} type {t.timeline_type} integrity {t.integrity_score}% paradox {t.paradox_count} {t.status}</div><div>Protects past logs from alteration — retrocausal attacker attempting to delete logs</div></div>))}</div>
+          <div className="flex gap-2"><button onClick={createTL} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Timeline primary integrity 100 paradox 0 causality_lock 95%</button><button onClick={detectAnomaly} className="px-3 py-1 bg-status-critical/20 text-status-critical border border-status-critical/40 rounded text-xs">Detect retrocausal_attack temporal_coordinates causality_violation</button></div>
+          <div className="grid gap-2">{timelines.map((t:any)=>(<div key={t.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{t.name} type {t.timeline_type} integrity {t.integrity_score}% paradox {t.paradox_count} {t.status}</div><div>Protects past logs from alteration — retrocausal attacker attempting to delete logs</div></div>))}</div>
         </div>
       )}
 
       {tab==="ul" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createUL} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create UniversalLanguageModel threat stix/misp/ocsf/sigma/yara acc 95.5</button><button onClick={doTranslate} className="px-3 py-1 bg-blue-600 text-white rounded text-xs">Translate STIX → Sigma indicator ipv4 1.2.3.4</button></div>
-          <div className="grid gap-2">{ulModels.map((m:any)=>(<div key={m.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{m.name} {m.language_type} acc {m.translation_accuracy}% {m.supported_formats?.join(", ")}</div></div>))}</div>
+          <div className="flex gap-2"><button onClick={createUL} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create UniversalLanguageModel threat stix/misp/ocsf/sigma/yara acc 95.5</button><button onClick={doTranslate} className="px-3 py-1 bg-app-subtle text-content-primary border border-line-subtle rounded text-xs">Translate STIX → Sigma indicator ipv4 1.2.3.4</button></div>
+          <div className="grid gap-2">{ulModels.map((m:any)=>(<div key={m.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{m.name} {m.language_type} acc {m.translation_accuracy}% {m.supported_formats?.join(", ")}</div></div>))}</div>
         </div>
       )}
 
       {tab==="inf" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createLearner} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create InfiniteLearner continual forgetting 0.005 forward 0.88 backward 0.15</button><button onClick={learnTask} className="px-3 py-1 bg-green-600 text-white rounded text-xs">Learn Task 15k dataset 0.85→0.92 EWC 96.5% retained</button></div>
-          <div className="grid gap-2">{learners.map((l:any)=>(<div key={l.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{l.name} type {l.learner_type} tasks {l.total_tasks_learned} forget {l.forgetting_rate} forward {l.forward_transfer} backward {l.backward_transfer} {l.status}</div></div>))}</div>
+          <div className="flex gap-2"><button onClick={createLearner} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create InfiniteLearner continual forgetting 0.005 forward 0.88 backward 0.15</button><button onClick={learnTask} className="px-3 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded text-xs">Learn Task 15k dataset 0.85→0.92 EWC 96.5% retained</button></div>
+          <div className="grid gap-2">{learners.map((l:any)=>(<div key={l.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{l.name} type {l.learner_type} tasks {l.total_tasks_learned} forget {l.forgetting_rate} forward {l.forward_transfer} backward {l.backward_transfer} {l.status}</div></div>))}</div>
         </div>
       )}
 
       {tab==="xr" && (
         <div className="space-y-3">
-          <button onClick={createXRisk} className="px-3 py-1 bg-red-600 text-white rounded text-xs">Create ExistentialRisk ai/bio/nano prob 0.001 impact extinction timeline 50y mitigation 60% monitoring</button>
-          <div className="grid gap-2">{xrisks.map((r:any)=>(<div key={r.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{r.risk_name} <span className="px-1 bg-red-100 rounded">{r.risk_category}</span> prob {r.probability} impact {r.impact} timeline {r.timeline_years}y readiness {r.mitigation_readiness}% {r.status}</div></div>))}</div>
+          <button onClick={createXRisk} className="px-3 py-1 bg-status-critical/20 text-status-critical border border-status-critical/40 rounded text-xs">Create ExistentialRisk ai/bio/nano prob 0.001 impact extinction timeline 50y mitigation 60% monitoring</button>
+          <div className="grid gap-2">{xrisks.map((r:any)=>(<div key={r.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{r.risk_name} <span className="px-1 bg-status-critical/15 text-status-critical rounded">{r.risk_category}</span> prob {r.probability} impact {r.impact} timeline {r.timeline_years}y readiness {r.mitigation_readiness}% {r.status}</div></div>))}</div>
         </div>
       )}
 
       {tab==="trans" && (
         <div className="space-y-3">
-          <div className="border p-6 rounded bg-gradient-to-br from-violet-950 via-fuchsia-900 to-black text-white">
+          <div className="border border-line-subtle p-6 rounded-sm bg-gradient-to-br from-violet-950 via-fuchsia-900 to-black text-white">
             <div className="text-3xl font-bold">NOCTRA Transcendence OS v4 — 140 Phases Complete</div>
             <div className="mt-4 text-sm leading-relaxed">
               Version 4.0.0 transcendence_level transcendence — cosmic/universal/multiversal/transcendence<br/>
@@ -191,9 +198,9 @@ export default function TranscendencePage() {
             {fullState && (
               <div className="mt-4 space-y-2">
                 <div className="text-xs">Config: {JSON.stringify(fullState.config)}</div>
-                <div className="flex flex-wrap gap-1">{fullState.metrics?.map((m:any,i:number)=><span key={i} className="px-2 py-0.5 bg-white/20 rounded text-[10px]">{m.name}: {m.value} [{m.dimension}]</span>)}</div>
-                {fullState.logs?.map((l:any,i:number)=><div key={i} className="p-2 bg-white/10 rounded text-xs"><b>{l.title}</b> [{l.type}]<br/>{l.description}</div>)}
-                <div className="p-3 bg-white/20 rounded italic text-xs">{fullState.final_message}</div>
+                <div className="flex flex-wrap gap-1">{fullState.metrics?.map((m:any,i:number)=><span key={i} className="px-2 py-0.5 bg-app-surface/20 rounded text-[10px]">{m.name}: {m.value} [{m.dimension}]</span>)}</div>
+                {fullState.logs?.map((l:any,i:number)=><div key={i} className="p-2 bg-app-surface/10 rounded text-xs"><b>{l.title}</b> [{l.type}]<br/>{l.description}</div>)}
+                <div className="p-3 bg-app-surface/20 rounded italic text-xs">{fullState.final_message}</div>
               </div>
             )}
           </div>

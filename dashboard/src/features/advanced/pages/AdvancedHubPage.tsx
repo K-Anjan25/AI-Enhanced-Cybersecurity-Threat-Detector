@@ -41,24 +41,24 @@ export default function AdvancedHubPage() {
 
   useEffect(() => { load(tab); }, [tab]);
 
-  const tabs: { id: Tab; label: string; icon: any; phase: number }[] = [
-    { id: "threat", label: "Threat Intel", icon: Shield, phase: 49 },
-    { id: "soar", label: "SOAR Exec", icon: Zap, phase: 50 },
-    { id: "collab", label: "Collaboration", icon: MessageSquare, phase: 51 },
-    { id: "sigma", label: "Sigma DSL", icon: FileCode, phase: 52 },
-    { id: "compliance", label: "Compliance Packs", icon: Package, phase: 53 },
-    { id: "teams", label: "Teams & Invites", icon: Users, phase: 54 },
-    { id: "ml", label: "ML Feedback", icon: Brain, phase: 55 },
-    { id: "attack", label: "ATT&CK", icon: Map, phase: 56 },
-    { id: "retention", label: "Data Lifecycle", icon: Archive, phase: 57 },
-    { id: "ha", label: "HA Status", icon: Server, phase: 58 },
-    { id: "pwa", label: "PWA", icon: Smartphone, phase: 59 },
-    { id: "billing", label: "Billing", icon: CreditCard, phase: 60 },
+  const tabs: { id: Tab; label: string; icon: any }[] = [
+    { id: "threat", label: "Threat Intel", icon: Shield },
+    { id: "soar", label: "SOAR Exec", icon: Zap },
+    { id: "collab", label: "Collaboration", icon: MessageSquare },
+    { id: "sigma", label: "Sigma DSL", icon: FileCode },
+    { id: "compliance", label: "Compliance Packs", icon: Package },
+    { id: "teams", label: "Teams & Invites", icon: Users },
+    { id: "ml", label: "ML Feedback", icon: Brain },
+    { id: "attack", label: "ATT&CK", icon: Map },
+    { id: "retention", label: "Data Lifecycle", icon: Archive },
+    { id: "ha", label: "HA Status", icon: Server },
+    { id: "pwa", label: "PWA", icon: Smartphone },
+    { id: "billing", label: "Billing", icon: CreditCard },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Advanced Security Hub" description="Phases 49-60 — Threat Intel, SOAR, Collaboration, Sigma, Compliance, Teams, ML, ATT&CK, Retention, HA, PWA, Billing" />
+      <PageHeader title="Advanced Hub" description="Threat intel, playbook execution, collaboration, Sigma rules, compliance packs, teams, model feedback, ATT&CK, retention, availability and billing." />
       
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => {
@@ -69,7 +69,7 @@ export default function AdvancedHubPage() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-3 py-2 rounded text-xs font-semibold border transition ${tab === t.id ? "bg-accent-primary text-black border-accent-primary" : "bg-app-surface border-line-subtle text-content-secondary hover:border-accent-primary/50"}`}
             >
-              <Icon size={14} /> {t.label} <span className="text-[10px] opacity-70">P{t.phase}</span>
+              <Icon size={14} /> {t.label}
             </button>
           );
         })}
@@ -127,7 +127,7 @@ function ThreatIntelView({ data }: { data: any }) {
         <div className="p-3 bg-app-subtle rounded border"><div className="text-xs text-content-tertiary">OTX</div><div className="font-bold">{data?.providers?.otx?.configured ? "Configured" : "No key"}</div></div>
       </div>
       {result && <pre className="p-3 bg-app-subtle rounded text-xs overflow-auto max-h-60">{JSON.stringify(result,null,2)}</pre>}
-      <p className="text-xs text-content-tertiary">Phase 49 honest: Without API keys, enrichment returns not_configured and cache only. Aggregation risk 0-100 from VT malicious*suspicious + AbuseIPDB confidence + Shodan vulns + OTX pulses.</p>
+      <p className="text-xs text-content-tertiary">Without API keys, enrichment returns not_configured and cache only. Aggregation risk 0-100 from VT malicious*suspicious + AbuseIPDB confidence + Shodan vulns + OTX pulses.</p>
     </div>
   );
 }
@@ -142,7 +142,7 @@ function SoarView({ data }: { data: any }) {
         <div className="p-3 bg-app-subtle rounded border"><div className="text-xs">PagerDuty</div><div className="font-bold">{data?.pagerduty_configured ? "Configured" : "Not configured"}</div></div>
       </div>
       <div><h4 className="font-semibold mb-2">Pending Approvals (CRITICAL/HIGH need approval)</h4>{pending.length===0 ? <p className="text-xs text-content-tertiary">No pending approvals</p> : pending.map((p:any)=><div key={p.action_id} className="p-3 bg-app-subtle rounded border mb-2 flex justify-between"><span>{p.action_type} — {p.severity} — {p.rule_name}</span><Button size="sm" onClick={()=>advancedApi.soarApprove(p.action_id).then(()=>setPending(pending.filter(x=>x.action_id!==p.action_id)))}>Approve & Execute</Button></div>)}</div>
-      <p className="text-xs text-content-tertiary">Phase 50 honest: Real webhook execution when SOAR_WEBHOOK_ENABLED + target configured. Dry-run evaluates without side effects. Retry/backoff logged.</p>
+      <p className="text-xs text-content-tertiary">Real webhook execution when SOAR_WEBHOOK_ENABLED + target configured. Dry-run evaluates without side effects. Retry/backoff logged.</p>
     </div>
   );
 }
@@ -156,7 +156,7 @@ function CollabView() {
       <div className="flex gap-2"><input value={caseId} onChange={e=>setCaseId(e.target.value)} className="px-3 py-2 bg-app-subtle border rounded w-20 text-sm" placeholder="Case ID"/><Button size="sm" onClick={load}>Load Comments</Button></div>
       <div className="space-y-2">{comments.map(c=><div key={c.id} className="p-3 bg-app-subtle rounded border"><div className="text-xs text-content-tertiary">User {c.user_id} — {c.created_at}</div><div className="text-sm">{c.content}</div>{c.mentions?.length>0 && <div className="text-xs text-accent-primary">Mentions: {c.mentions.join(", ")}</div>}</div>)}</div>
       <div className="flex gap-2"><input value={content} onChange={e=>setContent(e.target.value)} placeholder="Add comment with @mentions" className="flex-1 px-3 py-2 bg-app-subtle border rounded text-sm"/><Button size="sm" onClick={async()=>{ await advancedApi.createComment(Number(caseId), content); setContent(""); load(); }}>Post</Button></div>
-      <p className="text-xs text-content-tertiary">Phase 51: @mention regex extracts, activity feed published to EventBus, WebSocket ready via /api/v1/stream.</p>
+      <p className="text-xs text-content-tertiary">@mention regex extracts, activity feed published to EventBus, WebSocket ready via /api/v1/stream.</p>
     </div>
   );
 }
@@ -168,7 +168,7 @@ function SigmaView({ data }: { data: any }) {
       <div className="flex gap-2"><input value={title} onChange={e=>setTitle(e.target.value)} className="px-3 py-2 bg-app-subtle border rounded text-sm flex-1" placeholder="Rule title"/><Button size="sm" onClick={async()=>{ await advancedApi.createSigma({title, rule_yaml: yaml, level:"high"}); window.location.reload(); }}>Create Sigma</Button></div>
       <textarea value={yaml} onChange={e=>setYaml(e.target.value)} className="w-full h-40 p-3 bg-app-subtle border rounded text-xs font-mono" />
       <div className="space-y-1">{Array.isArray(data) && data.map((r:any)=><div key={r.id} className="p-2 bg-app-subtle rounded border text-xs"><span className="font-bold">{r.title}</span> — {r.level} — v{r.version} — {r.is_active ? "active" : "inactive"}</div>)}</div>
-      <p className="text-xs text-content-tertiary">Phase 52: Sigma YAML parsed (yaml safe_load fallback regex), versioned, DSL with AND/OR/IN/==.</p>
+      <p className="text-xs text-content-tertiary">Sigma YAML parsed (yaml safe_load fallback regex), versioned, DSL with AND/OR/IN/==.</p>
     </div>
   );
 }
@@ -176,7 +176,7 @@ function ComplianceView({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       {Array.isArray(data) && data.map((p:any)=><div key={p.id} className="p-3 bg-app-subtle rounded border"><div className="font-bold">{p.name} — {p.description}</div><div className="text-xs text-content-tertiary">{p.controls?.length} controls</div><Button size="sm" className="mt-2" onClick={()=>advancedApi.exportPackS3(p.name)}>Export to S3</Button></div>)}
-      <p className="text-xs text-content-tertiary">Phase 53: ISO27001/NIST/GDPR/SOC2 packs with controls JSON. S3 export via boto3 if configured else local fallback.</p>
+      <p className="text-xs text-content-tertiary">ISO27001/NIST/GDPR/SOC2 packs with controls JSON. S3 export via boto3 if configured else local fallback.</p>
     </div>
   );
 }
@@ -188,7 +188,7 @@ function TeamsView({ data }: { data: any }) {
       <div className="flex gap-2"><input value={teamName} onChange={e=>setTeamName(e.target.value)} placeholder="Team name" className="px-3 py-2 bg-app-subtle border rounded text-sm"/><Button size="sm" onClick={async()=>{ await advancedApi.createTeam({name: teamName}); setTeamName(""); }}>Create Team</Button></div>
       <div className="flex gap-2"><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} placeholder="Invite email" className="px-3 py-2 bg-app-subtle border rounded text-sm"/><Button size="sm" onClick={async()=>{ await advancedApi.createInvite({email: inviteEmail}); setInviteEmail(""); }}>Invite</Button></div>
       <div>{Array.isArray(data) && data.map((t:any)=><div key={t.id} className="p-2 bg-app-subtle rounded border text-sm">{t.name} — {t.member_count} members</div>)}</div>
-      <p className="text-xs text-content-tertiary">Phase 54: Teams + TeamMembership + OrgInvite with token expiry 72h, seat limit MAX_USERS_PER_ORG.</p>
+      <p className="text-xs text-content-tertiary">Teams + TeamMembership + OrgInvite with token expiry 72h, seat limit MAX_USERS_PER_ORG.</p>
     </div>
   );
 }
@@ -196,7 +196,7 @@ function MLView({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-3"><div className="p-3 bg-app-subtle rounded border"><div className="text-xs">Precision</div><div className="font-bold text-lg">{data?.precision ? (data.precision*100).toFixed(1)+"%" : "N/A"}</div></div><div className="p-3 bg-app-subtle rounded border"><div className="text-xs">Total Feedback</div><div className="font-bold text-lg">{data?.total ?? 0}</div></div><div className="p-3 bg-app-subtle rounded border"><div className="text-xs">FP Rate</div><div className="font-bold text-lg">{data?.false_positive_rate ? (data.false_positive_rate*100).toFixed(1)+"%" : "0%"}</div></div></div>
-      <p className="text-xs text-content-tertiary">Phase 55: Feedback types true/false positive, drift detection critical ratio &gt;0.3, model versions.</p>
+      <p className="text-xs text-content-tertiary">Feedback types true/false positive, drift detection critical ratio &gt;0.3, model versions.</p>
     </div>
   );
 }
@@ -207,7 +207,7 @@ function AttackView({ data }: { data: any }) {
     <div className="space-y-3">
       <div className="grid grid-cols-6 gap-2">{data?.heatmap?.slice(0,12).map((h:any)=><div key={h.technique_id} className="p-2 bg-app-subtle rounded border text-xs"><div className="font-bold">{h.technique_id}</div><div>{h.count} hits</div></div>)}</div>
       {matrix && <div className="text-xs"><div className="font-bold mb-2">ATT&CK Matrix — {matrix.tactics?.length} tactics</div><div className="flex flex-wrap gap-1">{matrix.tactics?.map((t:any)=><span key={t.id} className="px-2 py-1 bg-app-subtle rounded border">{t.name}</span>)}</div></div>}
-      <p className="text-xs text-content-tertiary">Phase 56: Heatmap aggregates SecurityAlert.mitre_technique_id, ATT&CK navigator layer export, actor attribution via overlap scoring.</p>
+      <p className="text-xs text-content-tertiary">Heatmap aggregates SecurityAlert.mitre_technique_id, ATT&CK navigator layer export, actor attribution via overlap scoring.</p>
     </div>
   );
 }
@@ -216,7 +216,7 @@ function RetentionView({ data }: { data: any }) {
     <div className="space-y-3">
       {Array.isArray(data) && data.map((p:any)=><div key={p.id} className="p-3 bg-app-subtle rounded border text-sm"><div className="font-bold">{p.data_type} — {p.retention_days}d retain / {p.archive_after_days}d archive / {p.delete_after_days}d delete</div><div className="text-xs text-content-tertiary">{p.description}</div></div>)}
       <Button size="sm" onClick={()=>advancedApi.runArchive(true).then(r=>alert(JSON.stringify(r.data)))}>Dry-run Archive</Button>
-      <p className="text-xs text-content-tertiary">Phase 57: Retention policies (alerts 90/60/90), legal hold prevents archival, GDPR anonymization.</p>
+      <p className="text-xs text-content-tertiary">Retention policies (alerts 90/60/90), legal hold prevents archival, GDPR anonymization.</p>
     </div>
   );
 }
@@ -233,7 +233,7 @@ function HAView({ data }: { data: any }) {
           {data?.honest_gaps?.map((g:string,i:number)=><li key={i}>{g}</li>)}
         </ul>
       </div>
-      <p className="text-xs text-content-tertiary">Phase 58: RedisEventBus publish, distributed lock SETNX, HA status endpoint. RLS not enabled — org_id filter instead.</p>
+      <p className="text-xs text-content-tertiary">RedisEventBus publish, distributed lock SETNX, HA status endpoint. RLS not enabled — org_id filter instead.</p>
     </div>
   );
 }
@@ -241,7 +241,7 @@ function PWAView({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       <div className="p-3 bg-app-subtle rounded border"><div className="font-bold">{data?.manifest?.name}</div><div className="text-xs">{data?.manifest?.description}</div><div className="text-xs">Push subs: {data?.push_subscriptions}</div></div>
-      <p className="text-xs text-content-tertiary">Phase 59: Manifest + service worker + push via Web Push API (VAPID). Offline queue client-side IndexedDB.</p>
+      <p className="text-xs text-content-tertiary">Manifest + service worker + push via Web Push API (VAPID). Offline queue client-side IndexedDB.</p>
       <Button size="sm" onClick={()=>{ if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').then(()=>alert('SW registered')).catch(e=>alert(e.message)); }}}>Register SW</Button>
     </div>
   );
@@ -253,7 +253,7 @@ function BillingView({ data }: { data: any }) {
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-3"><div className="p-3 bg-app-subtle rounded border"><div className="text-xs">Alerts</div><div className="font-bold">{data?.alerts_ingested} / {data?.quota?.max_alerts_per_month}</div><div className="text-xs">{data?.usage_percent?.alerts?.toFixed(1)}%</div></div><div className="p-3 bg-app-subtle rounded border"><div className="text-xs">Cases</div><div className="font-bold">{data?.cases_created} / {data?.quota?.max_cases_per_month}</div></div><div className="p-3 bg-app-subtle rounded border"><div className="text-xs">Users</div><div className="font-bold">{data?.users_active} / {data?.quota?.max_users}</div></div></div>
       <div className="flex gap-2">{plans.map((p:any)=><div key={p.id} className="p-3 bg-app-subtle rounded border text-xs"><div className="font-bold">{p.name} — ${p.price_per_month}/mo</div><div>{p.max_alerts} alerts, {p.max_users} users</div></div>)}</div>
-      <p className="text-xs text-content-tertiary">Phase 60: Usage metering per org per month, quota enforcement 429 when exceeded, free/pro/enterprise plans.</p>
+      <p className="text-xs text-content-tertiary">Usage metering per org per month, quota enforcement 429 when exceeded, free/pro/enterprise plans.</p>
     </div>
   );
 }

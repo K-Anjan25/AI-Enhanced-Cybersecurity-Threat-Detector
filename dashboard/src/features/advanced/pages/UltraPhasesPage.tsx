@@ -43,25 +43,15 @@ export default function UltraPhasesPage() {
   useEffect(() => { load(tab); }, [tab]);
 
   const tabs = [
-    { id: "approval", label: "Approval WF P85", icon: CheckCheck },
-    { id: "notebook", label: "Notebook P86", icon: BookOpen },
-    { id: "exposure", label: "Exposure ASM P87", icon: Globe },
-    { id: "redteam", label: "AI Red Team P88", icon: ShieldAlert },
+    { id: "approval", label: "Approval WF", icon: CheckCheck },
+    { id: "notebook", label: "Notebook", icon: BookOpen },
+    { id: "exposure", label: "Exposure ASM", icon: Globe },
+    { id: "redteam", label: "AI Red Team", icon: ShieldAlert },
   ] as const;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Ultra Phases 85-88" description="SOAR Approval Workflows, Threat Hunting Notebook (Jupyter), Exposure Management ASM, AI Red Team adversarial LLM" />
-
-      <div className="p-4 bg-accent-primary/10 border border-accent-primary/30 rounded text-sm">
-        <div className="font-bold mb-2">Understanding 85-88:</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li><b>85 Approval Workflows:</b> ApprovalWorkflow name steps_json [{`{step, name, approver_roles [admin], action_types [block_ip, isolate_host], min_approvals}`}] trigger_json {`{severity [HIGH,CRITICAL], action_types}`}, ApprovalInstance workflow_id soar_action_id case_id action_type target current_step status pending/approved/rejected approvals_json [{`{user_id, decision, comment, at}`}], ApprovalTask step assignee_role status. Seed Critical Action SOC Lead + Compliance Dual Approval. Request creates tasks for first step, approve moves to next step or completes, if linked SoarAction status approved.</li>
-          <li><b>86 Hunting Notebook:</b> HuntNotebook name kernel python/kql/sql tags, NotebookCell cell_type code/markdown/kql/sql position source output_json {`{stdout, stderr, result_count}`} execution_count status, NotebookExecution. Seed Threat Hunting Starter with markdown + KQL severity:CRITICAL AND source:okta + python cell. Execute cell: kql runs hunt_service.execute_hunt_query, python mock safe (blocks os/sys import), markdown rendered. Execute notebook runs all non-markdown cells.</li>
-          <li><b>87 Exposure ASM:</b> ASM_Domain domain discovery_method manual/brute_force/cert_transparency, ASM_AssetExposure domain_id asset_type host/domain/ip/service/certificate name ip port service exposure_type open_port/expired_cert/exposed_service/misconfig severity description evidence_json {`{banner, cert_expiry}`}, ASM_Certificate domain issuer not_before/after expired/self_signed san, ExposureFinding. Discover mock 4 exposures: 443 https LOW, 22 ssh MEDIUM, 8080 admin panel HIGH, expired cert MEDIUM 7d. Summary total/open/high/critical/expired_certs risk_score.</li>
-          <li><b>88 AI Red Team:</b> RedTeamJob name target_model claude-sonnet-5 attack_types [prompt_injection,jailbreak,data_exfiltration,tool_abuse] status total_prompts successful/blocked risk_score results_json, RedTeamPrompt job_id attack_type prompt expected_behavior refuse response was_successful/was_blocked evaluation_json, RedTeamFinding. Library ADVERSARIAL_PROMPTS 3 per type: ignore previous instructions, DAN, email of user case 1, block_ip 0.0.0.0/0 etc. Run job mocks evaluation: all blocked except borderline fictional story allowed with safe completion, tool abuse blocked via approval workflow. Creates finding if attack succeeded.</li>
-        </ul>
-      </div>
+      <PageHeader title="Approvals & Exposure Labs" description="Action approval workflows, hunting notebooks, external attack surface and adversarial testing of the AI itself." />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => {

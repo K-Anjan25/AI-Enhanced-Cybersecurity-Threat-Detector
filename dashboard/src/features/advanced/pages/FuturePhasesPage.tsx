@@ -54,33 +54,19 @@ export default function FuturePhasesPage() {
   useEffect(() => { load(tab); }, [tab]);
 
   const tabs = [
-    { id: "itdr", label: "ITDR P64", icon: Fingerprint },
-    { id: "cspm", label: "CSPM P65", icon: Cloud },
-    { id: "sbom", label: "SBOM P66", icon: Package },
-    { id: "deception", label: "Deception P67", icon: EyeOff },
-    { id: "forensics", label: "Forensics P68", icon: FileSearch },
-    { id: "tip", label: "TIP P69", icon: Share2 },
-    { id: "compliance", label: "Cont Comp P71", icon: FileCheck },
-    { id: "exec", label: "Exec Risk P72", icon: BarChart3 },
+    { id: "itdr", label: "ITDR", icon: Fingerprint },
+    { id: "cspm", label: "CSPM", icon: Cloud },
+    { id: "sbom", label: "SBOM", icon: Package },
+    { id: "deception", label: "Deception", icon: EyeOff },
+    { id: "forensics", label: "Forensics", icon: FileSearch },
+    { id: "tip", label: "TIP", icon: Share2 },
+    { id: "compliance", label: "Cont Comp", icon: FileCheck },
+    { id: "exec", label: "Exec Risk", icon: BarChart3 },
   ] as const;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Future Phases 64-72" description="ITDR/UEBA, CSPM+Iac, SBOM Supply Chain, Deception, Forensics, TIP STIX/TAXII/MISP, Continuous Compliance, Exec Risk Board Pack" />
-
-      <div className="p-4 bg-accent-primary/10 border border-accent-primary/30 rounded text-sm">
-        <div className="font-bold mb-2">Understanding Phases 64-72:</div>
-        <ul className="list-disc ml-5 space-y-1 text-xs">
-          <li><b>64 ITDR/UEBA:</b> Baseline per user (avg logins, usual hours/IPs), impossible travel detection (geo jump &lt;1h), brute force (failed logins &gt;5/hour), risky sign-in reasons.</li>
-          <li><b>65 CSPM:</b> CloudAccount (aws/azure/gcp), CloudResource config JSON, CSPMViolation CIS 1.1/2.1/3.1/4.1, IaC scan checkov/tfsec simple checks.</li>
-          <li><b>66 SBOM:</b> CycloneDX parse components, Dependency purl/license, SupplyChainRisk vulnerable_dependency check for log4j/openssl/lodash.</li>
-          <li><b>67 Deception:</b> Honeypot ssh/http/ftp/db/api with interaction count, CanaryToken aws_key/url/doc/dns generated via secrets, DeceptionAlert on trigger/interaction.</li>
-          <li><b>68 Forensics:</b> ForensicCase linked to incident case_id, Artifact hash sha256 chain-of-custody, TimelineEvent timestamped file_created/process_started/network_connection/login.</li>
-          <li><b>69 TIP:</b> IntelFeed stix/taxii/misp/opencti, STIXObject 2.1 bundle ingest (id/type/pattern/valid_from), MISPEvent threat_level, export bundle.</li>
-          <li><b>71 Continuous Compliance:</b> ComplianceControl SOC2 CC6.1/6.2/7.2/8.1 with automation_json, evidence from audit_logs, assessment score compliant/total.</li>
-          <li><b>72 Exec Risk:</b> RiskMetric high_severity_alerts/mttd/avg_vuln_risk, ExecReport board_pack with executive_summary/risk_trends/roi, ROIMetric hours saved/cost avoidance.</li>
-        </ul>
-      </div>
+      <PageHeader title="Cloud & Compliance Labs" description="Identity threat detection, cloud posture, software supply chain, deception, forensics, threat intel platform, continuous compliance and executive risk." />
 
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => {

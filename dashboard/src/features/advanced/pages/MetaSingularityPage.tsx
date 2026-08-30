@@ -91,105 +91,112 @@ export default function MetaSingularityPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Meta-Singularity P111-P120 — Self-Rewriting OS</h1>
+      <div>
+        <h1 className="text-2xl font-bold font-display text-content-primary tracking-tight">Self-Rewriting OS</h1>
+        <p className="text-sm text-content-secondary mt-1">Incident command, risk quantification, actor profiling and self-modifying detection — research concepts.</p>
+      </div>
+      <div className="flex items-start gap-2 p-3 rounded-sm border border-status-warning/40 bg-status-warning/10 text-xs text-content-secondary">
+        <span className="font-bold text-status-warning shrink-0">CONCEPT</span>
+        <span>Speculative research surface. The data below is simulated and is not connected to your live environment — nothing here detects, decides or acts on real security events.</span>
+      </div>
       <div className="text-xs p-3 bg-gradient-to-r from-violet-900 to-fuchsia-900 text-white rounded">P111 Incident Commander (voice AI IC) → P112 Insurance Risk (ALE/SLE/ARO actuarial) → P113 Actor DNA (behavioral genome TTP) → P114 Data Vault (confidential computing enclave) → P115 Compliance Auditor v2 (LLM audit) → P116 Neural Co-Pilot (cognitive load BCI) → P117 Intel Mesh (p2p decentralized) → P118 Adversary LLM (LLM red team) → P119 Blockchain Audit (quantum-safe Dilithium chain) → P120 Meta-OS (self-rewriting genetic LLM-guided fully autonomous)</div>
       <div className="flex gap-2 flex-wrap">
         {[
-          ["ic","P111 IC"],
-          ["ins","P112 Ins Risk"],
-          ["dna","P113 Actor DNA"],
-          ["vault","P114 Vault"],
-          ["audit","P115 Audit v2"],
-          ["neural","P116 Neural"],
-          ["mesh","P117 Mesh"],
-          ["adv","P118 Adv LLM"],
-          ["chain","P119 Chain"],
-          ["meta","P120 Meta-OS"],
+          ["ic","IC"],
+          ["ins","Ins Risk"],
+          ["dna","Actor DNA"],
+          ["vault","Vault"],
+          ["audit","Audit v2"],
+          ["neural","Neural"],
+          ["mesh","Mesh"],
+          ["adv","Adv LLM"],
+          ["chain","Chain"],
+          ["meta","Meta-OS"],
         ].map(([k,l])=>(
-          <button key={k} onClick={()=>setTab(k as any)} className={`px-3 py-1 rounded border text-xs ${tab===k?'bg-fuchsia-600 text-white border-fuchsia-600':'bg-white'}`}>{l}</button>
+          <button key={k} onClick={()=>setTab(k as any)} className={`px-3 py-1 rounded border text-xs ${tab===k?'bg-accent-secondary text-brand-ink border-fuchsia-600':'bg-app-surface'}`}>{l}</button>
         ))}
       </div>
 
       {tab==="ic" && (
         <div className="space-y-3">
-          <button onClick={createIC} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Incident Commander (AI voice-00)</button>
-          <div className="grid gap-2">{commanders.map((c:any)=>(<div key={c.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{c.name} {c.commander_type} voice {String(c.voice_enabled)} {c.voice_id}</div><div>incident {c.incident_id} status {c.status}</div></div><button onClick={()=>decide(c.id)} className="px-2 py-1 bg-orange-600 text-white rounded">Decide Contain (chain-of-thought)</button></div>))}</div>
+          <button onClick={createIC} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Incident Commander (AI voice-00)</button>
+          <div className="grid gap-2">{commanders.map((c:any)=>(<div key={c.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{c.name} {c.commander_type} voice {String(c.voice_enabled)} {c.voice_id}</div><div>incident {c.incident_id} status {c.status}</div></div><button onClick={()=>decide(c.id)} className="px-2 py-1 bg-status-warning/20 text-status-warning border border-status-warning/40 rounded">Decide Contain (chain-of-thought)</button></div>))}</div>
           <div className="text-xs">Decisions: {decisions.map((d:any)=>`${d.decision_type}:${d.title} conf ${d.confidence} → ${d.delegated_to}`).join(", ")}</div>
         </div>
       )}
 
       {tab==="ins" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createPolicy} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Insurance Policy (Chubb $5M)</button><button onClick={quantify} className="px-3 py-1 bg-green-600 text-white rounded text-xs">Quantify Risk ALE=SLE*ARO</button></div>
+          <div className="flex gap-2"><button onClick={createPolicy} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Insurance Policy (Chubb $5M)</button><button onClick={quantify} className="px-3 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded text-xs">Quantify Risk ALE=SLE*ARO</button></div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Policies</div>{policies.map((p:any)=>(<div key={p.id}>{p.policy_name} {p.provider} cov ${p.coverage_amount} prem ${p.premium}</div>))}</div>
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Risk Quant</div>{rqs.map((r:any)=>(<div key={r.id}>ALE ${r.ale} SLE ${r.sle} ARO {r.aro}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Policies</div>{policies.map((p:any)=>(<div key={p.id}>{p.policy_name} {p.provider} cov ${p.coverage_amount} prem ${p.premium}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Risk Quant</div>{rqs.map((r:any)=>(<div key={r.id}>ALE ${r.ale} SLE ${r.sle} ARO {r.aro}</div>))}</div>
           </div>
         </div>
       )}
 
       {tab==="dna" && (
         <div className="space-y-3">
-          <button onClick={createActor} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Actor DNA (genome T1078 T1053 T1021 hash)</button>
-          <div className="grid gap-2">{actors.map((a:any)=>(<div key={a.id} className="border p-3 rounded bg-white text-xs"><div className="font-bold">{a.actor_name} hash {a.dna_hash} soph {a.sophistication_score}</div><pre className="bg-gray-50 p-1 text-[10px]">{JSON.stringify(a.behavior_genome,null,2)}</pre></div>))}</div>
+          <button onClick={createActor} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Actor DNA (genome T1078 T1053 T1021 hash)</button>
+          <div className="grid gap-2">{actors.map((a:any)=>(<div key={a.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">{a.actor_name} hash {a.dna_hash} soph {a.sophistication_score}</div><pre className="bg-app-subtle p-1 text-[10px]">{JSON.stringify(a.behavior_genome,null,2)}</pre></div>))}</div>
         </div>
       )}
 
       {tab==="vault" && (
         <div className="space-y-3">
-          <button onClick={createVault} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Data Vault (confidential enclave AES-256+Kyber)</button>
-          <div className="grid gap-2">{vaults.map((v:any)=>(<div key={v.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{v.name} {v.vault_type} {v.encryption_algo} attest {String(v.attestation_required)}</div></div><button onClick={()=>storeSecret(v.id)} className="px-2 py-1 bg-green-600 text-white rounded">Store Secret (hash only)</button></div>))}</div>
+          <button onClick={createVault} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Data Vault (confidential enclave AES-256+Kyber)</button>
+          <div className="grid gap-2">{vaults.map((v:any)=>(<div key={v.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{v.name} {v.vault_type} {v.encryption_algo} attest {String(v.attestation_required)}</div></div><button onClick={()=>storeSecret(v.id)} className="px-2 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded">Store Secret (hash only)</button></div>))}</div>
           <div className="text-xs">Secrets: {secrets.map((s:any)=>`${s.secret_name} ${s.secret_hash} ${s.classification}`).join(", ")}</div>
         </div>
       )}
 
       {tab==="audit" && (
         <div className="space-y-3">
-          <button onClick={createAudit} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Compliance Audit v2 (SOC2 LLM auditor)</button>
-          <div className="grid gap-2">{audits.map((a:any)=>(<div key={a.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{a.name} {a.framework} {a.auditor_type} score {a.compliance_score} {a.status}</div></div><button onClick={()=>runAudit(a.id)} className="px-2 py-1 bg-violet-600 text-white rounded">Run LLM Audit (CC6.1)</button></div>))}</div>
+          <button onClick={createAudit} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Compliance Audit v2 (SOC2 LLM auditor)</button>
+          <div className="grid gap-2">{audits.map((a:any)=>(<div key={a.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{a.name} {a.framework} {a.auditor_type} score {a.compliance_score} {a.status}</div></div><button onClick={()=>runAudit(a.id)} className="px-2 py-1 bg-accent-primary text-brand-ink rounded">Run LLM Audit (CC6.1)</button></div>))}</div>
           <div className="text-xs">Findings: {auditFindings.map((f:any)=>`${f.control_id} ${f.title} ${f.severity} ${f.status}`).join(", ")}</div>
         </div>
       )}
 
       {tab==="neural" && (
         <div className="space-y-3">
-          <div className="flex gap-2"><button onClick={createProfile} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Neural Profile (visual analytical BCI none)</button><button onClick={createCoPilot} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Create Co-Pilot Session (intent suggestions)</button></div>
+          <div className="flex gap-2"><button onClick={createProfile} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Neural Profile (visual analytical BCI none)</button><button onClick={createCoPilot} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Co-Pilot Session (intent suggestions)</button></div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Profiles</div>{profiles.map((p:any)=>(<div key={p.id}>{p.profile_name} {p.bci_device} {JSON.stringify(p.cognitive_preferences)}</div>))}</div>
-            <div className="border p-2 rounded bg-white text-xs"><div className="font-bold">Co-Pilot</div>{copilotSessions.map((s:any)=>(<div key={s.id}>{s.session_name} intent {s.intent} sug {s.suggestions?.length}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Profiles</div>{profiles.map((p:any)=>(<div key={p.id}>{p.profile_name} {p.bci_device} {JSON.stringify(p.cognitive_preferences)}</div>))}</div>
+            <div className="border border-line-subtle p-2 rounded-sm bg-app-surface text-xs"><div className="font-bold">Co-Pilot</div>{copilotSessions.map((s:any)=>(<div key={s.id}>{s.session_name} intent {s.intent} sug {s.suggestions?.length}</div>))}</div>
           </div>
         </div>
       )}
 
       {tab==="mesh" && (
         <div className="space-y-3">
-          <button onClick={createMeshNode} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Mesh Node (peer trust 85 rep 90)</button>
-          <div className="grid gap-2">{meshNodes.map((n:any)=>(<div key={n.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{n.node_name} {n.node_id} {n.region} trust {n.trust_score} rep {n.reputation}</div></div><button onClick={()=>syncMesh(n.id)} className="px-2 py-1 bg-green-600 text-white rounded">Sync Intel (150 records 45ms)</button></div>))}</div>
+          <button onClick={createMeshNode} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Mesh Node (peer trust 85 rep 90)</button>
+          <div className="grid gap-2">{meshNodes.map((n:any)=>(<div key={n.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{n.node_name} {n.node_id} {n.region} trust {n.trust_score} rep {n.reputation}</div></div><button onClick={()=>syncMesh(n.id)} className="px-2 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded">Sync Intel (150 records 45ms)</button></div>))}</div>
           <div className="text-xs">Mesh Intel: {meshIntel.map((i:any)=>`${i.intel_type} conf ${i.confidence} verified ${i.is_verified}`).join(", ")}</div>
         </div>
       )}
 
       {tab==="adv" && (
         <div className="space-y-3">
-          <button onClick={createAdv} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Adversary Agent (APT claude-3-5-sonnet stealth 0.9)</button>
-          <div className="grid gap-2">{adversaries.map((a:any)=>(<div key={a.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{a.name} {a.adversary_type} {a.llm_model} pers {JSON.stringify(a.personality)}</div></div><button onClick={()=>createPlan(a.id)} className="px-2 py-1 bg-red-600 text-white rounded">Create Attack Plan (kill chain T1078→T1053→T1021→T1041)</button></div>))}</div>
+          <button onClick={createAdv} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Adversary Agent (APT claude-3-5-sonnet stealth 0.9)</button>
+          <div className="grid gap-2">{adversaries.map((a:any)=>(<div key={a.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{a.name} {a.adversary_type} {a.llm_model} pers {JSON.stringify(a.personality)}</div></div><button onClick={()=>createPlan(a.id)} className="px-2 py-1 bg-status-critical/20 text-status-critical border border-status-critical/40 rounded">Create Attack Plan (kill chain T1078→T1053→T1021→T1041)</button></div>))}</div>
         </div>
       )}
 
       {tab==="chain" && (
         <div className="space-y-3">
-          <button onClick={createLedger} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">Create Blockchain Ledger (audit pbft Dilithium-3 genesis)</button>
-          <div className="grid gap-2">{ledgers.map((l:any)=>(<div key={l.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{l.name} {l.chain_type} {l.consensus} {l.quantum_safe_algo} blocks {l.block_count}</div></div><div className="flex gap-1"><button onClick={()=>addBlock(l.id)} className="px-2 py-1 bg-green-600 text-white rounded">Add Block (alert_triaged)</button><button onClick={()=>verifyChain(l.id)} className="px-2 py-1 bg-blue-600 text-white rounded">Verify Chain</button></div></div>))}</div>
+          <button onClick={createLedger} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Create Blockchain Ledger (audit pbft Dilithium-3 genesis)</button>
+          <div className="grid gap-2">{ledgers.map((l:any)=>(<div key={l.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{l.name} {l.chain_type} {l.consensus} {l.quantum_safe_algo} blocks {l.block_count}</div></div><div className="flex gap-1"><button onClick={()=>addBlock(l.id)} className="px-2 py-1 bg-status-success/20 text-status-success border border-status-success/40 rounded">Add Block (alert_triaged)</button><button onClick={()=>verifyChain(l.id)} className="px-2 py-1 bg-app-subtle text-content-primary border border-line-subtle rounded">Verify Chain</button></div></div>))}</div>
         </div>
       )}
 
       {tab==="meta" && (
         <div className="space-y-3">
-          {metaConfig && <div className="border p-3 rounded bg-white text-xs"><div className="font-bold text-lg">NOCTRA Meta-OS v2 {metaConfig.version} {metaConfig.autonomy_level}</div><div>Evolution {String(metaConfig.evolution_enabled)} strat {metaConfig.evolution_strategy} rewritable {metaConfig.rewritable_modules?.join(", ")}</div><div>Safety {JSON.stringify(metaConfig.safety_constraints)}</div></div>}
-          {metaMetrics && <div className="border p-3 rounded bg-white text-xs"><div className="font-bold">Metrics</div><pre>{JSON.stringify(metaMetrics,null,2)}</pre></div>}
-          <div className="flex gap-2"><button onClick={proposeEvo} className="px-3 py-1 bg-violet-600 text-white rounded text-xs">Propose Evolution (detection genetic 15.5% improvement safety 97.2%)</button></div>
-          <div className="grid gap-2">{evolutions.map((e:any)=>(<div key={e.id} className="border p-3 rounded bg-white text-xs flex justify-between"><div><div className="font-bold">{e.module_name} {e.previous_version}→{e.new_version} {e.status}</div><div>{e.change_description}</div><div>diff files {e.diff?.files_changed} +{e.diff?.lines_added} -{e.diff?.lines_removed} perf +{e.performance_improvement}% safety {e.safety_score}</div></div><button onClick={()=>deployEvo(e.id)} className="px-2 py-1 bg-fuchsia-600 text-white rounded">Deploy Evolution (self-rewrite)</button></div>))}</div>
-          <div className="border p-4 rounded bg-gradient-to-r from-violet-900 via-fuchsia-900 to-indigo-900 text-white">
+          {metaConfig && <div className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold text-lg">NOCTRA Meta-OS v2 {metaConfig.version} {metaConfig.autonomy_level}</div><div>Evolution {String(metaConfig.evolution_enabled)} strat {metaConfig.evolution_strategy} rewritable {metaConfig.rewritable_modules?.join(", ")}</div><div>Safety {JSON.stringify(metaConfig.safety_constraints)}</div></div>}
+          {metaMetrics && <div className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs"><div className="font-bold">Metrics</div><pre>{JSON.stringify(metaMetrics,null,2)}</pre></div>}
+          <div className="flex gap-2"><button onClick={proposeEvo} className="px-3 py-1 bg-accent-primary text-brand-ink rounded text-xs">Propose Evolution (detection genetic 15.5% improvement safety 97.2%)</button></div>
+          <div className="grid gap-2">{evolutions.map((e:any)=>(<div key={e.id} className="border border-line-subtle p-3 rounded-sm bg-app-surface text-xs flex justify-between"><div><div className="font-bold">{e.module_name} {e.previous_version}→{e.new_version} {e.status}</div><div>{e.change_description}</div><div>diff files {e.diff?.files_changed} +{e.diff?.lines_added} -{e.diff?.lines_removed} perf +{e.performance_improvement}% safety {e.safety_score}</div></div><button onClick={()=>deployEvo(e.id)} className="px-2 py-1 bg-accent-secondary text-brand-ink rounded">Deploy Evolution (self-rewrite)</button></div>))}</div>
+          <div className="border border-line-subtle p-4 rounded-sm bg-gradient-to-r from-violet-900 via-fuchsia-900 to-indigo-900 text-white">
             <div className="text-xl font-bold">NOCTRA Singularity OS v2 — Meta-OS That Rewrites Itself</div>
             <div className="text-sm mt-2">Autonomy: fully_autonomous | Strategy: llm_guided genetic | Rewritable: detection, response, hunting, triage, forensics | Safety: max_code_change 10% threshold 95 | Avg improvement 15.5% | Self-modifications today 3 | This is Phase 120 culmination — the OS that evolves its own code, the final singularity beyond self-healing.</div>
           </div>
