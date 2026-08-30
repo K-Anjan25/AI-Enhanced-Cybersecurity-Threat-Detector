@@ -141,6 +141,12 @@ def compute(db: Session, org_id: Optional[int], window_days: int = 30) -> Dict[s
 
     detect_samples: List[float] = []
     detect_eligible = 0
+    # Per-source tallies. Connector field mappings are written from provider
+    # documentation and cannot be verified without live credentials, so the
+    # system reports which sources actually supplied a usable time. A mapping
+    # that is wrong for a real payload shows up here as 0-of-N rather than
+    # silently shrinking the sample.
+    by_source: Dict[str, Dict[str, int]] = {}
     triage_samples: List[float] = []
     decision_samples: List[float] = []
     end_to_end_samples: List[float] = []
@@ -151,11 +157,16 @@ def compute(db: Session, org_id: Optional[int], window_days: int = 30) -> Dict[s
         # True detection latency: the event happened, then we saw it.
         if alert is not None:
             detect_eligible += 1
+            source = (alert.source or "unknown").strip() or "unknown"
+            tally = by_source.setdefault(source, {"alerts": 0, "with_event_time": 0})
+            tally["alerts"] += 1
+
             event_to_ingest = _elapsed_minutes(
                 getattr(alert, "event_time", None), alert.created_at
             )
             if event_to_ingest is not None:
                 detect_samples.append(event_to_ingest)
+                tally["with_event_time"] += 1
 
         ingest_to_triage = (
             _elapsed_minutes(alert.created_at, case.created_at) if alert else None
@@ -247,8 +258,40 @@ def compute(db: Session, org_id: Optional[int], window_days: int = 30) -> Dict[s
                 else None
             ),
         },
+        "event_time_coverage": _coverage_by_source(by_source),
         "not_measured": _not_measured(),
     }
+
+
+def _coverage_by_source(by_source: Dict[str, Dict[str, int]]) -> List[Dict[str, Any]]:
+    """Which connectors supply an event time, and which never do.
+
+    A source at 0% is the signal that its timestamp mapping is wrong or that
+    the provider genuinely sends nothing — either way it is the reason
+    detection latency is being measured on a subset, and it should be visible
+    rather than inferred from a shrinking sample size.
+    """
+    rows = []
+    for source, tally in sorted(by_source.items()):
+        alerts = tally["alerts"]
+        covered = tally["with_event_time"]
+        rows.append(
+            {
+                "source": source,
+                "alerts": alerts,
+                "with_event_time": covered,
+                "percent": round(100.0 * covered / alerts, 1) if alerts else 0.0,
+                "note": None
+                if covered == alerts
+                else (
+                    "no event time on any alert from this source — check the "
+                    "connector's timestamp mapping"
+                )
+                if covered == 0
+                else "some alerts from this source carried no usable event time",
+            }
+        )
+    return rows
 
 
 def _not_measured() -> List[Dict[str, str]]:

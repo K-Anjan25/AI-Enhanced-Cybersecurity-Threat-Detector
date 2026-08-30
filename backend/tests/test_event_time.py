@@ -230,3 +230,66 @@ def test_mttd_no_longer_listed_as_unmeasurable(db_session):
     assert "mean_time_to_detect" not in names
     # The honest residual: we cannot see before the source logged anything.
     assert "dwell_time_before_logging" in names
+
+
+# ---------------------------------------------------------------------------
+# Per-source coverage: an unverifiable mapping must be observable
+# ---------------------------------------------------------------------------
+
+def _alert_from(db, source, *, event_min_ago=None, ingest_min_ago=10):
+    now = datetime.now(timezone.utc)
+    alert = SecurityAlert(
+        org_id=ORG, severity="HIGH", source=source, message="e",
+        created_at=now - timedelta(minutes=ingest_min_ago),
+        event_time=(now - timedelta(minutes=event_min_ago)) if event_min_ago else None,
+    )
+    db.add(alert)
+    db.commit()
+    db.refresh(alert)
+    db.add(Case(org_id=ORG, title="c", kind="analyst", source_alert_id=alert.id,
+                created_at=now - timedelta(minutes=max(0, ingest_min_ago - 2))))
+    db.commit()
+    return alert
+
+
+def _coverage(report, source):
+    return next(r for r in report["event_time_coverage"] if r["source"] == source)
+
+
+def test_coverage_is_reported_per_source(db_session):
+    _alert_from(db_session, "okta", event_min_ago=40)
+    _alert_from(db_session, "okta", event_min_ago=30)
+    _alert_from(db_session, "legacy-syslog", event_min_ago=None)
+
+    report = response_metrics.compute(db_session, ORG)
+
+    okta = _coverage(report, "okta")
+    assert okta["alerts"] == 2 and okta["with_event_time"] == 2
+    assert okta["percent"] == 100.0
+    assert okta["note"] is None
+
+
+def test_a_source_supplying_no_times_is_called_out(db_session):
+    """This is what a wrong field mapping looks like from the outside."""
+    for _ in range(3):
+        _alert_from(db_session, "sentinel", event_min_ago=None)
+
+    row = _coverage(response_metrics.compute(db_session, ORG), "sentinel")
+
+    assert row["with_event_time"] == 0
+    assert row["percent"] == 0.0
+    assert "check the connector's timestamp mapping" in row["note"]
+
+
+def test_partial_coverage_is_distinguished_from_none(db_session):
+    _alert_from(db_session, "github", event_min_ago=40)
+    _alert_from(db_session, "github", event_min_ago=None)
+
+    row = _coverage(response_metrics.compute(db_session, ORG), "github")
+
+    assert row["percent"] == 50.0
+    assert "some alerts" in row["note"]
+
+
+def test_coverage_is_empty_when_nothing_to_report(db_session):
+    assert response_metrics.compute(db_session, ORG)["event_time_coverage"] == []
