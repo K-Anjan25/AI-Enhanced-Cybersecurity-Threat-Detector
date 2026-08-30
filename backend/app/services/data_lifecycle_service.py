@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 
@@ -10,6 +11,12 @@ from sqlalchemy.orm import Session
 from app.models.data_lifecycle import DataRetentionPolicy, DataArchiveLog, LegalHold, GDPRDeletionRequest
 from app.models import SecurityAlert, Case, AuditLog, User
 from app.core.config import settings
+from app.services import archive_store
+
+
+# One run copies at most this many rows, so a first archive on a large
+# tenant cannot build a multi-gigabyte payload in memory.
+_ARCHIVE_BATCH = 5000
 
 
 def ensure_default_policies(db: Session, org_id: int):
@@ -62,14 +69,16 @@ def archive_old_data(db: Session, org_id: int, data_type: str = "alerts") -> Dic
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=pol.archive_after_days or pol.retention_days)
 
-    # No archive destination is configured, so nothing is copied or deleted.
-    # What this can do honestly is report how much data is *eligible*, which is
-    # the number an operator needs before wiring up storage. Previously it
-    # returned that count as `archived_count` and wrote a log row claiming
-    # success against a fabricated s3:// path, so the dashboard reported
-    # "Archived N records" when nothing had moved.
+    # Rows past their threshold are written to the configured destination
+    # (object storage, or local disk when none is set). Nothing is deleted:
+    # copying data out and removing it are separate decisions, and deletion
+    # without a verified copy is how retention policies lose evidence.
     eligible = 0
+    rows_to_archive = []
     if data_type == "alerts":
+        rows_to_archive = db.query(SecurityAlert).filter(
+            SecurityAlert.org_id == org_id, SecurityAlert.created_at < cutoff
+        ).limit(_ARCHIVE_BATCH).all()
         eligible = db.query(SecurityAlert).filter(
             SecurityAlert.org_id == org_id, SecurityAlert.created_at < cutoff
         ).count()
@@ -84,27 +93,68 @@ def archive_old_data(db: Session, org_id: int, data_type: str = "alerts") -> Dic
         if held_case_ids:
             q = q.filter(Case.id.notin_(held_case_ids))
         eligible = q.count()
+        rows_to_archive = q.limit(_ARCHIVE_BATCH).all()
 
+    if not rows_to_archive:
+        log = DataArchiveLog(
+            org_id=org_id, data_type=data_type, archived_count=0,
+            archive_path=None, status="nothing_eligible",
+        )
+        db.add(log)
+        db.commit()
+        return {
+            "data_type": data_type,
+            "archived_count": 0,
+            "eligible_count": 0,
+            "cutoff": cutoff.isoformat(),
+            "status": "nothing_eligible",
+            "destination": archive_store.describe_destination()["kind"],
+            "reason": "No records are past their retention threshold.",
+        }
+
+    payload = json.dumps(
+        [_serialize_for_archive(r) for r in rows_to_archive], default=str
+    ).encode("utf-8")
+    result = archive_store.store(
+        org_id=org_id,
+        category=f"retention/{data_type}",
+        name=f"{cutoff.date()}.json",
+        payload=payload,
+        content_type="application/json",
+    )
+
+    written = len(rows_to_archive) if result["stored"] else 0
     log = DataArchiveLog(
         org_id=org_id,
         data_type=data_type,
-        archived_count=0,
-        archive_path=None,
-        status="not_configured",
+        archived_count=written,
+        archive_path=result["path"],
+        status="success" if result["stored"] else "failed",
     )
     db.add(log)
     db.commit()
+
     return {
         "data_type": data_type,
-        "archived_count": 0,
+        "archived_count": written,
         "eligible_count": eligible,
         "cutoff": cutoff.isoformat(),
-        "status": "not_configured",
+        "status": "archived" if result["stored"] else "failed",
+        "destination": result["destination"],
+        "path": result["path"],
+        "error": result["error"],
+        "truncated": eligible > written and result["stored"],
         "reason": (
-            "No archive destination is configured, so nothing was copied or "
-            "deleted. This reports how many records are past their retention "
-            "threshold and would be archived once storage is set up."
+            None if result["stored"]
+            else f"Nothing was archived: {result['error']}"
         ),
+    }
+
+
+def _serialize_for_archive(row) -> Dict[str, Any]:
+    """Column values only — enough to reconstitute the record later."""
+    return {
+        c.name: getattr(row, c.name) for c in row.__table__.columns
     }
 
 
@@ -168,15 +218,62 @@ def process_gdpr_request(db: Session, org_id: int, request_id: int, action: str 
         raise ValueError(
             f"Unknown action {action!r}. Expected one of: {', '.join(_GDPR_ACTIONS)}."
         )
-    req = db.query(GDPRDeletionRequest).filter(GDPRDeletionRequest.id == request_id, GDPRDeletionRequest.org_id == org_id).first()
+    # with_for_update takes a row lock so two callers cannot both read
+    # "pending" and both decide. Postgres blocks the second reader until the
+    # first commits; SQLite ignores the hint, which is why the guarded UPDATE
+    # below is kept as well.
+    req = (
+        db.query(GDPRDeletionRequest)
+        .filter(GDPRDeletionRequest.id == request_id, GDPRDeletionRequest.org_id == org_id)
+        .with_for_update()
+        .first()
+    )
     if not req:
         raise ValueError("GDPR request not found")
-    if action in ("approve", "reject") and req.status in _GDPR_DECIDED:
-        raise ValueError(
-            f"Request is already {req.status}; erasure cannot be reversed or re-decided."
+    if action in ("approve", "reject"):
+        # The conditional UPDATE below is the real guard; this early check only
+        # gives a clearer message in the common, uncontended case.
+        if req.status in _GDPR_DECIDED:
+            raise ValueError(
+                f"Request is already {req.status}; erasure cannot be reversed or re-decided."
+            )
+
+        # Settle the request with a conditional UPDATE so two simultaneous
+        # decisions cannot both pass the status check above. Approving
+        # anonymises an account, so it has to happen at most once.
+        settled = (
+            db.query(GDPRDeletionRequest)
+            .filter(
+                GDPRDeletionRequest.id == request_id,
+                GDPRDeletionRequest.org_id == org_id,
+                GDPRDeletionRequest.status.notin_(_GDPR_DECIDED),
+            )
+            .update(
+                {GDPRDeletionRequest.status: "approved" if action == "approve" else "rejected"},
+                synchronize_session="fetch",
+            )
         )
+        # Commit immediately so the claim is visible to other transactions.
+        # Without this the guard is evaluated against a snapshot and several
+        # callers each believe they won.
+        db.commit()
+        if not settled:
+            # Someone else settled it between our read and the UPDATE.
+            db.expire(req)
+            current = db.query(GDPRDeletionRequest.status).filter(
+                GDPRDeletionRequest.id == request_id
+            ).scalar()
+            raise ValueError(
+                f"Request is already {current}; erasure cannot be reversed or re-decided."
+            )
+        # We won the claim, so the row now carries our decision. Set it on the
+        # in-session object directly rather than refreshing: a refresh re-reads
+        # through a connection another thread may be mid-commit on, which made
+        # the winner intermittently observe someone else's status and refuse
+        # its own successful decision.
+        req.status = "approved" if action == "approve" else "rejected"
     if action == "approve":
-        req.status = "approved"
+        # Status was set by the claiming UPDATE above.
         # In real implementation, anonymize user data
         if req.target_user_id:
             user = db.query(User).filter(User.id == req.target_user_id).first()

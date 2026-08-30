@@ -82,20 +82,26 @@ export default function DataRetentionPage() {
         archived_total?: number;
         eligible_total?: number;
         status?: string;
+        destination?: { detail?: string };
+        results?: { error?: string | null }[];
       } | null;
       const archived = data?.archived_total ?? 0;
       const eligible = data?.eligible_total ?? 0;
-      // "Archived N" was reported even though no archive destination exists
-      // and nothing had moved. Say what actually happened.
-      if (data?.status === "not_configured") {
+      const where = data?.destination?.detail ?? "the archive";
+
+      if (data?.status === "failed") {
+        const reason = data.results?.find((r) => r?.error)?.error;
+        push(`Retention run failed — ${reason ?? "nothing was archived"}`, "error");
+      } else if (archived === 0) {
+        push("Nothing is past its retention threshold yet.");
+      } else if (eligible > archived) {
+        // The batch cap keeps a first run on a large tenant bounded.
         push(
-          eligible > 0
-            ? `${eligible} record(s) are past their retention threshold, but no archive destination is configured — nothing was moved or deleted.`
-            : "Nothing is past its retention threshold yet.",
+          `Archived ${archived} of ${eligible} eligible record(s) to ${where}. Run again to continue.`,
           "warning",
         );
       } else {
-        push(archived > 0 ? `Archived ${archived} record(s)` : "Nothing was old enough to archive");
+        push(`Archived ${archived} record(s) to ${where}. Nothing was deleted.`);
       }
       await load();
     } catch (e) {
@@ -320,7 +326,7 @@ export default function DataRetentionPage() {
         onConfirm={runAutomation}
         loading={busy}
         title="Run retention now?"
-        message="Records older than each policy's archive threshold are archived, and anything under an active legal hold is skipped. No archive destination is configured yet, so this run will report what is eligible without moving or deleting anything."
+        message="Records older than each policy's archive threshold are copied to the configured archive, and anything under an active legal hold is skipped. Nothing is deleted — archiving and deletion are separate decisions."
         confirmLabel="Run retention"
       />
     </div>

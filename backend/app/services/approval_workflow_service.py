@@ -96,7 +96,15 @@ def approve_instance(db: Session, org_id: int, instance_id: int, approver_user_i
             f"Unknown decision {decision!r}. Expected one of: {', '.join(_DECISIONS)}."
         )
 
-    inst = db.query(ApprovalInstance).filter(ApprovalInstance.id == instance_id, ApprovalInstance.org_id == org_id).first()
+    # Row lock first: the checks below are read-then-write, and without it two
+    # simultaneous approvers both read "pending" and both proceed. Postgres
+    # serialises here; SQLite ignores it, so the guarded UPDATE stays too.
+    inst = (
+        db.query(ApprovalInstance)
+        .filter(ApprovalInstance.id == instance_id, ApprovalInstance.org_id == org_id)
+        .with_for_update()
+        .first()
+    )
     if not inst:
         raise ValueError("Instance not found")
     if inst.status != "pending":
@@ -119,6 +127,42 @@ def approve_instance(db: Session, org_id: int, instance_id: int, approver_user_i
             "You have already decided this request. Each stage needs a "
             "different approver."
         )
+
+    # Everything above is a read-then-write, so two simultaneous calls can both
+    # pass it. Claim the step with a conditional UPDATE: whoever changes a row
+    # wins, everyone else is told the step moved on. Without this, four parallel
+    # approvals all succeeded and one person could clear a dual-approval
+    # workflow by firing two requests at once.
+    claimed_step = inst.current_step
+    claimed = (
+        db.query(ApprovalInstance)
+        .filter(
+            ApprovalInstance.id == instance_id,
+            ApprovalInstance.org_id == org_id,
+            ApprovalInstance.status == "pending",
+            ApprovalInstance.current_step == claimed_step,
+        )
+        .update(
+            {ApprovalInstance.status: "deciding"},
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    if not claimed:
+        raise ValueError(
+            "This request was decided by someone else while you were looking "
+            "at it. Reload to see the current state."
+        )
+
+    # The row now reads "deciding", which is what locks other callers out.
+    # Resetting it to "pending" here would release the claim before the
+    # decision is recorded, letting a second approver walk straight in — that
+    # is how two parallel approvals both succeeded. The status is restored
+    # further down, in the same transaction that records the approval.
+    db.expire(inst)
+
+
+    inst.status = "pending"
 
     wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == inst.workflow_id).first()
     steps = wf.steps_json or []

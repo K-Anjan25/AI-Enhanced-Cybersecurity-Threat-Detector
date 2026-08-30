@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.compliance_pack import CompliancePack, ComplianceExportSchedule, ComplianceExportLog
 from app.core.config import settings
+from app.services import archive_store
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,58 +117,42 @@ def list_schedules(db: Session, org_id: int) -> List[ComplianceExportSchedule]:
 
 
 def export_to_s3(db: Session, org_id: int, pack_name: str, pdf_bytes: bytes) -> Dict[str, Any]:
-    """Export compliance PDF to S3 if configured, else return local path info."""
-    s3_endpoint = getattr(settings, "S3_ENDPOINT", None)
-    s3_bucket = getattr(settings, "S3_BUCKET", None)
-    s3_access = getattr(settings, "S3_ACCESS_KEY", None)
-    s3_secret = getattr(settings, "S3_SECRET_KEY", None)
+    """Write the evidence pack to the configured destination.
 
-    if not (s3_endpoint and s3_bucket and s3_access and s3_secret):
-        # Fallback: not configured, log as local
-        log = ComplianceExportLog(
-            org_id=org_id,
-            pack_name=pack_name,
-            file_path=f"/tmp/{pack_name.lower()}-evidence-{datetime.now(timezone.utc).isoformat()}.pdf",
-            status="success",
-        )
-        db.add(log)
-        db.commit()
-        return {"destination": "local", "path": log.file_path, "s3_configured": False}
+    This used to log status "success" with a /tmp/... path when S3 was not
+    configured, for a file it never wrote. An auditor reading that log would
+    find a success record pointing at nothing — and the log *is* the evidence,
+    so a false record is worse than no export at all.
 
-    try:
-        # Try boto3 if available
-        import boto3
+    Now it writes a real file every time: object storage when configured, local
+    disk otherwise, and a failed log row when neither works.
+    """
+    result = archive_store.store(
+        org_id=org_id,
+        category=f"compliance/{pack_name.lower()}",
+        name="evidence.pdf",
+        payload=pdf_bytes,
+        content_type="application/pdf",
+    )
 
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=s3_endpoint,
-            aws_access_key_id=s3_access,
-            aws_secret_access_key=s3_secret,
-        )
-        key = f"compliance/{org_id}/{pack_name.lower()}/{datetime.now(timezone.utc).date()}/evidence.pdf"
-        s3.put_object(Bucket=s3_bucket, Key=key, Body=pdf_bytes, ContentType="application/pdf")
-        s3_url = f"{s3_endpoint}/{s3_bucket}/{key}"
-        log = ComplianceExportLog(
-            org_id=org_id,
-            pack_name=pack_name,
-            s3_url=s3_url,
-            file_path=key,
-            status="success",
-        )
-        db.add(log)
-        db.commit()
-        return {"destination": "s3", "s3_url": s3_url, "key": key, "s3_configured": True}
-    except Exception as exc:
-        _LOGGER.warning("S3 export failed: %s", exc)
-        log = ComplianceExportLog(
-            org_id=org_id,
-            pack_name=pack_name,
-            status="failed",
-            error=str(exc)[:500],
-        )
-        db.add(log)
-        db.commit()
-        return {"destination": "s3", "error": str(exc)[:200], "s3_configured": True, "status": "failed"}
+    log = ComplianceExportLog(
+        org_id=org_id,
+        pack_name=pack_name,
+        file_path=result["path"],
+        s3_url=result["url"],
+        status="success" if result["stored"] else "failed",
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "stored": result["stored"],
+        "destination": result["destination"],
+        "path": result["path"],
+        "s3_url": result["url"],
+        "s3_configured": result["destination"] == "s3",
+        "error": result["error"],
+    }
 
 
 def serialize_pack(p: CompliancePack) -> Dict[str, Any]:
