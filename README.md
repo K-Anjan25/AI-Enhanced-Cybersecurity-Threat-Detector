@@ -1,4 +1,4 @@
-# NOCTRA — an autonomous AI security analyst for small companies
+# NOCTRA — an autonomous AI security analyst
 
 [![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
 
