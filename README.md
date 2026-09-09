@@ -26,13 +26,6 @@ approve it.
 - **Nothing runs without you.** Actions are recorded with an explicit undo path
   and wait for one-click approval.
 
-> **Brand System & Specification**:
-> - Design system (SIGNAL — ink canvas + signal green, DM Sans + Space Mono): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md) §40 · design source [`newfile.html`](newfile.html)
-> - Current redesign spec (IA, product model, stages): [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md)
-> - Code-accurate wireframe kit (20 boards, mapped 1:1 to routes): [`docs/wireframes/`](docs/wireframes/)
-> - Demo script + verification matrix: [`docs/demo.md`](docs/demo.md)
-> - Commercial-grade frontend redesign: [`docs/frontend-commercial-redesign.md`](docs/frontend-commercial-redesign.md)
-> - Historical roadmap (contains withdrawn speculative phases): [`docs/ROADMAP_150_FINAL.md`](docs/ROADMAP_150_FINAL.md)
 
 An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.
 
@@ -217,16 +210,3 @@ npm run build
 
 ---
 
-## Brand Specification & Artifacts
-
-- **Brand Name**: `NOCTRA`
-- **Tagline**: *"Threat intelligence, always on."*
-- **What it is**: NOCTRA watches your telemetry, explains incidents in plain English, maps the blast radius, and drafts reversible actions — you approve, it records and reports.
-- **Design system**: **SIGNAL** — ink canvas `#070b0f` + signal green `#a6ff3f`, sharp 2–4px corners, HUD corner brackets, console panels, scan radar.
-- **Typography**: DM Sans (UI + display) · Space Mono (`tech-label`: eyebrows, metric labels, IDs, timestamps)
-- **Design source**: [`newfile.html`](newfile.html) (Canva export, mirrored at
-  [`docs/design/noctra-signal-reference/part-1-landing.html`](docs/design/noctra-signal-reference/part-1-landing.html))
-- **Redesign Spec (current)**: [`docs/noctra-redesign-spec.md`](docs/noctra-redesign-spec.md) — §40 documents the SIGNAL system; §12/§15–§17 record the retired predecessors
-- **Wireframes**: [`docs/wireframes/`](docs/wireframes/) — 20 code-accurate boards, SIGNAL v3, mapped 1:1 to routes
-- **Demo script**: [`docs/demo.md`](docs/demo.md) — 5-minute walkthrough + verification matrix
-- **Historical (superseded)**: [`docs/brand-identity-axiom.md`](docs/brand-identity-axiom.md) · [`docs/brand-identity-axiom.png`](docs/brand-identity-axiom.png)
