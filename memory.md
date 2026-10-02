@@ -27,14 +27,14 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 | Aspect | State |
 |---|---|
 | Repository | Six planning documents plus the Sprint S0 scaffolding (commit `23b6a57` onward) |
-| Source code | `backend/` FastAPI skeleton and `ml-service/` inference skeleton, both tested. No dashboard, no model code |
-| Tests | 35 passing — 20 backend, 15 ml-service. Coverage 90.3% on `app/` against the 80% gate (R-80) |
-| Checks green | ruff, black, mypy strict, bandit, import-linter (2 contracts, proven to fail on a violation) |
+| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton, `dashboard/` React shell — all tested. No model code |
+| Tests | 69 passing — 20 backend, 15 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
+| Checks green | ruff, black, mypy strict, bandit, import-linter, tsc, eslint, vite build. Three of these were proven to fail on an injected violation before being trusted |
 | Dependencies | Installed in a local `.venv` (gitignored); no committed lockfile yet — that is T-007 |
 | Datasets | **Not downloaded.** No `data/` directory |
 | Models | **None trained.** No baselines, no metrics |
 | Branch | `arena/01a0fee2-ai-enhanced-cybersecurity-thre`, based on `60e9adf` |
-| Next work | Finish S0: T-004 dashboard, T-006 CI, T-005 compose — see [task.md](task.md#3-epic-e0--foundations-m0) |
+| Next work | Finish S0: T-006 CI workflow, T-005 compose (needs Docker), T-010 contributor guides |
 
 Sprint S0 started early, on 2026-10-02. Per-task status lives under the E0 table in [task.md](task.md#3-epic-e0--foundations-m0); the rest of the plan is still `TODO`.
 

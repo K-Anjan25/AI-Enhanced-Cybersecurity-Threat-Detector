@@ -63,18 +63,20 @@ Goal: an empty but correct skeleton. Nothing clever, everything repeatable.
 
 | ID | Status | Note |
 |---|---|---|
-| T-001 | IN PROGRESS | `backend/`, `ml-service/`, `data/`, `.gitignore`, `.editorconfig`, `README.md` in place. `dashboard/`, `docker/`, `k8s/`, `scripts/`, `.github/` are created by their own tasks, so the tree does not yet match the architecture doc exactly |
+| T-001 | IN PROGRESS | `backend/`, `ml-service/`, `dashboard/`, `data/`, `.gitignore`, `.editorconfig`, `README.md` in place. `docker/`, `k8s/`, `scripts/`, `.github/` are created by their own tasks, so the tree does not yet match the architecture doc exactly |
 | T-002 | DONE | 20 tests pass. `/healthz` and `/readyz` live; missing `AEGIS_SECRET_KEY` exits 1 naming the variable with no traceback; readiness returns 503 on an unavailable probe |
 | T-003 | DONE | 15 tests pass. `/internal/healthz` distinguishes `no_model_loaded` from `serving`; staging-only models do not count as serving |
-| T-004 | TODO | |
+| T-004 | DONE | 34 tests pass. Nav shell, routing, dark/light theming via one CSS-variable source, `ConnectionStatus`. `tsc --noEmit` clean under `strict` + `exactOptionalPropertyTypes`; production build succeeds (83 modules) |
 | T-005 | TODO | Blocked in this sandbox: Docker is not installed, so a compose file could not be executed here |
 | T-006 | TODO | |
-| T-007 | IN PROGRESS | ruff, black, mypy strict, bandit, pytest and coverage configured and running for both Python services. eslint/prettier/stylelint/commitlint/pre-commit wait on T-004 |
+| T-007 | IN PROGRESS | ruff, black, mypy strict, bandit, pytest + coverage for both Python services; eslint with jsx-a11y and typed rules for the dashboard. Remaining: prettier, stylelint, commitlint, pre-commit |
 | T-008 | DONE | Ten decisions recorded in [memory.md](memory.md#decisions-log) using a status/context/decision/consequences format |
 | T-009 | IN PROGRESS | Two import-linter contracts enforced on the backend and **proven to fail on an injected violation**. Frontend feature boundaries wait on T-004 |
 | T-010 | IN PROGRESS | `README.md` covers setup, run, and the check commands; the "how to add an endpoint / model / page" guides are not written |
 
-Verified with: `pytest` 20 passed (backend) + 15 passed (ml-service), `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 files, `bandit` no issues, coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept.
+**Verified with (2026-10-02):** 69 tests passing — 20 backend, 15 ml-service, 34 dashboard. `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 Python files, `bandit` no issues, backend coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept, `tsc --noEmit` clean, `eslint --max-warnings 0` clean, `vite build` succeeds.
+
+Three checks were proven non-vacuous by injecting a violation and watching them fail: `lint-imports` (`app.services.health_service -> fastapi`), the WCAG contrast test (a light-theme medium-severity text token measured 1.5782:1 against the 4.5 minimum), and eslint (3 errors across R-20, R-23 and R-28). All three were reverted and re-run green.
 
 ## 4. Epic E1 — Data, features, and baselines (M1)
 
