@@ -1,87 +1,43 @@
-# ======================
-# Python
-# ======================
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.log
-.pytest_cache/
-
-# Virtual environments
-venv/
-backend/venv/
-backend/.venv/
-ml-service/venv/
-**/.venv/
-
-# Load-test run artifacts (regenerated on each run)
-loadtest/**/baseline-*
-loadtest/**/report-*
-
-# Environment files
+# --- secrets (R-50) -------------------------------------------------------
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
 
-# ======================
-# Node
-# ======================
+# --- datasets and model artifacts (R-40, R-68) ----------------------------
+# Datasets are fetched by scripts/fetch_datasets.py and never committed.
+data/*
+!data/.gitkeep
+ml-service/artifacts/*
+!ml-service/artifacts/.gitkeep
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# --- python ---------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- node / dashboard -----------------------------------------------------
 node_modules/
-dashboard/node_modules/
-dashboard/build/
+dist/
+.vite/
+*.tsbuildinfo
 
-# ======================
-# Models
-# ======================
-model/
-*.pkl
-*.h5
-
-# ======================
-# Datasets
-# ======================
-datasets/
-*.csv
-dataset/CICIDS2017/
-*.csv
-
-# ======================
-# Local / editor / design assets (not part of the codebase)
-# ======================
+# --- editors / os ---------------------------------------------------------
+.idea/
 .vscode/
-SKILL.md/
-ui-design/
-
-# Claude Code: share launch.json, keep machine-local settings out
-.claude/settings.local.json
-
-# Stray runtime DBs (dev leftovers, not part of the codebase)
-backend/threatai_verify.db
-backend/e2e.db
-backend/smoke.db
-
-# ======================
-# OS
-# ======================
+*.swp
 .DS_Store
-Thumbs.db
-*.lnk
-Videos - Shortcut.lnk
-
-# diagrams/
-# *.md
-
-# docs/
-# *.md*.db
-backend/noctra_preview.db
-
-# Uploaded assets (profile images, ingest artifacts)
-backend/uploads/
-
-# Local preview / scratch databases
-*.db
-*.sqlite
-*.sqlite3
-
-# Retention and compliance archives written by archive_store when no object
-# storage is configured. Real exported data; never committed.
-backend/archives/
