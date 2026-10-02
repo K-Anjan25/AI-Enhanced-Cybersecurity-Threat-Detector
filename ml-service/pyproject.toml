@@ -1,4 +1,67 @@
+[project]
+name = "aegis-ml-service"
+version = "0.1.0"
+description = "AEGIS — transformer inference for flow and log anomaly scoring"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.142",
+    "uvicorn>=0.40",
+    "pydantic>=2.13",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1",
+    "httpx>=0.28",
+    "ruff>=0.16",
+    "black>=26.5",
+    "mypy>=2.4",
+]
+# Model training and inference dependencies (torch, transformers, drain3) land
+# with T-201/T-204. Deliberately absent now: the S0 skeleton must install and
+# test without them.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["aegis_ml*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["aegis_ml", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "D", "S", "BLE", "ASYNC"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D100", "D101", "D102", "D103", "D104", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+files = ["aegis_ml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-q"
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["aegis_ml"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

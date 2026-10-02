@@ -1,0 +1,279 @@
+# Tasks & Projects — AI-Enhanced Cybersecurity Threat Detector (AEGIS)
+
+| | |
+|---|---|
+| **Document** | Work breakdown, backlog, and delivery plan |
+| **Version** | 0.1 |
+| **Last updated** | 2026-10-02 (Friday) |
+| **Status** | Live planning document — update as work lands |
+| **Derives from** | [prd.md](prd.md) · [architecture.md](architecture.md) |
+| **Gated by** | [rules.md](rules.md) — Definition of Done §10 |
+| **Related** | [design.md](design.md) · [memory.md](memory.md) |
+
+---
+
+## 1. How to read this document
+
+**Task IDs are stable.** `T-1xx` data, `T-2xx` models, `T-3xx` backend, `T-4xx` frontend, `T-5xx` platform/QA, `T-6xx` backlog. IDs are referenced from other documents — never renumber a task, mark it `DROPPED` instead.
+
+**Estimates** are ideal engineer-days at one senior engineer, not calendar days. Points are deliberately absent: the unit is days because that is what the team actually argues about.
+
+**Every task has acceptance criteria.** A task with no testable criteria is not ready to start. "Investigate X" tasks must state what artifact the investigation produces.
+
+**Status values:** `TODO` · `IN PROGRESS` · `BLOCKED` · `DONE` · `DROPPED`. Status changes are made in this file in the same PR as the code.
+
+**Status as of 2026-10-02.** Sprint S0 is under way. The backend and ml-service skeletons are written and passing their checks; per-task status is recorded under each epic table.
+
+## 2. Milestones
+
+| ID | Milestone | Window | Exit criteria |
+|---|---|---|---|
+| **M0** | Foundations | 2026-10-05 → 2026-10-16 | `docker compose up` serves `/healthz`; CI runs lint + typecheck + test on a trivial module; docs are the only content in the repo and are cross-linked |
+| **M1** | Data & baselines | 2026-10-19 → 2026-10-30 | Datasets fetched with verified checksums; feature schema frozen at `features@1`; baseline metrics recorded in [memory.md](memory.md#baseline-results) |
+| **M2** | Transformer models | 2026-11-02 → 2026-11-13 | Both models beat their baselines on the temporal split; cross-dataset transfer measured; determinism test green |
+| **M3** | Serving & API | 2026-11-16 → 2026-11-27 | Synthetic traffic → ingest → score → alert via authenticated API; RBAC and audit log enforced by contract tests |
+| **M4** | Dashboard | 2026-11-30 → 2026-12-11 | Triage loop completable in the UI on live data; accessibility checks passing on the three core screens |
+| **M5** | Hardening & release | 2026-12-14 → 2027-01-08 | All NFRs verified with evidence; load test report attached; k8s manifests deploy cleanly |
+| **v1.0** | Ship | 2027-01-15 (Fri) | Release note with real metrics, published docs, rollback rehearsed |
+
+**Staffing assumption: three engineers** (see [§9.1](#91-capacity--read-this-before-committing-to-the-dates)). At two, v1.0 lands in late February 2027.
+
+Sprints are two weeks, Monday→Friday: S0 = 2026-10-05…10-16, S1 = 10-19…10-30, S2 = 11-02…11-13, S3 = 11-16…11-27, S4 = 11-30…12-11, S5/S6 combined = 2026-12-14…2027-01-08 to absorb the year-end break.
+
+## 3. Epic E0 — Foundations (M0)
+
+Goal: an empty but correct skeleton. Nothing clever, everything repeatable.
+
+| ID | Task | Est. | Deps | Acceptance criteria |
+|---|---|---|---|---|
+| T-001 | Repository scaffolding: directory tree per [architecture.md](architecture.md#3-repository-layout), `.gitignore`, `.editorconfig`, `README` pointer to the six docs | 0.5 | — | Tree matches the architecture doc exactly; `git status` clean on a fresh clone; no build output or data paths tracked |
+| T-002 | Backend skeleton: FastAPI app factory, `/healthz`, `/readyz`, typed `core/config.py` from env, structlog JSON logging | 1 | T-001 | Both endpoints return 200 with a documented payload; a missing required env var fails startup with a named error, not a stack trace |
+| T-003 | ML-service skeleton: inference app factory, `/internal/healthz`, model registry stub returning `model_not_loaded` | 0.5 | T-001 | Health endpoint distinguishes "up, no model" from "up, model active" |
+| T-004 | Dashboard skeleton: Vite + React + TS + Tailwind, router shell, `ConnectionStatus`, theme provider wired to tokens in [design.md](design.md#5-design-tokens) | 1.5 | T-001 | App renders the nav shell in both themes; `tsc --noEmit` clean; tokens come from one CSS-variable source |
+| T-005 | `docker/docker-compose.yml`: postgres, redis, kafka, elasticsearch, backend, ml-service, dashboard | 1 | T-002, T-003, T-004 | `docker compose up` reaches all-healthy in under 5 minutes from a clean clone (NFR-12); each service has a healthcheck |
+| T-006 | GitHub Actions CI: lint, typecheck, test, docker build + Trivy scan, per [architecture.md](architecture.md#113-cicd) | 1 | T-001 | CI fails on an intentionally introduced lint error, a type error, and a failing test — verified by three scratch commits on the branch |
+| T-007 | Tooling config: ruff, black, mypy strict, bandit, eslint, prettier, stylelint, commitlint, pre-commit secret scan | 1 | T-001 | `pre-commit run --all-files` passes; a planted fake API key is blocked |
+| T-008 | ADR + decision workflow: template and first entries in [memory.md](memory.md#decisions-log) | 0.5 | T-001 | Template covers status/context/decision/consequences; three real decisions recorded |
+| T-009 | Import-boundary contracts (services must not import FastAPI; features must not import other features) | 0.5 | T-002, T-004 | CI fails when a deliberate violation is introduced |
+| T-010 | Developer docs: setup, run, test, and "how to add an endpoint / a model / a page" | 1 | T-005 | A new contributor follows it unaided and gets a running stack |
+
+**E0 total ≈ 8.5 days.**
+
+**Progress (2026-10-02).**
+
+| ID | Status | Note |
+|---|---|---|
+| T-001 | IN PROGRESS | `backend/`, `ml-service/`, `data/`, `.gitignore`, `.editorconfig`, `README.md` in place. `dashboard/`, `docker/`, `k8s/`, `scripts/`, `.github/` are created by their own tasks, so the tree does not yet match the architecture doc exactly |
+| T-002 | DONE | 20 tests pass. `/healthz` and `/readyz` live; missing `AEGIS_SECRET_KEY` exits 1 naming the variable with no traceback; readiness returns 503 on an unavailable probe |
+| T-003 | DONE | 15 tests pass. `/internal/healthz` distinguishes `no_model_loaded` from `serving`; staging-only models do not count as serving |
+| T-004 | TODO | |
+| T-005 | TODO | Blocked in this sandbox: Docker is not installed, so a compose file could not be executed here |
+| T-006 | TODO | |
+| T-007 | IN PROGRESS | ruff, black, mypy strict, bandit, pytest and coverage configured and running for both Python services. eslint/prettier/stylelint/commitlint/pre-commit wait on T-004 |
+| T-008 | DONE | Ten decisions recorded in [memory.md](memory.md#decisions-log) using a status/context/decision/consequences format |
+| T-009 | IN PROGRESS | Two import-linter contracts enforced on the backend and **proven to fail on an injected violation**. Frontend feature boundaries wait on T-004 |
+| T-010 | IN PROGRESS | `README.md` covers setup, run, and the check commands; the "how to add an endpoint / model / page" guides are not written |
+
+Verified with: `pytest` 20 passed (backend) + 15 passed (ml-service), `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 files, `bandit` no issues, coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept.
+
+## 4. Epic E1 — Data, features, and baselines (M1)
+
+Goal: a frozen, leak-free feature pipeline and a baseline worth beating.
+
+| ID | Task | Est. | Deps | Acceptance criteria |
+|---|---|---|---|---|
+| T-101 | Dataset fetch script: UNSW-NB15 and CIC-IDS2017 download, SHA-256 verification, extraction into `data/raw/` | 1 | T-001 | Re-running verifies existing files instead of re-downloading; a corrupted file fails loudly with the expected vs. actual hash |
+| T-102 | Dataset inventory: source URL, licence, checksum, record counts recorded in [memory.md](memory.md#data-sources) | 0.5 | T-101 | Every dataset used later has an entry; script output and doc agree (checked by a test) |
+| T-103 | Parsers: UNSW-NB15 and CIC-IDS2017 CSV → normalised Parquet under a single `flow@1` schema | 2 | T-101 | Row counts match published dataset counts; unmapped columns are reported, not silently dropped |
+| T-104 | Log corpus acquisition + parsing to `log@1` schema | 1.5 | T-001 | Template/parameter split recorded; unparseable line count surfaced as a metric |
+| T-105 | Preprocessing: standardisation, categorical vocabularies, PII redaction pass | 1.5 | T-103 | Scalers and vocabularies are fit on the train split only and serialised as artifacts (R-62) |
+| **T-106** | **Synthetic data generator**: seeded generator for normal traffic plus recon, brute-force, beaconing, exfiltration, and insider-threat scenarios | 3 | T-103 | Same seed → byte-identical output (asserted in CI); every record labelled by construction; scenarios cover the T4–T6 families absent from the public sets |
+| T-107 | Feature extraction library `features@1`: the 24 flow features and log features from [architecture.md](architecture.md#71-flow-sequence-model-flownet) | 2 | T-105 | Feature matrix reproducible from raw; a feature-definition change requires a version bump (enforced by a schema hash test) |
+| T-108 | Windowing: sliding per-entity windows (50 flows / 200 log lines) with count and inactivity triggers | 1.5 | T-107 | Window boundaries deterministic given an input stream; asserted with a fixed stream fixture |
+| T-109 | Temporal + entity-disjoint split utility | 1 | T-107 | Test asserts test timestamps are strictly later than train and that no entity appears in two folds (R-60, R-61) |
+| T-110 | Baseline models: logistic regression and gradient boosting on `features@1` | 1.5 | T-107, T-109 | precision / recall / F1 / ROC-AUC / PR-AUC recorded to a run log; results copied into [memory.md](memory.md#baseline-results) |
+| T-111 | Leakage audit: automated checks for scaler leakage, label leakage in derived features, and time leakage | 1 | T-109 | Audit runs in CI on the split utility and fails on a deliberately leaked scaler |
+| T-112 | Evaluation harness: single entrypoint producing the full metric set + confusion matrix + threshold sweep | 1.5 | T-110 | Output schema validated; running twice on the same artifact yields identical numbers |
+
+**E1 total ≈ 18 days.** The largest epic, and deliberately so. Every later result is only as trustworthy as this pipeline.
+
+## 5. Epic E2 — Transformer models (M2)
+
+Goal: two models that beat the baselines for a defensible reason.
+
+| ID | Task | Est. | Deps | Acceptance criteria |
+|---|---|---|---|---|
+| T-201 | `FlowNet`: embeddings + 4-layer transformer encoder + reconstruction and anomaly heads | 3 | T-107 | Trains end to end on a 1% sample in under 10 minutes on CPU; parameter count within 20% of the 1.2 M target |
+| T-202 | Training pipeline: config-driven, seeded, checkpointing, resume, run manifest | 2 | T-201 | Two runs of the same config agree within ±0.005 AUC (R-67); manifest contains dataset hashes, git SHA, config, seeds, metrics |
+| **T-203** | **Leakage audit on the trained model**: verify no train/test contamination in the reported metrics | 1.5 | T-111, T-202 | Audit is a **release blocker**; re-fitting the scaler on the full dataset must cause the audit to fail (R-62) |
+| T-204 | `LogNet`: Drain3 template mining + embeddings + 6-layer encoder + masked-template and hypersphere losses | 3.5 | T-104, T-107 | Mining is stable across re-runs on the same corpus; **decision Q-01 (pretrained DistilBERT vs. from-scratch templates) must be recorded in [memory.md](memory.md#decisions-log) before this task starts** |
+| T-205 | Fusion: late fusion, single-modality penalty, `partial_evidence` flag | 1 | T-201, T-204 | Composite score is monotonic in both inputs; single-modality output is flagged, never presented as full evidence |
+| T-206 | Explanation: attention rollout + SHAP on flow features, top-3 plain-language rendering | 2.5 | T-201 | Every scored window yields ≥ 3 reasons or an explicit `explanation_unavailable` marker (R-70); reasons name the feature, the value, and the baseline |
+| T-207 | Threshold calibration: quantile fit per family/tenant with the ±0.10 guardrail and audit write | 1.5 | T-205 | A run cannot move a threshold by more than 0.10; every change appears in the audit log |
+| T-208 | Cross-dataset transfer evaluation (UNSW-NB15 → CIC-IDS2017) | 1.5 | T-112, T-202 | Recall on the transferred set recorded; a drop below 0.70 blocks the release (R-66) |
+| T-209 | Inference determinism and latency benchmark | 1 | T-201, T-204 | Identical input + pinned model → byte-identical output (R-67); p95 window scoring ≤ 150 ms on 4 vCPU (NFR-01), measured and recorded |
+| T-210 | ONNX export fallback path | 1.5 | T-209 | Exported model scores within 1e-4 of the PyTorch model on a fixed batch; latency delta recorded |
+| T-211 | Drift monitoring: per-feature PSI computation on incoming windows | 1 | T-107 | PSI matches a hand-computed reference case; > 0.25 raises the drift metric |
+| T-212 | Model registry: immutable, content-addressed artifacts with status transitions | 1 | T-202 | `latest` is not resolvable; promoting a retired version is refused with a clear error |
+| T-213 | Shadow-mode scoring harness | 1.5 | T-212 | Shadow scores are recorded without producing alerts; distributions comparable to the active model |
+| T-214 | Model card per release: intended use, metrics, limitations, adversarial-evasion caveat | 1 | T-208 | Card lists the measured numbers only, each traceable to a run (R-74) |
+| T-215 | Hyperparameter search on the validation split only | 2 | T-202 | Search config and results logged; the test split is untouched during search (R-71) |
+
+**E2 total ≈ 25.5 days.** Parallelisable across two engineers from T-204 onward.
+
+## 6. Epic E3 — Backend and API (M3)
+
+Goal: telemetry in, ranked alerts out, with auth and audit enforced.
+
+| ID | Task | Est. | Deps | Acceptance criteria |
+|---|---|---|---|---|
+| T-301 | Database models + migrations for the schema in [architecture.md](architecture.md#6-data-model-postgresql), monthly partitioning on `alerts` and `ingest_stats` | 2 | T-002 | Migration up and down both apply cleanly; a query without a time predicate is rejected by the repository layer (R-34) |
+| T-302 | Auth: Argon2id hashing, JWT issue/refresh with rotation, session invalidation | 2 | T-301 | Expired and tampered tokens are rejected; refresh rotation invalidates the previous token (R-51) |
+| T-303 | RBAC dependency + route-role matrix test across `viewer`/`analyst`/`responder`/`admin` | 1.5 | T-302 | Matrix test enumerates every route × role; adding a route without a matrix entry fails CI (R-53) |
+| T-304 | Ingest API: `POST /ingest/flows`, `POST /ingest/logs`, NDJSON batching, per-record validation errors (FR-01, FR-02, FR-04) | 2.5 | T-301 | A batch with one malformed record returns a per-record error list and accepts the rest; no partial batch is silently dropped |
+| T-305 | Query API for alerts/entities/metrics with filtering and pagination — **decision Q-02 (Elasticsearch vs. partitioned Postgres for hunt) must be recorded before this task starts** | 2 | T-301 | Filters combine correctly; pagination is stable under concurrent inserts; decision recorded in [memory.md](memory.md#decisions-log) |
+| T-306 | Kafka producer/consumer with `src_ip` partitioning and consumer-group lag metrics | 2 | T-302 | One entity's flows stay ordered across a restart; lag is exported as a Prometheus gauge |
+| T-307 | Scoring worker: consume → window → call model service → emit scores | 2.5 | T-306, T-209 | Restarting the worker resumes from the committed offset with no data loss and no duplicates |
+| T-308 | Correlator: severity banding, cool-down dedup, flow↔log grouping, alert persistence (FR-12…FR-15, FR-19) | 2 | T-307 | Duplicate (entity, family) within 15 min increments `occurrence_count` instead of creating a row |
+| T-309 | Analyst feedback endpoints and verdict persistence (FR-16, FR-18) | 1 | T-308 | Verdicts are immutable once written; a second verdict supersedes with history retained |
+| T-310 | WebSocket alert channel + REST/SSE fallback (FR-20) | 1.5 | T-308 | Killing the socket mid-stream triggers client fallback; no alert is lost across the switch |
+| T-311 | Outbound webhooks: HMAC signing, allowlist, SSRF block, retry with backoff (FR-21) | 1.5 | T-308 | Private IP ranges are refused; signature verifiable with the documented scheme; retries are bounded and logged |
+| T-312 | Audit log service, append-only, covering every mutating route (FR-42) | 1 | T-303 | A test asserts no ORM update/delete path exists on the audit model (R-31) |
+| T-313 | API keys with scopes, hashing, and revocation (FR-44) | 1 | T-302 | Secret is returned exactly once; only a prefix is stored; revoked keys are rejected immediately |
+| T-314 | Retention + GDPR erasure service (NFR-05) | 1.5 | T-301 | Erasure cascades across stores, logs the action, and is idempotent |
+| T-315 | Model ops endpoints: list, metrics, promote, rollback (FR-30…FR-33) | 1.5 | T-212 | Promotion to `active` requires `admin`; rollback is one call and needs no redeploy |
+| T-316 | Rate limiting, request size caps, and back-pressure semantics | 1 | T-304 | Exceeding the limit returns 429 with `Retry-After`; oversize bodies are rejected before parsing |
+| T-317 | Prometheus metrics + OpenTelemetry traces across ingest → score → correlate → notify | 1.5 | T-308 | A trace ID from the ingest response appears in the alert record |
+| T-318 | Structured logging with correlation IDs and PII redaction allowlist | 1 | T-302 | A planted username in an error path never reaches the log output (R-54) |
+| T-319 | End-to-end golden test: synthetic traffic → alert visible via API, using in-process fakes | 1.5 | T-308 | Runs in CI without Docker-in-Docker (R-88) |
+| T-320 | API reference generated from the Pydantic schemas, published with the build | 1 | T-304 | Every route has a documented request and response schema; a route missing a schema fails CI |
+
+**E3 total ≈ 31.5 days.**
+
+## 7. Epic E4 — Frontend (M4)
+
+Goal: the triage loop, finished properly. Screens in priority order.
+
+| ID | Task | Est. | Deps | Acceptance criteria |
+|---|---|---|---|---|
+| **T-401** | Design tokens: Tailwind config + CSS variables from [design.md](design.md#5-design-tokens), both themes | 1 | T-004 | Every colour in use resolves to a token; a contrast regression test asserts the documented ratios (R-27) |
+| **T-402** | UI primitives per [design.md](design.md#6-component-library): Button, Badge, Card, DataTable, Modal, Toast, EmptyState, ErrorState, Skeleton, ConnectionStatus | 3 | T-401 | Each primitive has a test for its states and an axe-clean render |
+| **T-403** | Overview dashboard: KPI tiles, severity area chart, top entities, pipeline health strip (FR-50) | 2.5 | T-402, T-305 | Degraded pipeline stages render red with the exceeded budget; stale data shows a "last update" age |
+| **T-404** | Alert triage screen: list + detail with the four zones and keyboard verdicts (FR-51) | 4 | T-402, T-308 | Full triage loop completable without a mouse; `explanation_unavailable` and `evidence expired` states render explicitly |
+| T-405 | Real-time layer: single WebSocket at the app shell, pub/sub hook, reconnect with backoff, disconnected banner | 1.5 | T-310 | Killing the connection shows the banner and falls back to polling; reconnecting replays missed alerts |
+| T-406 | Traffic explorer: D3 time-series with brushing + entity graph with the ≥ 2,000-node fallback (FR-52) | 3.5 | T-402, T-305 | Brushing filters all dependent panels; the graph switches to adjacency mode and labels the switch |
+| T-407 | Log explorer with template clustering and pausable live tail | 2.5 | T-402, T-305 | 10,000 identical lines collapse to one row with a count; pause freezes the view |
+| T-408 | Hunt console: query input, autocomplete, saved queries, results table, audited CSV export | 3 | T-305 | Export is blocked below `responder` and writes an audit entry; empty results show the executed query |
+| T-409 | Model ops + drift screens (FR-53) | 2.5 | T-315 | Promotion requires typing the model ID; drift bars mark the 0.25 threshold |
+| T-410 | Admin screens: users/roles, API keys, thresholds with the 7-day impact preview, retention, audit | 3 | T-313, T-314, T-315 | The last `admin` cannot self-demote; the API key secret renders exactly once |
+| T-411 | Command palette and global keyboard shortcuts | 1.5 | T-402 | `⌘K` navigates, filters, and runs saved hunts; the shortcut reference is in-app |
+| T-412 | Responsive behaviour per [design.md](design.md#83-responsive-breakpoints) | 1.5 | T-404 | Below 768 px only the triage loop is offered, with a banner saying so |
+| T-413 | Accessibility pass: axe assertions, keyboard audit, screen-reader pass on the three core screens | 2 | T-404 | No critical/serious axe violations; the screen-reader result is recorded in the release note |
+| T-414 | Frontend test suite: component tests for states, plus a triage-loop integration test | 2 | T-404 | Tests query by role/label, not implementation details (R-87) |
+| T-415 | PDF/CSV export of alert batches (FR-23) | 1.5 | T-404 | Exported rows match the filtered view exactly, including the filter definition |
+
+**E4 total ≈ 35 days.** T-404 is the critical path; start it as soon as T-402 lands, even against a stubbed API.
+
+## 8. Epic E5 — Platform, QA, and release (M5)
+
+| ID | Task | Est. | Deps | Acceptance criteria |
+|---|---|---|---|---|
+| T-501 | Load test: k6 or Locust at 5,000 flows/s and 10,000 logs/s for 30 minutes | 2 | T-317 | NFR-02 sustained with no error-rate increase; results attached to the release note |
+| T-502 | Latency verification against the NFR-01 budget, stage by stage | 1 | T-501 | Measured p95 per stage compared to the budget table in [architecture.md](architecture.md#5-data-flow-one-flow-record-end-to-end); overruns filed as tasks, not absorbed |
+| T-503 | Failure-mode drills per [architecture.md](architecture.md#14-scalability-and-failure-modes) | 2 | T-501 | Each row of the failure table is exercised and the observed behaviour recorded |
+| T-504 | Kubernetes manifests + Helm values, secrets from the cluster store | 2.5 | T-005 | Deploys to a clean cluster; HPA scales scoring workers on consumer lag |
+| T-505 | Grafana dashboards and alert rules for AEGIS itself | 1.5 | T-317 | Consumer-lag, drift, latency, and error-rate alerts fire in a drill |
+| T-506 | Security review against [architecture.md](architecture.md#12-security-of-the-system-itself) | 2 | T-311 | Each threat row has a verified control or a filed task; findings recorded, not just listed |
+| T-507 | Backup and restore rehearsal (Postgres, Elasticsearch, Kafka) | 1.5 | T-504 | Restore from backup reproduces a known alert set |
+| T-508 | Release pipeline: tagged images, changelog generation, metrics section from the eval run | 1.5 | T-006 | A release produces a note whose numbers trace to a recorded run (R-74) |
+| T-509 | Documentation set: deploy, operate, tune thresholds, incident runbook | 2 | T-504 | An operator follows the runbook unaided through a simulated incident |
+| T-510 | v1.0 release: tag, model cards, published metrics, rollback rehearsed | 1.5 | all | Rollback executed once in a drill and timed |
+
+**E5 total ≈ 17.5 days.**
+
+## 9. Delivery plan
+
+| Sprint | Window | Epic focus | Key tasks | Milestone |
+|---|---|---|---|---|
+| S0 | 2026-10-05 → 10-16 | E0 | T-001…T-010 | **M0** |
+| S1 | 2026-10-19 → 10-30 | E1 | T-101…T-112 | **M1** |
+| S2 | 2026-11-02 → 11-13 | E2 | T-201…T-209 | **M2** |
+| S3 | 2026-11-16 → 11-27 | E2 + E3 | T-210…T-215, T-301…T-310 | **M3** |
+| S4 | 2026-11-30 → 12-11 | E3 + E4 | T-311…T-320, T-401…T-406 | **M4** |
+| S5/S6 | 2026-12-14 → 2027-01-08 | E4 + E5 | T-407…T-415, T-501…T-510 | **M5** |
+| — | 2027-01-15 | Release | T-510 | **v1.0** |
+
+### 9.1 Capacity — read this before committing to the dates
+
+Total estimate ≈ **136 ideal engineer-days** (8.5 + 18 + 25.5 + 31.5 + 35 + 17.5).
+
+The window from 2026-10-05 to the last working day before the 2027-01-15 ship date contains **74 working days**. At a realistic 65–70% utilisation, one engineer delivers 48–52 of those days. Therefore:
+
+| Staffing | Effective capacity | Verdict |
+|---|---|---|
+| 2 engineers | 96–104 days | **Under-committed by ~32–40 days.** Finishes 2027-02-16 to 2027-02-26, not 2027-01-15 |
+| 3 engineers | 144–156 days | Fits, with 8–20 days of slack. **This is the staffing the dates above assume** |
+| 4 engineers | 192–208 days | Comfortable, but E1 and E2 serialise on the data pipeline — a 4th engineer yields little before M2 |
+
+**The milestone dates in §2 are only achievable with three engineers.** With two, either move v1.0 to late February 2027 or cut scope. That is a decision to make now, not in December.
+
+If capacity is fixed at two engineers, defer in this order: T-415 (1.5) → T-408 (3) → T-410 (3) → T-411 (1.5) → T-412 (1.5) → T-213 (1.5) → T-215 (2) → T-210 (1.5) → T-320 (1) → T-409 (2.5) → T-507 (1.5) → T-407 (2.5) → T-214 (1). That removes **24 days, leaving 112** — still 8–16 days above two-engineer capacity, so the balance must come from the ship date. These cuts leave the triage loop, both models, and the API intact.
+
+**Never cut** T-203, T-111, or T-413. Those are the leakage audits and the accessibility pass — the controls that stop the project lying to itself and to its users. A smaller honest product beats a larger unverifiable one.
+
+The schedule risk is **E4 (35 days), not the models**: it is the largest epic, it depends on the API contract being stable, and it is where "almost done" hides.
+
+## 10. Critical path
+
+```
+T-001 ─► T-002 ─► T-301 ─► T-304 ─► T-308 ─► T-319 ─► T-501 ─► T-510
+  │        └────► T-101 ─► T-107 ─► T-109 ─► T-110 ─► T-201 ─► T-202 ─► T-203 ─┘
+  └────► T-004 ─► T-401 ─► T-402 ─► T-404 ─► T-413
+```
+
+The longest chain runs through the data pipeline into `FlowNet`, then into the API and load testing. Data work is the schedule owner: a week lost in E1 is a week lost at v1.0.
+
+## 11. Backlog (T-6xx) — explicitly not v1.0
+
+These are parked deliberately per [prd.md](prd.md#32-explicitly-out-of-scope-for-v10). Nothing moves out of this section without a PRD version bump.
+
+| ID | Item | Notes |
+|---|---|---|
+| T-601 | Encrypted-payload / TLS-fingerprint analysis | Needs JA3/JA4 features; separate feature version |
+| T-602 | Phishing-email NLP classifier | Different modality, different data licence |
+| T-603 | Endpoint (EDR) telemetry ingestion | Process trees, registry, file events |
+| T-604 | SOAR playbooks and automated response | Blocked on the security review in T-506 |
+| T-605 | Multi-tenancy with per-tenant models | v1 shares one model pair |
+| T-606 | Billing, metering, self-serve signup | Not a product goal |
+| T-607 | MITRE ATT&CK mapping of detected families | High value, medium effort — first candidate for v1.1 |
+| T-608 | Adversarial-evasion evaluation suite | Documented limitation in v1.0 |
+| T-609 | Audit-log hash chaining for tamper evidence | Referenced in [architecture.md](architecture.md#12-security-of-the-system-itself) as post-v1 |
+| T-610 | Per-analyst alert-routing and on-call schedules | |
+| T-611 | Notebook-free AutoML retraining scheduler | Depends on T-211 drift signal maturing |
+| T-612 | Modern-traffic retraining (2024+ captures) | Highest-value post-v1 task; the public datasets are 2015–2017 vintage |
+
+## 12. Risk register
+
+| Risk | Epic | Mitigation owner | Trigger to act |
+|---|---|---|---|
+| Data pipeline slips and compresses model time | E1 | Data lead | S1 ends with T-107 or T-109 incomplete → cut T-110 baselines to one model, keep the leakage audit |
+| Transformer does not beat the baseline | E2 | Model lead | T-201 eval below baseline PR-AUC → investigate features before architecture; ship the baseline with the transformer behind a flag |
+| Frontend effort underestimated | E4 | FE lead | T-404 not done by mid-S4 → cut T-408 and T-410 to v1.1 |
+| Latency budget missed | E2/E5 | Platform | T-209 p95 > 150 ms → land T-210 (ONNX) early, before M3 |
+| Datasets prove unusable (licence, size, corruption) | E1 | Data lead | T-101 checksum failure → fall back to T-106 synthetic for M1 and file the fetch issue |
+| Single-engineer bus factor | all | Team | Any epic with one owner and no reviewer → pair on the critical-path task |
+
+## 13. Working agreements
+
+- **One task in progress per engineer.** Finished work beats half-done work.
+- **Update this file in the same PR** that changes a task's status. A stale plan is worse than none.
+- **Blocked for more than half a day** means it is raised, not silently absorbed.
+- **No task starts without acceptance criteria.** If they are missing, writing them is the task.
+- **Verification is stated, not implied.** A PR says what command was run and what it returned (R-92).
+- **Weekly:** reconcile this file against reality on Friday; move the date, not the criteria.
+
+## 14. Change log
+
+| Date | Version | Change |
+|---|---|---|
+| 2026-10-02 | 0.1 | Initial work breakdown: 6 epics, 82 delivery tasks, 12 backlog items, plan through v1.0 on 2027-01-15. |

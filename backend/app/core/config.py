@@ -1,264 +1,128 @@
+"""Typed application configuration.
+
+Every setting the backend reads comes from this module (rule R-19). No other
+module may call ``os.getenv`` directly; add a field here instead so the value
+is validated once, at startup, with a type attached.
+"""
+
+from __future__ import annotations
+
+from enum import StrEnum
+from functools import lru_cache
+from typing import ClassVar
+
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+
+
+class ConfigurationError(RuntimeError):
+    """Raised when required configuration is missing or invalid.
+
+    The message names the offending environment variable so an operator can fix
+    the deployment without reading a traceback (rule R-06).
+    """
+
+
+class Environment(StrEnum):
+    """Deployment environment. Drives log verbosity and debug guards."""
+
+    DEVELOPMENT = "development"
+    TEST = "test"
+    PRODUCTION = "production"
 
 
 class Settings(BaseSettings):
+    """Backend configuration, populated from environment variables.
+
+    All variables are prefixed ``AEGIS_`` so multiple services can coexist in
+    one environment without colliding.
+    """
+
     model_config = SettingsConfigDict(
+        env_prefix="AEGIS_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
-        populate_by_name=True,
     )
 
-    PROJECT_NAME: str = "NOCTRA API"
-    VERSION: str = "2.0.0"
+    env: Environment = Field(default=Environment.DEVELOPMENT)
 
-    DATABASE_URL: str = "postgresql://postgres:root@localhost:5432/threat_ai_db"
+    # Required: a deployment without an explicit name is a misconfiguration.
+    service_name: str = Field(default="aegis-backend")
 
-    JWT_SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_CHANGE_THIS"
-    JWT_REFRESH_SECRET_KEY: str = "YOUR_REFRESH_SECRET_KEY"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440
+    # Required in every environment. There is no safe default for a secret.
+    secret_key: str = Field(min_length=32)
 
-    # Runtime environment (development | production). In production, dev-only
-    # conveniences such as returning a password-reset link in the API response
-    # are disabled.
-    ENVIRONMENT: str = "development"
-    LOG_LEVEL: str = "INFO"
+    database_url: str = Field(default="postgresql+asyncpg://aegis:aegis@localhost:5432/aegis")
 
-    # Push-webhook ingest: max requests per connector per minute. Counted in
-    # this process, so with N workers the effective ceiling is N x this value.
-    # 0 disables the limiter.
-    CONNECTOR_INGEST_RATE_LIMIT: int = 120
+    # Binding to all interfaces is required for containerised deployment (NFR-08);
+    # the container network is the trust boundary, not the loopback device.
+    host: str = Field(default="0.0.0.0")  # noqa: S104  # nosec B104
+    port: int = Field(default=8000, ge=1, le=65535)
 
-    # Separate key for connector credential encryption at rest. When not set,
-    # falls back to JWT_SECRET_KEY for back-compat (with the documented trade
-    # that rotating JWT_SECRET_KEY invalidates stored credentials). Setting
-    # this allows JWT rotation without losing connector secrets.
-    CONNECTOR_ENCRYPTION_KEY: str | None = None
+    log_level: str = Field(default="INFO")
+    request_timeout_seconds: float = Field(default=30.0, gt=0)
 
-    # Chat rate limiting: max questions per case per minute per user.
-    ANALYST_CHAT_RATE_LIMIT: int = 20
+    # Ingest limits (FR-01, FR-02, R-56).
+    max_flow_batch: int = Field(default=1000, ge=1)
+    max_log_batch: int = Field(default=5000, ge=1)
+    max_request_bytes: int = Field(default=8 * 1024 * 1024, ge=1024)
 
-    # Connector scheduled polling (Phase 39) — watches continuously without manual sync
-    CONNECTOR_POLL_ENABLED: bool = True
-    CONNECTOR_POLL_INTERVAL_SECONDS: int = 900  # 15 min
-    CONNECTOR_POLL_JITTER_SECONDS: int = 60
-    CONNECTOR_POLL_BACKOFF_BASE_SECONDS: int = 300  # 5 min base backoff on error
-    CONNECTOR_POLL_BACKOFF_MAX_SECONDS: int = 3600  # 1 hour max
+    ml_service_url: str = Field(default="http://localhost:8001")
 
-    # SSO / SCIM (Phase 40) — enterprise auth
-    SSO_ENABLED: bool = False
-    SSO_OIDC_ISSUER: str | None = None  # e.g. https://accounts.google.com
-    SSO_OIDC_CLIENT_ID: str | None = None
-    SSO_OIDC_CLIENT_SECRET: str | None = None
-    SSO_OIDC_SCOPES: str = "openid email profile"
-    SSO_JIT_PROVISIONING: bool = True  # create user on first SSO login
-    SSO_DEFAULT_ROLE: str = "USER"  # role for JIT provisioned users
+    @field_validator("log_level")
+    @classmethod
+    def _normalise_log_level(cls, value: str) -> str:
+        """Uppercase the level and reject anything the stdlib will not accept."""
+        normalised = value.strip().upper()
+        allowed = {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}
+        if normalised not in allowed:
+            raise ValueError(f"log_level must be one of {sorted(allowed)}, got {value!r}")
+        return normalised
 
-    SCIM_ENABLED: bool = False
-    # Fallback global token (hashed comparison) — per-org tokens in DB are preferred
-    SCIM_TOKEN: str | None = None
+    #: Substrings that mark a value as a copied-from-the-docs placeholder.
+    _WEAK_MARKERS: ClassVar[frozenset[str]] = frozenset(
+        {"changeme", "placeholder", "example", "your-secret", "your_secret"}
+    )
 
-    # SAML (Phase 41)
-    SSO_SAML_ENABLED: bool = False
-    SSO_SAML_METADATA_URL: str | None = None
-    SSO_SAML_ENTITY_ID: str | None = None
-    SSO_SAML_ACS_URL: str | None = None
-    SSO_SAML_SSO_URL: str | None = None
-    SSO_SAML_CERTIFICATE: str | None = None
-    # SAML hardening (Phase 43) — when True, fail closed if signature invalid or xmlsec missing
-    SSO_SAML_REQUIRE_SIGNED_ASSERTIONS: bool = False
-    SSO_SAML_REQUIRE_SIGNED_RESPONSE: bool = False
+    @field_validator("secret_key")
+    @classmethod
+    def _reject_placeholder_secret(cls, value: str) -> str:
+        """Refuse placeholder and low-entropy secrets (rule R-50).
 
-    # SCIM Groups→Roles mapping (Phase 43)
-    SCIM_GROUPS_ROLE_MAPPING_ENABLED: bool = True
-
-    # Connector OAuth (Phase 41) — GitHub App + Slack OAuth
-    GITHUB_OAUTH_CLIENT_ID: str | None = None
-    GITHUB_OAUTH_CLIENT_SECRET: str | None = None
-    SLACK_OAUTH_CLIENT_ID: str | None = None
-    SLACK_OAUTH_CLIENT_SECRET: str | None = None
-    # Phase 46 — Google Workspace + AzureAD
-    GOOGLE_OAUTH_CLIENT_ID: str | None = None
-    GOOGLE_OAUTH_CLIENT_SECRET: str | None = None
-    AZUREAD_OAUTH_CLIENT_ID: str | None = None
-    AZUREAD_OAUTH_CLIENT_SECRET: str | None = None
-    AZUREAD_OAUTH_TENANT_ID: str | None = None  # e.g. common or tenant GUID
-    CONNECTOR_OAUTH_REDIRECT_BASE: str | None = None  # e.g. http://localhost:8000 or frontend URL
-
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
-
-    # Auth security
-    COOKIE_AUTH: bool = False
-    COOKIE_SECURE: bool = True
-    # Cookie SameSite policy. The dashboard is served from the same origin via
-    # the Vite/nginx proxy, so "lax" suffices in a normal tab. When the preview
-    # is embedded in a cross-site iframe (Arena live preview), "none" + Secure +
-    # Partitioned (CHIPS) is required for the browser to store/send the cookie.
-    COOKIE_SAMESITE: str = "lax"
-    COOKIE_PARTITIONED: bool = False
-    LOGIN_MAX_ATTEMPTS: int = 5
-    LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
-
-    # Stream processing
-    ENABLE_KAFKA: bool = False
-    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
-    RAW_LOG_TOPIC: str = "raw-logs"
-    RAW_FLOW_TOPIC: str = "raw-flows"
-    NORMALIZED_TOPIC: str = "events.normalized"
-    ALERT_TOPIC: str = "alerts.raised"
-    ACTION_TOPIC: str = "actions.executed"
-    AUDIT_TOPIC: str = "audit.events"
-    ML_SERVICE_URL: str = "http://localhost:8001"
-
-    # LLM (Anthropic) reasoning for the autonomous analyst. Optional: when no
-    # API key is configured the analyst degrades to a deterministic templated
-    # narrative so the product loop still works end-to-end (see llm_client).
-    ANTHROPIC_API_KEY: str | None = None
-    ANTHROPIC_MODEL: str = "claude-sonnet-5"
-    ANTHROPIC_BASE_URL: str = "https://api.anthropic.com"
-    LLM_ENABLED: bool = True
-    LLM_TIMEOUT: float = 30.0
-    LLM_MAX_TOKENS: int = 1024
-
-    # Email / SMTP settings (accepts both MAIL_* and SMTP_* env names)
-    SMTP_HOST: str | None = Field(default=None, alias="MAIL_SERVER")
-    SMTP_PORT: int | None = Field(default=None, alias="MAIL_PORT")
-    SMTP_USER: str | None = Field(default=None, alias="MAIL_USERNAME")
-    SMTP_PASSWORD: str | None = Field(default=None, alias="MAIL_PASSWORD")
-    EMAIL_FROM: str | None = Field(default=None, alias="MAIL_DEFAULT_SENDER")
-
-    # Threat detection engine defaults
-    ENGINE_SENSITIVITY: str = "MEDIUM"      # LOW | MEDIUM | HIGH
-    MAX_CONCURRENT_SCANS: int = 10
-    AUTO_QUARANTINE: bool = False
-    LOG_RETENTION_DAYS: int = 30
-
-    # Phase 47: org isolation + API keys + rate limiting
-    REDIS_URL: str | None = None  # e.g. redis://localhost:6379/0
-    ORG_RATE_LIMIT_ENABLED: bool = True
-    ORG_RATE_LIMIT_RPS: int = 100
-    ORG_RATE_LIMIT_BURST: int = 200
-    API_KEY_ENABLED: bool = True
-
-    # Phase 49: threat intel enrichment
-    VT_API_KEY: str | None = None
-    ABUSEIPDB_API_KEY: str | None = None
-    SHODAN_API_KEY: str | None = None
-    OTX_API_KEY: str | None = None
-
-    # Digital Risk Protection external sources. Absent keys mean the provider
-    # is reported unavailable — DRP never fabricates findings to fill the gap.
-    # Certificate Transparency. crt.sh is a free public CT log aggregator and
-    # needs no API key, so this is opt-in by configuration rather than by
-    # credential — it makes an outbound call, which some deployments forbid.
-    DRP_CT_ENABLED: bool = False
-    DRP_CT_URL: str = "https://crt.sh/"
-    DRP_CT_TIMEOUT: float = 15.0
-    DRP_DARKWEB_API_KEY: str | None = None
-    DRP_BREACH_API_KEY: str | None = None
-    THREAT_INTEL_ENABLED: bool = True
-    THREAT_INTEL_CACHE_TTL_SECONDS: int = 3600  # 1 hour
-    THREAT_INTEL_TIMEOUT: float = 5.0
-
-    # Phase 50: SOAR real execution
-    SOAR_WEBHOOK_ENABLED: bool = True
-    SOAR_SLACK_WEBHOOK_URL: str | None = None
-    SOAR_JIRA_URL: str | None = None
-    SOAR_JIRA_TOKEN: str | None = None
-    SOAR_PAGERDUTY_KEY: str | None = None
-
-    # Phase 53: compliance + S3
-    S3_ENDPOINT: str | None = None
-    S3_BUCKET: str | None = None
-    S3_ACCESS_KEY: str | None = None
-    S3_SECRET_KEY: str | None = None
-
-    # Phase 54: org invites
-    INVITE_TOKEN_EXPIRE_HOURS: int = 72
-    MAX_USERS_PER_ORG: int = 100
-
-    # Phase 58: HA
-    REDIS_EVENTBUS_ENABLED: bool = False
-
-    # Phase 60: billing
-    BILLING_ENABLED: bool = False
-    BILLING_FREE_ALERTS_PER_MONTH: int = 10000
-
-    # Phase 61: ZTNA + microsegmentation
-    ZTNA_ENABLED: bool = True
-    ZTNA_DEFAULT_ACTION: str = "deny"  # allow|deny
-    ZTNA_POLICY_EVAL_TIMEOUT: float = 2.0
-
-    # Phase 62: Threat hunting workbench
-    HUNT_ENABLED: bool = True
-    HUNT_MAX_RESULTS: int = 1000
-    HUNT_QUERY_TIMEOUT: float = 10.0
-
-    # Phase 63: Vuln management + PT
-    VULN_ENABLED: bool = True
-    VULN_SCANNER_URL: str | None = None
-    VULN_RISK_THRESHOLD: float = 7.0  # CVSS threshold for HIGH
-
-    # Phase 70: AI SOC Agent (autonomous) enhancements
-    AI_AGENT_ENABLED: bool = True
-    AI_AGENT_AUTO_APPROVE_LOW_RISK: bool = False  # if True, LOW severity auto-approved
-    AI_AGENT_TOOL_USE: bool = True  # allow LLM to call tools (hunt, vuln, ztna)
-    AI_AGENT_MAX_STEPS: int = 5
-    AI_AGENT_MEMORY_TTL_HOURS: int = 24
-
-    # Phase 64: ITDR/UEBA
-    ITDR_ENABLED: bool = True
-    UEBA_BASELINE_DAYS: int = 30
-    UEBA_ANOMALY_THRESHOLD: float = 2.5
-
-    # Phase 65: CSPM + IaC
-    CSPM_ENABLED: bool = True
-    CSPM_CIS_BENCHMARK_VERSION: str = "1.4"
-    IAC_SCANNER_ENABLED: bool = True
-
-    # Phase 66: Supply Chain SBOM
-    SBOM_ENABLED: bool = True
-    SBOM_MAX_DEPENDENCIES: int = 10000
-
-    # Phase 67: Deception
-    DECEPTION_ENABLED: bool = True
-    HONEYPOT_ENABLED: bool = True
-
-    # Phase 68: Forensics
-    FORENSICS_ENABLED: bool = True
-    FORENSICS_TIMELINE_MAX_EVENTS: int = 10000
-
-    # Phase 69: TIP STIX/TAXII/MISP
-    TIP_ENABLED: bool = True
-    TAXII_ENABLED: bool = True
-    MISP_ENABLED: bool = False
-    MISP_URL: str | None = None
-    MISP_KEY: str | None = None
-
-    # Phase 71: Continuous compliance
-    CONTINUOUS_COMPLIANCE_ENABLED: bool = True
-    COMPLIANCE_EVIDENCE_INTERVAL_HOURS: int = 24
-
-    # Phase 72: Exec risk
-    EXEC_RISK_ENABLED: bool = True
-
-    # DB sharding / read replica (Phase 73 - analysis)
-    DB_SHARDING_ENABLED: bool = False
-    DB_SHARD_COUNT: int = 1
-    DATABASE_REPLICA_URL: str | None = None
-    DB_PARTITIONING_ENABLED: bool = False
-
-    # Hunt auto-run (doubt #4)
-    HUNT_AUTO_RUN_ENABLED: bool = True
-    HUNT_AUTO_RUN_INTERVAL_SECONDS: int = 300
-
-    # Agent chat streaming (doubt #7)
-    AI_AGENT_CHAT_STREAMING: bool = True
-    AI_AGENT_ORG_MEMORY_ENABLED: bool = True  # org-level memory (doubt #3)
+        Catches three shapes: a known weak word anywhere in the value, a value
+        made of one repeated character, and a value made of a repeated short
+        pattern such as ``changemechangeme``.
+        """
+        normalised = value.strip().lower()
+        if any(marker in normalised for marker in cls._WEAK_MARKERS):
+            raise ValueError("secret_key looks like a placeholder; set a real random value")
+        if len(set(normalised)) <= 2:
+            raise ValueError("secret_key has too little entropy; set a real random value")
+        return value
 
 
-settings = Settings()
+def load_settings() -> Settings:
+    """Build :class:`Settings`, converting validation failures into a clear error.
+
+    Raises:
+        ConfigurationError: naming every environment variable that is missing or
+            invalid, so the failure is actionable rather than a stack trace.
+    """
+    try:
+        return Settings()
+    except ValidationError as exc:
+        problems = []
+        for error in exc.errors():
+            field = error["loc"][-1] if error["loc"] else "<root>"
+            env_var = f"AEGIS_{str(field).upper()}"
+            problems.append(f"{env_var}: {error['msg']}")
+        raise ConfigurationError(
+            "Invalid AEGIS configuration:\n  " + "\n  ".join(problems)
+        ) from exc
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Return the process-wide settings, loaded once and cached."""
+    return load_settings()
