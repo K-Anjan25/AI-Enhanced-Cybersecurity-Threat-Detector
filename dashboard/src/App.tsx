@@ -1,0 +1,58 @@
+/**
+ * Route table (design.md §3 information architecture).
+ *
+ * Only the Overview page exists in Sprint S0. Every other route renders an
+ * explicit "not built" state rather than a blank panel or a dead link, so the
+ * navigation reflects reality (design.md §8.1).
+ */
+import { Route, Routes } from 'react-router-dom';
+
+import { AppShell } from './components/layout/AppShell';
+import { OverviewPage } from './features/overview/pages/OverviewPage';
+
+const PENDING: Record<string, string> = {
+  '/alerts': 'T-404',
+  '/traffic': 'T-406',
+  '/logs': 'T-407',
+  '/hunt': 'T-408',
+  '/models': 'T-409',
+  '/admin': 'T-410',
+};
+
+function NotYetBuilt({ path }: { path: string }) {
+  const task = PENDING[path] ?? 'unplanned';
+  return (
+    <div className="max-w-xl">
+      <h1 className="text-h1">Not built yet</h1>
+      <p className="mt-2 text-body text-muted">
+        This screen is scheduled as task <code className="font-mono">{task}</code> in{' '}
+        <code className="font-mono">task.md</code>. The route exists so navigation is honest about
+        what the build currently covers.
+      </p>
+    </div>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<OverviewPage />} />
+        {Object.keys(PENDING).map((path) => (
+          <Route key={path} path={path} element={<NotYetBuilt path={path} />} />
+        ))}
+        <Route
+          path="*"
+          element={
+            <div>
+              <h1 className="text-h1">Page not found</h1>
+              <p className="mt-2 text-body text-muted">
+                No route matches this address. Check the navigation for available screens.
+              </p>
+            </div>
+          }
+        />
+      </Route>
+    </Routes>
+  );
+}
