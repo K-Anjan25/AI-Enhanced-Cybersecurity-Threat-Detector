@@ -46,7 +46,7 @@ EXPECTED_SERVICES = {
 EXPECTED_BUILD = {
     "backend": ("../backend", 8000),
     "ml-service": ("../ml-service", 8001),
-    "dashboard": ("../dashboard", 80),
+    "dashboard": ("../dashboard", 8080),
 }
 
 ENV_VAR_RE = re.compile(r"\bAEGIS_[A-Z0-9_]+")
@@ -216,8 +216,56 @@ def check_dockerfiles(problems: list[str]) -> None:
             continue
         if not callable(target_obj):
             fail(problems, f"{relative}: {target} is not an ASGI application")
-        if "USER " not in content:
+
+
+ALL_DOCKERFILES = (
+    "backend/Dockerfile",
+    "ml-service/Dockerfile",
+    "dashboard/Dockerfile",
+)
+
+
+def check_privileges(problems: list[str]) -> None:
+    """Every image in the stack must drop privileges.
+
+    This covers all three Dockerfiles, not only the two with an importable ASGI
+    target. The dashboard runs nginx and had no USER line at all, which the
+    ASGI-scoped check could never see — a root web server is exactly what a
+    privilege check exists to catch.
+    """
+    for relative in ALL_DOCKERFILES:
+        path = os.path.join(ROOT, relative)
+        if not os.path.exists(path):
+            fail(problems, f"{relative} is missing")
+            continue
+        with open(path, encoding="utf-8") as handle:
+            content = handle.read()
+        if not re.search(r"^USER\s+\S+", content, re.M):
             fail(problems, f"{relative} does not drop privileges with USER")
+
+
+def check_dashboard_healthcheck(services: dict[str, Any], problems: list[str]) -> None:
+    """The dashboard healthcheck must probe the port nginx actually binds.
+
+    Nothing else validates this service's healthcheck, because it has no ASGI
+    app to compare routes against; a stale port here would look like a healthy
+    container that serves nothing.
+    """
+    service = services.get("dashboard", {})
+    published = {
+        str(entry).split(":")[-1].split("/")[0] for entry in service.get("ports", [])
+    }
+    test = " ".join(service.get("healthcheck", {}).get("test", []))
+    found = re.search(r"localhost:(\d+)", test)
+    if not found:
+        fail(problems, "dashboard healthcheck has no localhost port")
+        return
+    if found.group(1) not in published:
+        fail(
+            problems,
+            f"dashboard healthcheck probes port {found.group(1)}, "
+            f"but the container publishes {sorted(published)}",
+        )
 
 
 def check_build_contexts(services: dict[str, Any], problems: list[str]) -> None:
@@ -255,6 +303,8 @@ def main() -> int:
     check_ports(services, problems)
     check_healthchecks(services, problems)
     check_dockerfiles(problems)
+    check_privileges(problems)
+    check_dashboard_healthcheck(services, problems)
     check_build_contexts(services, problems)
 
     print(
