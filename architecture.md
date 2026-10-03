@@ -80,12 +80,14 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 │   └── Dockerfile
 ├── ml-service/               # Model serving + training entrypoints
 │   ├── aegis_ml/
-│   │   ├── features/         # flow + log feature extraction, versioned
+│   │   ├── data/             # flow@1 + log@1 records, features@1 extraction,
+│   │   │                     #   windowing, splits, leakage audit, generator
+│   │   ├── features/         # reserved: model-facing tensors (T-201)
 │   │   ├── models/           # flow_transformer.py, log_transformer.py
-│   │   ├── scoring/          # windowing, fusion, explanation
-│   │   └── serving/          # FastAPI inference app
-│   ├── registry/             # immutable model version registry
-│   ├── training/             # pipelines, configs, eval harness
+│   │   ├── registry/         # immutable model version registry
+│   │   ├── scoring/          # fusion, explanation
+│   │   ├── serving/          # FastAPI inference app
+│   │   └── training/         # pipelines, configs, eval harness
 │   ├── artifacts/            # gitignored; model weights + manifests
 │   ├── tests/
 │   ├── pyproject.toml
@@ -184,6 +186,17 @@ Design notes:
 - `window_ref` is an opaque pointer `{store: "es"|"pg", id: ...}` — the raw window must outlive the alert or the alert is marked `evidence_expired` rather than silently unexplainable.
 
 ## 7. Model architecture
+
+Two notes on the tree above, both corrections made while building S1. Every
+Python package sits **inside** `aegis_ml/` — including `registry/` and
+`training/` — because only that directory is installed by
+`pip install -e ml-service`, so a sibling package would not be importable. Only
+non-code directories (`artifacts/`, `tests/`) live outside it. And the data
+pipeline is one package, `data/`, rather than being spread across `features/`
+and `scoring/`: records, features, windowing, splits and the leakage audit
+import each other in a straight line, and splitting them would create a cycle
+for no gain. `features/` and `scoring/` are reserved for the model-facing work
+in T-201.
 
 ### 7.1 Flow-sequence model (`FlowNet`)
 
