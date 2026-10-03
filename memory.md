@@ -27,14 +27,14 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 | Aspect | State |
 |---|---|
 | Repository | Six planning documents plus the Sprint S0 scaffolding (commit `23b6a57` onward) |
-| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator), `dashboard/` React shell — all tested. No model code |
-| Tests | 99 passing — 20 backend, 45 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
+| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator, `features@1` extraction), `dashboard/` React shell — all tested. No model code |
+| Tests | 123 passing — 20 backend, 69 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
 | Checks green | `./scripts/check_all.sh` — 19 checks: ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, vitest, vite build, doc integrity, compose consistency. Five were proven to fail on an injected violation before being trusted |
 | Dependencies | Python via `pip install -e "backend[dev]" -e "ml-service[dev]"` (both verified); npm `package-lock.json` committed for `npm ci` (R-08) |
 | Datasets | **Public sets not downloaded** — their hosts are unreachable from this sandbox. Synthetic data generates on demand via `scripts/generate_synthetic.py` into the gitignored `data/` |
 | Models | **None trained.** No baselines, no metrics |
 | Branch | `arena/01a0fee2-ai-enhanced-cybersecurity-thre`, based on `60e9adf` |
-| Next work | S0 is complete except T-005 execution (needs Docker) and `k8s/`. In S1, T-106 is DONE; T-107 feature extraction is next, against synthetic `flow@1` records |
+| Next work | S0 is complete except T-005 execution (needs Docker) and `k8s/`. In S1, T-106 and T-107 are DONE; T-108 windowing is next, and must settle Q-06 |
 
 Sprint S0 started early, on 2026-10-02. Per-task status lives under the E0 table in [task.md](task.md#3-epic-e0--foundations-m0); the rest of the plan is still `TODO`.
 
@@ -128,6 +128,11 @@ Format: **status** · context · decision · consequences. A decision is changed
 **Decision.** The authoritative definitions are Pydantic models in `ml-service/aegis_ml/data/records.py`. Both are frozen with `extra="forbid"`, reject naive timestamps, and pin their version through a `Literal` field, so an unknown version fails at parse time rather than downstream. The backend will define its own equivalent models and the equivalence will be pinned by a shared JSON-schema fixture and a contract test — not by a cross-service import.
 **Consequences.** Two definitions of the same shape exist, and drift between them is possible; the contract test at T-304 is what makes drift a build failure. Derived features (byte ratio, port entropy, destination counts) are deliberately *not* fields — they are computed at T-107 — so the stored record stays a faithful capture and a feature change never silently rewrites history.
 
+### D-012 · `features@1` is pinned by a schema hash, and the flow vector has 23 features — ACCEPTED (2026-10-03)
+**Context.** T-107 needed a feature contract that cannot drift silently. `architecture.md` §7.1 also claimed "24 features" while its table enumerates 23 across five groups (4 identity, 5 volume, 3 timing, 6 flags, 5 derived) — counted by script, not by eye.
+**Decision.** The table is the specification, so the vector has **23** features and the prose was corrected. The contract is pinned by `schema_hash()`, a SHA-256 over the version string plus every feature name in order for both modalities; a golden copy of that digest lives in the test, so changing a feature without bumping `FEATURES_SCHEMA_VERSION` fails the build. Five features (`inter_arrival_mean`, `inter_arrival_std`, `port_entropy`, `dst_port_count`, `dst_ip_count`) are properties of the window and are broadcast onto every row.
+**Consequences.** Any feature change is a deliberate, reviewed version bump — at the cost of touching two constants and a test whenever the model input evolves. Because window-level features are broadcast, the same flow extracted in two different windows legitimately yields two different rows; that is intended, not a bug. Ratios are Laplace-smoothed so zero-reply flows (port scans) stay finite.
+
 ## Data sources
 
 Datasets are never committed to Git (R-40). Checksums below are recorded as *pending capture* — they must be filled in by T-102 before any dataset is used in a training run (R-41).
@@ -208,6 +213,7 @@ Tracked here; referenced from [prd.md](prd.md#12-open-questions). A question is 
 | **Q-03** | What absolute false-positive budget (alerts/day) will the reference customer tolerate? | Product | Threshold defaults, T-207 | OPEN — needed to set the shipped defaults rather than guessing |
 | **Q-04** | Which reference deployment supplies real flow records, and in what format (NetFlow v5/v9, IPFIX, Zeek)? | Product | NFR-02 validation, T-612 | OPEN |
 | **Q-05** | Do we need multi-tenancy at v1.0, or is single-tenant per deployment acceptable? | Product | Schema design, T-301 | OPEN — currently assumed single-tenant per deployment (D-001 context); the schema includes `tenant_id` on thresholds only |
+| **Q-06** | For volumetric attacks, should a flow window be keyed on the source entity, the destination, or both? | Model lead | **T-108**, T-201 | OPEN — raised by T-107. `architecture.md` §7.1 keys the window on one source entity, but the synthetic DDoS scenario spreads a single flood across ~40 sources, so each per-source window holds about one flow and the attack is invisible at that granularity. Either the window key changes, or volumetric detection needs a destination-side feature path |
 
 ## Glossary
 
@@ -265,8 +271,9 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 3 | ~~Begin S0: scaffolding, CI, compose, docs~~ — done except T-005 execution and `k8s/` | T-001…T-010 | Complete |
 | 4 | Run the compose stack on a host with a Docker daemon and close T-005 | T-005 | When Docker is available |
 | 5 | Fetch datasets and record real checksums — blocked, hosts unreachable here | T-101, T-102 | S1 |
-| 6 | Build `features@1` extraction against the synthetic `flow@1` records | T-107 | Next |
-| 7 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
+| 6 | ~~Build `features@1` extraction against synthetic `flow@1` records~~ — done, 23 features, hash-pinned | T-107 | Complete |
+| 7 | Settle Q-06 (window key for volumetric attacks) before building windowing | T-108 | Next |
+| 8 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
 
 ## Change log
 
@@ -274,3 +281,4 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 |---|---|---|
 | 2026-10-02 | 0.1 | Created during the repository reset. Recorded the reset (487 files removed, recoverable from `60e9adf`), ten decisions, four data sources, five open questions, and an empty measurement ledger. |
 | 2026-10-03 | 0.2 | Sprint S1 opened: T-106 shipped the canonical `flow@1` / `log@1` records and a seven-scenario synthetic generator. Added D-011 (where the telemetry schemas live), refreshed the current-state and data-source tables, and re-marked the completed next actions. |
+| 2026-10-03 | 0.3 | T-107 shipped `features@1` (23 features, hash-pinned). Added D-012 and Q-06, and corrected `architecture.md` §7.1 from 24 to 23 features. Two defects found and fixed while building it: three scenario builders emitted out-of-order timelines, and `backend[dev]` never declared `import-linter` or `pytest-cov` even though CI runs both. |
