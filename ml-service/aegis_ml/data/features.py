@@ -32,6 +32,7 @@ from datetime import datetime
 from typing import Literal
 
 from aegis_ml.data.records import FlowRecord, LogLevel, LogRecord
+from aegis_ml.data.windowing import WindowKey, flow_key
 
 #: Schema contract for everything in this module.
 FEATURES_SCHEMA_VERSION: Literal["features@1"] = "features@1"
@@ -217,20 +218,29 @@ def _ratio(numerator: float, denominator: float) -> float:
     return (numerator + 1.0) / (denominator + 1.0)
 
 
-def extract_flow_window(flows: Sequence[FlowRecord]) -> tuple[FlowFeatures, ...]:
+def extract_flow_window(
+    flows: Sequence[FlowRecord], *, key: WindowKey = WindowKey.SOURCE
+) -> tuple[FlowFeatures, ...]:
     """Extract one feature row per flow from a single-entity window.
 
+    ``key`` must be the dimension the window was cut on (D-013). A
+    destination-keyed window legitimately contains many sources, so validating
+    the wrong dimension would reject exactly the volumetric windows that need
+    scoring. The feature values do not change with the key; only the entity the
+    row is attributed to does.
+
     Raises:
-        ValueError: if the window is empty, spans more than one source entity, or
-            is not ordered by arrival time. A window that silently mixed entities
-            would leak behaviour across hosts, so it is refused (R-06).
+        ValueError: if the window is empty, spans more than one entity of the
+            keying dimension, or is not ordered by arrival time. A window that
+            silently mixed entities would leak behaviour across hosts, so it is
+            refused (R-06).
     """
     if not flows:
         raise ValueError("cannot extract features from an empty window")
 
-    entities = {flow.src_ip for flow in flows}
+    entities = {flow_key(flow, key) for flow in flows}
     if len(entities) > 1:
-        raise ValueError(f"a window must cover exactly one source entity, got {len(entities)}")
+        raise ValueError(f"a window must cover exactly one {key.value} entity, got {len(entities)}")
 
     timestamps = [flow.timestamp for flow in flows]
     if any(later < earlier for earlier, later in zip(timestamps, timestamps[1:], strict=False)):
@@ -246,7 +256,7 @@ def extract_flow_window(flows: Sequence[FlowRecord]) -> tuple[FlowFeatures, ...]
     dst_port_count = float(len({flow.dst_port for flow in flows}))
     dst_ip_count = float(len({flow.dst_ip for flow in flows}))
     label = _window_label([flow.label for flow in flows])
-    entity = str(next(iter(entities)))
+    entity = next(iter(entities))
 
     rows: list[FlowFeatures] = []
     for flow in flows:
