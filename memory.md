@@ -22,19 +22,19 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 **One-line pitch.** Signature-based detection misses novel behaviour; AEGIS learns what "normal" looks like per entity and flags the deviation, with evidence attached.
 
-## Current state (as of 2026-10-02)
+## Current state (as of 2026-10-03)
 
 | Aspect | State |
 |---|---|
 | Repository | Six planning documents plus the Sprint S0 scaffolding (commit `23b6a57` onward) |
-| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton, `dashboard/` React shell — all tested. No model code |
-| Tests | 69 passing — 20 backend, 15 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
+| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator), `dashboard/` React shell — all tested. No model code |
+| Tests | 99 passing — 20 backend, 45 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
 | Checks green | `./scripts/check_all.sh` — 19 checks: ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, vitest, vite build, doc integrity, compose consistency. Five were proven to fail on an injected violation before being trusted |
 | Dependencies | Python via `pip install -e "backend[dev]" -e "ml-service[dev]"` (both verified); npm `package-lock.json` committed for `npm ci` (R-08) |
-| Datasets | **Not downloaded.** No `data/` directory |
+| Datasets | **Public sets not downloaded** — their hosts are unreachable from this sandbox. Synthetic data generates on demand via `scripts/generate_synthetic.py` into the gitignored `data/` |
 | Models | **None trained.** No baselines, no metrics |
 | Branch | `arena/01a0fee2-ai-enhanced-cybersecurity-thre`, based on `60e9adf` |
-| Next work | S0 is complete except T-005 execution (needs Docker) and `k8s/`. Then S1: datasets and baselines |
+| Next work | S0 is complete except T-005 execution (needs Docker) and `k8s/`. In S1, T-106 is DONE; T-107 feature extraction is next, against synthetic `flow@1` records |
 
 Sprint S0 started early, on 2026-10-02. Per-task status lives under the E0 table in [task.md](task.md#3-epic-e0--foundations-m0); the rest of the plan is still `TODO`.
 
@@ -123,6 +123,11 @@ Format: **status** · context · decision · consequences. A decision is changed
 **Decision.** The six documents are the deliverable of this phase. No scaffolding, no `.gitignore`, no CI until S0 begins.
 **Consequences.** Zero ambiguity about intent before code is written; the trade-off is that nothing is executable yet, so **no claim in these documents has been verified by running software**. Every performance, throughput, and metric figure in the PRD is a target, not a measurement — see the measurement ledger below.
 
+### D-011 · Canonical telemetry schemas live in `ml-service`, mirrored by contract not by import — ACCEPTED (2026-10-03)
+**Context.** T-106 needed machine-checked `flow@1` and `log@1` records, and the backend will later store and serve the same shapes (T-304). Python services cannot import across the `backend/` ↔ `ml-service/` boundary without breaking the deployment split.
+**Decision.** The authoritative definitions are Pydantic models in `ml-service/aegis_ml/data/records.py`. Both are frozen with `extra="forbid"`, reject naive timestamps, and pin their version through a `Literal` field, so an unknown version fails at parse time rather than downstream. The backend will define its own equivalent models and the equivalence will be pinned by a shared JSON-schema fixture and a contract test — not by a cross-service import.
+**Consequences.** Two definitions of the same shape exist, and drift between them is possible; the contract test at T-304 is what makes drift a build failure. Derived features (byte ratio, port entropy, destination counts) are deliberately *not* fields — they are computed at T-107 — so the stored record stays a faithful capture and a feature change never silently rewrites history.
+
 ## Data sources
 
 Datasets are never committed to Git (R-40). Checksums below are recorded as *pending capture* — they must be filled in by T-102 before any dataset is used in a training run (R-41).
@@ -132,7 +137,7 @@ Datasets are never committed to Git (R-40). Checksums below are recorded as *pen
 | **UNSW-NB15** | Primary network training and evaluation | [research.unsw.edu.au/projects/unsw-nb15-dataset](https://research.unsw.edu.au/projects/unsw-nb15-dataset) | Research/academic use; verify terms at source before redistribution | *pending — T-102* | 2,540,044 records, 49 features (per the published dataset description) |
 | **CIC-IDS2017** | DDoS/DoS, brute-force and web-attack coverage; cross-dataset transfer test | [unb.ca/cic/datasets/ids-2017.html](https://www.unb.ca/cic/datasets/ids-2017.html) | Free for research use; verify terms at source | *pending — T-102* | Multi-day PCAP plus labelled flows across five attack scenarios |
 | **System-log corpora** (HDFS / BGL family) | Log-anomaly model training and evaluation | Public benchmark corpora; exact source and licence confirmed in T-104 | *pending — T-104* | *pending — T-104* | *pending — T-104* |
-| **Synthetic generator** (ours) | Insider threat, beaconing, exfiltration scenarios; deterministic tests; demos | Built in-repo — T-106 | Ours (project licence) | Deterministic by seed (R-42) | Generated on demand |
+| **Synthetic generator** (ours) | Insider threat, beaconing, exfiltration scenarios; deterministic tests; demos | **Built** — `scripts/generate_synthetic.py`, T-106 DONE | Ours (project licence) | Deterministic by seed (R-42) | 7 scenarios × N; 1,400 records at N=200 |
 
 **Notes that will bite us later, written down now:**
 
@@ -256,13 +261,16 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | # | Action | Task | When |
 |---|---|---|---|
 | 1 | Confirm Q-01, Q-03, and Q-05 owners and dates | — | Before 2026-10-05 |
-| 2 | Commit the six documents as the baseline of the restarted project | — | Immediately |
-| 3 | Begin S0: scaffolding, CI, compose, docs | T-001…T-010 | 2026-10-05 |
-| 4 | Fetch datasets and record real checksums in the data-sources table | T-101, T-102 | S1 |
-| 5 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
+| 2 | ~~Commit the six documents as the baseline~~ — done, `3d74000` | — | Complete |
+| 3 | ~~Begin S0: scaffolding, CI, compose, docs~~ — done except T-005 execution and `k8s/` | T-001…T-010 | Complete |
+| 4 | Run the compose stack on a host with a Docker daemon and close T-005 | T-005 | When Docker is available |
+| 5 | Fetch datasets and record real checksums — blocked, hosts unreachable here | T-101, T-102 | S1 |
+| 6 | Build `features@1` extraction against the synthetic `flow@1` records | T-107 | Next |
+| 7 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
 
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
 | 2026-10-02 | 0.1 | Created during the repository reset. Recorded the reset (487 files removed, recoverable from `60e9adf`), ten decisions, four data sources, five open questions, and an empty measurement ledger. |
+| 2026-10-03 | 0.2 | Sprint S1 opened: T-106 shipped the canonical `flow@1` / `log@1` records and a seven-scenario synthetic generator. Added D-011 (where the telemetry schemas live), refreshed the current-state and data-source tables, and re-marked the completed next actions. |

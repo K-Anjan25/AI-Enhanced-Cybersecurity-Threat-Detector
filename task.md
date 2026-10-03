@@ -74,7 +74,7 @@ Goal: an empty but correct skeleton. Nothing clever, everything repeatable.
 | T-009 | IN PROGRESS | Two import-linter contracts enforced on the backend and **proven to fail on an injected violation**. Frontend feature boundaries wait on T-004 |
 | T-010 | DONE | `CONTRIBUTING.md` covers setup, running each service, the compose stack with its unverified status stated, and step-by-step guides for adding an endpoint, a model, and a page — each citing the rules it must satisfy |
 
-**Verified with (2026-10-03):** 69 tests passing — 20 backend, 15 ml-service, 34 dashboard — and `./scripts/check_all.sh` reporting 19 checks passed, 0 failed. `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 Python files, `bandit` no issues, backend coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept, `tsc --noEmit` clean, `eslint --max-warnings 0` clean, `vite build` succeeds.
+**Verified with (2026-10-03):** 99 tests passing — 20 backend, 45 ml-service, 34 dashboard — and `./scripts/check_all.sh` reporting 19 checks passed, 0 failed. The ml-service figure includes the S1 data-layer tests added later the same day; at S0 completion it was 15. `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 Python files, `bandit` no issues, backend coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept, `tsc --noEmit` clean, `eslint --max-warnings 0` clean, `vite build` succeeds.
 
 Five checks were proven non-vacuous by injecting a violation and watching them fail: `lint-imports` (`app.services.health_service -> fastapi`), the WCAG contrast test (a light-theme medium-severity text token measured 1.5782:1 against the 4.5 minimum), eslint (3 errors across R-20, R-23 and R-28), `scripts/check_docs.py` (a broken anchor, exit 1), and `scripts/check_compose.py` (a typo'd `AEGIS_*` variable and a wrong healthcheck path). All five were reverted and re-run green.
 
@@ -98,6 +98,16 @@ Goal: a frozen, leak-free feature pipeline and a baseline worth beating.
 | T-112 | Evaluation harness: single entrypoint producing the full metric set + confusion matrix + threshold sweep | 1.5 | T-110 | Output schema validated; running twice on the same artifact yields identical numbers |
 
 **E1 total ≈ 18 days.** The largest epic, and deliberately so. Every later result is only as trustworthy as this pipeline.
+
+**Progress (2026-10-03).**
+
+| ID | Status | Note |
+|---|---|---|
+| T-106 | DONE | Seven scenarios — normal, recon, DDoS, brute force, beaconing, exfiltration, insider threat — in `aegis_ml/data/`, over the canonical `flow@1` and `log@1` records in `aegis_ml/data/records.py`. 45 ml-service tests pass, 28 of them new. Determinism is asserted by SHA-256 across two CLI runs at the same seed, not just by unit tests. Three assertions were proven non-vacuous by injection: an unseeded RNG, a constant destination port in the scan, and 30 s of beacon jitter each failed their target test. A fourth injection (moving insider activity to business hours) failed both T5 tests. CLI: [`scripts/generate_synthetic.py`](scripts/generate_synthetic.py) |
+| T-101, T-102, T-103, T-104, T-105 | TODO | Blocked in this sandbox: the dataset hosts are unreachable (outbound network is allowlisted to pypi, npm and github only). T-106 is the fallback for M1 that [task.md](task.md#12-risk-register) already prescribes for exactly this case |
+| T-107…T-112 | TODO | Depend on T-103/T-105 for real data, but T-107 feature extraction can start against synthetic `flow@1` records |
+
+**Not covered by T-106.** The generator invents no real capture. Its scenarios are shaped to be separable by the features named in the PRD, so model scores on synthetic data measure the pipeline, not field performance — that caveat belongs in the model card (R-42).
 
 ## 5. Epic E2 — Transformer models (M2)
 
@@ -279,3 +289,4 @@ These are parked deliberately per [prd.md](prd.md#32-explicitly-out-of-scope-for
 | Date | Version | Change |
 |---|---|---|
 | 2026-10-02 | 0.1 | Initial work breakdown: 6 epics, 82 delivery tasks, 12 backlog items, plan through v1.0 on 2027-01-15. |
+| 2026-10-03 | 0.2 | Added the E1 progress block: T-106 DONE with its verification evidence and the four injection tests; T-101…T-105 recorded as blocked by unreachable dataset hosts. Corrected the E0 test count to 99. |
