@@ -63,20 +63,20 @@ Goal: an empty but correct skeleton. Nothing clever, everything repeatable.
 
 | ID | Status | Note |
 |---|---|---|
-| T-001 | IN PROGRESS | `backend/`, `ml-service/`, `dashboard/`, `data/`, `.gitignore`, `.editorconfig`, `README.md` in place. `docker/`, `k8s/`, `scripts/`, `.github/` are created by their own tasks, so the tree does not yet match the architecture doc exactly |
+| T-001 | IN PROGRESS | `backend/`, `ml-service/`, `dashboard/`, `data/`, `docker/`, `scripts/`, `.github/`, `README.md`, `CONTRIBUTING.md` all in place. Only `k8s/` is missing, so the tree still does not exactly match the architecture doc |
 | T-002 | DONE | 20 tests pass. `/healthz` and `/readyz` live; missing `AEGIS_SECRET_KEY` exits 1 naming the variable with no traceback; readiness returns 503 on an unavailable probe |
 | T-003 | DONE | 15 tests pass. `/internal/healthz` distinguishes `no_model_loaded` from `serving`; staging-only models do not count as serving |
 | T-004 | DONE | 34 tests pass. Nav shell, routing, dark/light theming via one CSS-variable source, `ConnectionStatus`. `tsc --noEmit` clean under `strict` + `exactOptionalPropertyTypes`; production build succeeds (83 modules) |
-| T-005 | TODO | Blocked in this sandbox: Docker is not installed, so a compose file could not be executed here |
-| T-006 | TODO | |
+| T-005 | **WRITTEN, NOT EXECUTED** | 7-service compose stack plus three Dockerfiles and an nginx config. **Docker is unavailable in this sandbox, so neither the images nor the stack have been run.** `scripts/check_compose.py` verifies what can be verified without a daemon: every `AEGIS_*` variable is a real `Settings` field, the secret is interpolated rather than hardcoded, published ports match the app, healthcheck URLs are real routes, Dockerfile CMDs resolve to importable ASGI apps, and build contexts exist. It caught a genuine defect — `ml-service` served `:app` but exposed only a factory |
+| T-006 | DONE | Five jobs — docs, infra, backend, ml-service, dashboard. `actionlint` reports no issues. Every command in the workflow was executed locally first, including the exact `pip install -e ".[dev]"` steps, and `npm ci` has a committed lockfile to resolve against |
 | T-007 | IN PROGRESS | ruff, black, mypy strict, bandit, pytest + coverage for both Python services; eslint with jsx-a11y and typed rules for the dashboard. Remaining: prettier, stylelint, commitlint, pre-commit |
 | T-008 | DONE | Ten decisions recorded in [memory.md](memory.md#decisions-log) using a status/context/decision/consequences format |
 | T-009 | IN PROGRESS | Two import-linter contracts enforced on the backend and **proven to fail on an injected violation**. Frontend feature boundaries wait on T-004 |
-| T-010 | IN PROGRESS | `README.md` covers setup, run, and the check commands; the "how to add an endpoint / model / page" guides are not written |
+| T-010 | DONE | `CONTRIBUTING.md` covers setup, running each service, the compose stack with its unverified status stated, and step-by-step guides for adding an endpoint, a model, and a page — each citing the rules it must satisfy |
 
-**Verified with (2026-10-02):** 69 tests passing — 20 backend, 15 ml-service, 34 dashboard. `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 Python files, `bandit` no issues, backend coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept, `tsc --noEmit` clean, `eslint --max-warnings 0` clean, `vite build` succeeds.
+**Verified with (2026-10-03):** 69 tests passing — 20 backend, 15 ml-service, 34 dashboard — and `./scripts/check_all.sh` reporting 19 checks passed, 0 failed. `ruff check` clean, `black --check` clean, `mypy` strict clean on 22 Python files, `bandit` no issues, backend coverage 90.3% against the 80% gate, `lint-imports` 2 contracts kept, `tsc --noEmit` clean, `eslint --max-warnings 0` clean, `vite build` succeeds.
 
-Three checks were proven non-vacuous by injecting a violation and watching them fail: `lint-imports` (`app.services.health_service -> fastapi`), the WCAG contrast test (a light-theme medium-severity text token measured 1.5782:1 against the 4.5 minimum), and eslint (3 errors across R-20, R-23 and R-28). All three were reverted and re-run green.
+Five checks were proven non-vacuous by injecting a violation and watching them fail: `lint-imports` (`app.services.health_service -> fastapi`), the WCAG contrast test (a light-theme medium-severity text token measured 1.5782:1 against the 4.5 minimum), eslint (3 errors across R-20, R-23 and R-28), `scripts/check_docs.py` (a broken anchor, exit 1), and `scripts/check_compose.py` (a typo'd `AEGIS_*` variable and a wrong healthcheck path). All five were reverted and re-run green.
 
 ## 4. Epic E1 — Data, features, and baselines (M1)
 

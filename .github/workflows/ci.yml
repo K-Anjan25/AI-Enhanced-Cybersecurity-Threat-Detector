@@ -1,0 +1,170 @@
+# AEGIS continuous integration.
+#
+# Every command below is the same one documented in README.md and runnable
+# locally via scripts/check_all.sh. A check that cannot be run locally is not
+# added here (rule R-92).
+name: CI
+
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '22'
+
+jobs:
+  docs:
+    name: Documentation integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install tools
+        run: pip install -r requirements-dev.txt
+
+      # The planning documents are the specification; broken anchors and dangling
+      # requirement ids are treated as build failures (R-94).
+      - name: Lint and typecheck the repository scripts
+        run: |
+          ruff check scripts/
+          black --check scripts/
+          mypy scripts/check_docs.py scripts/check_compose.py
+
+      - name: Verify cross-document links, anchors, ids and tables
+        run: python scripts/check_docs.py
+
+  infra:
+    name: Compose and image consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      # Introspects the real applications, so the backend and ml-service
+      # dependencies must be importable.
+      - name: Install
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -e "backend[dev]"
+          pip install -e "ml-service"
+
+      # Static only: this verifies the compose file against the code, it does not
+      # build images. Docker is exercised by the deploy pipeline, not here.
+      - name: Verify compose against the application code
+        run: python scripts/check_compose.py
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint (R-12)
+        run: ruff check .
+
+      - name: Format check
+        run: black --check .
+
+      - name: Typecheck, strict (R-11)
+        run: mypy
+
+      - name: Security scan (R-50, R-17)
+        run: bandit -q -r app
+
+      - name: Import boundaries (R-15)
+        run: lint-imports
+
+      - name: Tests with coverage gate (R-80)
+        run: pytest --cov=app --cov-report=term-missing
+
+  ml-service:
+    name: ML service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ml-service/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: black --check .
+
+      - name: Typecheck, strict
+        run: mypy
+
+      - name: Tests
+        run: pytest -q
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      # npm ci, not npm install: the lockfile is the pinned source of truth (R-08).
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck (R-20)
+        run: npm run typecheck
+
+      - name: Lint, including a11y (R-21, R-26)
+        run: npm run lint
+
+      - name: Tests, including the WCAG contrast regression suite
+        run: npm test
+
+      - name: Production build
+        run: npm run build

@@ -39,3 +39,14 @@ def create_app(registry: ModelRegistry | None = None) -> FastAPI:
         return build_health(version=request.app.state.version, registry=request.app.state.registry)
 
     return app
+
+
+def __getattr__(name: str) -> object:
+    """Expose the ASGI app lazily so importing this module has no side effects.
+
+    ``uvicorn aegis_ml.serving.app:app`` resolves this attribute; tests and tools
+    that only import :func:`create_app` never build an application.
+    """
+    if name == "app":
+        return create_app()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

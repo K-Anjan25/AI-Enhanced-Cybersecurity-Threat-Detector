@@ -19,6 +19,7 @@ The project is documented before it is coded. Start with the PRD, then the archi
 | [design.md](design.md) | How it looks and behaves, down to measured contrast ratios |
 | [task.md](task.md) | What we build, in what order, with acceptance criteria |
 | [memory.md](memory.md) | Decisions, data sources, glossary, and the measurement ledger |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to set up, run, test, and extend the system |
 
 ## Repository layout
 
@@ -58,17 +59,24 @@ uvicorn aegis_ml.serving.app:app --host 0.0.0.0 --port 8001
 
 ## Checks
 
-Every check below runs in CI and is expected to pass before merge.
+One command runs everything CI runs:
 
-| Check | backend | ml-service |
-|---|---|---|
-| Tests | `python -m pytest -q` | `python -m pytest -q` |
-| Coverage ≥ 80% (R-80) | `pytest --cov=app` | `pytest --cov=aegis_ml` |
-| Lint (R-12) | `ruff check .` | `ruff check .` |
-| Format | `black --check .` | `black --check .` |
-| Types, strict (R-11) | `mypy` | `mypy` |
-| Security (R-50, R-17) | `bandit -r app` | — |
-| Import boundaries (R-15) | `lint-imports` | — |
+```bash
+./scripts/check_all.sh              # 19 checks across 5 suites
+./scripts/check_all.sh backend      # or one: docs|infra|backend|ml|dashboard
+```
+
+| Suite | Checks |
+|---|---|
+| **docs** | `ruff`, `black`, `mypy` on `scripts/`, and `scripts/check_docs.py` — cross-document links, anchors, requirement/task/rule ids, table integrity |
+| **infra** | `scripts/check_compose.py` — compose file verified against the real application code |
+| **backend** | `ruff`, `black`, `mypy --strict`, `bandit`, `lint-imports` (R-15), `pytest` with the 80% coverage gate |
+| **ml-service** | `ruff`, `black`, `mypy --strict`, `pytest` |
+| **dashboard** | `tsc --noEmit`, `eslint` (incl. a11y), `vitest` (incl. the WCAG contrast suite), `vite build` |
+
+The planning documents are the specification, so broken anchors and dangling requirement ids
+fail the build rather than rotting silently. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to
+extend each part of the system.
 
 ## What is deliberately not here yet
 
