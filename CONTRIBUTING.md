@@ -123,6 +123,45 @@ The public datasets cannot be downloaded from the current development sandbox, w
 allowlisted to package registries. See the sandbox note in
 [memory.md](memory.md#environment-and-setup).
 
+## Synthetic data
+
+Until the public datasets are reachable, generate labelled telemetry locally:
+
+```bash
+python scripts/generate_synthetic.py --per-scenario 500 --seed 7   # balanced set
+python scripts/generate_synthetic.py --scenario beaconing --count 100
+```
+
+Output is NDJSON under `data/synthetic/`, which is gitignored. Records validate against the
+`flow@1` and `log@1` models in `ml-service/aegis_ml/data/records.py`; the same seed always
+produces byte-identical files (R-42), so a test can pin an expected checksum.
+
+Seven scenarios are available: `normal`, `port_scan`, `ddos`, `brute_force`, `beaconing`,
+`exfiltration`, `insider_threat`. Only `brute_force` and `insider_threat` produce log records;
+asking for another scenario's logs raises rather than returning an empty list, because an empty
+list would read as "nothing anomalous".
+
+Two things to keep in mind when you use this data:
+
+- **Scores on synthetic data measure the pipeline, not field performance.** The scenarios are
+  shaped to be separable by the features the PRD names. Say so wherever a number is reported.
+- **Derived quantities are not fields.** Byte ratio, port entropy and destination counts are
+  computed during feature extraction (T-107) so a feature change never rewrites stored data.
+
+### How to add a scenario
+
+1. Add a member to `Scenario` in `ml-service/aegis_ml/data/synthetic.py` and its label in
+   `LABELS`. The label must be one of the threat families in [prd.md](prd.md), not a new name.
+2. Write a `_your_scenario(spec) -> list[FlowRecord]` builder using `_flow`, and register it in
+   `_BUILDERS`. Every call must draw from `_rng(spec)` — never the global `random` — or
+   determinism is lost.
+3. Offsets passed to `_flow` must be non-negative; it raises otherwise, so a scenario can never
+   emit records dated before `spec.start`.
+4. If the scenario has a log-side signature, add a `_your_scenario_logs` builder and register it
+   in `_LOG_BUILDERS` — that table is what `generate_logs` and the CLI branch on.
+5. Add tests in `ml-service/tests/test_synthetic.py` for the features that make the scenario
+   detectable, then confirm they can fail: inject a violation, watch the test go red, revert.
+
 ## Conventions that catch people out
 
 - **Timestamps** are timezone-aware UTC, always (R-30).
