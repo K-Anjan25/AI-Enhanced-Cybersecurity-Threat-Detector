@@ -6,7 +6,10 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+# nginx-unprivileged runs as uid 101 and listens on 8080, so the container never
+# needs root. Plain nginx:alpine would run as root to bind port 80.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+USER 101
+EXPOSE 8080
