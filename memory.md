@@ -27,14 +27,14 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 | Aspect | State |
 |---|---|
 | Repository | Six planning documents plus the Sprint S0 scaffolding (commit `23b6a57` onward) |
-| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator, `features@1` extraction, sliding windowing, leakage-safe splits), `dashboard/` React shell — all tested. No model code |
-| Tests | 152 passing — 20 backend, 98 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
+| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator, `features@1` extraction, sliding windowing, leakage-safe splits, leakage audit), `dashboard/` React shell — all tested. No model code |
+| Tests | 171 passing — 20 backend, 117 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
 | Checks green | `./scripts/check_all.sh` — 19 checks: ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, vitest, vite build, doc integrity, compose consistency. Five were proven to fail on an injected violation before being trusted |
 | Dependencies | Python via `pip install -e "backend[dev]" -e "ml-service[dev]"` (both verified); npm `package-lock.json` committed for `npm ci` (R-08) |
 | Datasets | **Public sets not downloaded** — their hosts are unreachable from this sandbox. Synthetic data generates on demand via `scripts/generate_synthetic.py` into the gitignored `data/` |
 | Models | **None trained.** No baselines, no metrics |
 | Branch | `arena/01a0fee2-ai-enhanced-cybersecurity-thre`, based on `60e9adf` |
-| Next work | S0 is complete except T-005 execution (needs Docker) and `k8s/`. In S1, T-106…T-109 are DONE; T-111 (leakage audit) is next — it can reuse `Split.audit()` |
+| Next work | S0 is complete except T-005 execution (needs Docker) and `k8s/`. In S1, T-106…T-109 and T-111 are DONE; T-105 preprocessing and T-110 baselines remain, and both want real data |
 
 Sprint S0 started early, on 2026-10-02. Per-task status lives under the E0 table in [task.md](task.md#3-epic-e0--foundations-m0); the rest of the plan is still `TODO`.
 
@@ -284,8 +284,9 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 6 | ~~Build `features@1` extraction against synthetic `flow@1` records~~ — done, 23 features, hash-pinned | T-107 | Complete |
 | 7 | ~~Settle Q-06 and build windowing~~ — done, closed by D-013 | T-108 | Complete |
 | 8 | ~~Build the temporal + entity-disjoint split utility~~ — done, refuses rather than leaks | T-109 | Complete |
-| 9 | Build the leakage audit on top of `Split.audit()` | T-111 | Next |
-| 10 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
+| 9 | ~~Build the leakage audit on top of `Split.audit()`~~ — done, five leak classes | T-111 | Complete |
+| 10 | Wire `AuditReport.raise_for_leaks()` into the training entrypoint when T-201 lands | T-201 | M2 |
+| 11 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
 
 ## Change log
 
@@ -296,3 +297,4 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 2026-10-03 | 0.3 | T-107 shipped `features@1` (23 features, hash-pinned). Added D-012 and Q-06, and corrected `architecture.md` §7.1 from 24 to 23 features. Two defects found and fixed while building it: three scenario builders emitted out-of-order timelines, and `backend[dev]` never declared `import-linter` or `pytest-cov` even though CI runs both. |
 | 2026-10-03 | 0.4 | T-108 shipped sliding windowing with count and inactivity triggers. D-013 closes Q-06: the window key is a parameter, source by default and destination for volumetric families. `extract_flow_window` now takes the same key so destination-keyed windows are scorable. |
 | 2026-10-03 | 0.5 | T-109 shipped the temporal, entity-disjoint split. D-014 records why it drops and counts spanning windows and refuses when a cut would leave a fold empty — evaluation needs entity churn, which real captures may not have. |
+| 2026-10-03 | 0.6 | T-111 shipped the leakage audit: time, entity, record, scaler and label leakage, all reported in one pass. It deliberately does not trust `split_windows`, so a hand-built split fails the same way. |
