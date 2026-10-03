@@ -1,0 +1,11 @@
+# Lint configuration for repository-level scripts.
+# backend/ and ml-service/ carry their own pyproject.toml configurations.
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "D", "S", "BLE", "ASYNC", "EXE"]
+ignore = ["D203", "D213"]
+
+[lint.pydocstyle]
+convention = "google"

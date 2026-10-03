@@ -1,0 +1,133 @@
+# Contributing to AEGIS
+
+How to set up, run, test, and extend the project. For *what* we are building read
+[prd.md](prd.md); for *why it is shaped this way* read [architecture.md](architecture.md); for the
+binding rules read [rules.md](rules.md).
+
+## Setup
+
+Requires Python 3.11+ (3.11.2 verified) and Node 22.
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e "backend[dev]" -e "ml-service[dev]"
+
+cd dashboard && npm ci && cd ..
+```
+
+## Run everything
+
+```bash
+./scripts/check_all.sh              # every check CI runs
+./scripts/check_all.sh backend      # one suite: docs|infra|backend|ml|dashboard
+```
+
+`check_all.sh` requires an activated virtualenv and refuses to install into the system
+interpreter. It prints a pass/fail summary and exits non-zero on the first failure — read the
+output; a clean exit code alone is not a pass.
+
+## Run one service
+
+```bash
+# backend — http://localhost:8000/healthz and /readyz
+cd backend && cp .env.example .env      # then set AEGIS_SECRET_KEY
+uvicorn app.main:app --reload
+
+# ml-service — http://localhost:8001/internal/healthz
+cd ml-service
+uvicorn aegis_ml.serving.app:app --port 8001
+
+# dashboard — http://localhost:5173
+cd dashboard && npm run dev
+```
+
+`AEGIS_SECRET_KEY` is required and rejects placeholder and low-entropy values. Generate one:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+## The whole stack
+
+```bash
+docker compose -f docker/docker-compose.yml up
+```
+
+This needs Docker. **The compose file has not been executed in the current development
+sandbox, where Docker is unavailable** — see [task.md](task.md) T-005. Its contents are
+statically verified against the application code by `scripts/check_compose.py`.
+
+## Before you open a PR
+
+1. `./scripts/check_all.sh` passes.
+2. Acceptance criteria in [task.md](task.md) are met, each one demonstrably.
+3. The relevant document is updated — PRD for scope, architecture for structure, design for
+   UI, memory for decisions (R-94).
+4. Your PR description says what you ran and what it returned (R-92).
+
+The Definition of Done is [rules.md §10](rules.md#10-definition-of-done).
+
+## How to add an API endpoint
+
+1. **Schema first.** Add request and response models in `backend/app/schemas/`. No `dict` crosses
+   a route boundary (R-14).
+2. **Logic in a service.** Put behaviour in `backend/app/services/`. Services must not import
+   FastAPI — an import-linter contract fails the build if they do (R-15).
+3. **Thin router.** Add the route under `backend/app/api/v1/endpoints/`. Parse, call the service,
+   serialise. Nothing else (R-13).
+4. **Authorisation.** Apply the RBAC dependency. Add the route to the route-role matrix test; a
+   route missing from the matrix fails CI (R-53).
+5. **Contract test.** Assert status code, response schema, and the RBAC outcome (R-86).
+
+Verify: `./scripts/check_all.sh backend`.
+
+## How to add a model
+
+1. **Features are code.** Feature definitions live in `ml-service/aegis_ml/features/` and are
+   versioned (`features@1`). Changing a definition means a version bump, never an in-place edit
+   (R-44).
+2. **Model module.** Add it under `ml-service/aegis_ml/models/`. Inference must be deterministic:
+   no clock reads, no unseeded randomness, no ambient config (R-67).
+3. **Register it.** Load it through `ModelRegistry`. Versions are immutable and content-addressed;
+   there is no `latest`, and only one version per kind may be `active` (R-68).
+4. **Record the manifest.** `training_manifest.json` with dataset hashes, git SHA, config, seeds,
+   and metrics. An artifact without a manifest cannot be promoted (R-63).
+5. **Beat the baseline.** Train and record the non-deep baseline for the same features. Report
+   precision, recall, F1, ROC-AUC **and** PR-AUC; accuracy alone is never acceptable here (R-65).
+
+Verify: `./scripts/check_all.sh ml`, then record real numbers in
+[memory.md](memory.md#ledger--measurements).
+
+## How to add a page
+
+1. **Feature folder.** Create `dashboard/src/features/<domain>/pages/`. Never import from another
+   feature's internals (R-22).
+2. **Route.** Register it in `dashboard/src/App.tsx`. A route with no screen renders the explicit
+   "not built" state — never a blank panel (design.md §8.1).
+3. **Tokens only.** Colours, spacing, radii, and fonts come from the design tokens. No inline
+   styles for anything a token covers (R-27).
+4. **Data through the API layer.** Components never call `fetch` directly; eslint enforces this
+   (R-23).
+5. **States.** Loading, empty, error, partial, and stale are all required (R-29).
+6. **Accessibility.** Interactive elements need an accessible name and keyboard reach. The WCAG
+   contrast suite in `src/theme/tokens.test.ts` fails if a token drops below 4.5:1.
+
+Verify: `./scripts/check_all.sh dashboard`.
+
+## Datasets
+
+Datasets are never committed (R-40). Fetch them into `data/raw/` and record the source, licence,
+and SHA-256 in [memory.md](memory.md#data-sources) before using them in a training run.
+
+The public datasets cannot be downloaded from the current development sandbox, whose network is
+allowlisted to package registries. See the sandbox note in
+[memory.md](memory.md#environment-and-setup).
+
+## Conventions that catch people out
+
+- **Timestamps** are timezone-aware UTC, always (R-30).
+- **`audit_log` is append-only.** There is no update or delete path, by design (R-31).
+- **Splits are temporal and entity-disjoint.** A random shuffle split is a defect — it leaks the
+  future into the past (R-60, R-61).
+- **Never fabricate a number.** Every metric traces to a recorded run (R-74).
+- **Never hide a failure.** A component that cannot do its job says so (R-06).

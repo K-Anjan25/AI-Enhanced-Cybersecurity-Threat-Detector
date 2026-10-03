@@ -66,6 +66,7 @@ Monorepo, three deployable units. Directory names below are the contract; do not
 ```
 AI-Enhanced-Cybersecurity-Threat-Detector/
 ├── prd.md  architecture.md  rules.md  design.md  task.md  memory.md
+├── README.md  CONTRIBUTING.md  .editorconfig  .gitignore  ruff.toml
 ├── backend/                  # FastAPI: ingest + query API, auth, alerts
 │   ├── app/
 │   │   ├── api/v1/           # routers, one module per resource
@@ -83,22 +84,31 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 │   │   ├── models/           # flow_transformer.py, log_transformer.py
 │   │   ├── scoring/          # windowing, fusion, explanation
 │   │   └── serving/          # FastAPI inference app
+│   ├── registry/             # immutable model version registry
 │   ├── training/             # pipelines, configs, eval harness
 │   ├── artifacts/            # gitignored; model weights + manifests
-│   └── tests/
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── Dockerfile
 ├── dashboard/                # React + TypeScript + Vite
 │   ├── src/
 │   │   ├── features/         # one folder per page domain
 │   │   ├── components/ui/    # design-system primitives from design.md
+│   │   ├── components/layout/  # AppShell: nav rail + top bar
 │   │   ├── api/              # typed API clients
+│   │   ├── theme/            # ThemeProvider + the WCAG contrast suite
+│   │   ├── lib/              # shared utilities (contrast maths)
 │   │   ├── hooks/  store/  types/
-│   │   └── routes.tsx
-│   └── tests/
+│   │   └── App.tsx           # route table
+│   ├── tests/                # colocated as *.test.tsx
+│   ├── Dockerfile  nginx.conf
+│   └── package.json  package-lock.json
 ├── data/                     # gitignored: raw/, processed/, external/
-├── docker/docker-compose.yml
+├── docker/docker-compose.yml # local stack
 ├── k8s/                      # production manifests
-├── .github/workflows/ci.yml
-└── scripts/                  # dataset fetch, synthetic generator, dev tasks
+├── .github/workflows/ci.yml  # docs, infra, backend, ml-service, dashboard jobs
+└── scripts/                  # check_all.sh, check_docs.py, check_compose.py,
+                              # plus dataset fetch and the synthetic generator
 ```
 
 ## 4. Component responsibilities

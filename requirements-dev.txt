@@ -1,0 +1,8 @@
+# Tooling for repository-level scripts (scripts/*.py).
+# Service-specific dependencies live in backend/pyproject.toml and
+# ml-service/pyproject.toml.
+ruff>=0.16
+black>=26.5
+mypy>=2.4
+pyyaml>=6.0
+types-PyYAML>=6.0
