@@ -20,7 +20,7 @@ performance (R-74). Model cards must say so (T-214).
 from __future__ import annotations
 
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -156,14 +156,19 @@ def _normal(spec: GenerationSpec) -> list[FlowRecord]:
     """Ordinary client/server traffic across well-known services."""
     rng = _rng(spec)
     flows: list[FlowRecord] = []
-    for index in range(spec.count):
+    # A cumulative cursor, not `index * gap`: redrawing the multiplier per index
+    # produces a timeline that runs backwards, which breaks every windowed
+    # consumer downstream.
+    cursor = 0.0
+    for _ in range(spec.count):
         src = rng.choice(INTERNAL_HOSTS)
         dst = rng.choice(EXTERNAL_HOSTS + INTERNAL_HOSTS)
         dst_port = rng.choice(WELL_KNOWN_PORTS)
+        cursor += rng.uniform(0.4, 2.5)
         flows.append(
             _flow(
                 spec,
-                offset=index * rng.uniform(0.4, 2.5),
+                offset=cursor,
                 src=src,
                 dst=dst,
                 src_port=rng.randint(49152, 65535),
@@ -309,11 +314,13 @@ def _exfiltration(spec: GenerationSpec) -> list[FlowRecord]:
     src = INTERNAL_HOSTS[3]
     dst = EXTERNAL_HOSTS[2]
     flows: list[FlowRecord] = []
-    for index in range(spec.count):
+    cursor = 0.0
+    for _ in range(spec.count):
+        cursor += rng.uniform(20.0, 45.0)
         flows.append(
             _flow(
                 spec,
-                offset=index * rng.uniform(20.0, 45.0),
+                offset=cursor,
                 src=src,
                 dst=dst,
                 src_port=rng.randint(49152, 65535),
@@ -341,11 +348,13 @@ def _insider_threat(spec: GenerationSpec) -> list[FlowRecord]:
     rng = _rng(spec)
     src = rng.choice(INTERNAL_HOSTS)
     flows: list[FlowRecord] = []
-    for index in range(spec.count):
+    cursor = OFF_HOURS.total_seconds()
+    for _ in range(spec.count):
+        cursor += rng.uniform(20.0, 90.0)
         flows.append(
             _flow(
                 spec,
-                offset=OFF_HOURS.total_seconds() + index * rng.uniform(20.0, 90.0),
+                offset=cursor,
                 src=src,
                 dst=rng.choice(INSIDER_TARGETS),
                 src_port=rng.randint(49152, 65535),
@@ -376,12 +385,37 @@ _BUILDERS = {
 }
 
 
+def _require_arrival_order(records: Sequence[FlowRecord] | Sequence[LogRecord], kind: str) -> None:
+    # A plain union rather than a structural Protocol: this module already binds
+    # the name `Protocol` to the transport-protocol enum from records.py.
+    """Assert a generated sequence never runs backwards in time.
+
+    A windowed consumer cannot recover from an out-of-order timeline, and the
+    alternative — silently sorting — would hide the broken generator (R-06).
+
+    Raises:
+        ValueError: if any record precedes the one before it.
+    """
+    stamps = [record.timestamp for record in records]
+    for earlier, later in zip(stamps, stamps[1:], strict=False):
+        if later < earlier:
+            raise ValueError(
+                f"{kind} records must be generated in arrival order; "
+                f"{later.isoformat()} follows {earlier.isoformat()}"
+            )
+
+
 def generate_flows(spec: GenerationSpec) -> list[FlowRecord]:
     """Generate flow records for one scenario.
 
     Deterministic: identical specs always yield identical records (R-42).
+
+    Raises:
+        ValueError: if a builder produced an out-of-order timeline.
     """
-    return _BUILDERS[spec.scenario](spec)
+    flows = _BUILDERS[spec.scenario](spec)
+    _require_arrival_order(flows, "flow")
+    return flows
 
 
 def _brute_force_logs(spec: GenerationSpec) -> list[LogRecord]:
@@ -490,7 +524,9 @@ def generate_logs(spec: GenerationSpec) -> list[LogRecord]:
     if builder is None:
         supported = ", ".join(sorted(scenario.value for scenario in _LOG_BUILDERS))
         raise ValueError(f"log records are only defined for {supported}, got {spec.scenario.value}")
-    return builder(spec)
+    logs = builder(spec)
+    _require_arrival_order(logs, "log")
+    return logs
 
 
 @dataclass(frozen=True, slots=True)

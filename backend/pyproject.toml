@@ -14,6 +14,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1",
+    # check_all.sh and CI run `pytest --cov=app` and `lint-imports` for this
+    # service, so both must be declared here rather than hand-installed.
+    "pytest-cov>=7.0",
+    "import-linter>=2.0",
     "httpx>=0.28",
     "ruff>=0.16",
     "black>=26.5",

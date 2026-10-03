@@ -189,7 +189,9 @@ Design notes:
 
 Input: a window of **W = 50** consecutive flows from one source entity, ordered by arrival.
 
-Per-flow feature vector (24 features):
+Per-flow feature vector (23 features — the table below is the contract, and its digest is
+pinned by a schema-hash test in `ml-service/tests/test_features.py`, so changing a feature
+definition without bumping `features@1` fails the build):
 
 | Group | Features |
 |---|---|
