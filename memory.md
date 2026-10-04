@@ -165,6 +165,8 @@ The publisher's own artifacts are *not* reachable: UNSW distributes the source f
 | UNSW-NB15 | `UNSW_NB15_testing-set.csv` | `shailjaroy/NIDS-UNSW_NB15` | `734fe6642edf758f7c94d7d9149426b49d202fe8e7bf0bef47392489c3c0a559` | 15,380,800 | 82,332 × 45 | **No** — no addresses, no timestamps |
 | UNSW-NB15 | `unsw_nb15_official_schema_sample.csv` | `luna866/UNSW-NB15` | `13be3cddc8c8c2e0fe874d68841e7f0b007eaa13cf9a194a20991e0d6f41da74` | 2,386,163 | 10,000 × 49 | Yes |
 | CIC-IDS2017 | `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` | `StarterArcher/CICIDS2017` | `306294008927756094b069d24764bfa6519fe267a8104903c056fc9c3cf38636` | 36,010,816 | 225,745 × 32 | Yes |
+| BGL (system logs) | `BGL_2k.log` | `logpai/loghub` | `2a819ea540909db682005c9cf948387a40729b5c2e9f19d430e29ce704825496` | 317,150 | 2,000 × 1 | Yes |
+| BGL ground truth | `BGL_2k.log_structured.csv` | `logpai/loghub` | `3fe74103c0b02a28514534e2a47257a3f770135ca61afd425bbd3b9d6a31fe26` | 425,129 | 2,000 × 13 | Verification only |
 | **Synthetic** (ours) | `data/synthetic/*.ndjson` | Built — `scripts/generate_synthetic.py` (T-106) | Deterministic by seed (R-42) | — | 7 scenarios × N | Yes |
 
 Publisher pages, for anyone who needs the authoritative artifact: [UNSW-NB15](https://research.unsw.edu.au/projects/unsw-nb15-dataset) and [CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html). Licences: UNSW-NB15 is free for academic research in perpetuity with commercial use by agreement, citing Moustafa & Slay (MilCIS 2015); CIC-IDS2017 is free for research and educational use, citing Sharafaldin, Lashkari & Ghorbani (ICISSP 2018).
@@ -187,13 +189,23 @@ Publisher pages, for anyone who needs the authoritative artifact: [UNSW-NB15](ht
 | `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` | 225,745 | 225,689 | 56 (54 protocol 0/HOPOPT, 2 negative duration) | 14 |
 | `unsw_nb15_official_schema_sample.csv` | 10,000 | 9,756 | 244 (228 unsupported protocol across 57 names, 16 outside boundary) | 34 |
 
-Row counts read match the inventory exactly, which is T-103's acceptance criterion. CIC-IDS2017's Friday file holds 97,718 BENIGN and 128,027 DDoS flows, with 2,066 distinct source and 2,553 distinct destination addresses — real entity churn, which D-014 worried captures might lack.
+Row counts read match the inventory exactly, which is T-103's acceptance criterion. For the log corpus (T-104) the parser reads **2,000 of 2,000 lines with zero unparseable**, across 1,778 distinct hosts and 5 components; its severity counts (critical 347, error 48, info 1,597, warning 8) match LogHub's published labels exactly, with SEVERE folded into `error` and FATAL into `critical`. CIC-IDS2017's Friday file holds 97,718 BENIGN and 128,027 DDoS flows, with 2,066 distinct source and 2,553 distinct destination addresses — real entity churn, which D-014 worried captures might lack.
 
 ### Why the baselines are not yet scored (T-110)
 
 Not a tooling problem — a property of the data. CIC-IDS2017's Friday capture runs 03:30–05:02, but the DDoS burst occupies only **03:56–04:16**, from sources that never reappear afterwards. A strictly temporal split puts the tail in test, so the test fold is 2,440 rows and **all of them normal**; ROC-AUC is undefined and no model can be ranked. Destination-keying (D-013) does not help, because the cause is temporal rather than keying. The UNSW sample is too thin for the same rule: 26 source addresses in total, leaving 3 test entities, again all normal.
 
 D-014 anticipated that a stream without entity churn would force this. What the real data shows is sharper: **a short attack burst from ephemeral sources falls entirely inside the training period whenever the test period is the tail of the capture**, however much churn there is elsewhere. `run_baselines.py` detects the single-class fold and refuses with an explanation rather than fitting a degenerate model. Unblocking T-110 needs a multi-day capture in which the attack families recur across days — the full five-day CIC-IDS2017 set, or the complete UNSW-NB15 CSVs, neither of which is reachable here.
+
+### T-104 — log corpus, and a retraction
+
+The corpus is **BGL** from LogHub, 2,000 lines of real BlueGene/L system logs, plus LogHub's own `*_structured.csv` for the same lines as ground truth. Both are in the manifest with measured hashes.
+
+- **2,000 of 2,000 lines parse, zero unparseable**, across 1,778 distinct hosts and 5 components. Severity counts (critical 347, error 48, info 1,597, warning 8) match LogHub's published labels exactly, with SEVERE folded into `error` and FATAL into `critical`.
+- **Thunderbird was rejected, not overlooked.** It is the other syslog-shaped corpus available, but it has no severity column at all and `log@1` requires one. Deriving a level from keywords in the message would have put fabricated data into the training set.
+- Template mining runs in two passes. A lexical pass alone produced 1,198 templates where LogHub's labels have 120 — it cannot see that two messages are the same event when a varying token carries punctuation (`2,`, `0x0b85eee0,`), which is common because prose is punctuated. The merge pass, which repeatedly unifies templates differing in exactly one position, takes that to **103 templates, 0.9935 agreement against LogHub's grouping and 0.9530 the other way** (the lexical pass alone: 0.4185).
+- **Retracted claim.** An earlier figure of "121 templates, 0.98 agreement" was wrong. It came from iterating a Python `set` while assigning messages to templates, so the count depended on incidental ordering rather than on the miner. Re-running that same code in the module gave 284. The deterministic figure is 103, and assignment order is now stored in the artifact (least-specific-first) instead of being left to Python. Recorded here so the 121 is not reused.
+- **Known gap, pinned by a test.** Messages that vary in *two* positions at once are not merged, because the merge only unifies single-position differences. LogHub treats those as one event. The cost is small in the measured direction, but it is the first thing to revisit if template quality starts to matter.
 
 ### Notes that will still bite us later
 

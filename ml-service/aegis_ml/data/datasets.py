@@ -28,7 +28,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-DatasetId = Literal["unsw-nb15", "cic-ids2017"]
+DatasetId = Literal["unsw-nb15", "cic-ids2017", "bgl"]
 
 #: Where files land, relative to the repository root. Ignored by git (R-40).
 RAW_DIR = "data/raw"
@@ -168,12 +168,63 @@ CIC_IDS2017_FRIDDAY_DDOS = DatasetFile(
     ),
 )
 
+BGL_2K = DatasetFile(
+    dataset_id="bgl",
+    file_name="BGL_2k.log",
+    repo="logpai/loghub",
+    path="BGL/BGL_2k.log",
+    canonical_source="https://github.com/logpai/loghub",
+    licence="LogHub datasets are free for research use; the underlying BGL logs "
+    "are from the LLNL BlueGene/L supercomputer. Cite He et al., ICPC 2016.",
+    sha256="2a819ea540909db682005c9cf948387a40729b5c2e9f19d430e29ce704825496",
+    size_bytes=317_150,
+    row_count=2_000,
+    columns=1,
+    has_entity_columns=True,
+    has_timestamps=True,
+    caveats=(
+        "A raw log file, so `columns` is 1 by convention rather than a field count.",
+        "Chosen over Thunderbird and the other LogHub corpora because it carries an "
+        "explicit severity on every line. Thunderbird has no severity column at all, "
+        "and log@1 requires one; inferring a level from message keywords would put "
+        "fabricated data into the training set.",
+        "Severities upstream are INFO, WARNING, ERROR, SEVERE and FATAL. SEVERE maps "
+        "to `error` and FATAL to `critical`; the mapping is in `log_parsers.BGL_LEVELS`.",
+        "2,000 lines parse to 1,778 distinct hosts across 5 components, which is what "
+        "makes a host-keyed log window meaningful at all.",
+    ),
+)
+
+BGL_2K_STRUCTURED = DatasetFile(
+    dataset_id="bgl",
+    file_name="BGL_2k.log_structured.csv",
+    repo="logpai/loghub",
+    path="BGL/BGL_2k.log_structured.csv",
+    canonical_source="https://github.com/logpai/loghub",
+    licence=BGL_2K.licence,
+    sha256="3fe74103c0b02a28514534e2a47257a3f770135ca61afd425bbd3b9d6a31fe26",
+    size_bytes=425_129,
+    row_count=2_000,
+    columns=13,
+    has_entity_columns=True,
+    has_timestamps=True,
+    caveats=(
+        "LogHub's own parsing of the same 2,000 lines: Node, Type, Component, Level, "
+        "Content, EventId and EventTemplate. Not training data — it is the ground "
+        "truth the template miner is measured against (120 distinct EventIds).",
+        "Used only for verification. Never train on it: it is a derived artifact of "
+        "the corpus it labels.",
+    ),
+)
+
 #: Every file the fetcher knows about.
 DATASETS: tuple[DatasetFile, ...] = (
     UNSW_NB15_TRAINING_DERIVATIVE,
     UNSW_NB15_TESTING_DERIVATIVE,
     UNSW_NB15_SCHEMA_SAMPLE,
     CIC_IDS2017_FRIDDAY_DDOS,
+    BGL_2K,
+    BGL_2K_STRUCTURED,
 )
 
 #: attack_cat codes in the UNSW sample, from the mirror's mapping.pkl.
