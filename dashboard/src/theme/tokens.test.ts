@@ -90,9 +90,7 @@ describe.each([
     for (const severity of SEVERITIES) {
       for (const bg of ['--color-bg-base', '--color-bg-surface']) {
         const ratio = contrastRatio(tokens[`--severity-text-${severity}`]!, tokens[bg]!);
-        expect(ratio, `severity-text-${severity} on ${bg}`).toBeGreaterThanOrEqual(
-          AA_NORMAL_TEXT,
-        );
+        expect(ratio, `severity-text-${severity} on ${bg}`).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
       }
     }
   });

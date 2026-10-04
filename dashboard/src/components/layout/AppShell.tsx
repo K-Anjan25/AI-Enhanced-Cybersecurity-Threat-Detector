@@ -89,9 +89,7 @@ export function AppShell({ connection = 'live', children }: AppShellProps) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-8 items-center justify-between border-b border-line bg-surface px-6">
-          <span className="text-caption text-muted">
-            AI-Enhanced Cybersecurity Threat Detector
-          </span>
+          <span className="text-caption text-muted">AI-Enhanced Cybersecurity Threat Detector</span>
           <div className="flex items-center gap-4">
             <ConnectionStatus state={connection} />
             <button

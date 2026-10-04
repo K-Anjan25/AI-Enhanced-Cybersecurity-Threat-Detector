@@ -11,15 +11,15 @@ predict cybersecurity threats before they become confirmed incidents.
 
 The project is documented before it is coded. Start with the PRD, then the architecture.
 
-| Document | What it answers |
-|---|---|
-| [prd.md](prd.md) | What we are building, for whom, and what "done" means |
-| [architecture.md](architecture.md) | How the system and the models are designed |
-| [rules.md](rules.md) | How we write code — 89 binding rules with an enforcement column |
-| [design.md](design.md) | How it looks and behaves, down to measured contrast ratios |
-| [task.md](task.md) | What we build, in what order, with acceptance criteria |
-| [memory.md](memory.md) | Decisions, data sources, glossary, and the measurement ledger |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to set up, run, test, and extend the system |
+| Document                           | What it answers                                                 |
+| ---------------------------------- | --------------------------------------------------------------- |
+| [prd.md](prd.md)                   | What we are building, for whom, and what "done" means           |
+| [architecture.md](architecture.md) | How the system and the models are designed                      |
+| [rules.md](rules.md)               | How we write code — 89 binding rules with an enforcement column |
+| [design.md](design.md)             | How it looks and behaves, down to measured contrast ratios      |
+| [task.md](task.md)                 | What we build, in what order, with acceptance criteria          |
+| [memory.md](memory.md)             | Decisions, data sources, glossary, and the measurement ledger   |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to set up, run, test, and extend the system                 |
 
 ## Repository layout
 
@@ -66,13 +66,13 @@ One command runs everything CI runs:
 ./scripts/check_all.sh backend      # or one: docs|infra|backend|ml|dashboard
 ```
 
-| Suite | Checks |
-|---|---|
-| **docs** | `ruff`, `black`, `mypy` on `scripts/`, and `scripts/check_docs.py` — cross-document links, anchors, requirement/task/rule ids, table integrity |
-| **infra** | `scripts/check_compose.py` — compose file verified against the real application code |
-| **backend** | `ruff`, `black`, `mypy --strict`, `bandit`, `lint-imports` (R-15), `pytest` with the 80% coverage gate |
-| **ml-service** | `ruff`, `black`, `mypy --strict`, `pytest` |
-| **dashboard** | `tsc --noEmit`, `eslint` (incl. a11y), `vitest` (incl. the WCAG contrast suite), `vite build` |
+| Suite          | Checks                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **docs**       | `ruff`, `black`, `mypy` on `scripts/`, and `scripts/check_docs.py` — cross-document links, anchors, requirement/task/rule ids, table integrity |
+| **infra**      | `scripts/check_compose.py` — compose file verified against the real application code                                                           |
+| **backend**    | `ruff`, `black`, `mypy --strict`, `bandit`, `lint-imports` (R-15), `pytest` with the 80% coverage gate                                         |
+| **ml-service** | `ruff`, `black`, `mypy --strict`, `pytest`                                                                                                     |
+| **dashboard**  | `tsc --noEmit`, `eslint` (incl. a11y), `vitest` (incl. the WCAG contrast suite), `vite build`                                                  |
 
 The planning documents are the specification, so broken anchors and dangling requirement ids
 fail the build rather than rotting silently. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to

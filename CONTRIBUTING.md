@@ -1,7 +1,7 @@
 # Contributing to AEGIS
 
-How to set up, run, test, and extend the project. For *what* we are building read
-[prd.md](prd.md); for *why it is shaped this way* read [architecture.md](architecture.md); for the
+How to set up, run, test, and extend the project. For _what_ we are building read
+[prd.md](prd.md); for _why it is shaped this way_ read [architecture.md](architecture.md); for the
 binding rules read [rules.md](rules.md).
 
 ## Setup
@@ -10,16 +10,24 @@ Requires Python 3.11+ (3.11.2 verified) and Node 22.
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt          # ruff, black, mypy, bandit, pre-commit
 pip install -e "backend[dev]" -e "ml-service[dev]"
 
 cd dashboard && npm ci && cd ..
+
+# Both hook types: the file hooks, and commitlint on the commit message.
+pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
+
+The hooks run the linters from pinned mirrors, but prettier, stylelint and commitlint
+run the binaries the dashboard pins — see the header of `.pre-commit-config.yaml` for why.
+That is why `npm ci` is part of setup and not optional.
 
 ## Run everything
 
 ```bash
 ./scripts/check_all.sh              # every check CI runs
-./scripts/check_all.sh backend      # one suite: docs|infra|backend|ml|dashboard
+./scripts/check_all.sh backend      # one suite: docs|infra|backend|ml|dashboard|hooks
 ```
 
 `check_all.sh` requires an activated virtualenv and refuses to install into the system

@@ -43,7 +43,7 @@ run() {
 check_docs() {
     run "docs: lint"        ruff check scripts/
     run "docs: format"      black --check scripts/
-    run "scripts: types"    mypy scripts/check_docs.py scripts/check_compose.py scripts/fetch_datasets.py scripts/run_baselines.py
+    run "scripts: types"    mypy scripts/check_docs.py scripts/check_compose.py scripts/fetch_datasets.py scripts/run_baselines.py scripts/check_frontend_boundaries.py scripts/generate_synthetic.py
     run "docs: integrity"   python scripts/check_docs.py
 }
 
@@ -51,6 +51,9 @@ check_infra() {
     run "infra: compose consistency" python scripts/check_compose.py
     run "infra: k8s consistency"     python scripts/check_k8s.py
     run "infra: dataset manifest"    python scripts/fetch_datasets.py --list
+    # Pure Python, so it lives here rather than in check_dashboard, which skips
+    # entirely when node_modules is absent.
+    run "infra: frontend boundaries" python scripts/check_frontend_boundaries.py
 }
 
 check_backend() {
@@ -79,8 +82,29 @@ check_dashboard() {
     fi
     run "dashboard: types"   bash -c 'cd dashboard && npm run typecheck --silent'
     run "dashboard: lint"    bash -c 'cd dashboard && npm run lint --silent'
+    run "dashboard: css lint" bash -c 'cd dashboard && npm run lint:css --silent'
+    run "dashboard: format"  bash -c 'cd dashboard && npm run format:check --silent'
     run "dashboard: tests"   bash -c 'cd dashboard && npm test --silent'
     run "dashboard: build"   bash -c 'cd dashboard && npm run build --silent'
+}
+
+# The hooks are the same ones CI runs. Skipped rather than failed when either
+# toolchain is absent, because pre-commit needs the dashboard's node_modules for
+# its prettier, stylelint and commitlint hooks.
+check_hooks() {
+    if ! command -v pre-commit >/dev/null 2>&1; then
+        echo
+        echo "── hooks ───────────────────────────────────────────────"
+        echo "SKIPPED: pre-commit not installed. Run: pip install -r requirements-dev.txt"
+        return
+    fi
+    if [ ! -x dashboard/node_modules/.bin/prettier ]; then
+        echo
+        echo "── hooks ───────────────────────────────────────────────"
+        echo "SKIPPED: dashboard/node_modules missing. Run: (cd dashboard && npm ci)"
+        return
+    fi
+    run "hooks: pre-commit"  pre-commit run --all-files
 }
 
 case "$TARGET" in
@@ -89,8 +113,9 @@ case "$TARGET" in
     backend)   check_backend ;;
     ml)        check_ml ;;
     dashboard) check_dashboard ;;
-    all)       check_docs; check_infra; check_backend; check_ml; check_dashboard ;;
-    *) echo "usage: $0 [all|docs|infra|backend|ml|dashboard]" >&2; exit 2 ;;
+    hooks)     check_hooks ;;
+    all)       check_docs; check_infra; check_backend; check_ml; check_dashboard; check_hooks ;;
+    *) echo "usage: $0 [all|docs|infra|backend|ml|dashboard|hooks]" >&2; exit 2 ;;
 esac
 
 echo
