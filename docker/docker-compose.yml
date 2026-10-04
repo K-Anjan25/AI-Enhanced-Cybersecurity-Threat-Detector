@@ -40,19 +40,22 @@ services:
       retries: 10
 
   kafka:
-    # Opt-in: `docker compose --profile streaming up -d`.
+    # `bitnami/kafka` no longer exists: Broadcom deleted the public
+    # docker.io/bitnami catalog on 2025-09-29, and the Docker Hub API now returns
+    # zero tags for the repository. `bitnamilegacy` is the archive the versioned
+    # tags were moved to, and it is a drop-in - same KAFKA_CFG_* variables, same
+    # /bitnami/kafka data directory - so nothing else in this block changes.
     #
-    # `bitnami/kafka` no longer exists. Broadcom deleted the public
-    # docker.io/bitnami catalog on 2025-09-29; versioned tags were moved to
-    # docker.io/bitnamilegacy, which is frozen and receives no security patches.
-    # A pull of bitnami/kafka:3.9 now fails with "not found", which took the
-    # whole `up` down with it — including the three services that do not need a
-    # broker. Nothing else in this stack depends on kafka, so it is behind a
-    # profile until it is migrated to the official apache/kafka image, which
-    # uses KAFKA_* rather than KAFKA_CFG_* and a different data directory.
-    # Tracked as Q-08.
-    profiles: ['streaming']
-    image: bitnami/kafka:3.9
+    # It is frozen and receives no CVE patches, which is a poor fit for a
+    # security product; migrating to the official apache/kafka is Q-08. That needs
+    # KAFKA_* variables, a different data directory and a KRaft cluster id, and it
+    # cannot be verified without a Docker daemon.
+    #
+    # This service is NOT behind a profile. `backend` depends_on it with
+    # condition: service_healthy, and compose rejects a dependency on a service
+    # whose profile is not enabled - an earlier attempt to profile this took the
+    # whole project down with "depends on undefined service kafka".
+    image: bitnamilegacy/kafka:3.9
     environment:
       # Single-node KRaft; no ZooKeeper needed for local development.
       KAFKA_CFG_NODE_ID: '0'
