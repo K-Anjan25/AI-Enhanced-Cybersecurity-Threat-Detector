@@ -47,7 +47,27 @@ def test_parameter_count_is_recorded() -> None:
     If this number moves, the architecture moved with it, and that is a model
     identity change rather than a refactor.
     """
-    assert parameter_count(FlowNet()) == 139_160
+    assert parameter_count(FlowNet()) == 1_158_840
+
+
+def test_parameter_count_is_within_twenty_percent_of_the_target() -> None:
+    """The other half of T-201's acceptance clause, stated as its own test.
+
+    Pinning an exact number proves the architecture did not drift; it does not
+    prove the architecture was ever the right size. A first cut of this model
+    shipped at 139,160 parameters - 88% under target - and passed the pin above
+    while failing the gate. Both tests are needed.
+    """
+    target = 1_200_000
+    count = parameter_count(FlowNet())
+
+    assert (
+        0.8 * target <= count <= 1.2 * target
+    ), f"{count:,} parameters is outside 20% of the {target:,} target"
+    # The default must also stay in band at the width a real dataset produces,
+    # where one-hot encoded categoricals widen the input.
+    widened = parameter_count(FlowNet(FlowNetConfig(input_dim=35)))
+    assert 0.8 * target <= widened <= 1.2 * target, f"{widened:,} at input_dim 35"
 
 
 def test_shorter_windows_are_accepted() -> None:

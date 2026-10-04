@@ -2,7 +2,7 @@
 r"""Train ``FlowNet`` on flow windows (T-201).
 
     python scripts/train_flownet.py --synthetic 4000 --epochs 3 --out out.json
-    python scripts/train_flownet.py --records data/clean/cic_friday.ndjson \\
+    python scripts/train_flownet.py --file data/raw/Friday-DDos.csv \\
         --dataset cic-ids2017 --sample-frac 0.01 --epochs 3 --out out.json
 
 T-201's acceptance criterion is a wall-clock one — end-to-end training on a 1%
@@ -34,20 +34,32 @@ from aegis_ml.data.features import (  # noqa: E402
     FlowFeatures,
     extract_flow_window,
 )
+from aegis_ml.data.parsers import (  # noqa: E402
+    ParseReport,
+    parse_cic_ids2017,
+    parse_unsw_nb15,
+)
 from aegis_ml.data.preprocess import (  # noqa: E402
     Preprocessor,
     StandardScaler,
     Vocabulary,
 )
 from aegis_ml.data.records import FlowRecord  # noqa: E402
-from aegis_ml.data.splits import Split, split_windows  # noqa: E402
+from aegis_ml.data.splits import Split, group_split, split_windows  # noqa: E402
 from aegis_ml.data.synthetic import generate_dataset  # noqa: E402
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
 from aegis_ml.training.baselines import design_matrix  # noqa: E402
 from aegis_ml.training.evaluation import EvalReport, evaluate  # noqa: E402
 
+PARSERS = {
+    "cic-ids2017": parse_cic_ids2017,
+    "unsw-nb15": parse_unsw_nb15,
+}
+
 DEFAULT_SEED = 20260114
 ACCEPTANCE_MINUTES = 10.0
+#: T-201's second acceptance clause: parameter count within 20% of this target.
+PARAMETER_TARGET = 1_200_000
 
 
 def _load_records(path: str) -> list[FlowRecord]:
@@ -113,13 +125,21 @@ def main(argv: list[str] | None = None) -> int:
     """Parse arguments, train FlowNet, and write the run log."""
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument("--records", help="path to cleaned flow records (NDJSON)")
     source.add_argument(
-        "--synthetic", type=int, metavar="N", help="generate N synthetic records"
+        "--file",
+        action="append",
+        help="Input file under data/. Repeatable to combine capture days.",
+    )
+    source.add_argument(
+        "--synthetic", type=int, metavar="N", help="generate N records per scenario"
     )
     parser.add_argument(
-        "--dataset", default="synthetic", help="dataset name, for the run log"
+        "--format",
+        choices=["csv", "ndjson"],
+        default="csv",
+        help="csv for a fetched dataset, ndjson for flow@1 records.",
     )
+    parser.add_argument("--dataset", choices=sorted(PARSERS), default="cic-ids2017")
     parser.add_argument(
         "--key",
         choices=("source", "destination"),
@@ -131,6 +151,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--split-policy",
+        choices=("entity-disjoint", "temporal-only", "entity-only"),
+        default="entity-disjoint",
+        help=(
+            "temporal = chronological and entity-disjoint (R-60/R-61). "
+            "entity-only = whole entities by hash, temporal invariant dropped. "
+            "Use entity-only on synthetic data, whose classes have disjoint time "
+            "ranges by construction (D-017)."
+        ),
+    )
     parser.add_argument(
         "--sample-frac",
         type=float,
@@ -148,13 +179,31 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     key = WindowKey.SOURCE if args.key == "source" else WindowKey.DESTINATION
+    reports: list[ParseReport] = []
     if args.synthetic:
         print(f"generating {args.synthetic:,} records per scenario (seed {args.seed})")
         records = list(
             generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows
         )
     else:
-        records = list(_load_records(args.records))
+        records = []
+        for raw in args.file:
+            path = raw if os.path.isabs(raw) else os.path.join(ROOT, raw)
+            if not os.path.isfile(path):
+                path = os.path.join(ROOT, "data", "raw", os.path.basename(raw))
+            print(f"reading {path}")
+            if args.format == "ndjson":
+                records.extend(_load_records(path))
+            else:
+                parsed = PARSERS[args.dataset](path)
+                parsed.report.raise_for_empty()
+                reports.append(parsed.report)
+                print(
+                    f"  {parsed.report.parsed:,} of {parsed.report.rows_read:,} rows "
+                    f"parsed ({parsed.report.rejected:,} rejected)"
+                )
+                records.extend(parsed.records)
+        print(f"  combined: {len(records):,} records")
     if not records:
         print("no records to train on", file=sys.stderr)
         return 1
@@ -165,10 +214,38 @@ def main(argv: list[str] | None = None) -> int:
     windows = window_flows(records, key=key)
     print(f"{len(records):,} records -> {len(windows):,} windows keyed by {key.value}")
 
-    split: Split[Window[FlowRecord]] = split_windows(windows, entity_disjoint=True)
+    entity_only = args.split_policy == "entity-only"
+    entity_disjoint = args.split_policy != "temporal-only"
+    split: Split[Window[FlowRecord]] = (
+        group_split(windows)
+        if entity_only
+        else split_windows(windows, entity_disjoint=entity_disjoint)
+    )
     audit = split.audit()
+    print(f"split policy: {args.split_policy}")
     print(f"split: {audit}")
-    if not audit["test_after_train"]:
+    # entity-only drops the temporal invariant by design and says so, rather than
+    # being allowed to fail it silently.
+    if entity_only:
+        print(
+            "warning: entity-only does NOT enforce the temporal invariant (R-60); "
+            "these metrics are not comparable to a production-style split",
+            file=sys.stderr,
+        )
+    elif not entity_disjoint:
+        print(
+            "warning: temporal-only lets entities span folds, so the measured "
+            f"leakage is {audit['shared_train_test_entities']} shared entities; "
+            "comparable to published benchmarks, not to a released model",
+            file=sys.stderr,
+        )
+        if not audit["test_after_train"]:
+            print(
+                "refusing to train: the split violates the temporal invariant (R-60)",
+                file=sys.stderr,
+            )
+            return 1
+    elif not audit["test_after_train"]:
         print(
             "refusing to train: the split violates the temporal invariant (R-60)",
             file=sys.stderr,
@@ -243,9 +320,11 @@ def main(argv: list[str] | None = None) -> int:
     log: dict[str, object] = {
         "task": "T-201",
         "model_id": "flownet-v0.1.0",
-        "source": f"synthetic:{args.synthetic}" if args.synthetic else args.records,
+        "source": f"synthetic:{args.synthetic}" if args.synthetic else list(args.file),
+        "parse_rejected": sum(r.rejected for r in reports),
         "window_key": key.value,
         "windows": len(windows),
+        "split_policy": args.split_policy,
         "split_audit": audit,
         "train_windows": len(train_seq),
         "test_windows": len(test_seq),
@@ -257,10 +336,24 @@ def main(argv: list[str] | None = None) -> int:
         "torch": torch.__version__,
         "train_seconds": round(elapsed, 3),
         "train_minutes": round(minutes, 3),
+        # T-201 has two acceptance clauses and a run log that records one of them
+        # invites reading it as a pass on both.
         "acceptance": {
-            "criterion": "end-to-end training on a 1% sample in under 10 minutes on CPU",
-            "budget_minutes": ACCEPTANCE_MINUTES,
-            "passed": bool(minutes < ACCEPTANCE_MINUTES),
+            "wall_clock": {
+                "criterion": "trains end to end on a 1% sample in under 10 min on CPU",
+                "budget_minutes": ACCEPTANCE_MINUTES,
+                "actual_minutes": round(minutes, 4),
+                "passed": bool(minutes < ACCEPTANCE_MINUTES),
+            },
+            "size": {
+                "criterion": "parameter count within 20% of the 1.2M target",
+                "target_parameters": PARAMETER_TARGET,
+                "band": [int(PARAMETER_TARGET * 0.8), int(PARAMETER_TARGET * 1.2)],
+                "actual_parameters": params,
+                "passed": bool(
+                    0.8 * PARAMETER_TARGET <= params <= 1.2 * PARAMETER_TARGET
+                ),
+            },
         },
         "report": json.loads(report.model_dump_json()),
     }
@@ -270,8 +363,19 @@ def main(argv: list[str] | None = None) -> int:
         handle.write("\n")
 
     print(f"training took {minutes:.3f} minutes (budget {ACCEPTANCE_MINUTES})")
+    band = (int(PARAMETER_TARGET * 0.8), int(PARAMETER_TARGET * 1.2))
     print(
-        f"ROC-AUC {report.roc_auc:.4f}  PR-AUC {report.pr_auc:.4f}  best F1 {report.best_f1:.4f}"
+        f"parameters {params:,} against a {PARAMETER_TARGET:,} target "
+        f"(band {band[0]:,}-{band[1]:,}): "
+        f"{'within' if band[0] <= params <= band[1] else 'OUTSIDE'}"
+    )
+    print(
+        f"test fold: {report.positives:,} attack / {report.negatives:,} benign windows"
+    )
+    print(
+        f"ROC-AUC {report.metrics.roc_auc:.4f}  "
+        f"PR-AUC {report.metrics.pr_auc:.4f}  "
+        f"best F1 {report.best_f1.f1:.4f} @ threshold {report.best_f1.threshold:.2f}"
     )
     print(f"wrote {args.out}")
     return 0
