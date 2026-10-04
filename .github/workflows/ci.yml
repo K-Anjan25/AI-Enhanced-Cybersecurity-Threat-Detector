@@ -38,11 +38,15 @@ jobs:
 
       # The planning documents are the specification; broken anchors and dangling
       # requirement ids are treated as build failures (R-94).
-      - name: Lint and typecheck the repository scripts
+      #
+      # No mypy here. scripts/check_compose.py imports the backend Settings model
+      # inside a function, and mypy follows function-level imports, so typechecking
+      # it needs fastapi, pydantic-settings, structlog and uvicorn. That belongs to
+      # the infra job, which installs both services and typechecks every script.
+      - name: Lint the repository scripts
         run: |
           ruff check scripts/
           black --check scripts/
-          mypy scripts/check_docs.py scripts/check_compose.py
 
       - name: Verify cross-document links, anchors, ids and tables
         run: python scripts/check_docs.py
@@ -77,6 +81,14 @@ jobs:
       # the Settings model. Nothing is applied; there is no cluster in CI.
       - name: Verify the k8s manifests against the application code
         run: python scripts/check_k8s.py
+
+      # fetch_datasets.py and run_baselines.py import aegis_ml, so they can only
+      # be typechecked where ml-service is installed - which is this job, not the
+      # docs job. Checking them there would fail on missing fastapi/structlog.
+      - name: Typecheck every repository script
+        run: |
+          mypy scripts/check_docs.py scripts/check_compose.py scripts/check_k8s.py \
+               scripts/fetch_datasets.py scripts/run_baselines.py
 
   backend:
     name: Backend
