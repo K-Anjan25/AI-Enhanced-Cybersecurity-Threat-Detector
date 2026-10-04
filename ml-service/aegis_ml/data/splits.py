@@ -26,7 +26,7 @@ test strictly later than validation.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Generic, TypeVar
@@ -290,5 +290,107 @@ def group_split(
         valid_cutoff=latest,
         dropped=0,
         entity_disjoint_enforced=True,
+        temporal_enforced=False,
+    )
+
+
+def window_families(window: Window[R]) -> frozenset[str]:
+    """The non-benign labels present in a window.
+
+    A window carries no label of its own; it inherits them from its records. A
+    window that mixes benign and attack traffic yields only the attack labels,
+    because the question a family holdout asks is which attacks it contains.
+    """
+    return frozenset(r.label for r in window.records if r.label not in (None, "normal"))
+
+
+def family_split(
+    windows: Sequence[Window[R]],
+    *,
+    holdout: Collection[str],
+    test_fraction: float = DEFAULT_TEST_FRACTION,
+    valid_fraction: float = DEFAULT_VALID_FRACTION,
+) -> Split[R]:
+    """Hold out an entire attack family and test detection of it (D-016).
+
+    Neither :func:`split_windows` nor :func:`group_split` can answer the only
+    question that matters for a released detector on a corpus like CIC-IDS2017,
+    where the attacks are concentrated in one or two entities: *does the model
+    recognise an attack it has never seen?* A temporal split puts that attack on
+    one side of the cut; an entity split puts the entity on one side. Holding out
+    a **family** removes the attack type from training entirely while leaving
+    plenty of other attacks to learn from.
+
+    Construction:
+
+    * every window containing a held-out family goes to **test**, whatever entity
+      it belongs to — that is the novel attack traffic being scored;
+    * benign windows are then divided by entity hash, so the negatives in test
+      come from hosts training never saw either. Scoring a novel attack against
+      memorised hosts would flatter the result;
+    * no held-out window can reach training. Such windows belonging to a training
+      entity are counted in ``dropped`` rather than silently kept.
+
+    Neither invariant is enforced, and ``audit()`` reports the overlap rather than
+    asserting its absence: holding a family out deliberately lets an entity appear
+    in two folds, because the thing being held out is the attack type, not the
+    host. Read the audit before reading the metric.
+
+    Raises:
+        ValueError: if the input is empty, ``holdout`` is empty, the fractions are
+            unusable, no window matches a held-out family, or a fold is empty.
+    """
+    if not windows:
+        raise ValueError("cannot split an empty sequence of windows")
+    if not holdout:
+        raise ValueError("holdout must name at least one attack family")
+    for name, value in (("test_fraction", test_fraction), ("valid_fraction", valid_fraction)):
+        if not 0.0 < value < 1.0:
+            raise ValueError(f"{name} must be in (0, 1), got {value}")
+    if test_fraction + valid_fraction >= 1.0:
+        raise ValueError("test_fraction and valid_fraction must leave room for training")
+
+    wanted = frozenset(holdout)
+    test_cut = int(test_fraction * ENTITY_BUCKETS)
+    valid_cut = int((test_fraction + valid_fraction) * ENTITY_BUCKETS)
+
+    train: list[Window[R]] = []
+    valid: list[Window[R]] = []
+    test: list[Window[R]] = []
+    dropped = 0
+    for window in windows:
+        if window_families(window) & wanted:
+            # Novel attack traffic is the point of the fold, so it is scored
+            # wherever it occurs rather than being assigned to an entity bucket.
+            test.append(window)
+            continue
+        bucket = _entity_bucket(window.key)
+        if bucket < test_cut:
+            test.append(window)
+        elif bucket < valid_cut:
+            valid.append(window)
+        else:
+            train.append(window)
+
+    if not any(window_families(w) & wanted for w in test):
+        raise ValueError(
+            f"no window contains any of the held-out families {sorted(wanted)}; "
+            "a family holdout with no held-out traffic in test scores nothing"
+        )
+    if not train or not valid or not test:
+        raise ValueError(
+            f"family split produced empty folds (train={len(train)}, valid={len(valid)}, "
+            f"test={len(test)})"
+        )
+
+    latest = max(window.start for window in windows)
+    return Split(
+        train=tuple(train),
+        valid=tuple(valid),
+        test=tuple(test),
+        test_cutoff=latest,
+        valid_cutoff=latest,
+        dropped=dropped,
+        entity_disjoint_enforced=False,
         temporal_enforced=False,
     )
