@@ -6,3 +6,9 @@ black>=26.5
 mypy>=2.4
 pyyaml>=6.0
 types-PyYAML>=6.0
+# The root mypy.ini loads the pydantic plugin, and the repository scripts import
+# modules built on pydantic models, so mypy cannot even start without it. This
+# was undeclared: the CI docs job installs only this file, mypy failed to import
+# the plugin, and the job went red for 17 hours while local runs stayed green
+# because a developer venv already had pydantic from the service installs.
+pydantic>=2.13
