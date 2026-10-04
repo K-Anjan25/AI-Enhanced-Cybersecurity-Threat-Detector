@@ -145,20 +145,61 @@ Format: **status** · context · decision · consequences. A decision is changed
 
 ## Data sources
 
-Datasets are never committed to Git (R-40). Checksums below are recorded as *pending capture* — they must be filled in by T-102 before any dataset is used in a training run (R-41).
+Datasets are never committed to Git (R-40). The checksums below are **measured**, not transcribed: each was computed over the bytes actually fetched, and `aegis_ml/data/datasets.py` is the single copy. `test_datasets.py` fails if this table and that module disagree.
 
-| Dataset | Purpose | Source | Licence | SHA-256 | Records |
-|---|---|---|---|---|---|
-| **UNSW-NB15** | Primary network training and evaluation | [research.unsw.edu.au/projects/unsw-nb15-dataset](https://research.unsw.edu.au/projects/unsw-nb15-dataset) | Research/academic use; verify terms at source before redistribution | *pending — T-102* | 2,540,044 records, 49 features (per the published dataset description) |
-| **CIC-IDS2017** | DDoS/DoS, brute-force and web-attack coverage; cross-dataset transfer test | [unb.ca/cic/datasets/ids-2017.html](https://www.unb.ca/cic/datasets/ids-2017.html) | Free for research use; verify terms at source | *pending — T-102* | Multi-day PCAP plus labelled flows across five attack scenarios |
-| **System-log corpora** (HDFS / BGL family) | Log-anomaly model training and evaluation | Public benchmark corpora; exact source and licence confirmed in T-104 | *pending — T-104* | *pending — T-104* | *pending — T-104* |
-| **Synthetic generator** (ours) | Insider threat, beaconing, exfiltration scenarios; deterministic tests; demos | **Built** — `scripts/generate_synthetic.py`, T-106 DONE | Ours (project licence) | Deterministic by seed (R-42) | 7 scenarios × N; 1,400 records at N=200 |
+### What is reachable, and how it was obtained
 
-**Notes that will bite us later, written down now:**
+The sandbox's outbound network is allowlisted. `research.unsw.edu.au`, `unb.ca`, `huggingface.co`, `zenodo.org`, `kaggle.com` and `raw.githubusercontent.com` all fail to connect. Three things do work, and the whole inventory rests on them:
 
-- Both network datasets are **2015 and 2017 vintage**. Protocols, encryption prevalence, and traffic mix have moved on. v1.0 is explicitly framed as architecture validation on public benchmarks; retraining on modern captures is backlog item T-612 and the first production task.
-- Neither public dataset contains genuine insider-threat or long-period C2 beaconing behaviour. T-106 exists to fill that gap, and its scenarios must be described in the model card so nobody mistakes synthetic performance for field performance.
-- Dataset sizes are large. They are fetched on demand, checksummed, and converted to Parquet (R-45). Never baked into a Docker image.
+- **`api.github.com`**, unauthenticated, serves file bytes through the contents endpoint when `Accept: application/vnd.github.raw` is set. This is what `scripts/fetch_datasets.py` uses — not `raw.githubusercontent.com`, which cannot be reached. Unauthenticated callers are rate limited to 60 requests/hour.
+- **The publisher pages are still readable** through a fetching tool that is not subject to the sandbox allowlist, which is where the official record counts and feature list came from.
+- **`codeload.github.com`** serves repository tarballs.
+
+The publisher's own artifacts are *not* reachable: UNSW distributes the source files from a SharePoint share, and UNB's day files are 11 GB PCAPs. Everything below is therefore a third-party mirror, recorded as such.
+
+### Inventory
+
+| Dataset | File | Mirror | SHA-256 | Bytes | Rows × cols | Usable for R-60/R-61 |
+|---|---|---|---|---|---|---|
+| UNSW-NB15 | `UNSW_NB15_training-set.csv` | `shailjaroy/NIDS-UNSW_NB15` | `bec7dd5ec88dc2a0ccc7a07879d338395ed7421750f675fd0339e07dfe0648fa` | 32,293,018 | 175,341 × 45 | **No** — no addresses, no timestamps |
+| UNSW-NB15 | `UNSW_NB15_testing-set.csv` | `shailjaroy/NIDS-UNSW_NB15` | `734fe6642edf758f7c94d7d9149426b49d202fe8e7bf0bef47392489c3c0a559` | 15,380,800 | 82,332 × 45 | **No** — no addresses, no timestamps |
+| UNSW-NB15 | `unsw_nb15_official_schema_sample.csv` | `luna866/UNSW-NB15` | `13be3cddc8c8c2e0fe874d68841e7f0b007eaa13cf9a194a20991e0d6f41da74` | 2,386,163 | 10,000 × 49 | Yes |
+| CIC-IDS2017 | `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` | `StarterArcher/CICIDS2017` | `306294008927756094b069d24764bfa6519fe267a8104903c056fc9c3cf38636` | 36,010,816 | 225,745 × 32 | Yes |
+| **Synthetic** (ours) | `data/synthetic/*.ndjson` | Built — `scripts/generate_synthetic.py` (T-106) | Deterministic by seed (R-42) | — | 7 scenarios × N | Yes |
+
+Publisher pages, for anyone who needs the authoritative artifact: [UNSW-NB15](https://research.unsw.edu.au/projects/unsw-nb15-dataset) and [CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html). Licences: UNSW-NB15 is free for academic research in perpetuity with commercial use by agreement, citing Moustafa & Slay (MilCIS 2015); CIC-IDS2017 is free for research and educational use, citing Sharafaldin, Lashkari & Ghorbani (ICISSP 2018).
+
+### Integrity findings, all of which would have been silent
+
+- **Two mirrors have the training and test file names transposed.** `2hyes/security_ml` serves a file named `UNSW_NB15_training-set.csv` whose SHA-256 is `734fe664…` — byte-identical to the official *test* split. `SVKBlackDeath/UNSW-NB15` does the reverse. Row counts prove it: the file named "training" in one holds 82,332 rows, which the publisher documents as the test count. **Verify by hash, never by name.** Training on the published test split and reporting metrics on the published training split is the failure this would have caused.
+- **The widely mirrored `UNSW_NB15_training-set.csv` is a 45-column derivative, not the publisher's 49-feature CSV.** It drops `srcip`, `sport`, `dstip`, `dsport`, `stime` and `ltime`, and adds a `rate` column that the official feature list does not enumerate. Without addresses there is no entity-disjoint split (R-61) and without timestamps no temporal split (R-60) — so the file most benchmark papers actually use cannot support this project's leakage invariants at all.
+- **The official feature-description file enumerates 49 entries but omits `rate`**, which the data CSVs do contain. It is also **CP1252-encoded, not UTF-8** (byte `0x92`); reading it as UTF-8 raises.
+- **The 49-column sample recodes `attack_cat` as an integer.** The code table (`0=normal, 1=Exploits, 2=Reconnaissance, 3=DoS, 4=Generic, 5=Shellcode, 6=Fuzzers, 7=Worms, 8=Backdoor, 9=Analysis`) was read from the mirror's own `mapping.pkl` by disassembling it — never by unpickling it — and cross-checked against the binary `label` column: code 0 corresponds exactly to `label=0` and every other code to `label=1`.
+- **That same sample stores `stime` as Unix epoch seconds**, where the published CSV uses `17/02/2015 08:40:10 PM`. Reading one as the other would place every record in 1970 or reject it. Decoding yields 2015-01-22 → 2015-02-18.
+- **CIC-IDS2017's header carries a leading space on most columns** (`" Source IP"`), and its timestamps are truncated to minute precision (`07/07/2017 03:30`), so flows inside one minute have no reliable ordering. Temporal splits remain valid at minute granularity.
+- **Neither dataset states a timezone.** Records are stamped UTC, so every timestamp carries one constant unknown offset. A temporal split is unaffected — all rows shift together — but absolute times in `flow@1` are not wall-clock truth.
+- **`direction` is a property of the capture, not of the record.** Deriving it from RFC 1918 addresses classifies 99.16% of UNSW-NB15 as external-to-external, which is not a direction. Each dataset therefore declares its monitored network: `149.171.0.0/16` for the ADFA capture, and UNB's published victim/attacker ranges for CIC-IDS2017. Measured against those, only 0.84% and 0.02% of rows respectively fall outside a boundary at all.
+
+### Measured parse results
+
+| Source file | Rows read | Parsed | Rejected | Unmapped columns |
+|---|---|---|---|---|
+| `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` | 225,745 | 225,689 | 56 (54 protocol 0/HOPOPT, 2 negative duration) | 14 |
+| `unsw_nb15_official_schema_sample.csv` | 10,000 | 9,756 | 244 (228 unsupported protocol across 57 names, 16 outside boundary) | 34 |
+
+Row counts read match the inventory exactly, which is T-103's acceptance criterion. CIC-IDS2017's Friday file holds 97,718 BENIGN and 128,027 DDoS flows, with 2,066 distinct source and 2,553 distinct destination addresses — real entity churn, which D-014 worried captures might lack.
+
+### Why the baselines are not yet scored (T-110)
+
+Not a tooling problem — a property of the data. CIC-IDS2017's Friday capture runs 03:30–05:02, but the DDoS burst occupies only **03:56–04:16**, from sources that never reappear afterwards. A strictly temporal split puts the tail in test, so the test fold is 2,440 rows and **all of them normal**; ROC-AUC is undefined and no model can be ranked. Destination-keying (D-013) does not help, because the cause is temporal rather than keying. The UNSW sample is too thin for the same rule: 26 source addresses in total, leaving 3 test entities, again all normal.
+
+D-014 anticipated that a stream without entity churn would force this. What the real data shows is sharper: **a short attack burst from ephemeral sources falls entirely inside the training period whenever the test period is the tail of the capture**, however much churn there is elsewhere. `run_baselines.py` detects the single-class fold and refuses with an explanation rather than fitting a degenerate model. Unblocking T-110 needs a multi-day capture in which the attack families recur across days — the full five-day CIC-IDS2017 set, or the complete UNSW-NB15 CSVs, neither of which is reachable here.
+
+### Notes that will still bite us later
+
+- Both network datasets are **2015 and 2017 vintage**. Protocols, encryption prevalence and traffic mix have moved on. v1.0 is framed as architecture validation on public benchmarks; retraining on modern captures is backlog item T-612.
+- Neither public dataset contains genuine insider-threat or long-period C2 beaconing behaviour. T-106 fills that gap, and its scenarios must be described in the model card so nobody mistakes synthetic performance for field performance (R-42).
+- Datasets are fetched on demand, checksummed, and stored under `data/raw/` (gitignored). Never baked into a Docker image. They are written as **NDJSON, not the Parquet T-103 names** — the project has no columnar dependency yet, NDJSON is already the pipeline's storage format, and one record per line streams, which 2.5 M rows require.
 
 ## Constraints and assumptions
 
@@ -303,3 +344,4 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 2026-10-03 | 0.7 | T-112 shipped the evaluation harness in pure Python, pinned to hand-checkable values. `architecture.md` §3 corrected: every Python package lives inside `aegis_ml/`, since only that directory is installed. |
 | 2026-10-03 | 0.8 | The dashboard container ran as root. `check_compose.py` had a privilege check scoped to the two Dockerfiles with importable ASGI targets, so it could never see the third — a green check that covered 2 of 3 images. Widened to all three; the dashboard now uses `nginxinc/nginx-unprivileged` with `USER 101` on port 8080. Not yet run under Docker. |
 | 2026-10-03 | 0.9 | T-001 closed: `k8s/` manifests and `scripts/check_k8s.py`, wired into `check_all.sh` and CI. Comparing the declared tree to the filesystem also found two root files `architecture.md` had never listed. The manifests have never been applied to a cluster. |
+| 2026-10-04 | 1.0 | **Real benchmark data obtained; T-101–T-103 and T-105 done.** The claim that the datasets were unreachable was wrong. `api.github.com`'s contents endpoint serves file bytes with `Accept: application/vnd.github.raw`, unauthenticated, so `scripts/fetch_datasets.py` runs in this sandbox; a page-fetching tool that is outside the allowlist supplied the publishers' record counts. CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are now on disk, hash-verified. Nine integrity findings recorded in Data sources — including two mirrors with the train/test file names transposed, and the fact that the widely used `UNSW_NB15_training-set.csv` is a 45-column derivative with no addresses or timestamps. T-110 is blocked by the data, not the code: no reachable capture yields a test fold with both classes under R-60 + R-61. ml-service tests 134 → 197. |

@@ -62,7 +62,7 @@ uvicorn aegis_ml.serving.app:app --host 0.0.0.0 --port 8001
 One command runs everything CI runs:
 
 ```bash
-./scripts/check_all.sh              # 20 checks across 5 suites
+./scripts/check_all.sh              # 21 checks across 5 suites
 ./scripts/check_all.sh backend      # or one: docs|infra|backend|ml|dashboard
 ```
 

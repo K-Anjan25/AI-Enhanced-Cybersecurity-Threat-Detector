@@ -43,13 +43,14 @@ run() {
 check_docs() {
     run "docs: lint"        ruff check scripts/
     run "docs: format"      black --check scripts/
-    run "scripts: types"    mypy scripts/check_docs.py scripts/check_compose.py
+    run "scripts: types"    mypy scripts/check_docs.py scripts/check_compose.py scripts/fetch_datasets.py scripts/run_baselines.py
     run "docs: integrity"   python scripts/check_docs.py
 }
 
 check_infra() {
     run "infra: compose consistency" python scripts/check_compose.py
     run "infra: k8s consistency"     python scripts/check_k8s.py
+    run "infra: dataset manifest"    python scripts/fetch_datasets.py --list
 }
 
 check_backend() {
