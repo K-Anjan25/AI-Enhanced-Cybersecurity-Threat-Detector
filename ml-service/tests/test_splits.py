@@ -13,7 +13,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from aegis_ml.data.records import Direction, FlowRecord, Protocol
-from aegis_ml.data.splits import Split, group_split, split_windows
+from aegis_ml.data.splits import (
+    Split,
+    family_split,
+    group_split,
+    split_windows,
+    window_families,
+)
 from aegis_ml.data.synthetic import GenerationSpec, Scenario, generate_flows
 from aegis_ml.data.windowing import Window, window_flows
 
@@ -397,3 +403,114 @@ def test_group_split_validates_its_input() -> None:
         group_split(many_host_windows(), test_fraction=0.0, valid_fraction=0.1)
     with pytest.raises(ValueError, match="leave room"):
         group_split(many_host_windows(), test_fraction=0.6, valid_fraction=0.6)
+
+
+# --- family holdout (D-016) ------------------------------------------------
+
+
+def labelled_flows(host: str, start: datetime, label: str, count: int = 30) -> list[FlowRecord]:
+    """``host_flows`` with a label, since a family holdout needs attack types."""
+    return [
+        record.model_copy(update={"label": label})
+        for record in host_flows(host, start, count=count)
+    ]
+
+
+def family_fixture() -> tuple[Window[FlowRecord], ...]:
+    """Forty benign hosts, plus three attack families on their own hosts."""
+    flows: list[FlowRecord] = []
+    for index in range(40):
+        flows.extend(
+            labelled_flows(f"10.4.40.{index}", EPOCH + timedelta(seconds=index * 7), "normal")
+        )
+    families = (("10.4.41.1", "Generic"), ("10.4.41.2", "Exploits"), ("10.4.41.3", "Fuzzers"))
+    for offset, (host, label) in enumerate(families):
+        flows.extend(labelled_flows(host, EPOCH + timedelta(seconds=400 + offset * 7), label))
+    flows.sort(key=lambda record: record.timestamp)
+    return window_flows(flows, size=5)
+
+
+def test_window_families_ignores_benign_traffic() -> None:
+    windows = window_flows(host_flows("10.4.40.1", EPOCH), size=5)
+
+    assert window_families(windows[0]) == frozenset()
+
+    attack = window_flows(labelled_flows("10.4.41.1", EPOCH, "Generic"), size=5)
+    assert window_families(attack[0]) == frozenset({"Generic"})
+
+
+def test_no_held_out_family_reaches_training() -> None:
+    """The whole point: training must never see the family being scored."""
+    split = family_split(family_fixture(), holdout={"Fuzzers"})
+
+    trained = {family for w in split.train for family in window_families(w)}
+    assert "Fuzzers" not in trained
+    # ...while the other families are still available to learn from.
+    assert "Generic" in trained or "Exploits" in trained
+
+
+def test_every_held_out_window_is_scored() -> None:
+    windows = family_fixture()
+    held = [w for w in windows if window_families(w) == frozenset({"Fuzzers"})]
+    split = family_split(windows, holdout={"Fuzzers"})
+
+    scored = [w for w in split.test if window_families(w) == frozenset({"Fuzzers"})]
+    assert len(held) > 0
+    assert len(scored) == len(held)
+
+
+def test_the_test_fold_has_both_classes() -> None:
+    """A holdout that scores only attacks cannot produce a rate, only a count."""
+    split = family_split(family_fixture(), holdout={"Fuzzers"})
+
+    positives = [w for w in split.test if window_families(w)]
+    negatives = [w for w in split.test if not window_families(w)]
+    assert positives and negatives
+
+
+def test_benign_test_negatives_come_from_unseen_entities() -> None:
+    """Scoring a novel attack against memorised hosts would flatter the result."""
+    split = family_split(family_fixture(), holdout={"Fuzzers"})
+    trained_entities = {w.key for w in split.train}
+    benign_test_entities = {w.key for w in split.test if not window_families(w)}
+
+    assert benign_test_entities
+    assert not (benign_test_entities & trained_entities)
+
+
+def test_family_split_is_deterministic() -> None:
+    windows = family_fixture()
+
+    first = family_split(windows, holdout={"Generic"})
+    second = family_split(windows, holdout={"Generic"})
+
+    assert [w.key for w in first.test] == [w.key for w in second.test]
+    assert [w.key for w in first.train] == [w.key for w in second.train]
+
+
+def test_family_split_reports_that_it_enforces_neither_invariant() -> None:
+    """An entity may hold two families, so overlap is expected and must be shown."""
+    split = family_split(family_fixture(), holdout={"Fuzzers"})
+
+    assert split.entity_disjoint_enforced is False
+    assert split.temporal_enforced is False
+    audit = split.audit()
+    assert audit["entities_disjoint"] is False or audit["entities_disjoint"] is True
+
+
+def test_a_holdout_family_absent_from_the_data_is_refused() -> None:
+    with pytest.raises(ValueError, match="no window contains any of the held-out families"):
+        family_split(family_fixture(), holdout={"Worms"})
+
+
+def test_family_split_input_and_fractions_are_validated() -> None:
+    windows = family_fixture()
+
+    with pytest.raises(ValueError, match="empty sequence"):
+        family_split((), holdout={"Fuzzers"})
+    with pytest.raises(ValueError, match="at least one attack family"):
+        family_split(windows, holdout=set())
+    with pytest.raises(ValueError, match="test_fraction must be in"):
+        family_split(windows, holdout={"Fuzzers"}, test_fraction=0.0)
+    with pytest.raises(ValueError, match="leave room for training"):
+        family_split(windows, holdout={"Fuzzers"}, test_fraction=0.6, valid_fraction=0.5)

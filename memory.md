@@ -171,6 +171,26 @@ On the Friday capture, of 6,415 source-keyed windows and 2,066 entities, there a
 
 **Consequence.** Any future task proposing to validate on synthetic data must first show the target fold contains both classes. That check belongs in the task, not in a reviewer's head.
 
+### D-018 · A family holdout is built, but UNSW-NB15 windows mix families too heavily for a clean one; the defensible setting is benign-only training — ACCEPTED (2026-10-04)
+
+**Context.** D-016 moved the release gate to an attack-family holdout and left it unbuilt. `family_split` now exists in `aegis_ml/data/splits.py`, with nine tests: every window containing a held-out family goes to test whatever entity it belongs to, benign negatives are drawn from entities training never saw, and nothing held out can reach training.
+
+**Measurement on the UNSW-NB15 official sample** (9,756 parsed rows, 212 windows, all nine families present with source IPs — the full 175,341-row CSV is the 45-column variant with no `srcip`/`dstip` at all, so it cannot support any entity-keyed split):
+
+| holdout | train | test | families still in TRAIN that also appear in TEST |
+|---|---|---|---|
+| Exploits | 103 | 55 | Backdoor, Fuzzers, Generic, Reconnaissance, Shellcode |
+| Fuzzers | 103 | 55 | Backdoor, Exploits, Generic, Reconnaissance |
+| Generic | 95 | 63 | **none** |
+
+**So no single-family holdout on this corpus is clean.** UNSW windows mix up to seven families, so withholding Exploits still trains on five of the eight families present in the test fold, and the 0.9748 ROC-AUC measured that way is optimistic rather than a generalisation claim. Withholding Generic does the opposite: Generic appears in nearly every attack window, so training is left with **no attack traffic at all**.
+
+**Decision.** That second configuration is adopted as the defensible setting, reframed honestly: it is not a family holdout but **train on benign traffic, score attacks never seen** — which is exactly what the reconstruction head is for, and the only evaluation this corpus supports without leakage. Its measured result is **ROC-AUC 0.8053, PR-AUC 0.7772, best F1 0.6304 at threshold 0.00** (`data/runs/flownet_unsw_benign_only.json`). The threshold sitting at the floor of the sweep is itself evidence: the scores barely separate, which is what 0.80 looks like from the inside.
+
+**A defect found while building this, and fixed.** `_window_label` returns `None` whenever a window's member flows disagree, which is correct for multi-class training and wrong for a binary detector: a window holding Fuzzers and Generic traffic is ambiguous as a *family* and unambiguous as an *attack*. `design_matrix` is already binary, so those rows were dropped as unlabelled. On the UNSW sample that silently discarded **all 21 attack windows** in the test fold and kept 34 benign ones — and it is invisible on a single-family capture like CIC-IDS2017 Friday, which is why it survived until now. `train_flownet.py` now relabels rows to the binary target; `features@1` and T-111's mixed-window count are untouched, because that signal is still worth having.
+
+**Consequence.** The D-016 gate is narrowed, not closed. 0.8053 is the first number in the ledger that is not inflated by seeing the test family, and it is roughly 0.19 below the leaky temporal figure. A clean single-family holdout needs a corpus whose attacks do not co-occur in the same windows, which none of the reachable datasets provide.
+
 ## Data sources
 
 Datasets are never committed to Git (R-40). The checksums below are **measured**, not transcribed: each was computed over the bytes actually fetched, and `aegis_ml/data/datasets.py` is the single copy. `test_datasets.py` fails if this table and that module disagree.
@@ -409,6 +429,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-04 | 1.8 | **`family_split` built (D-018); first non-inflated number in the ledger; a silent labelling defect fixed.** Holding out an attack family is now a tested primitive, but measured on UNSW-NB15 no single-family holdout is clean — windows mix up to seven families, so withholding Exploits still trains on five families present in test. The honest setting is train-on-benign-only: **ROC-AUC 0.8053, PR-AUC 0.7772**, against 1.0000 under a leaky temporal split. Also fixed: `_window_label` returned `None` for mixed windows and `design_matrix` dropped those rows, silently discarding **all 21 attack windows** in a UNSW test fold while leaving 34 benign ones — invisible on a single-family capture, which is why it survived. |
 | 2026-10-04 | 1.7 | **T-201 closed; D-017 recorded; two acceptance clauses, and the second one was nearly missed.** `FlowNet` ships at 1,163,076 parameters — inside the ±20% band of the 1.2 M target — and trains a 1% sample of CIC-IDS2017 Friday in 0.017 minutes against a 10-minute budget. A first cut was 88% under the size target and passed a pinned-parameter-count test while failing the gate, so the band is now its own test. D-017 records why synthetic data cannot carry any held-out metric, retracting two wrong explanations of the same failure along the way. torch 2.14.1 lands as an `ml-service[training]` extra, not a core dependency. Also recorded: a commit pushed on a green local mypy run failed three CI jobs, because strict's `disallow_subclassing_any` only fires when torch is *absent* — the configuration CI has and the local venv did not. |
 | 2026-10-02 | 0.1 | Created during the repository reset. Recorded the reset (487 files removed, recoverable from `60e9adf`), ten decisions, four data sources, five open questions, and an empty measurement ledger. |
 | 2026-10-03 | 0.2 | Sprint S1 opened: T-106 shipped the canonical `flow@1` / `log@1` records and a seven-scenario synthetic generator. Added D-011 (where the telemetry schemas live), refreshed the current-state and data-source tables, and re-marked the completed next actions. |

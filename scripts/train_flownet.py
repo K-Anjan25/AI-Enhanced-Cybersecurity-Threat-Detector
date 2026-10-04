@@ -24,6 +24,7 @@ import os
 import sys
 import time
 from collections.abc import Sequence
+from dataclasses import replace
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "ml-service"))
@@ -45,7 +46,12 @@ from aegis_ml.data.preprocess import (  # noqa: E402
     Vocabulary,
 )
 from aegis_ml.data.records import FlowRecord  # noqa: E402
-from aegis_ml.data.splits import Split, group_split, split_windows  # noqa: E402
+from aegis_ml.data.splits import (  # noqa: E402
+    family_split,
+    group_split,
+    split_windows,
+    window_families,
+)
 from aegis_ml.data.synthetic import generate_dataset  # noqa: E402
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
 from aegis_ml.training.baselines import design_matrix  # noqa: E402
@@ -101,6 +107,17 @@ def _sequences(
     padded = 0
     for window in windows:
         rows = extract_flow_window(window.records, key=key)
+        # features@1 deliberately labels a window None when its member flows
+        # disagree, so multi-class training never sees an ambiguous target. That
+        # is the right call for multi-class and the wrong one here: a window
+        # holding Fuzzers and Generic traffic is ambiguous as a *family* and
+        # unambiguous as an *attack*. design_matrix is already binary, so the
+        # rows are relabelled to the binary target rather than being dropped.
+        # On the UNSW-NB15 sample the old path silently discarded every one of
+        # the 21 attack windows in the test fold and kept 34 benign ones.
+        families = window_families(window)
+        binary = "normal" if not families else "attack"
+        rows = [replace(row, label=binary) for row in rows]
         matrix, targets = design_matrix(rows, preprocessor)
         if not matrix:
             continue
@@ -111,11 +128,6 @@ def _sequences(
             padded += 1
         elif len(matrix) > length:
             matrix = matrix[:length]
-        # A window has no label of its own: it is an attack if any flow in it is
-        # one. design_matrix has already dropped unlabelled rows, so a window
-        # that yields no rows is unusable rather than silently benign.
-        if not targets:
-            continue
         sequences.append(matrix)
         labels.append(1 if any(targets) else 0)
     return sequences, labels, padded
@@ -153,13 +165,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument(
         "--split-policy",
-        choices=("entity-disjoint", "temporal-only", "entity-only"),
+        choices=("entity-disjoint", "temporal-only", "entity-only", "family-holdout"),
         default="entity-disjoint",
         help=(
             "temporal = chronological and entity-disjoint (R-60/R-61). "
             "entity-only = whole entities by hash, temporal invariant dropped. "
             "Use entity-only on synthetic data, whose classes have disjoint time "
             "ranges by construction (D-017)."
+        ),
+    )
+    parser.add_argument(
+        "--holdout-family",
+        action="append",
+        help=(
+            "Attack family to withhold from training, for --split-policy "
+            "family-holdout. Repeatable. Required by that policy."
         ),
     )
     parser.add_argument(
@@ -215,18 +235,32 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{len(records):,} records -> {len(windows):,} windows keyed by {key.value}")
 
     entity_only = args.split_policy == "entity-only"
-    entity_disjoint = args.split_policy != "temporal-only"
-    split: Split[Window[FlowRecord]] = (
-        group_split(windows)
-        if entity_only
-        else split_windows(windows, entity_disjoint=entity_disjoint)
-    )
+    entity_disjoint = args.split_policy not in ("temporal-only", "family-holdout")
+    if args.split_policy == "family-holdout":
+        if not args.holdout_family:
+            print(
+                "family-holdout needs --holdout-family to name what to withhold",
+                file=sys.stderr,
+            )
+            return 1
+        split = family_split(windows, holdout=args.holdout_family)
+    elif entity_only:
+        split = group_split(windows)
+    else:
+        split = split_windows(windows, entity_disjoint=entity_disjoint)
     audit = split.audit()
     print(f"split policy: {args.split_policy}")
     print(f"split: {audit}")
     # entity-only drops the temporal invariant by design and says so, rather than
     # being allowed to fail it silently.
-    if entity_only:
+    if args.split_policy == "family-holdout":
+        print(
+            f"warning: holding out {sorted(args.holdout_family)}; the model has never "
+            "seen this family. Neither leakage invariant is enforced, because the "
+            "thing held out is the attack type, not the host - read the audit",
+            file=sys.stderr,
+        )
+    elif entity_only:
         print(
             "warning: entity-only does NOT enforce the temporal invariant (R-60); "
             "these metrics are not comparable to a production-style split",
@@ -325,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
         "window_key": key.value,
         "windows": len(windows),
         "split_policy": args.split_policy,
+        "holdout_family": list(args.holdout_family or []),
         "split_audit": audit,
         "train_windows": len(train_seq),
         "test_windows": len(test_seq),
