@@ -49,6 +49,13 @@ class Split(Generic[R]):
     ``dropped`` counts windows excluded to keep both invariants; it is not an
     error, but a split that drops most of the data is a warning sign worth
     reading before trusting any metric produced from it.
+
+    ``entity_disjoint_enforced`` records whether R-61 was applied at all. When it
+    is false the split is temporal only (R-60) and entities legitimately overlap
+    across folds: that is the configuration published NIDS benchmarks are scored
+    under, kept so results stay comparable, and never a release gate. The audit
+    measures the overlap either way, so the cost of relaxing R-61 is reported
+    rather than assumed.
     """
 
     train: tuple[Window[R], ...]
@@ -57,6 +64,7 @@ class Split(Generic[R]):
     test_cutoff: datetime
     valid_cutoff: datetime
     dropped: int
+    entity_disjoint_enforced: bool = True
 
     @property
     def train_entities(self) -> frozenset[str]:
@@ -80,9 +88,17 @@ class Split(Generic[R]):
             "valid": len(self.valid),
             "test": len(self.test),
             "dropped": self.dropped,
+            "entity_disjoint_enforced": self.entity_disjoint_enforced,
             "train_entities": len(self.train_entities),
             "test_entities": len(self.test_entities),
             "test_after_train": self.min_test_start > self.max_train_start,
+            # The size of the overlap, not just whether it is empty. Reporting a
+            # count is what makes the cost of relaxing R-61 measurable instead of
+            # asserted: two runs with the same entities_disjoint=False can differ
+            # by an order of magnitude in how badly they leak.
+            "shared_train_test_entities": len(self.train_entities & self.test_entities),
+            "shared_train_valid_entities": len(self.train_entities & self.valid_entities),
+            "shared_valid_test_entities": len(self.valid_entities & self.test_entities),
             "entities_disjoint": not (
                 (self.train_entities & self.test_entities)
                 or (self.train_entities & self.valid_entities)
@@ -106,6 +122,7 @@ def split_windows(
     *,
     test_fraction: float = DEFAULT_TEST_FRACTION,
     valid_fraction: float = DEFAULT_VALID_FRACTION,
+    entity_disjoint: bool = True,
 ) -> Split[R]:
     """Split windows into train / valid / test under both leakage invariants.
 
@@ -123,8 +140,12 @@ def split_windows(
     if test_fraction + valid_fraction >= 1.0:
         raise ValueError("test_fraction and valid_fraction must leave room for training")
 
-    trainvalid, test, dropped_test, test_cutoff = _cut(list(windows), test_fraction)
-    train, valid, dropped_valid, valid_cutoff = _cut(trainvalid, valid_fraction)
+    trainvalid, test, dropped_test, test_cutoff = _cut(
+        list(windows), test_fraction, entity_disjoint=entity_disjoint
+    )
+    train, valid, dropped_valid, valid_cutoff = _cut(
+        trainvalid, valid_fraction, entity_disjoint=entity_disjoint
+    )
 
     if not train or not valid or not test:
         raise ValueError(
@@ -140,18 +161,24 @@ def split_windows(
         test_cutoff=test_cutoff,
         valid_cutoff=valid_cutoff,
         dropped=dropped_test + dropped_valid,
+        entity_disjoint_enforced=entity_disjoint,
     )
 
 
 def _cut(
-    windows: list[Window[R]], fraction: float
+    windows: list[Window[R]], fraction: float, *, entity_disjoint: bool
 ) -> tuple[list[Window[R]], list[Window[R]], int, datetime]:
     """Make one temporal, entity-disjoint cut.
 
     Returns the early fold, the late fold, the number of dropped windows and the
     cutoff timestamp. Windows whose entity appears on both sides stay in the
     early fold and their late windows are dropped, which is what keeps the two
-    folds entity-disjoint without moving anything backwards in time.
+    folds entity-disjoint without moving anything backwards in time (R-61).
+
+    With ``entity_disjoint=False`` nothing is dropped and every window lands in
+    the fold its start time implies. That leaks by construction - an entity seen
+    in training reappears in test - so it is opt-in and the audit still counts
+    the shared entities.
     """
     starts = sorted(window.start for window in windows)
     index = int(len(starts) * (1.0 - fraction))
@@ -162,7 +189,10 @@ def _cut(
     early = [window for window in windows if window.start < cutoff]
     late_all = [window for window in windows if window.start >= cutoff]
     early_keys = {window.key for window in early}
-    late = [window for window in late_all if window.key not in early_keys]
+    if entity_disjoint:
+        late = [window for window in late_all if window.key not in early_keys]
+    else:
+        late = late_all
     dropped = len(late_all) - len(late)
 
     if not early or not late:

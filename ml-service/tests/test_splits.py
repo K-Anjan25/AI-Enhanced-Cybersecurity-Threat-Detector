@@ -183,11 +183,16 @@ def test_audit_reports_every_invariant() -> None:
         "valid",
         "test",
         "dropped",
+        "entity_disjoint_enforced",
         "train_entities",
         "test_entities",
         "test_after_train",
+        "shared_train_test_entities",
+        "shared_train_valid_entities",
+        "shared_valid_test_entities",
         "entities_disjoint",
     }
+    assert audit["entity_disjoint_enforced"] is True
     assert audit["train"] == 24 and audit["test"] == 12 and audit["dropped"] == 0
 
 
@@ -199,3 +204,72 @@ def test_split_is_reusable_for_the_leakage_audit() -> None:
 
     assert isinstance(split.train[0].records[0], FlowRecord)
     assert split.train[0].key in split.train_entities
+
+
+# --- the split policy (D-015) ---------------------------------------------
+
+
+def spanning_stream() -> tuple[Window[FlowRecord], ...]:
+    """Eight banded hosts plus one host active in both the first and last band."""
+    spanning = window_flows(
+        sorted(
+            host_flows("10.4.20.99", EPOCH)
+            + host_flows("10.4.20.99", EPOCH + timedelta(seconds=120)),
+            key=lambda record: record.timestamp,
+        ),
+        size=5,
+    )
+    return tuple(
+        sorted((*banded_windows(), *spanning), key=lambda window: (window.start, window.key))
+    )
+
+
+def test_relaxing_entity_disjointness_keeps_the_spanning_host() -> None:
+    """R-61 is a policy, so turning it off must observably change the fold."""
+    windows = spanning_stream()
+    strict = split_windows(windows, test_fraction=0.3, valid_fraction=2 / 7)
+    relaxed = split_windows(windows, test_fraction=0.3, valid_fraction=2 / 7, entity_disjoint=False)
+
+    assert strict.dropped == 6
+    assert relaxed.dropped == 0, "nothing is discarded when R-61 is off"
+    assert len(relaxed.test) == len(strict.test) + 6
+    assert "10.4.20.99" in strict.train_entities
+    assert "10.4.20.99" not in strict.test_entities
+    assert "10.4.20.99" in relaxed.train_entities
+    assert "10.4.20.99" in relaxed.test_entities
+
+
+def test_the_audit_counts_the_overlap_it_reports() -> None:
+    """The leakage is measured, not asserted, so a caller can price it."""
+    windows = spanning_stream()
+    strict = split_windows(windows, test_fraction=0.3, valid_fraction=2 / 7)
+    relaxed = split_windows(windows, test_fraction=0.3, valid_fraction=2 / 7, entity_disjoint=False)
+
+    assert strict.audit()["shared_train_test_entities"] == 0
+    assert strict.audit()["entities_disjoint"] is True
+    assert relaxed.audit()["shared_train_test_entities"] == 1
+    assert relaxed.audit()["entities_disjoint"] is False
+    assert relaxed.audit()["entity_disjoint_enforced"] is False
+    assert strict.audit()["entity_disjoint_enforced"] is True
+
+
+def test_the_temporal_invariant_is_never_relaxed() -> None:
+    """R-60 has no off switch: relaxing the policy must not reorder folds."""
+    relaxed = split_windows(
+        spanning_stream(),
+        test_fraction=0.3,
+        valid_fraction=2 / 7,
+        entity_disjoint=False,
+    )
+
+    assert relaxed.audit()["test_after_train"] is True
+    assert relaxed.min_test_start > relaxed.max_train_start
+
+
+def test_entity_disjointness_is_the_default() -> None:
+    """A caller that says nothing still gets the release-gate policy."""
+    windows = spanning_stream()
+
+    assert split_windows(windows, test_fraction=0.3, valid_fraction=2 / 7) == split_windows(
+        windows, test_fraction=0.3, valid_fraction=2 / 7, entity_disjoint=True
+    )

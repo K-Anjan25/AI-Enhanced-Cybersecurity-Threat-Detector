@@ -113,7 +113,7 @@ Format: **status** · context · decision · consequences. A decision is changed
 **Decision.** v1.0 detects, explains, and notifies. Response is delegated to the customer's own controls via signed webhook.
 **Consequences.** Removes an entire class of blast-radius risk from a v1.0 system and keeps the security review tractable (T-506). SOAR playbooks sit in the backlog as T-604.
 
-### D-009 · Temporal, entity-disjoint evaluation only — ACCEPTED (2026-10-02)
+### D-009 · Temporal, entity-disjoint evaluation only — ACCEPTED (2026-10-02), amended by D-015 (2026-10-04)
 **Context.** Random splits on intrusion-detection datasets routinely inflate scores through leakage.
 **Decision.** Train/valid/test split by time; cross-validation folds entity-disjoint; scalers and vocabularies fit on train only.
 **Consequences.** Reported metrics will look worse than published leaderboard numbers for the same datasets. That is the point — the numbers will be real. Enforced by R-60…R-62 and the leakage audits T-111 and T-203.
@@ -142,6 +142,11 @@ Format: **status** · context · decision · consequences. A decision is changed
 **Context.** T-109 must satisfy R-60 (test strictly later than train) and R-61 (no entity in two folds) at once. They conflict: a host active on both sides of the time cut cannot stay whole in either fold without breaking one of them. Building the fixture showed the conflict is not academic — on a stream where every host is active end to end, *every* host spans the cut.
 **Decision.** Windows whose entity appears on both sides of a cut stay in the early fold, and their late windows are **dropped and counted**. If a cut leaves either side empty, `split_windows` raises instead of returning a fold that would score as zero or leak. The test cut is made first, then the validation cut is made within what remains, so all three folds are pairwise entity-disjoint and strictly ordered in time.
 **Consequences.** Evaluation is only possible on data with **entity churn** — hosts appearing and disappearing over time. Where a capture has none, the honest options are to relax R-61 for that experiment and say so, or to synthesise churn. The utility cannot decide that trade-off, so it surfaces the dropped count and fails loudly rather than picking silently. This will constrain T-110 baselines on real captures and is the reason `Split.audit()` exists.
+
+### D-015 · R-61 is a policy that is measured, not an axiom; R-60 stays unconditional — ACCEPTED (2026-10-04)
+**Context.** D-014 assumed a capture lacking entity *churn* would be the problem. Two capture days of CIC-IDS2017 disproved it: 4,600 entities in train, ample churn, yet every entity-disjoint temporal cut from 0.5 to 0.9 produced a late fold that was 100% normal. The cause is that the **attack sources are persistent** — a reflected DDoS from internet-wide servers that also carry benign traffic all capture, plus a web-attack host present throughout. A persistent entity always appears before the cut, so entity-disjointness assigns it to the earlier fold by construction. No entity-disjoint temporal split can hold out attack traffic on this dataset.
+**Decision.** R-60 (test strictly later than train) has **no off switch**. R-61 becomes a split policy: `split_windows(..., entity_disjoint=)` defaults to `True`, and `run_baselines.py --split-policy` exposes `entity-disjoint` (default, the only policy a released model may be gated on) and `temporal-only` (benchmark comparability). Relaxing R-61 never silences the audit — `Split.audit()` now reports `shared_train_test_entities` and its valid-fold counterparts as **counts**, so the leakage is measured and carried in the run log alongside the metric it inflates.
+**Consequences.** Numbers from a `temporal-only` run are labelled benchmark-comparable in the run log and on stdout, and are not release-gate evidence; T-203 and T-208 inherit this. Two costs follow from measuring rather than assuming: a headline metric must always be read with its fold's base rate, and `best_f1` is now part of every baseline report, because the fixed 0.5 operating point is meaningless on a fold whose positive rate differs from training's by an order of magnitude. The honest remaining gap — that no reachable corpus has ephemeral attack sources, so no released model here has yet been gated on a genuinely entity-disjoint holdout — is recorded as **Q-07** rather than papered over by these numbers.
 
 ## Data sources
 
@@ -192,9 +197,9 @@ Publisher pages, for anyone who needs the authoritative artifact: [UNSW-NB15](ht
 
 Row counts read match the inventory exactly, which is T-103's acceptance criterion. For the log corpus (T-104) the parser reads **2,000 of 2,000 lines with zero unparseable**, across 1,778 distinct hosts and 5 components; its severity counts (critical 347, error 48, info 1,597, warning 8) match LogHub's published labels exactly, with SEVERE folded into `error` and FATAL into `critical`. CIC-IDS2017's Friday file holds 97,718 BENIGN and 128,027 DDoS flows, with 2,066 distinct source and 2,553 distinct destination addresses — real entity churn, which D-014 worried captures might lack.
 
-### Why the baselines are not yet scored (T-110)
+### How the baselines were finally scored (T-110)
 
-Not a tooling problem, and not a shortage of data either — two capture days and 395,903 records were fetched and parsed for this. It is a property of the data interacting with R-61.
+Not a tooling problem, and not a shortage of data either — two capture days and 395,903 records were fetched and parsed for this. It was a property of the data interacting with R-61, resolved by **D-015**.
 
 Combining Thursday (Web Attacks) and Friday (DDoS) gives 12,645 source-keyed windows spanning 2017-06-07 11:37 to 2017-07-07 05:02. At the 80% cutoff (2017-07-07 04:08):
 
@@ -203,16 +208,28 @@ Combining Thursday (Web Attacks) and Friday (DDoS) gives 12,645 source-keyed win
 | Temporal only (R-60) | 2,606 | 1,559 normal, **1,045 DDoS**, 2 mixed |
 | Temporal + entity-disjoint (R-60 + R-61) | 598 | **598 normal, 0 attack** |
 
-**R-61 is the binding constraint, not R-60.** The temporal split alone holds out plenty of attack traffic; requiring that no entity appear in two folds removes all of it. Sweeping the cutoff from 0.5 to 0.9 changes nothing — the entity-disjoint late fold is 100% normal at every position (1,505 / 860 / 624 / 598 / 510 windows, all normal).
+**R-61 was the binding constraint, not R-60.** The temporal split alone holds out plenty of attack traffic; requiring that no entity appear in two folds removes all of it, at every cutoff from 0.5 to 0.9 (1,505 / 860 / 624 / 598 / 510 windows, all normal). The mechanism is the opposite of what D-014 anticipated — abundant entity churn (4,600 entities in train), but **persistent attack sources** that entity-disjointness necessarily assigns to the earlier fold.
 
-The mechanism is the opposite of what D-014 anticipated. D-014 worried that a stream without entity *churn* would make an entity-disjoint split impossible. Here there is abundant churn — 4,600 entities in train — but the **attack sources are persistent**, not ephemeral: the DDoS is a reflected attack whose source addresses are internet-wide servers that also carry benign traffic throughout the capture, and the web-attack host appears across the whole period. A persistent entity always appears before the cut, so entity-disjointness assigns it to the earlier fold and excludes it from test by construction. **On this dataset no entity-disjoint temporal split can ever hold out attack traffic.**
+Under D-015 both runs below are `temporal-only`, so the leakage is measured rather than assumed: the two-day run shares **43 entities** between train and test, the single-day run **20**. Those counts are in the run logs next to the metrics.
 
-`run_baselines.py` detects the single-class fold and refuses with an explanation rather than fitting a degenerate model. It does not relax R-61 to produce a number.
+**The two runs disagree, and the disagreement is the finding.** The two-day run scores near-perfect because its folds are *different capture days* — train 8.9% positive, test 51.9% positive — so the model separates days as much as attacks. The Friday-only run is within a single capture day, where train is 63.3% positive and test 4.7%. That is the run to read.
 
-Two things follow, and both need a decision rather than a workaround:
+**A fixed 0.5 threshold is not a result.** On Friday's 4.7%-positive test fold, gradient boosting at 0.5 reports precision 0.0872 with recall 1.0 — it raises 13,601 false positives. At its own best-F1 threshold of 0.65 the same model reaches precision 0.9954. Both are true; quoting only the first misrepresents the model, and quoting only the second hides that no threshold was calibrated on validation. Every baseline report now carries both, plus the fold's base rate.
 
-1. Either benchmark evaluation accepts entity-overlapping splits — with the leakage cost measured and recorded, not assumed away — or the project needs a corpus whose attack sources are genuinely ephemeral. That needs a new entry in the decisions log before T-203 or T-208 starts, because both inherit it.
-2. **A data-quality anomaly worth knowing about.** The Thursday file's earliest window starts **2017-06-07 11:37, a month before the documented capture window of 3–7 July 2017**. Some CIC-IDS2017 rows carry timestamps outside the stated period, so the timeline of a combined capture is not as clean as the dataset page implies.
+**A data-quality anomaly worth knowing about.** The Thursday file's earliest window starts **2017-06-07 11:37, a month before the documented capture window of 3–7 July 2017**. Some CIC-IDS2017 rows carry timestamps outside the stated period, so the timeline of a combined capture is not as clean as the dataset page implies.
+
+**Reproducing them.** Run logs live under `data/`, which R-40 keeps out of Git, so the command is the reference rather than the file. Both were run twice and agree to the digit; neither model uses an RNG.
+
+```console
+$ python scripts/fetch_datasets.py --only cic-ids2017
+$ python scripts/run_baselines.py --dataset cic-ids2017 --split-policy temporal-only \
+      --file data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv
+$ python scripts/run_baselines.py --dataset cic-ids2017 --split-policy temporal-only \
+      --file data/raw/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv \
+      --file data/raw/Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv
+```
+
+**What this does not establish.** ROC-AUC of 0.999+ on CIC-IDS2017 is close to what published flow-feature results report, and it should not be read as production capability: CICFlowMeter features on this capture are near-linearly separable, and no released model here has yet been gated on an entity-disjoint holdout. That gap is **Q-07**.
 
 ### T-104 — log corpus, and a retraction
 
@@ -257,9 +274,12 @@ Rule R-74 forbids recording a number that was not measured, so no target values 
 
 | Feature set | Model | Split | Precision | Recall | F1 | ROC-AUC | PR-AUC | Run ref | Date |
 |---|---|---|---|---|---|---|---|---|---|
-| *none yet* | — | — | — | — | — | — | — | — | — |
+| `features@1` | logistic regression | CIC-IDS2017 Friday, temporal-only, best-F1 @0.95 | 0.9868 | 0.9792 | 0.9830 | 0.9990 | 0.9398 | `data/runs/baselines_cic_friday.json` | 2026-10-04 |
+| `features@1` | gradient boosting (60 stumps) | CIC-IDS2017 Friday, temporal-only, best-F1 @0.65 | 0.9954 | 1.0000 | 0.9977 | 1.0000 | 1.0000 | `data/runs/baselines_cic_friday.json` | 2026-10-04 |
+| `features@1` | logistic regression | CIC-IDS2017 Thu+Fri, temporal-only, best-F1 @0.60 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | `data/runs/baselines_cic_ids2017.json` | 2026-10-04 |
+| `features@1` | gradient boosting (60 stumps) | CIC-IDS2017 Thu+Fri, temporal-only, best-F1 @0.65 | 0.9993 | 0.9973 | 0.9983 | 1.0000 | 1.0000 | `data/runs/baselines_cic_ids2017.json` | 2026-10-04 |
 
-*To be filled by T-110. These baselines are the bar every transformer result must clear (R-64).*
+*Recorded by T-110. These are the bar every transformer result must clear (R-64). Read them with their caveats, all measured: the table shows the **best-F1 operating point**, because at the fixed 0.5 threshold the same models score F1 0.6207 and 0.1605 on the Friday fold; the test folds are 4.7% (Friday) and 51.9% (Thu+Fri) positive; and both runs are `temporal-only` under D-015, sharing 20 and 43 entities respectively between train and test. The Friday row is the one to compare against — the Thu+Fri rows separate capture days as much as attacks. These are benchmark-comparable numbers, not release-gate evidence.*
 
 ### Model results
 
@@ -294,6 +314,7 @@ Tracked here; referenced from [prd.md](prd.md#12-open-questions). A question is 
 | **Q-04** | Which reference deployment supplies real flow records, and in what format (NetFlow v5/v9, IPFIX, Zeek)? | Product | NFR-02 validation, T-612 | OPEN |
 | **Q-05** | Do we need multi-tenancy at v1.0, or is single-tenant per deployment acceptable? | Product | Schema design, T-301 | OPEN — currently assumed single-tenant per deployment (D-001 context); the schema includes `tenant_id` on thresholds only |
 | **Q-06** | For volumetric attacks, should a flow window be keyed on the source entity, the destination, or both? | Model lead | **T-108**, T-201 | **CLOSED by D-013 (2026-10-03)** — both, chosen per family. Raised by T-107. `architecture.md` §7.1 keys the window on one source entity, but the synthetic DDoS scenario spreads a single flood across ~40 sources, so each per-source window holds about one flow and the attack is invisible at that granularity. Either the window key changes, or volumetric detection needs a destination-side feature path |
+| **Q-07** | No reachable corpus has attack sources ephemeral enough for an entity-disjoint temporal holdout, so every recorded baseline is `temporal-only`. Where do release-gate numbers come from — a capture with genuinely short-lived attack sources, synthesised entity churn, or a group-based holdout that keeps whole attack campaigns out of training? | Model lead | **T-203**, **T-208**, release gating | OPEN — raised by D-015 (2026-10-04). Until it closes, no model here has been gated on a fold that is both strictly temporal and entity-disjoint, and the 0.999+ ROC-AUC in the ledger must not be read as production capability |
 
 ## Glossary
 
@@ -373,4 +394,6 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 2026-10-03 | 0.7 | T-112 shipped the evaluation harness in pure Python, pinned to hand-checkable values. `architecture.md` §3 corrected: every Python package lives inside `aegis_ml/`, since only that directory is installed. |
 | 2026-10-03 | 0.8 | The dashboard container ran as root. `check_compose.py` had a privilege check scoped to the two Dockerfiles with importable ASGI targets, so it could never see the third — a green check that covered 2 of 3 images. Widened to all three; the dashboard now uses `nginxinc/nginx-unprivileged` with `USER 101` on port 8080. Not yet run under Docker. |
 | 2026-10-03 | 0.9 | T-001 closed: `k8s/` manifests and `scripts/check_k8s.py`, wired into `check_all.sh` and CI. Comparing the declared tree to the filesystem also found two root files `architecture.md` had never listed. The manifests have never been applied to a cluster. |
+| 2026-10-04 | 1.1 | T-104 closed: `log_parsers.py` mines BGL templates from raw lines and reproduces LogHub's published severity counts exactly (critical 347, error 48, info 1,597, warning 8). Two defects found by measuring instead of assuming: tie-break order in the greedy template search changed the result set (284 vs 296 vs 103 templates), so it is now fixed and recorded, and `_build()` had to receive original tokens rather than templated ones. An earlier prototype figure of 121 templates / 0.9835 purity is retracted — it came from iterating a `set`. ml-service tests 197 → 219. |
+| 2026-10-04 | 1.2 | **T-110 closed; D-015 and Q-07 recorded; CI was red for 17 hours.** D-015 makes R-61 a measured policy rather than an axiom while R-60 stays unconditional, and `Split.audit()` now reports overlap *counts*. Both baselines are scored on real CIC-IDS2017 captures, with the two-day and single-day runs disagreeing for a reason worth keeping: the two-day split holds different capture days, so it separates days as much as attacks. A fixed 0.5 threshold turned out to be meaningless on a 4.7%-positive fold (F1 0.1605 at 0.50 versus 0.9977 at the best-F1 threshold of 0.65), so reports now carry both plus the base rate. Separately, every CI run since T-107 had failed: `requirements-dev.txt` never declared pydantic, which the root `mypy.ini` needs for its plugin, and that error masked a second one — `check_compose.py` imports the backend settings model, so typechecking it needs the services, which the docs job does not install. Script typechecking moved to the infra job and now covers all five scripts instead of two. ml-service tests 219 → 223. |
 | 2026-10-04 | 1.0 | **Real benchmark data obtained; T-101–T-103 and T-105 done.** The claim that the datasets were unreachable was wrong. `api.github.com`'s contents endpoint serves file bytes with `Accept: application/vnd.github.raw`, unauthenticated, so `scripts/fetch_datasets.py` runs in this sandbox; a page-fetching tool that is outside the allowlist supplied the publishers' record counts. CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are now on disk, hash-verified. Nine integrity findings recorded in Data sources — including two mirrors with the train/test file names transposed, and the fact that the widely used `UNSW_NB15_training-set.csv` is a 45-column derivative with no addresses or timestamps. T-110 is blocked by the data, not the code: no reachable capture yields a test fold with both classes under R-60 + R-61. ml-service tests 134 → 197. |

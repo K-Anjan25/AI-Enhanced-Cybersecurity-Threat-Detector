@@ -147,6 +147,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dataset", choices=sorted(PARSERS), default="cic-ids2017")
     parser.add_argument("--key", choices=["source", "destination"], default="source")
     parser.add_argument(
+        "--split-policy",
+        choices=["entity-disjoint", "temporal-only"],
+        default="entity-disjoint",
+        help=(
+            "entity-disjoint (default) enforces R-61 and is the only policy a "
+            "released model may be gated on. temporal-only enforces R-60 alone, "
+            "leaving entities to span folds: it exists so results are comparable "
+            "to published NIDS benchmarks, which are measured that way, and it "
+            "prints the measured leakage so the gap is visible."
+        ),
+    )
+    parser.add_argument(
         "--limit", type=int, default=0, help="Parse only the first N rows."
     )
     parser.add_argument("--epochs", type=int, default=DEFAULT_LR_EPOCHS)
@@ -209,14 +221,38 @@ def main(argv: list[str] | None = None) -> int:
     windows = window_flows(records, key=key)
     print(f"  {len(windows):,} windows keyed by {key.value}")
 
-    split: Split[FlowRecord] = split_windows(windows)
+    entity_disjoint = args.split_policy == "entity-disjoint"
+    split: Split[FlowRecord] = split_windows(windows, entity_disjoint=entity_disjoint)
     audit = split.audit()
+    print(f"  split policy: {args.split_policy}")
     print(f"  split: {audit}")
-    if not (audit["test_after_train"] and audit["entities_disjoint"]):
+
+    # R-60 is unconditional. No policy is allowed to score a model on traffic
+    # from before its own training window.
+    if not audit["test_after_train"]:
         print(
-            "refusing to train: the split violates a leakage invariant", file=sys.stderr
+            "refusing to train: the split violates the temporal invariant (R-60)",
+            file=sys.stderr,
         )
         return 1
+    if entity_disjoint and not audit["entities_disjoint"]:
+        print(
+            "refusing to train: the split violates the entity-disjoint invariant "
+            "(R-61) while the entity-disjoint policy was requested",
+            file=sys.stderr,
+        )
+        return 1
+    if not entity_disjoint:
+        # Not a warning to be ignored: state the size of the leak next to the
+        # metric it is about to inflate.
+        print(
+            "  leakage (measured): "
+            f'{audit["shared_train_test_entities"]:,} entities appear in both train '
+            f'and test, {audit["shared_train_valid_entities"]:,} in train and valid, '
+            f'{audit["shared_valid_test_entities"]:,} in valid and test. Metrics '
+            "from this run are benchmark-comparable, not release-gate quality.",
+            file=sys.stderr,
+        )
 
     train = _features(split.train, key)
     valid = _features(split.valid, key)
@@ -283,6 +319,8 @@ def main(argv: list[str] | None = None) -> int:
         "source_files": [os.path.basename(p) for p in paths],
         "source_sha256": source_sha,
         "window_key": key.value,
+        "split_policy": args.split_policy,
+        "split_audit": audit,
         "rows_read": sum(r.rows_read for r in reports) if reports else len(records),
         "rows_parsed": len(records),
         "rows_rejected": sum(r.rejected for r in reports),
@@ -308,14 +346,33 @@ def main(argv: list[str] | None = None) -> int:
     with open(out, "w", encoding="utf-8") as handle:
         json.dump(log, handle, indent=2, sort_keys=True)
     print(f"\nrun log written to {out}")
+    print(
+        f"test fold base rate: {log['positive_rate_test']:.4f} "
+        f"(train {log['positive_rate_train']:.4f})"
+    )
 
     for name, payload in results.items():
+        # precision/recall/f1 sit at the top of the EvalReport; the rank metrics
+        # are nested under its `metrics` member. Reading all five from one level
+        # raises KeyError, which is how this went unnoticed: the run log was
+        # already written, so the artifact was complete while the summary
+        # crashed.
         entry = cast("dict[str, object]", payload)
-        metrics = cast("dict[str, float]", entry["metrics"])
+        rank = cast("dict[str, float]", entry["metrics"])
+        best = cast("dict[str, float]", entry["best_f1"])
+        print(f"  {name:<22} roc_auc={rank['roc_auc']:.4f} pr_auc={rank['pr_auc']:.4f}")
+        # The fixed 0.5 operating point is only meaningful on a balanced fold.
+        # Both baselines were trained on a fold whose positive rate differs from
+        # the test fold's by an order of magnitude, so 0.5 lands nowhere useful
+        # and quoting it alone misrepresents the model. Show both, plus the base
+        # rate that explains the gap.
         print(
-            f"  {name:<22} precision={metrics['precision']:.4f} recall={metrics['recall']:.4f} "
-            f"f1={metrics['f1']:.4f} roc_auc={metrics['roc_auc']:.4f} "
-            f"pr_auc={metrics['pr_auc']:.4f}"
+            f"    @{entry['threshold']:.2f}          precision={entry['precision']:.4f} "
+            f"recall={entry['recall']:.4f} f1={entry['f1']:.4f}"
+        )
+        print(
+            f"    @{best['threshold']:.2f} best-f1   precision={best['precision']:.4f} "
+            f"recall={best['recall']:.4f} f1={best['f1']:.4f}"
         )
     return 0
 
