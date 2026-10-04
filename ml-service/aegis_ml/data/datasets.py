@@ -168,6 +168,31 @@ CIC_IDS2017_FRIDDAY_DDOS = DatasetFile(
     ),
 )
 
+CIC_IDS2017_THURSDAY_WEBATTACKS = DatasetFile(
+    dataset_id="cic-ids2017",
+    file_name="Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+    repo="jasonwvh/tda-cicids2017",
+    path="Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+    canonical_source="https://www.unb.ca/cic/datasets/ids-2017.html",
+    licence=CIC_IDS2017_FRIDDAY_DDOS.licence,
+    sha256="7a05a252c5189e5c2e2c478afa3d48f80e599b5e03aeab37b2635d92eaa028fd",
+    size_bytes=67_044_444,
+    row_count=170_366,
+    columns=85,
+    has_entity_columns=True,
+    has_timestamps=True,
+    caveats=(
+        "The full 85-column CICFlowMeter output, unlike the Friday file's 32. The "
+        "parser reads by column name, so both work; the extra 66 columns are reported "
+        "as unmapped rather than dropped.",
+        "Labels are BENIGN (168,186), Web Attack - Brute Force (1,507), Web Attack - "
+        "XSS (652) and Web Attack - Sql Injection (21). The separator in those three "
+        "labels is a mojibake byte (0x96) in the source file, not a real em dash.",
+        "Fetched because one capture day cannot score a baseline: a second day with "
+        "its own attacks is what puts attack traffic into a tail test fold.",
+    ),
+)
+
 BGL_2K = DatasetFile(
     dataset_id="bgl",
     file_name="BGL_2k.log",
@@ -223,6 +248,7 @@ DATASETS: tuple[DatasetFile, ...] = (
     UNSW_NB15_TESTING_DERIVATIVE,
     UNSW_NB15_SCHEMA_SAMPLE,
     CIC_IDS2017_FRIDDAY_DDOS,
+    CIC_IDS2017_THURSDAY_WEBATTACKS,
     BGL_2K,
     BGL_2K_STRUCTURED,
 )

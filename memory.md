@@ -165,6 +165,7 @@ The publisher's own artifacts are *not* reachable: UNSW distributes the source f
 | UNSW-NB15 | `UNSW_NB15_testing-set.csv` | `shailjaroy/NIDS-UNSW_NB15` | `734fe6642edf758f7c94d7d9149426b49d202fe8e7bf0bef47392489c3c0a559` | 15,380,800 | 82,332 × 45 | **No** — no addresses, no timestamps |
 | UNSW-NB15 | `unsw_nb15_official_schema_sample.csv` | `luna866/UNSW-NB15` | `13be3cddc8c8c2e0fe874d68841e7f0b007eaa13cf9a194a20991e0d6f41da74` | 2,386,163 | 10,000 × 49 | Yes |
 | CIC-IDS2017 | `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` | `StarterArcher/CICIDS2017` | `306294008927756094b069d24764bfa6519fe267a8104903c056fc9c3cf38636` | 36,010,816 | 225,745 × 32 | Yes |
+| CIC-IDS2017 | `Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv` | `jasonwvh/tda-cicids2017` | `7a05a252c5189e5c2e2c478afa3d48f80e599b5e03aeab37b2635d92eaa028fd` | 67,044,444 | 170,366 × 85 | Yes |
 | BGL (system logs) | `BGL_2k.log` | `logpai/loghub` | `2a819ea540909db682005c9cf948387a40729b5c2e9f19d430e29ce704825496` | 317,150 | 2,000 × 1 | Yes |
 | BGL ground truth | `BGL_2k.log_structured.csv` | `logpai/loghub` | `3fe74103c0b02a28514534e2a47257a3f770135ca61afd425bbd3b9d6a31fe26` | 425,129 | 2,000 × 13 | Verification only |
 | **Synthetic** (ours) | `data/synthetic/*.ndjson` | Built — `scripts/generate_synthetic.py` (T-106) | Deterministic by seed (R-42) | — | 7 scenarios × N | Yes |
@@ -193,9 +194,25 @@ Row counts read match the inventory exactly, which is T-103's acceptance criteri
 
 ### Why the baselines are not yet scored (T-110)
 
-Not a tooling problem — a property of the data. CIC-IDS2017's Friday capture runs 03:30–05:02, but the DDoS burst occupies only **03:56–04:16**, from sources that never reappear afterwards. A strictly temporal split puts the tail in test, so the test fold is 2,440 rows and **all of them normal**; ROC-AUC is undefined and no model can be ranked. Destination-keying (D-013) does not help, because the cause is temporal rather than keying. The UNSW sample is too thin for the same rule: 26 source addresses in total, leaving 3 test entities, again all normal.
+Not a tooling problem, and not a shortage of data either — two capture days and 395,903 records were fetched and parsed for this. It is a property of the data interacting with R-61.
 
-D-014 anticipated that a stream without entity churn would force this. What the real data shows is sharper: **a short attack burst from ephemeral sources falls entirely inside the training period whenever the test period is the tail of the capture**, however much churn there is elsewhere. `run_baselines.py` detects the single-class fold and refuses with an explanation rather than fitting a degenerate model. Unblocking T-110 needs a multi-day capture in which the attack families recur across days — the full five-day CIC-IDS2017 set, or the complete UNSW-NB15 CSVs, neither of which is reachable here.
+Combining Thursday (Web Attacks) and Friday (DDoS) gives 12,645 source-keyed windows spanning 2017-06-07 11:37 to 2017-07-07 05:02. At the 80% cutoff (2017-07-07 04:08):
+
+| Split rule | Windows at/after the cutoff | Labels |
+|---|---|---|
+| Temporal only (R-60) | 2,606 | 1,559 normal, **1,045 DDoS**, 2 mixed |
+| Temporal + entity-disjoint (R-60 + R-61) | 598 | **598 normal, 0 attack** |
+
+**R-61 is the binding constraint, not R-60.** The temporal split alone holds out plenty of attack traffic; requiring that no entity appear in two folds removes all of it. Sweeping the cutoff from 0.5 to 0.9 changes nothing — the entity-disjoint late fold is 100% normal at every position (1,505 / 860 / 624 / 598 / 510 windows, all normal).
+
+The mechanism is the opposite of what D-014 anticipated. D-014 worried that a stream without entity *churn* would make an entity-disjoint split impossible. Here there is abundant churn — 4,600 entities in train — but the **attack sources are persistent**, not ephemeral: the DDoS is a reflected attack whose source addresses are internet-wide servers that also carry benign traffic throughout the capture, and the web-attack host appears across the whole period. A persistent entity always appears before the cut, so entity-disjointness assigns it to the earlier fold and excludes it from test by construction. **On this dataset no entity-disjoint temporal split can ever hold out attack traffic.**
+
+`run_baselines.py` detects the single-class fold and refuses with an explanation rather than fitting a degenerate model. It does not relax R-61 to produce a number.
+
+Two things follow, and both need a decision rather than a workaround:
+
+1. Either benchmark evaluation accepts entity-overlapping splits — with the leakage cost measured and recorded, not assumed away — or the project needs a corpus whose attack sources are genuinely ephemeral. That needs a new entry in the decisions log before T-203 or T-208 starts, because both inherit it.
+2. **A data-quality anomaly worth knowing about.** The Thursday file's earliest window starts **2017-06-07 11:37, a month before the documented capture window of 3–7 July 2017**. Some CIC-IDS2017 rows carry timestamps outside the stated period, so the timeline of a combined capture is not as clean as the dataset page implies.
 
 ### T-104 — log corpus, and a retraction
 
