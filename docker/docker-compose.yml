@@ -40,6 +40,18 @@ services:
       retries: 10
 
   kafka:
+    # Opt-in: `docker compose --profile streaming up -d`.
+    #
+    # `bitnami/kafka` no longer exists. Broadcom deleted the public
+    # docker.io/bitnami catalog on 2025-09-29; versioned tags were moved to
+    # docker.io/bitnamilegacy, which is frozen and receives no security patches.
+    # A pull of bitnami/kafka:3.9 now fails with "not found", which took the
+    # whole `up` down with it — including the three services that do not need a
+    # broker. Nothing else in this stack depends on kafka, so it is behind a
+    # profile until it is migrated to the official apache/kafka image, which
+    # uses KAFKA_* rather than KAFKA_CFG_* and a different data directory.
+    # Tracked as Q-08.
+    profiles: ['streaming']
     image: bitnami/kafka:3.9
     environment:
       # Single-node KRaft; no ZooKeeper needed for local development.
