@@ -1,0 +1,14 @@
+# The build context is sent to the daemon before the Dockerfile runs, and line 6
+# of the Dockerfile is `COPY . .` — which lands *after* `RUN npm ci`. Without
+# this file the host's node_modules is copied over the freshly installed Linux
+# one, so the build compiles against whatever TypeScript the developer happens to
+# have locally. On a machine carrying node_modules from an older project that
+# meant TypeScript 4.x, and tsconfig.json's "moduleResolution": "bundler" and
+# "allowImportingTsExtensions" failed as unknown options even though the lockfile
+# pins 5.9.3. It also sent 731 MB of context instead of a few hundred KB.
+node_modules
+dist
+coverage
+.git
+*.log
+.eslintcache
