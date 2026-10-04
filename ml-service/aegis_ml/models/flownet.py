@@ -56,9 +56,14 @@ class FlowNetConfig:
     """
 
     input_dim: int = len(FEATURE_NAMES)
-    d_model: int = 64
+    # Sized against T-201's second acceptance clause - parameter count within 20%
+    # of a 1.2 M target - not chosen by taste. Measured, not estimated: 176/448
+    # gives 1,158,840 at input_dim 23 and 1,163,076 at 35, so the default stays
+    # inside the band whichever one-hot width a dataset produces. d_model 128
+    # (807,704) misses low and 192/384 lands closer to the ceiling.
+    d_model: int = 176
     nhead: int = 8
-    dim_feedforward: int = 128
+    dim_feedforward: int = 448
     dropout: float = 0.1
     max_seq_len: int = FLOW_WINDOW_SIZE
 

@@ -159,6 +159,18 @@ On the Friday capture, of 6,415 source-keyed windows and 2,066 entities, there a
 
 **Consequences.** `group_split` stays: it is the correct primitive for a corpus whose attacks span many entities, it is deterministic by SHA-256 rather than a salted hash, and its six tests pin that it keeps every entity whole. What changes is the release gate. For this corpus the only defensible generalisation test is a **family-level holdout** — hold out an entire attack class and test detection of a family the model never trained on. The two-day capture supports exactly one such split (Thursday web attacks against Friday DDoS), which is thin but real, and it answers a more useful question than either leakage invariant does. Until that exists, every number in the ledger stays benchmark-comparable rather than release-gate evidence.
 
+### D-017 · Synthetic data cannot produce a two-class held-out fold, so it is not a valid substrate for any metric — ACCEPTED (2026-10-04)
+
+**Context.** T-201's acceptance criterion needs an end-to-end training run. The obvious substrate is the synthetic generator, which needs no download. Every attempt to evaluate on it aborted with `ROC-AUC needs both classes`.
+
+**Measurement.** `generate_dataset(per_scenario=1500, seed=20260114)` yields 10,500 flows whose per-scenario time spans differ by four orders of magnitude — DoS 0–7 s, Reconnaissance 0–30 s, normal 0–2,173 s, BruteForce 0–2,248 s, Exfiltration to 48,937 s, Beaconing to 89,940 s, InsiderThreat 64,828–147,042 s — and whose per-scenario source counts differ by three: DoS uses 1,476 distinct sources, normal uses 4, and five scenarios use 1 each. Windowed by source that is **1,643 attack windows against 15 benign**, 1% benign. Both split policies therefore degenerate: a temporal split puts every benign class inside the first 1.5% of the timeline, and an entity-only split has only four benign entities to place. Neither splitter is at fault.
+
+**Two earlier explanations of this failure are retracted here.** That "each scenario is a contiguous time block" — they all start at the same epoch and overlap heavily. And that "a temporal split makes the test fold single-class" — it is single-class at *every* policy, including entity-only, which was measured returning 302 positives and 0 negatives.
+
+**Decision.** The generator stays as it is. Per-scenario cadence is the point of it: a DDoS from 1,476 sources against benign traffic from 4 hosts is exactly the shape the features exist to catch, and compressing every scenario into one window would destroy the inter-arrival signal. What changes is the claim made about it. Synthetic data exercises pipelines; it does not measure generalisation. `scripts/train_flownet.py` takes the same `--file` / `--dataset` / `--format` interface as `run_baselines.py` so the acceptance run uses the fetched benchmark, and `--split-policy` mirrors that script's three policies rather than inventing a fourth.
+
+**Consequence.** Any future task proposing to validate on synthetic data must first show the target fold contains both classes. That check belongs in the task, not in a reviewer's head.
+
 ## Data sources
 
 Datasets are never committed to Git (R-40). The checksums below are **measured**, not transcribed: each was computed over the bytes actually fetched, and `aegis_ml/data/datasets.py` is the single copy. `test_datasets.py` fails if this table and that module disagree.
@@ -397,6 +409,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-04 | 1.7 | **T-201 closed; D-017 recorded; two acceptance clauses, and the second one was nearly missed.** `FlowNet` ships at 1,163,076 parameters — inside the ±20% band of the 1.2 M target — and trains a 1% sample of CIC-IDS2017 Friday in 0.017 minutes against a 10-minute budget. A first cut was 88% under the size target and passed a pinned-parameter-count test while failing the gate, so the band is now its own test. D-017 records why synthetic data cannot carry any held-out metric, retracting two wrong explanations of the same failure along the way. torch 2.14.1 lands as an `ml-service[training]` extra, not a core dependency. Also recorded: a commit pushed on a green local mypy run failed three CI jobs, because strict's `disallow_subclassing_any` only fires when torch is *absent* — the configuration CI has and the local venv did not. |
 | 2026-10-02 | 0.1 | Created during the repository reset. Recorded the reset (487 files removed, recoverable from `60e9adf`), ten decisions, four data sources, five open questions, and an empty measurement ledger. |
 | 2026-10-03 | 0.2 | Sprint S1 opened: T-106 shipped the canonical `flow@1` / `log@1` records and a seven-scenario synthetic generator. Added D-011 (where the telemetry schemas live), refreshed the current-state and data-source tables, and re-marked the completed next actions. |
 | 2026-10-03 | 0.3 | T-107 shipped `features@1` (23 features, hash-pinned). Added D-012 and Q-06, and corrected `architecture.md` §7.1 from 24 to 23 features. Two defects found and fixed while building it: three scenario builders emitted out-of-order timelines, and `backend[dev]` never declared `import-linter` or `pytest-cov` even though CI runs both. |

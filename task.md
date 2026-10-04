@@ -154,7 +154,13 @@ Goal: two models that beat the baselines for a defensible reason.
 | T-214 | Model card per release: intended use, metrics, limitations, adversarial-evasion caveat | 1 | T-208 | Card lists the measured numbers only, each traceable to a run (R-74) |
 | T-215 | Hyperparameter search on the validation split only | 2 | T-202 | Search config and results logged; the test split is untouched during search (R-71) |
 
-**E2 total ≈ 25.5 days.** Parallelisable across two engineers from T-204 onward.
+**E2 total ≈ 25.5 days.** Parallelisable across two engineers from T-204 onward
+**Progress (2026-10-04).**
+
+| ID | Status | Note |
+|---|---|---|
+| T-201 | DONE | `ml-service/aegis_ml/models/flownet.py`: projection → 4-layer transformer encoder → reconstruction head + anomaly head. **Both acceptance clauses measured on real data, not asserted.** Wall clock: 0.017 min to train 3 epochs on a 1% sample (42 of 4,149 training windows) of CIC-IDS2017 Friday, against a 10-minute budget. Size: **1,163,076** parameters against the 1.2 M target, inside the 960 k–1.44 M band. 13 tests. A first cut shipped at 139,160 parameters — 88% under target — and passed a pinned-count test while failing the gate, so the band is now its own test. **The metric is not the result:** ROC-AUC 1.0000 comes from a temporal-only split with 20 shared train/test entities over a single DDoS family (D-015, D-016), on 26 attack test windows. Best F1 0.8667 at threshold 0.65. `scripts/train_flownet.py` records both clauses and the split audit in `data/runs/flownet_cic_1pct.json`. Synthetic data could not be used at all — see **D-017**. |
+.
 
 ## 6. Epic E3 — Backend and API (M3)
 
