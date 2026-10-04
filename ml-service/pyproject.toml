@@ -17,9 +17,15 @@ dev = [
     "black>=26.5",
     "mypy>=2.4",
 ]
-# Model training and inference dependencies (torch, transformers, drain3) land
-# with T-201/T-204. Deliberately absent now: the S0 skeleton must install and
-# test without them.
+# T-201. torch is an extra rather than a core dependency: the service must
+# install, typecheck and serve without a multi-gigabyte deep-learning stack.
+# Note the default PyPI wheel on Linux bundles the CUDA runtime even for
+# CPU-only training, because download.pytorch.org - which serves the CPU-only
+# wheels - is not reachable from every build environment.
+training = [
+    "torch>=2.14",
+]
+# transformers and drain3 land with T-204.
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -53,6 +59,11 @@ strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
 files = ["aegis_ml"]
+
+[[tool.mypy.overrides]]
+# torch ships no type stubs, and mypy strict rejects an untyped import outright.
+module = "torch.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
