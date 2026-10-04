@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from aegis_ml.data.records import Direction, FlowRecord, Protocol
-from aegis_ml.data.splits import Split, split_windows
+from aegis_ml.data.splits import Split, group_split, split_windows
 from aegis_ml.data.synthetic import GenerationSpec, Scenario, generate_flows
 from aegis_ml.data.windowing import Window, window_flows
 
@@ -184,6 +184,7 @@ def test_audit_reports_every_invariant() -> None:
         "test",
         "dropped",
         "entity_disjoint_enforced",
+        "temporal_enforced",
         "train_entities",
         "test_entities",
         "test_after_train",
@@ -193,6 +194,7 @@ def test_audit_reports_every_invariant() -> None:
         "entities_disjoint",
     }
     assert audit["entity_disjoint_enforced"] is True
+    assert audit["temporal_enforced"] is True
     assert audit["train"] == 24 and audit["test"] == 12 and audit["dropped"] == 0
 
 
@@ -273,3 +275,125 @@ def test_entity_disjointness_is_the_default() -> None:
     assert split_windows(windows, test_fraction=0.3, valid_fraction=2 / 7) == split_windows(
         windows, test_fraction=0.3, valid_fraction=2 / 7, entity_disjoint=True
     )
+
+
+# --- the entity-only policy (Q-07) ----------------------------------------
+
+
+def many_host_windows(hosts: int = 60, size: int = 5) -> tuple[Window[FlowRecord], ...]:
+    """Window a stream of many hosts.
+
+    A hash partition needs enough entities that every fold is populated by
+    construction rather than by luck: `banded_windows` has eight, and splitting
+    eight entities three ways is a coin toss the split is right to refuse.
+    """
+    flows: list[FlowRecord] = []
+    for index in range(hosts):
+        flows.extend(host_flows(f"10.4.30.{index}", EPOCH + timedelta(seconds=index * 7)))
+    flows.sort(key=lambda record: record.timestamp)
+    return window_flows(flows, size=size)
+
+
+def group_fixture() -> tuple[Window[FlowRecord], ...]:
+    """Sixty hosts plus one that is active at both ends of the capture."""
+    spanning = window_flows(
+        sorted(
+            host_flows("10.4.20.99", EPOCH)
+            + host_flows("10.4.20.99", EPOCH + timedelta(seconds=400)),
+            key=lambda record: record.timestamp,
+        ),
+        size=5,
+    )
+    return tuple(
+        sorted((*many_host_windows(), *spanning), key=lambda window: (window.start, window.key))
+    )
+
+
+def test_group_split_keeps_every_entity_whole() -> None:
+    """An entity's windows never straddle a fold, so the disjointness is exact."""
+    windows = group_fixture()
+    split = group_split(windows, test_fraction=0.25, valid_fraction=1 / 3)
+
+    folds = [
+        {window.key for window in split.train},
+        {window.key for window in split.valid},
+        {window.key for window in split.test},
+    ]
+    assert sum(len(keys) for keys in folds) == len({w.key for w in windows})
+    assert len(split.train) + len(split.valid) + len(split.test) == len(windows)
+
+
+def test_group_split_is_exactly_entity_disjoint() -> None:
+    """No overlap to report, because the partition is by entity rather than time."""
+    audit = group_split(group_fixture(), test_fraction=0.25, valid_fraction=1 / 3).audit()
+
+    assert audit["entities_disjoint"] is True
+    assert audit["shared_train_test_entities"] == 0
+    assert audit["shared_train_valid_entities"] == 0
+    assert audit["shared_valid_test_entities"] == 0
+    assert audit["entity_disjoint_enforced"] is True
+    assert audit["temporal_enforced"] is False
+    assert audit["dropped"] == 0
+
+
+def test_group_split_is_deterministic() -> None:
+    """A salted hash would reshuffle folds per process and silently move metrics."""
+    windows = group_fixture()
+
+    assert group_split(windows, test_fraction=0.25, valid_fraction=1 / 3) == group_split(
+        windows, test_fraction=0.25, valid_fraction=1 / 3
+    )
+
+
+def test_group_split_holds_a_persistent_entity_in_one_fold() -> None:
+    """The property the temporal split cannot provide: a spanning host is not cut.
+
+    Under R-60 + R-61 the spanning host's late windows are dropped entirely, so
+    an attack from a persistent source can never reach the test fold. Here every
+    one of its windows survives, in whichever single fold its key hashed to.
+    """
+    combined = group_fixture()
+    temporal = split_windows(combined, test_fraction=0.25, valid_fraction=1 / 3)
+    grouped = group_split(combined, test_fraction=0.25, valid_fraction=1 / 3)
+
+    def spanning_in(split: Split[FlowRecord]) -> list[Window[FlowRecord]]:
+        return [
+            window
+            for window in (*split.train, *split.valid, *split.test)
+            if window.key == "10.4.20.99"
+        ]
+
+    total = sum(1 for window in combined if window.key == "10.4.20.99")
+    kept_temporal = spanning_in(temporal)
+    kept_grouped = spanning_in(grouped)
+    assert temporal.dropped > 0, "the temporal split discards spanning windows"
+    assert grouped.dropped == 0
+    # Every one of that host's windows survives the group split...
+    assert len(kept_grouped) == total
+    # ...while the temporal split necessarily loses some of them.
+    assert len(kept_temporal) < total
+    # And the surviving windows sit in exactly one fold, not spread across them.
+    occupied = [
+        fold
+        for fold in (grouped.train, grouped.valid, grouped.test)
+        if any(window.key == "10.4.20.99" for window in fold)
+    ]
+    assert len(occupied) == 1
+
+
+def test_group_split_refuses_too_few_entities() -> None:
+    """With eight entities a three-way partition is luck, so it refuses."""
+    with pytest.raises(ValueError, match="too few"):
+        group_split(banded_windows(), test_fraction=0.25, valid_fraction=1 / 3)
+    # One entity cannot populate three folds at all.
+    with pytest.raises(ValueError, match="too few"):
+        group_split(window_flows(sorted(host_flows("10.4.20.9", EPOCH), key=lambda r: r.timestamp)))
+
+
+def test_group_split_validates_its_input() -> None:
+    with pytest.raises(ValueError, match="empty sequence"):
+        group_split([])
+    with pytest.raises(ValueError, match="test_fraction"):
+        group_split(many_host_windows(), test_fraction=0.0, valid_fraction=0.1)
+    with pytest.raises(ValueError, match="leave room"):
+        group_split(many_host_windows(), test_fraction=0.6, valid_fraction=0.6)
