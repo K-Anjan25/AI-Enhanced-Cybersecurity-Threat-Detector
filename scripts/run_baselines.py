@@ -48,7 +48,7 @@ from aegis_ml.data.preprocess import (  # noqa: E402
     Vocabulary,
 )
 from aegis_ml.data.records import FlowRecord  # noqa: E402
-from aegis_ml.data.splits import Split, split_windows  # noqa: E402
+from aegis_ml.data.splits import Split, group_split, split_windows  # noqa: E402
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
 from aegis_ml.training.baselines import (  # noqa: E402
     DEFAULT_LR_EPOCHS,
@@ -148,14 +148,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--key", choices=["source", "destination"], default="source")
     parser.add_argument(
         "--split-policy",
-        choices=["entity-disjoint", "temporal-only"],
+        choices=["entity-disjoint", "temporal-only", "entity-only"],
         default="entity-disjoint",
         help=(
             "entity-disjoint (default) enforces R-61 and is the only policy a "
             "released model may be gated on. temporal-only enforces R-60 alone, "
             "leaving entities to span folds: it exists so results are comparable "
             "to published NIDS benchmarks, which are measured that way, and it "
-            "prints the measured leakage so the gap is visible."
+            "prints the measured leakage so the gap is visible. entity-only keeps "
+            "R-61 exact and drops R-60 instead, partitioning whole entities by a "
+            "stable hash: it asks whether the model recognises an attack from an "
+            "entity it has never seen, which is the question no temporal split can "
+            "ask on a capture whose attack sources are persistent."
         ),
     )
     parser.add_argument(
@@ -221,15 +225,20 @@ def main(argv: list[str] | None = None) -> int:
     windows = window_flows(records, key=key)
     print(f"  {len(windows):,} windows keyed by {key.value}")
 
-    entity_disjoint = args.split_policy == "entity-disjoint"
-    split: Split[FlowRecord] = split_windows(windows, entity_disjoint=entity_disjoint)
+    entity_only = args.split_policy == "entity-only"
+    entity_disjoint = args.split_policy != "temporal-only"
+    split: Split[FlowRecord] = (
+        group_split(windows)
+        if entity_only
+        else split_windows(windows, entity_disjoint=entity_disjoint)
+    )
     audit = split.audit()
     print(f"  split policy: {args.split_policy}")
     print(f"  split: {audit}")
 
-    # R-60 is unconditional. No policy is allowed to score a model on traffic
-    # from before its own training window.
-    if not audit["test_after_train"]:
+    # R-60 is unconditional for every policy that claims it. entity-only drops it
+    # by design and says so, rather than being allowed to fail it silently.
+    if not entity_only and not audit["test_after_train"]:
         print(
             "refusing to train: the split violates the temporal invariant (R-60)",
             file=sys.stderr,
@@ -242,6 +251,14 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+    if entity_only:
+        print(
+            "  entity-only split: R-61 holds exactly (0 shared entities by "
+            "construction) but R-60 is dropped, so training may have seen traffic "
+            "that postdates the test fold. This measures generalisation to unseen "
+            "entities, not temporal drift.",
+            file=sys.stderr,
+        )
     if not entity_disjoint:
         # Not a warning to be ignored: state the size of the leak next to the
         # metric it is about to inflate.

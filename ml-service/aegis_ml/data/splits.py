@@ -25,6 +25,7 @@ test strictly later than validation.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -65,6 +66,7 @@ class Split(Generic[R]):
     valid_cutoff: datetime
     dropped: int
     entity_disjoint_enforced: bool = True
+    temporal_enforced: bool = True
 
     @property
     def train_entities(self) -> frozenset[str]:
@@ -89,6 +91,7 @@ class Split(Generic[R]):
             "test": len(self.test),
             "dropped": self.dropped,
             "entity_disjoint_enforced": self.entity_disjoint_enforced,
+            "temporal_enforced": self.temporal_enforced,
             "train_entities": len(self.train_entities),
             "test_entities": len(self.test_entities),
             "test_after_train": self.min_test_start > self.max_train_start,
@@ -202,3 +205,90 @@ def _cut(
             "a single entity or a single instant"
         )
     return early, late, dropped, cutoff
+
+
+#: Number of hash buckets used to partition entities. Fine enough that the fold
+#: sizes land close to the requested fractions, coarse enough that the arithmetic
+#: stays readable.
+ENTITY_BUCKETS = 10000
+
+
+def _entity_bucket(key: str) -> int:
+    """Return a stable bucket for an entity key, in ``[0, ENTITY_BUCKETS)``.
+
+    SHA-256 rather than the builtin ``hash()``, which is salted per process and
+    would reshuffle every fold on each run. Reproducibility is not optional here:
+    a metric that moves when nothing else did cannot be compared to itself.
+    """
+    digest = hashlib.sha256(key.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big") % ENTITY_BUCKETS
+
+
+def group_split(
+    windows: Sequence[Window[R]],
+    *,
+    test_fraction: float = DEFAULT_TEST_FRACTION,
+    valid_fraction: float = DEFAULT_VALID_FRACTION,
+) -> Split[R]:
+    """Partition whole entities into folds by a stable hash of their key (Q-07).
+
+    This answers a different question from :func:`split_windows`. That one asks
+    "does the model hold up on later traffic"; this one asks "does the model
+    recognise an attack from an entity it has never seen". The second is the
+    question a released detector actually has to answer, and it is the one no
+    temporal split can ask on a capture whose attack sources are persistent.
+
+    Entity disjointness is exact by construction: an entity lands in exactly one
+    fold, so nothing is dropped and the overlap audit is zero by definition.
+
+    Time order is deliberately ignored, so training may see traffic that
+    postdates the test fold. That is the leak this policy accepts and the reason
+    it is never the default. ``test_cutoff`` and ``valid_cutoff`` are set to the
+    latest window start in the stream and must not be read as boundaries.
+
+    Raises:
+        ValueError: if the input is empty, the fractions are unusable, or a fold
+            comes out empty — which happens when there are too few entities for
+            the requested fractions to mean anything.
+    """
+    if not windows:
+        raise ValueError("cannot split an empty sequence of windows")
+    for name, value in (("test_fraction", test_fraction), ("valid_fraction", valid_fraction)):
+        if not 0.0 < value < 1.0:
+            raise ValueError(f"{name} must be in (0, 1), got {value}")
+    if test_fraction + valid_fraction >= 1.0:
+        raise ValueError("test_fraction and valid_fraction must leave room for training")
+
+    test_cut = int(test_fraction * ENTITY_BUCKETS)
+    valid_cut = int((test_fraction + valid_fraction) * ENTITY_BUCKETS)
+
+    train: list[Window[R]] = []
+    valid: list[Window[R]] = []
+    test: list[Window[R]] = []
+    for window in windows:
+        bucket = _entity_bucket(window.key)
+        if bucket < test_cut:
+            test.append(window)
+        elif bucket < valid_cut:
+            valid.append(window)
+        else:
+            train.append(window)
+
+    if not train or not valid or not test:
+        raise ValueError(
+            f"group split produced empty folds (train={len(train)}, valid={len(valid)}, "
+            f"test={len(test)}); {len({w.key for w in windows})} distinct entities is too "
+            "few for the requested fractions"
+        )
+
+    latest = max(window.start for window in windows)
+    return Split(
+        train=tuple(train),
+        valid=tuple(valid),
+        test=tuple(test),
+        test_cutoff=latest,
+        valid_cutoff=latest,
+        dropped=0,
+        entity_disjoint_enforced=True,
+        temporal_enforced=False,
+    )
