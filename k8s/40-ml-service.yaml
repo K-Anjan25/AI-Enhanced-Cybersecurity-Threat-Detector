@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-service
+  namespace: aegis
+  labels:
+    app.kubernetes.io/name: ml-service
+    app.kubernetes.io/part-of: aegis
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ml-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ml-service
+        app.kubernetes.io/part-of: aegis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ml-service
+          image: ghcr.io/aegis/ml-service:0.1.0
+          ports:
+            - name: http
+              containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: aegis-config
+          livenessProbe:
+            httpGet:
+              path: /internal/healthz
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /internal/healthz
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-service
+  namespace: aegis
+  labels:
+    app.kubernetes.io/name: ml-service
+    app.kubernetes.io/part-of: aegis
+spec:
+  selector:
+    app.kubernetes.io/name: ml-service
+  ports:
+    - name: http
+      port: 8001
+      targetPort: http

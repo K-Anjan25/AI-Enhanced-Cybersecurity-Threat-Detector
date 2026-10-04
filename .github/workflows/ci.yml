@@ -48,7 +48,7 @@ jobs:
         run: python scripts/check_docs.py
 
   infra:
-    name: Compose and image consistency
+    name: Compose, image and manifest consistency
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +71,12 @@ jobs:
       # build images. Docker is exercised by the deploy pipeline, not here.
       - name: Verify compose against the application code
         run: python scripts/check_compose.py
+
+      # Same discipline for the manifests: probe paths are checked against the
+      # routes the applications really serve, and every AEGIS_* variable against
+      # the Settings model. Nothing is applied; there is no cluster in CI.
+      - name: Verify the k8s manifests against the application code
+        run: python scripts/check_k8s.py
 
   backend:
     name: Backend

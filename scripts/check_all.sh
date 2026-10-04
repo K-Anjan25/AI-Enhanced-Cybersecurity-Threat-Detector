@@ -49,6 +49,7 @@ check_docs() {
 
 check_infra() {
     run "infra: compose consistency" python scripts/check_compose.py
+    run "infra: k8s consistency"     python scripts/check_k8s.py
 }
 
 check_backend() {

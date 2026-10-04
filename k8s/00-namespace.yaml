@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aegis
+  labels:
+    app.kubernetes.io/part-of: aegis
+    # Rejects any pod that does not set a non-root security context.
+    pod-security.kubernetes.io/enforce: restricted
