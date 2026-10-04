@@ -34,7 +34,11 @@ from aegis_ml.data.features import (  # noqa: E402
     FlowFeatures,
     extract_flow_window,
 )
-from aegis_ml.data.preprocess import Preprocessor, StandardScaler, Vocabulary  # noqa: E402
+from aegis_ml.data.preprocess import (  # noqa: E402
+    Preprocessor,
+    StandardScaler,
+    Vocabulary,
+)
 from aegis_ml.data.records import FlowRecord  # noqa: E402
 from aegis_ml.data.splits import Split, split_windows  # noqa: E402
 from aegis_ml.data.synthetic import generate_dataset  # noqa: E402
@@ -71,7 +75,10 @@ def _fit(windows: Sequence[Window[FlowRecord]], key: WindowKey) -> Preprocessor:
 
 
 def _sequences(
-    windows: Sequence[Window[FlowRecord]], key: WindowKey, preprocessor: Preprocessor, length: int
+    windows: Sequence[Window[FlowRecord]],
+    key: WindowKey,
+    preprocessor: Preprocessor,
+    length: int,
 ) -> tuple[list[list[list[float]]], list[int], int]:
     """Turn windows into padded ``(seq, features)`` matrices.
 
@@ -107,8 +114,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--records", help="path to cleaned flow records (NDJSON)")
-    source.add_argument("--synthetic", type=int, metavar="N", help="generate N synthetic records")
-    parser.add_argument("--dataset", default="synthetic", help="dataset name, for the run log")
+    source.add_argument(
+        "--synthetic", type=int, metavar="N", help="generate N synthetic records"
+    )
+    parser.add_argument(
+        "--dataset", default="synthetic", help="dataset name, for the run log"
+    )
     parser.add_argument(
         "--key",
         choices=("source", "destination"),
@@ -139,14 +150,18 @@ def main(argv: list[str] | None = None) -> int:
     key = WindowKey.SOURCE if args.key == "source" else WindowKey.DESTINATION
     if args.synthetic:
         print(f"generating {args.synthetic:,} records per scenario (seed {args.seed})")
-        records = list(generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows)
+        records = list(
+            generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows
+        )
     else:
         records = list(_load_records(args.records))
     if not records:
         print("no records to train on", file=sys.stderr)
         return 1
 
-    records.sort(key=lambda record: record.timestamp)  # window_flows needs arrival order
+    records.sort(
+        key=lambda record: record.timestamp
+    )  # window_flows needs arrival order
     windows = window_flows(records, key=key)
     print(f"{len(records):,} records -> {len(windows):,} windows keyed by {key.value}")
 
@@ -255,7 +270,9 @@ def main(argv: list[str] | None = None) -> int:
         handle.write("\n")
 
     print(f"training took {minutes:.3f} minutes (budget {ACCEPTANCE_MINUTES})")
-    print(f"ROC-AUC {report.roc_auc:.4f}  PR-AUC {report.pr_auc:.4f}  best F1 {report.best_f1:.4f}")
+    print(
+        f"ROC-AUC {report.roc_auc:.4f}  PR-AUC {report.pr_auc:.4f}  best F1 {report.best_f1:.4f}"
+    )
     print(f"wrote {args.out}")
     return 0
 

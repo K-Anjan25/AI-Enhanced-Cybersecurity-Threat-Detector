@@ -65,6 +65,14 @@ files = ["aegis_ml"]
 module = "torch.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# strict enables disallow_subclassing_any, which rejects `class FlowNet(nn.Module)`
+# whenever torch is absent, because nn.Module then resolves to Any. It does not
+# fire when torch IS installed - so a local mypy run passes and CI fails. These
+# modules cannot be written without subclassing torch types.
+module = "aegis_ml.models.*"
+disallow_subclassing_any = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
