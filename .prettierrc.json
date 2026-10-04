@@ -5,9 +5,7 @@
   "endOfLine": "lf",
   "overrides": [
     {
-      "files": [
-        "*.md"
-      ],
+      "files": ["*.md"],
       "options": {
         "proseWrap": "preserve"
       }

@@ -12,3 +12,10 @@ types-PyYAML>=6.0
 # the plugin, and the job went red for 17 hours while local runs stayed green
 # because a developer venv already had pydantic from the service installs.
 pydantic>=2.13
+# pre-commit drives the hooks in .pre-commit-config.yaml, and the CI precommit
+# job installs nothing but this file. It was missing for the same reason pydantic
+# was: a local venv had it, so every local run was green.
+pre-commit>=4.0
+# Needed to regenerate .secrets.baseline with `detect-secrets scan`. The hook
+# itself installs its own environment from the pinned mirror revision.
+detect-secrets>=1.5
