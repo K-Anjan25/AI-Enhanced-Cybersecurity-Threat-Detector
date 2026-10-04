@@ -67,6 +67,9 @@ Monorepo, three deployable units. Directory names below are the contract; do not
 AI-Enhanced-Cybersecurity-Threat-Detector/
 ├── prd.md  architecture.md  rules.md  design.md  task.md  memory.md
 ├── README.md  CONTRIBUTING.md  .editorconfig  .gitignore  ruff.toml
+├── mypy.ini                 # repo-root mypy config for scripts/ (pydantic plugin,
+│                            #   mypy_path into both services)
+├── requirements-dev.txt     # tooling for the repository-level checkers
 ├── backend/                  # FastAPI: ingest + query API, auth, alerts
 │   ├── app/
 │   │   ├── api/v1/           # routers, one module per resource

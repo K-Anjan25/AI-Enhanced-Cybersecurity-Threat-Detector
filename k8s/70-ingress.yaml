@@ -1,0 +1,26 @@
+# Ingress terminates TLS. The certificate comes from the cluster issuer; no key
+# material appears in this repository.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aegis
+  namespace: aegis
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - aegis.example.com
+      secretName: aegis-tls
+  rules:
+    - host: aegis.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 8080
