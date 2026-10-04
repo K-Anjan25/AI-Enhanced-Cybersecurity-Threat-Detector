@@ -37,7 +37,11 @@ from aegis_ml.data.features import (  # noqa: E402
     FlowFeatures,
     extract_flow_window,
 )
-from aegis_ml.data.parsers import parse_cic_ids2017, parse_unsw_nb15  # noqa: E402
+from aegis_ml.data.parsers import (  # noqa: E402
+    ParseReport,
+    parse_cic_ids2017,
+    parse_unsw_nb15,
+)
 from aegis_ml.data.preprocess import (  # noqa: E402
     Preprocessor,
     StandardScaler,
@@ -128,7 +132,12 @@ def _metrics(report: EvalReport) -> dict[str, object]:
 def main(argv: list[str] | None = None) -> int:
     """Run the baselines and write a run log. Returns a process exit code."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--file", required=True, help="Input file under data/.")
+    parser.add_argument(
+        "--file",
+        required=True,
+        action="append",
+        help="Input file under data/. Repeatable to combine capture days.",
+    )
     parser.add_argument(
         "--format",
         choices=["csv", "ndjson"],
@@ -151,27 +160,42 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default="data/runs/baselines.json")
     args = parser.parse_args(argv)
 
-    path = args.file if os.path.isabs(args.file) else os.path.join(ROOT, args.file)
-    if not os.path.isfile(path) and args.format == "csv":
-        path = os.path.join(ROOT, "data", "raw", args.file)
+    paths = [f if os.path.isabs(f) else os.path.join(ROOT, f) for f in args.file]
+    paths = [
+        (
+            p
+            if os.path.isfile(p) or args.format == "ndjson"
+            else os.path.join(ROOT, "data", "raw", os.path.basename(p))
+        )
+        for p in paths
+    ]
     key = WindowKey.SOURCE if args.key == "source" else WindowKey.DESTINATION
     started = time.time()
 
-    print(f"reading {path}")
-    source_sha = _sha256(path)
-    if args.format == "ndjson":
-        records = tuple(_read_ndjson(path))
-        report = None
-        print(f"  {len(records):,} flow@1 records")
-    else:
-        parsed = PARSERS[args.dataset](path)
-        report = parsed.report
-        report.raise_for_empty()
-        print(
-            f"  {report.parsed:,} of {report.rows_read:,} rows parsed "
-            f"({report.rejected:,} rejected); unmapped columns: {len(report.unmapped_columns)}"
-        )
-        records = parsed.records
+    reports: list[ParseReport] = []
+    source_sha: dict[str, str] = {}
+    chunks: list[Sequence[FlowRecord]] = []
+    for path in paths:
+        print(f"reading {path}")
+        source_sha[os.path.basename(path)] = _sha256(path)
+        if args.format == "ndjson":
+            chunk: Sequence[FlowRecord] = tuple(_read_ndjson(path))
+            print(f"  {len(chunk):,} flow@1 records")
+        else:
+            parsed = PARSERS[args.dataset](path)
+            parsed.report.raise_for_empty()
+            reports.append(parsed.report)
+            unmapped = len(parsed.report.unmapped_columns)
+            print(
+                f"  {parsed.report.parsed:,} of {parsed.report.rows_read:,} rows parsed "
+                f"({parsed.report.rejected:,} rejected); unmapped columns: {unmapped}"
+            )
+            chunk = parsed.records
+        chunks.append(chunk)
+    # Combining capture days is what makes a tail test fold contain attacks at
+    # all: on a single day the burst ends before the test period starts.
+    records = tuple(record for chunk in chunks for record in chunk)
+    print(f"  combined: {len(records):,} records from {len(paths)} file(s)")
     if args.limit:
         records = tuple(records[: args.limit])
         print(f"  limited to the first {len(records):,} records")
@@ -256,14 +280,16 @@ def main(argv: list[str] | None = None) -> int:
 
     log = {
         "dataset": args.dataset,
-        "source_file": os.path.basename(path),
+        "source_files": [os.path.basename(p) for p in paths],
         "source_sha256": source_sha,
         "window_key": key.value,
-        "rows_read": report.rows_read if report else len(records),
-        "rows_parsed": report.parsed if report else len(records),
-        "rows_rejected": report.rejected if report else 0,
-        "rejection_reasons": dict(report.rejection_reasons) if report else {},
-        "unmapped_columns": list(report.unmapped_columns) if report else [],
+        "rows_read": sum(r.rows_read for r in reports) if reports else len(records),
+        "rows_parsed": len(records),
+        "rows_rejected": sum(r.rejected for r in reports),
+        "rejection_reasons": {
+            reason: sum(r.rejection_reasons.get(reason, 0) for r in reports)
+            for reason in sorted({k for r in reports for k in r.rejection_reasons})
+        },
         "split": audit,
         "feature_rows": {
             "train": len(all_train_rows),
