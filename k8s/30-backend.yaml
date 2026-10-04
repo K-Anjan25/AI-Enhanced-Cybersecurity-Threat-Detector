@@ -38,7 +38,7 @@ spec:
             - name: AEGIS_SERVICE_NAME
               value: aegis-backend
             - name: AEGIS_PORT
-              value: "8000"
+              value: '8000'
           livenessProbe:
             httpGet:
               path: /healthz

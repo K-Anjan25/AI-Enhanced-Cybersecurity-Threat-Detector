@@ -56,9 +56,7 @@ export function ConnectionStatus({ state, detail }: ConnectionStatusProps) {
         <span aria-hidden="true">{GLYPHS[state]} </span>
         {LABELS[state]}
       </span>
-      {detail !== undefined ? (
-        <span className="text-caption text-muted">{detail}</span>
-      ) : null}
+      {detail !== undefined ? <span className="text-caption text-muted">{detail}</span> : null}
     </div>
   );
 }
