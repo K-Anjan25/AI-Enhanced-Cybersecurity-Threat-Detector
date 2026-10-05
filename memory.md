@@ -633,6 +633,37 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 12 | Wire `AuditReport.raise_for_leaks()` and `evaluate()` into the training entrypoint | T-201 | M2 |
 | 13 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
 
+### D-031 — R-51 is enforced where verification happens, and rotation means the old token dies
+Argon2id hashing is easy to get nominally right and still be wrong, because the
+rule is about what is stored, not what is written today. So `verify_password`
+**raises** `NonArgon2Hash` for MD5, SHA-1, bcrypt and Argon2i instead of
+returning False: a False reads as "wrong password, try again", and a legacy row
+would produce that forever instead of being rehashed on next login.
+`needs_rehash` is checked on success, which is the only moment the plaintext is
+available.
+
+Refresh rotation is single-use: `rotate` marks the presented `jti` spent before
+returning a new pair. **Replaying a spent token revokes the entire family**, on
+the reasoning that two parties holding one single-use credential means at least
+one is not the user — so the legitimate session dies as well, and the user logs
+in again. Rotation without replay detection would let a stolen refresh token be
+used once and still look healthy. Families are independent, so revoking one
+stolen session does not lock the user out everywhere.
+
+**A test of mine was wrong and the code was right.** I forged a token by editing
+the payload *and re-signing with the correct key*, so it verified — that is not
+tampering, it is issuing. Real tampering keeps the original signature and fails.
+That a correctly re-signed forgery **is** accepted is now its own test, because
+HS256 is a symmetric MAC: the secret is the entire security boundary, which is
+why a short secret is refused and why it comes from the environment.
+
+`RefreshStore` is a protocol so T-303 can supply a persistent store. The
+in-memory default is explicitly not for production — rotation state that
+vanishes on restart lets a spent token be replayed against a fresh process.
+Argon2-cffi raises `VerificationError`, not only `InvalidHashError`, for some
+malformed hashes; catching only the narrow one turned a corrupt stored hash
+into a 500.
+
 ## Change log
 
 | Date | Version | Change |
