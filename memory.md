@@ -686,6 +686,29 @@ table, so a new capability cannot reach other roles by inheritance. A 403 names
 the caller's role but never the missing capability, and an unknown role string
 is refused rather than defaulted to the least privilege.
 
+### D-033 — Ingest needed a capability R-53 does not name
+R-53 enumerates read, verdict, export, webhook config, users, models and
+retention. Ingest is none of them. Borrowing `READ` would have granted it to
+`viewer`, which R-53 makes read-only, so ingest writes through a read
+capability. `Capability.INGEST` was added instead and granted to analyst,
+responder and admin. **This is a judgement call, not a reading of the rule** —
+if the API-key path (architecture.md:133 authenticates ingest with "JWT or API
+key") turns out to be the intended route for collectors, the capability should
+move to that credential type and this should be revisited.
+
+Batch semantics: FR-04's "never fail the whole batch" applies to records, so an
+unparseable NDJSON line is a per-record `parse` error and the remaining lines
+are still accepted. It does not apply to the request, so an oversized batch
+returns 413 and a body that is not JSON or NDJSON returns 415 — neither has a
+record to attribute the failure to. Line numbers are carried through the parse
+rather than recomputed after dropping bad lines.
+
+`flow@1` and `log@1` are duplicated in the backend rather than imported from
+`aegis_ml.data.records`, because the two services deploy as separate containers
+and the API process should not pull the ML package into its import graph.
+Duplication that may drift is worse than coupling, so a test imports the real
+models and asserts the two agree field for field.
+
 ## Change log
 
 | Date | Version | Change |

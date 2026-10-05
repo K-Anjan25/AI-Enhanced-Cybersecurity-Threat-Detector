@@ -61,6 +61,10 @@ class Capability(StrEnum):
     USERS = "users"
     MODELS = "models"
     RETENTION = "retention"
+    #: Not named by R-53, which lists read/verdict/export/webhook/user/model/
+    #: retention. Ingest is a write path that a read-only role must not reach,
+    #: so it gets its own capability rather than borrowing READ. See D-033.
+    INGEST = "ingest"
 
 
 #: Explicit per R-53. Deliberately written out in full rather than built by
@@ -68,13 +72,14 @@ class Capability(StrEnum):
 #: cannot silently grant it to another.
 ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
     Role.VIEWER: frozenset({Capability.READ}),
-    Role.ANALYST: frozenset({Capability.READ, Capability.VERDICT}),
+    Role.ANALYST: frozenset({Capability.READ, Capability.VERDICT, Capability.INGEST}),
     Role.RESPONDER: frozenset(
         {
             Capability.READ,
             Capability.VERDICT,
             Capability.EXPORT,
             Capability.WEBHOOK_CONFIG,
+            Capability.INGEST,
         }
     ),
     Role.ADMIN: frozenset(
@@ -86,6 +91,7 @@ ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
             Capability.USERS,
             Capability.MODELS,
             Capability.RETENTION,
+            Capability.INGEST,
         }
     ),
 }
@@ -104,7 +110,12 @@ DOC_ROUTES: frozenset[str] = frozenset(
 #: Route path to the roles permitted to call it. **Default-deny:** anything
 #: absent is refused. Every new endpoint needs an entry here, and
 #: ``test_rbac.py`` fails CI until it has one.
-ROUTE_MATRIX: dict[str, frozenset[Role]] = {}
+ROUTE_MATRIX: dict[str, frozenset[Role]] = {
+    # Ingest is a write path: a viewer is read-only per R-53 and must not reach
+    # it, so viewer is deliberately absent from both entries.
+    "/api/v1/ingest/flows": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+}
 
 
 class Unauthenticated(HTTPException):
