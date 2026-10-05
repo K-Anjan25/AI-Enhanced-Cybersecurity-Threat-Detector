@@ -18,6 +18,11 @@ dependencies = [
     # dependencies: the auth module imports them on every request.
     "argon2-cffi>=23.1",
     "PyJWT>=2.8",
+    # T-306. The Kafka client's default partitioner is used directly rather than
+    # reimplemented, so a disagreement with the broker cannot creep in; the
+    # Prometheus client exports consumer-group lag.
+    "kafka-python-ng>=2.2",
+    "prometheus-client>=0.21",
 ]
 
 [project.optional-dependencies]
