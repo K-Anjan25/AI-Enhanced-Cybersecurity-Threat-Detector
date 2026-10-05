@@ -10,18 +10,39 @@ import sys
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.api.v1.endpoints import alerts, api_keys, audit, health, ingest, stream, webhooks
+from app.api.v1.endpoints import (
+    alerts,
+    api_keys,
+    audit,
+    health,
+    ingest,
+    privacy,
+    stream,
+    webhooks,
+)
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
+from app.db.models import PARTITIONED_TABLES
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
+from app.services.erasure import (
+    EntityRedactionTarget,
+    ErasureService,
+    InMemoryEntityStore,
+    InMemoryErasureLedger,
+    InMemoryUserStore,
+    Redactor,
+    UserDeletionTarget,
+)
 from app.services.health_service import ReadinessRegistry
+from app.services.retention import RetentionPolicy
 from app.services.webhook_targets import (
     InMemoryWebhookStore,
     SecretVault,
@@ -100,6 +121,46 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("shutdown", service=settings.service_name)
 
 
+def _known_partitions_stand_in() -> set[tuple[str, int, int]]:
+    """The monthly partitions a deployment that has run for a while would have.
+
+    A stand-in for the catalog query, and named as one. The real implementation
+    reads ``pg_class`` for partitions of the tables in ``PARTITIONED_TABLES``; it
+    is not written here because no session is wired into the request path (D-030),
+    and a query that cannot be executed is better named than faked. What this
+    returns is enough for the preview to show the boundary rule honestly: the last
+    36 months for each partitioned table.
+    """
+    today = datetime.now(UTC).date()
+    year, month = today.year, today.month - 35
+    while month < 1:
+        month += 12
+        year -= 1
+    present: set[tuple[str, int, int]] = set()
+    cursor_year, cursor_month = year, month
+    while (cursor_year, cursor_month) <= (today.year, today.month):
+        for table in PARTITIONED_TABLES:
+            present.add((table, cursor_year, cursor_month))
+        cursor_month += 1
+        if cursor_month == 13:
+            cursor_year, cursor_month = cursor_year + 1, 1
+    return present
+
+
+def _no_runner(statement: str) -> bool:
+    """Refuse to execute DDL, naming the missing wiring.
+
+    Raise:
+        RuntimeError: always. A retention run must not appear to succeed when the
+            deployment has no database session to drop partitions through.
+    """
+    msg = (
+        f"no partition runner is wired, so {statement!r} was not executed; "
+        "wire app.state.partition_runner to a session-backed runner"
+    )
+    raise RuntimeError(msg)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the FastAPI application.
 
@@ -150,6 +211,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # persistence is an adapter over ApiKeyStore rather than a schema change.
     app.state.api_key_store = InMemoryApiKeyStore()
     app.state.api_key_digest = KeyDigest(resolved.secret_key)
+    # Retention and erasure (T-314, NFR-05, R-37). The policy comes from settings
+    # and is validated here, at startup, so an inverted pair of windows stops the
+    # process instead of failing the first retention run in production.
+    app.state.retention_policy = RetentionPolicy(
+        raw_records_days=resolved.retention_raw_records_days,
+        alerts_days=resolved.retention_alerts_days,
+        stats_days=resolved.retention_stats_days,
+    )
+    # The catalog and the statement runner are seams, not stand-ins that pretend:
+    # nothing here can query pg_class or execute DDL without a session (D-030), so
+    # the app is wired with a catalog of the months a deployment that has run for
+    # a while would have, and a runner that refuses. The retention route fails
+    # loudly rather than reporting a clean run it did not perform.
+    app.state.known_partitions = _known_partitions_stand_in
+    app.state.partition_runner = _no_runner
+    # Erasure (NFR-05). Entity redaction and account deletion, over the in-memory
+    # models of both stores, because neither table has an adapter here yet. The
+    # ledger holds tombstones; the redactor derives them from AEGIS_SECRET_KEY.
+    app.state.entity_store = InMemoryEntityStore()
+    app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
+    app.state.erasure_ledger = InMemoryErasureLedger()
+    app.state.erasure_service = ErasureService(
+        [
+            EntityRedactionTarget(app.state.entity_store),
+            UserDeletionTarget(app.state.user_store),
+        ],
+        ledger=app.state.erasure_ledger,
+        redactor=Redactor(resolved.secret_key),
+    )
     # The one DNS seam (R-55). Production resolves for real; a test replaces this
     # attribute so a URL's fate is decided by the test rather than by whether a
     # name happens to resolve on the machine running the suite.
@@ -163,6 +253,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(webhooks.router)
     app.include_router(audit.router)
     app.include_router(api_keys.router)
+    app.include_router(privacy.router)
     return app
 
 

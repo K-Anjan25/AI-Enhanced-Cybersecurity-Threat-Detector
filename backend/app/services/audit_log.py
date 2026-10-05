@@ -105,6 +105,8 @@ class AuditAction(StrEnum):
     webhook_delete = "webhook.delete"
     key_create = "key.create"
     key_revoke = "key.revoke"
+    retention_apply = "retention.apply"
+    privacy_erasure = "privacy.erasure"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -118,6 +120,8 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("DELETE", "/api/v1/webhooks/{webhook_id}"): AuditAction.webhook_delete,
         ("POST", "/api/v1/keys"): AuditAction.key_create,
         ("DELETE", "/api/v1/keys/{key_id}"): AuditAction.key_revoke,
+        ("POST", "/api/v1/retention/run"): AuditAction.retention_apply,
+        ("POST", "/api/v1/privacy/erasure"): AuditAction.privacy_erasure,
     }
 )
 

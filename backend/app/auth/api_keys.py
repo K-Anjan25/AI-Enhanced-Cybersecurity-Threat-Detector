@@ -97,7 +97,7 @@ __all__ = [
 
 #: The public prefix every key carries, so a leaked string is recognisable in a
 #: secret scanner's output and a human sees immediately what kind of credential it is.
-API_KEY_PREFIX = "aegis_sk_"
+API_KEY_PREFIX = "aegis_sk_"  # pragma: allowlist secret -- a public prefix, not a credential
 
 #: 32 bytes of urandom, base64url-encoded: 256 bits of entropy, and 43 characters
 #: that survive copy-paste through a shell, a YAML file and an HTTP header.
@@ -442,6 +442,40 @@ class InMemoryApiKeyStore:
         )
         self._by_id[existing.id] = updated
         return updated
+
+    def erase_owner(self, owner: str, *, replacement: str) -> int:
+        """Remove the keys belonging to a subject being erased (T-314, R-37).
+
+        **This is not the revocation path.** Revocation sets ``revoked_at`` and
+        keeps the row, because the row is the record of a credential having
+        existed (D-043). Erasure is a different request with a different answer:
+        the rows go, because the *owner identifier* on them is the subject's data
+        and the requirement is that it stops existing. The schema already takes
+        this position -- ``api_keys.owner_id`` cascades from ``users``
+        ``ON DELETE CASCADE`` -- and this models that cascade for the in-memory
+        store. Records with no owner left to erase are returned untouched.
+        """
+        affected = 0
+        for key_id, record in list(self._by_id.items()):
+            if record.owner != owner:
+                continue
+            if replacement:
+                # A caller that wants the row kept and the identifier gone says so
+                # by passing the tombstone; an empty string means delete outright.
+                self._by_id[key_id] = ApiKeyRecord(
+                    id=record.id,
+                    name=record.name,
+                    owner=replacement,
+                    scopes=record.scopes,
+                    digest=record.digest,
+                    created_at=record.created_at,
+                    revoked_at=record.revoked_at or record.created_at,
+                    last_used_at=record.last_used_at,
+                )
+            else:
+                del self._by_id[key_id]
+            affected += 1
+        return affected
 
     def __len__(self) -> int:
         """How many keys exist, revoked ones included."""

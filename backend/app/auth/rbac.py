@@ -161,6 +161,12 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/keys": frozenset({Role.ADMIN}),
     "/api/v1/keys/{key_id}": frozenset({Role.ADMIN}),
     "/api/v1/keys/scopes": frozenset({Role.ADMIN}),
+    # Retention and erasure are R-53's "retention" authority: dropping a month of
+    # alerts and erasing a person are both destructive, and both are admin's.
+    "/api/v1/retention": frozenset({Role.ADMIN}),
+    "/api/v1/retention/run": frozenset({Role.ADMIN}),
+    "/api/v1/privacy/erasure": frozenset({Role.ADMIN}),
+    "/api/v1/privacy/erasures": frozenset({Role.ADMIN}),
     # The audit trail is read by every role (FR-42, FR-43 reserves the *export*
     # for responder and above). Reading it is reading: no capability beyond the
     # one every authenticated role already holds.

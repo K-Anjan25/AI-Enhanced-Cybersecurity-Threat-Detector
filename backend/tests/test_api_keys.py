@@ -1183,10 +1183,13 @@ def test_two_credentials_at_once_are_refused(client: TestClient) -> None:
 
 def test_a_header_that_is_not_a_key_is_not_treated_as_one(client: TestClient) -> None:
     """X-API-Key carries a JWT by mistake: a 401, not a fallback to the header."""
+    # JWT-shaped on purpose; there is no credential in it. The pragma below is the
+    # repository's convention for a scanner false positive (see .secrets.baseline).
+    jwt_shaped = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.x"  # pragma: allowlist secret
     response = client.post(
         "/api/v1/ingest/flows",
         json=[FLOW],
-        headers={"X-API-Key": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.x"},
+        headers={"X-API-Key": jwt_shaped},
     )
     assert response.status_code == 401
 
