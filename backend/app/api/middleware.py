@@ -27,10 +27,14 @@ application, and falls back to the policy it was constructed with.
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
+from opentelemetry.trace import SpanKind
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.observability import metrics
+from app.observability.tracing import span, traceparent_for
 from app.services.limits import RateLimitPolicy
 
 __all__ = [
@@ -38,7 +42,9 @@ __all__ = [
     "BODY_TOO_LARGE_DETAIL",
     "RATE_LIMIT_DETAIL",
     "BodySizeLimitMiddleware",
+    "MetricsMiddleware",
     "RateLimitMiddleware",
+    "TracingMiddleware",
 ]
 
 #: Methods whose bodies are capped. A GET or DELETE with a body is unusual enough
@@ -236,3 +242,115 @@ def _client_ip(scope: Scope) -> str | None:
         host = client[0]
         return str(host) if host else None
     return None
+
+
+def _route_template(scope: Scope) -> str | None:
+    """The route template Starlette matched, or ``None`` if nothing matched.
+
+    Read from the scope *after* the application has run: the router writes
+    ``scope["route"]`` when it matches, and the same dict is mutated in place, so
+    a middleware holding the reference can see it later. A request to a path no
+    route claims stays ``None`` and is reported under one label.
+    """
+    template = getattr(scope.get("route"), "path", None)
+    return template if isinstance(template, str) and template else None
+
+
+class MetricsMiddleware:
+    """Record golden signals per request, against the route template (T-317).
+
+    The route template, not the path: see :mod:`app.observability.metrics` for why
+    a request-derived label is a memory-growth vector. A request that never
+    produced a response start is recorded as 500, because that is what the client
+    sees -- a connection that closes with no status is a failure from the client's
+    side, and recording it as a success would hide exactly the requests worth
+    looking at.
+    """
+
+    def __init__(self, app: ASGIApp, *, scrape_path: str = "/metrics") -> None:
+        """Wrap the application, ignoring its own scrape traffic."""
+        self.app = app
+        self.scrape_path = scrape_path
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Time the request and record its outcome, whatever the outcome is."""
+        if scope["type"] != "http" or scope.get("path") == self.scrape_path:
+            # A scrape is the observer, not the observed: counting it would make
+            # the scrape interval a term in the service's own metrics.
+            await self.app(scope, receive, send)
+            return
+
+        method = scope.get("method", "")
+        started = time.perf_counter()
+        status = 500
+
+        async def tracked_send(message: Message) -> None:
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = int(message["status"])
+            await send(message)
+
+        try:
+            await self.app(scope, receive, tracked_send)
+        finally:
+            # `finally`, not `else`: a client that disconnects mid-request is a
+            # request this process spent time on, and the duration histogram is
+            # how that time becomes visible.
+            metrics.observe_http_request(
+                method,
+                _route_template(scope),
+                status,
+                max(0.0, time.perf_counter() - started),
+            )
+
+
+class TracingMiddleware:
+    """Start a server span per request and carry the trace id both ways (T-317).
+
+    Inbound: a valid W3C ``traceparent`` continues the caller's trace, so the
+    collector's span and this request's span are the same trace. Outbound: the
+    response carries ``traceparent`` and ``x-trace-id``, which is what makes the
+    trace id of an ingest request available to the client that sent it -- and what
+    the acceptance criterion reads back from the alert record.
+
+    A malformed header is ignored rather than refused: refusing a batch of
+    security telemetry over a broken tracing header trades the data for the
+    telemetry. The span starts under a constant name and is renamed once the
+    router has chosen a route, so a client-supplied path never becomes a span
+    name it chose.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        """Wrap the application."""
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Open a span around the request and stamp the ids on the response."""
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        method = scope.get("method", "")
+        inbound = _request_headers(scope).get("traceparent")
+        status = 0
+        with span(f"{method} request", parent_traceparent=inbound, kind=SpanKind.SERVER) as active:
+            traceparent = traceparent_for(active)
+            trace_id = traceparent.split("-")[1] if traceparent else None
+
+            async def traced_send(message: Message) -> None:
+                nonlocal status
+                if message["type"] == "http.response.start":
+                    status = int(message["status"])
+                    if traceparent and trace_id:
+                        headers = [*message["headers"], (b"traceparent", traceparent.encode())]
+                        headers.append((b"x-trace-id", trace_id.encode()))
+                        message = {**message, "headers": headers}
+                await send(message)
+
+            await self.app(scope, receive, traced_send)
+            route = _route_template(scope)
+            active.update_name(f"{method} {route or 'unmatched'}")
+            active.set_attribute("http.request.method", method)
+            active.set_attribute("http.response.status_code", status)
+            if route:
+                active.set_attribute("http.route", route)

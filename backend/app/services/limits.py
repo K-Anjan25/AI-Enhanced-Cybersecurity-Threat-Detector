@@ -67,7 +67,15 @@ WRITE_METHODS: frozenset[str] = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #: ``app.auth.rbac``, so the two cannot drift; it is written as literals here
 #: because ``app.services`` must not import from the HTTP layer.
 LIMITED_UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
-    {"/healthz", "/readyz", "/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
+    {
+        "/healthz",
+        "/readyz",
+        "/metrics",
+        "/openapi.json",
+        "/docs",
+        "/docs/oauth2-redirect",
+        "/redoc",
+    }
 )
 
 #: Routes deliberately outside R-56. Empty, and asserted empty: an exemption is how

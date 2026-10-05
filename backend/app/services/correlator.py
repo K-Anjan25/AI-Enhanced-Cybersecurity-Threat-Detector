@@ -58,6 +58,8 @@ from datetime import datetime, timedelta
 from typing import Protocol
 
 from app.db.models import AlertStatus
+from app.observability import metrics
+from app.observability.tracing import span, trace_id_from_traceparent
 
 __all__ = [
     "DEFAULT_COOL_DOWN",
@@ -237,6 +239,10 @@ class Detection:
             the replay key: the same window scored twice carries the same id.
         model_id: the pinned model version that scored it, for the alert row.
         explanation: the rendered reasons, or ``None`` when none were supplied.
+        traceparent: the W3C trace context of the ingest request the window came
+            from, when the pipeline carried one (T-317). Deliberately not part of
+            the evidence identity: identity is what makes a replay idempotent,
+            and telemetry must never be able to change it.
     """
 
     entity_id: int
@@ -247,6 +253,7 @@ class Detection:
     evidence_id: str
     model_id: str | None = None
     explanation: Explanation | None = None
+    traceparent: str | None = None
 
     def __post_init__(self) -> None:
         """Refuse a detection that cannot be correlated unambiguously."""
@@ -346,6 +353,10 @@ class AlertCase:
         first_evidence_id: the window the case was opened by, kept even after the
             occurrence is evicted from the retained list.
         occurrences: the most recent detections, oldest first, bounded.
+        traceparent: the trace context of the first occurrence that carried one,
+            kept for the case's life: the question a trace answers is "which
+            ingest request opened this alert", and later occurrences of a
+            long-running incident are the same incident, not a new question.
     """
 
     id: str
@@ -364,6 +375,12 @@ class AlertCase:
     grouped: bool
     first_evidence_id: str
     occurrences: tuple[Detection, ...]
+    traceparent: str | None = None
+
+    @property
+    def trace_id(self) -> str | None:
+        """The trace id of this case, in the 32-hex form the alert record holds."""
+        return trace_id_from_traceparent(self.traceparent)
 
     def evidence_ids(self) -> tuple[str, ...]:
         """Window identities currently retained, for replay checks in tests."""
@@ -589,7 +606,11 @@ class Correlator:
         return self._config
 
     def ingest(self, detection: Detection) -> Outcome:
-        """Fold one detection into the case landscape.
+        """Fold one detection into the case landscape, on the detector's trace.
+
+        The span is a child of the ingest request the window came from, so the
+        correlation stage appears on the same trace as the request that fed it
+        (NFR-07, T-317).
 
         Returns:
             The action taken and the case afterwards: ``duplicate`` when the
@@ -597,6 +618,25 @@ class Correlator:
             opposite-modality case (FR-19), ``absorbed`` when it was a repeat
             inside the cool-down (FR-15), ``created`` otherwise.
         """
+        with span(
+            "correlate detection",
+            parent_traceparent=detection.traceparent,
+            attributes={
+                "aegis.entity.id": detection.entity_id,
+                "aegis.family": detection.family,
+                "aegis.modality": detection.modality.value,
+            },
+        ) as active:
+            outcome = self._correlate(detection)
+            active.set_attribute("aegis.correlator.action", outcome.action.value)
+        if outcome.action is Action.created:
+            # Created, not absorbed: FR-15's repeat increments a count, and
+            # "alerts created" must not be read as "detections seen".
+            metrics.observe_alert_created(outcome.case.severity.value)
+        return outcome
+
+    def _correlate(self, detection: Detection) -> Outcome:
+        """The four-way decision, uninstrumented so the span wraps all of it."""
         replayed = self._store.case_with_evidence(detection.entity_id, detection.evidence_id)
         if replayed is not None:
             return Outcome(action=Action.duplicate, case=replayed)
@@ -683,6 +723,7 @@ class Correlator:
             grouped=False,
             first_evidence_id=detection.evidence_id,
             occurrences=(detection,),
+            traceparent=detection.traceparent,
         )
 
     def _merge(self, case: AlertCase, detection: Detection, *, grouped: bool) -> AlertCase:
@@ -712,6 +753,9 @@ class Correlator:
             partial_evidence=fused.partial_evidence,
             grouped=case.grouped or grouped,
             occurrences=occurrences,
+            # Adopted if the case was opened by an untraced detection: a trace id
+            # that arrives late is still the id of this incident.
+            traceparent=case.traceparent or detection.traceparent,
         )
 
 
@@ -732,6 +776,10 @@ def alert_row(case: AlertCase) -> dict[str, object]:
     window_ref: dict[str, object] = {
         "store": "stream",
         "id": case.first_evidence_id,
+        # The trace of the ingest request that opened the case, under the key the
+        # query API reads back. Optional by construction: a detection that never
+        # had a trace context yields None, never an invented id.
+        "trace_id": case.trace_id,
         "grouped": case.grouped,
         "evidence": [
             {

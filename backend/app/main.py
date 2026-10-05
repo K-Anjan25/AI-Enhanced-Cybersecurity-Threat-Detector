@@ -16,13 +16,19 @@ from fastapi import FastAPI, Request
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.api.middleware import BodySizeLimitMiddleware, RateLimitMiddleware
+from app.api.middleware import (
+    BodySizeLimitMiddleware,
+    MetricsMiddleware,
+    RateLimitMiddleware,
+    TracingMiddleware,
+)
 from app.api.v1.endpoints import (
     alerts,
     api_keys,
     audit,
     health,
     ingest,
+    metrics,
     models,
     privacy,
     stream,
@@ -32,6 +38,7 @@ from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
 from app.db.models import PARTITIONED_TABLES
+from app.observability.tracing import configure_tracing, exporter_for
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.erasure import (
@@ -185,6 +192,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ),
         version=__version__,
         lifespan=lifespan,
+        # The application instruments itself (T-317). FastAPI >= 0.142 traces,
+        # measures and logs every request natively; left on, a request would
+        # produce a second server span under the same name, a second set of HTTP
+        # metrics under the OpenTelemetry semantic-convention names rather than
+        # the ones architecture.md §13 specifies, and -- worse for a deployment --
+        # a second export path configured from ``OTEL_*`` environment variables
+        # instead of from this application's settings. One instrumentation, and
+        # this is it.
+        telemetry={
+            "tracing": False,
+            "metrics": False,
+            "logs": False,
+            "auto_configure": False,
+        },
     )
 
     app.state.settings = resolved
@@ -266,12 +287,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.max_request_bytes = resolved.max_request_bytes
     app.state.admission = AdmissionController(resolved.ingest_max_in_flight_records)
 
-    # Order matters, and the last one added is outermost: the request id is bound
-    # before the limiters run, so a 429 or a 413 still carries X-Request-ID.
+    # Tracing (NFR-07, T-317). Configured once per process and idempotent: empty
+    # endpoint means no exporter, so ids are generated and propagated while
+    # nothing leaves the process until a deployment names a collector.
+    configure_tracing(
+        exporter_for(resolved.otel_exporter_endpoint), service_name=resolved.service_name
+    )
+
+    # Order matters, and the last one added is outermost. The request id is bound
+    # first, so a 429 or a 413 still carries X-Request-ID; metrics and tracing sit
+    # outside the limiters so a refusal is counted and traced like any other
+    # request; and the body cap is innermost because it must not read a byte more
+    # than it has to.
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=resolved.max_request_bytes)
     app.add_middleware(RateLimitMiddleware, policy=app.state.rate_limit_policy)
+    app.add_middleware(TracingMiddleware)
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
+    app.include_router(metrics.router)
     app.include_router(ingest.router)
     app.include_router(alerts.router)
     app.include_router(stream.router)
