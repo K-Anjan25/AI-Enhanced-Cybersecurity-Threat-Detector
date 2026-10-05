@@ -220,7 +220,16 @@ On the Friday capture, of 6,415 source-keyed windows and 2,066 entities, there a
 
 **What did not change.** R-70's contract is enforced exactly as written: at least three reasons naming feature, value and baseline, or an explicit `explanation_unavailable`. A malformed window returns the marker rather than raising, because an alert that crashes its own explanation is an alert that disappears.
 
-### D-021 · Transfer from UNSW-NB15 to CIC-IDS2017 fails R-66: ranking transfers, calibration does not — MEASURED (2026-10-04), release blocked
+### D-021 · SUPERSEDED by D-022 · Transfer from UNSW-NB15 to CIC-IDS2017 fails R-66 — the numbers here are real, **the diagnosis is wrong**
+
+> **Correction.** Everything measured below is accurate. The *explanation* I gave for
+> it is not, and D-022 replaces it. I attributed the zero recall to categorical
+> vocabulary collapse and to numeric standardisation across captures, and I wrote
+> that down without measuring the thing that actually caused it: the training fold
+> had **zero positive examples**, so the supervised head being scored could only
+> learn to emit a constant. Both causes I named are real and both do hurt transfer,
+> but neither explains a score distribution that sits entirely below 0.10. Read the
+> measurements below as what happened, and read D-022 for why.
 
 **What was run.** `scripts/transfer_eval.py`: FlowNet trained on the UNSW-NB15 official sample (95 training windows, family-holdout split, leakage audit clean), then scored against the whole of CIC-IDS2017 Friday (6,415 windows, 2,562 attack) **with the source preprocessor and no refit**. Refitting on the target would leak (R-62) and would also hide the very shift this task measures.
 
@@ -235,11 +244,30 @@ On the Friday capture, of 6,415 source-keyed windows and 2,066 entities, there a
 
 **ROC-AUC 0.9048.** So the model *ranks* CIC attacks above CIC benign traffic — the representation transfers. What does not transfer is the **scale**: the entire target score distribution sits below 0.10, so the threshold fitted on the source catches nothing at all.
 
-**Diagnosis, and the part that is not just calibration.** A threshold at 0.05 recovers only 6.8% recall at 93.6% precision. That is not a misplaced cut on a good distribution; the model genuinely fails to flag most CIC DDoS windows. The likely cause is visible in the data: CIC's `state` and `service` categoricals never appear in UNSW's vocabulary, so both collapse to the reserved unknown column and carry no information across the boundary, while the numeric features are standardised with UNSW's mean and standard deviation and land far outside the range the model saw.
+**Diagnosis — WRONG, see D-022.** I wrote that a threshold at 0.05 recovering only 6.8% recall showed the model "genuinely fails to flag most CIC DDoS windows", and attributed it to CIC's `state` and `service` categoricals collapsing into the reserved unknown column and to numerics being standardised with UNSW statistics. The mechanism was simpler: the scoring head had been trained on a fold containing no positives at all.
 
 **Decision.** The R-66 gate stands and fires: `transfer_eval.py` exits non-zero and the release is blocked. This is recorded as a measured negative result rather than tuned away, because a transfer number that reaches 0.70 by moving the threshold is not a transfer result.
 
-**What would have to change.** Per-target threshold calibration (T-207 supplies the mechanism, not the fix) and a feature layer that is stable across captures — the two collapsing categoricals and the unscaled numerics are the concrete places to start. Until then no release may claim cross-dataset generalisation.
+**What would have to change — also superseded.** I proposed per-target threshold calibration and a capture-stable feature layer. Neither was necessary; see D-022.
+
+### D-022 · Transfer is a property of which head is scored, not of the threshold — R-66 now passes at recall 0.7955 (2026-10-05)
+
+**The actual cause, measured.** `family_split(holdout=["Generic"])` puts every attack family in the held-out fold by construction, so the training fold is benign-only — measured directly as `train: n=95, record families={'normal': 4303}, POSITIVES=0`. FlowNet carries two heads, and the first version of `transfer_eval.py` scored the wrong one. The supervised `anomaly_head` is trained by binary cross-entropy; with no positive examples it can only converge to a constant near zero, which is precisely why every CIC score fell below 0.10. The zero recall was a property of the scoring head, not of the model's ability to transfer.
+
+**The fix.** Score the **reconstruction** head instead: `per_window_reconstruction_error`, added next to the existing `reconstruction_error` in `flownet.py`. It is trained unsupervised to reproduce benign traffic, needs no labels, and is what makes FlowNet an anomaly detector rather than a classifier — so it is the signal that can cross a capture boundary. Both functions are asserted to agree in `test_reconstruction_error.py`; a scoring function that disagrees with the loss would train on one notion of anomalous and report another.
+
+**The operating point stays target-blind.** A threshold chosen by watching target recall is not evidence about the target, so the cut comes from T-207's `fit_threshold` over the **source's** benign validation scores at the default 0.99 quantile, then applies unchanged. Fitted value **0.3622** from 54 source windows; the target contributes nothing to it.
+
+**Result, same split and same training run as D-021.**
+
+| signal | threshold (target-blind) | recall | precision | ROC-AUC | R-66 |
+|---|---|---|---|---|---|
+| supervised (D-021) | — | 0.1725 | 0.9546 | 0.9048 | BLOCKS |
+| **reconstruction** | 0.3622 | **0.7955** | 0.5904 | 0.7464 | **PASSES** |
+
+**The lesson that generalises, and it cost me a wrong write-up.** The supervised head had the *higher* AUC — 0.9048 against 0.7464 — and the far worse recall. A near-constant head still ranks slightly, so AUC rewarded the broken signal while recall exposed it. **ROC-AUC alone cannot detect a degenerate detector.** Any acceptance criterion that leans on AUC should also report recall at the actual operating point, which is what R-66 does and why R-66 caught this when AUC did not.
+
+**What still does not transfer.** Precision is 0.5904 against a 40% attack base rate, so the detector is barely better than chance at saying which flagged window is really an attack. Recall — the property R-66 gates on — clears the floor comfortably; precision is the open problem, and the collapsing categoricals and cross-capture numeric scale from D-021 remain real contributors to it.
 
 ## Data sources
 
@@ -480,6 +508,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.14 | **T-208 solved; R-66 passes at recall 0.7955 — and D-021's diagnosis was wrong.** Measured the real cause: `family_split(holdout=['Generic'])` leaves the training fold benign-only (`POSITIVES=0` out of 95 windows), so the supervised head that `transfer_eval.py` was scoring could only learn to emit a constant. Switched the transfer signal to the **reconstruction** head via a new `per_window_reconstruction_error` in `flownet.py`, with the operating point fitted target-blind on the source's benign validation scores through T-207 (`0.3622` at the 0.99 quantile). Same split and training run as before, recall goes 0.1725 → **0.7955** and the gate passes. The supervised head had the *higher* AUC (0.9048 vs 0.7464) and the worse recall — a near-constant head still ranks, so AUC rewarded the broken signal. Precision 0.5904 against a 40% attack base rate remains the open problem. D-021 kept, corrected, and marked superseded by D-022. Added 9 tests. |
 | 2026-10-04 | 1.13 | **T-208 closed as a measured negative result; R-66 blocks the release.** Training on UNSW-NB15 and scoring CIC-IDS2017 whole, with the source preprocessor and no refit, gives **ROC-AUC 0.9048 but recall 0.0000** at the source's 0.50 threshold — and only 0.0679 recall at 0.05. Ranking transfers; calibration and coverage do not. Two concrete causes are recorded in D-021: CIC's `state` and `service` categoricals never appear in UNSW's vocabulary so both collapse to the reserved unknown column, and CIC's numerics are standardised with UNSW statistics and land far outside the trained range. The gate exits non-zero rather than being tuned into passing. Also fixed durably: E402 is now off for `scripts/` in `ruff.toml`, because black kept re-wrapping long imports and moving the trailing `# noqa` to the closing parenthesis where it suppressed nothing — the third time that broke the docs job. |
 | 2026-10-04 | 1.12 | **T-205, T-206 and T-207 closed.** Late fusion is monotonic in both inputs, asserted by sweeping the whole range at five levels of the other modality rather than spot-checking; a missing modality is penalised *and* flagged, because a penalised 0.9 still reads as a confident score. Threshold calibration clamps a run's movement to ±0.10 rather than refusing it — refusing would freeze the threshold the first time the calibration data is unusual — and records the requested value alongside the applied one, since the refused part is the interesting record. D-020 records that `explain()` uses occlusion attribution: attention weights are unreachable through `nn.TransformerEncoderLayer` (measured: no `need_weights` pass-through), and `shap` would add numpy, scipy and scikit-learn for what occlusion computes directly. Also fixed: `_safe_score` let a `ValueError` escape, so a malformed window crashed the explanation instead of being marked `explanation_unavailable`. |
 | 2026-10-04 | 1.11 | **Q-01 closed by D-019: `LogNet` is a from-scratch transformer over mined template IDs.** Decided on four measurements rather than preference: T-104's 103 templates at 0.9530 purity mean a log window is ~100 discrete tokens with little language left to transfer; the `TemplateMiner` already exists and is tested; NFR-05's p95 150 ms cap on 4 vCPU rules out DistilBERT over a 200-line window on CPU; and a self-contained model keeps R-67 determinism and the container size tractable. The cost is recorded rather than glossed: novel *wording* is invisible to this model, an unseen message becoming an unknown-template token, which is why `template_known` is a feature at all. |

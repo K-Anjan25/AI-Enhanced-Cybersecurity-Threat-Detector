@@ -10,6 +10,26 @@ R-66 makes this a release gate rather than a footnote: a detector that works on 
 corpus it was trained on and collapses on the next one is not detecting attacks, it
 is recognising a capture.
 
+**Which head is scored matters more than the threshold does.** FlowNet carries two
+heads and they need different things. The supervised ``anomaly_head`` needs positive
+examples, and a family-holdout split by construction puts every attack family in the
+held-out fold, leaving the training fold benign-only. A binary head trained with no
+positives learns to emit a constant near zero, so it scores every window in the
+target below 0.10 regardless of what the window contains. That is what the first
+version of this script measured, and the zero recall it reported was a property of
+the wrong head, not of the model.
+
+The reconstruction head is the other one: it is trained unsupervised to reproduce
+benign traffic, needs no labels at all, and is what makes FlowNet an anomaly
+detector rather than a classifier. It is the signal that can transfer, and
+``--signal supervised`` is kept only so the contrast stays reproducible.
+
+**The operating point is fitted on the source and never on the target.** A threshold
+chosen by watching target recall move is not a transfer result -- it is a threshold
+chosen to produce the number you wanted. So the cut comes from T-207's
+``fit_threshold`` over the source's benign validation scores, which the target has
+no part in, and is then applied unchanged.
+
 Two things are held fixed on purpose.
 
 **The preprocessor is fit on the source's training fold and never refit.** Fitting
@@ -44,6 +64,8 @@ from aegis_ml.data.splits import (  # noqa: E402
     split_windows,
 )
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
+from aegis_ml.models.flownet import per_window_reconstruction_error  # noqa: E402
+from aegis_ml.scoring.thresholds import DEFAULT_QUANTILE, fit_threshold  # noqa: E402
 from aegis_ml.training.evaluation import evaluate  # noqa: E402
 from aegis_ml.training.pipeline import (
     DatasetDigest,
@@ -92,9 +114,24 @@ def main(argv: list[str] | None = None) -> int:
         help="applied to the source split only; the target is scored whole",
     )
     parser.add_argument("--holdout-family", action="append")
+    parser.add_argument(
+        "--signal",
+        choices=("recon", "supervised"),
+        default="recon",
+        help=(
+            "recon = per-window reconstruction error, the unsupervised anomaly signal; "
+            "supervised = the label-trained head, which is degenerate on a benign-only "
+            "training fold and is kept only to make that contrast reproducible"
+        ),
+    )
+    parser.add_argument(
+        "--quantile",
+        type=float,
+        default=DEFAULT_QUANTILE,
+        help="quantile of the SOURCE benign validation scores that becomes the cut",
+    )
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--seed", type=int, default=20260114)
-    parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--out", default="data/runs/transfer.json")
     args = parser.parse_args(argv)
 
@@ -141,6 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     print("  leakage audit: no blocking findings (T-203)")
 
     train_seq, train_y, _ = _sequences(split.train, key, preprocessor, 50)
+    valid_seq, _, _ = _sequences(split.valid, key, preprocessor, 50)
     # The target is scored with the SOURCE preprocessor and never refit. Refitting
     # on it would leak (R-62) and would also hide the distribution shift this task
     # exists to measure.
@@ -164,22 +202,41 @@ def main(argv: list[str] | None = None) -> int:
     print(f"training on the source ({config.epochs} epochs)")
     model, losses = train(config, train_seq, train_y)
     model.eval()
-    with torch.no_grad():
-        scores = torch.sigmoid(
-            model(torch.tensor(target_seq, dtype=torch.float32)).anomaly_logits
-        ).tolist()
+
+    def score(rows: list[list[float]]) -> list[float]:
+        """Score one batch of windows with the selected head."""
+        if not rows:
+            return []
+        with torch.no_grad():
+            tensor = torch.tensor(rows, dtype=torch.float32)
+            output = model(tensor)
+            if args.signal == "supervised":
+                return [float(v) for v in torch.sigmoid(output.anomaly_logits)]
+            return [float(v) for v in per_window_reconstruction_error(output, tensor)]
+
+    # The cut is fitted on source benign scores only. The target contributes nothing
+    # to it, which is the whole point: a threshold picked by watching target recall
+    # is not evidence about the target.
+    source_scores = score(valid_seq)
+    threshold = fit_threshold(source_scores, quantile_=args.quantile)
+    scores = score(target_seq)
 
     report = evaluate(
-        [float(s) for s in scores],
+        scores,
         [bool(t) for t in target_y],
         model_id=config.model_id,
-        threshold=args.threshold,
+        threshold=threshold,
     )
     recall = float(report.recall)
     passed = recall >= RECALL_FLOOR
 
     print(f"  final source loss {losses[-1]:.5f}")
-    print(f"at threshold {args.threshold:.2f}:")
+    print(f"  signal: {args.signal}")
+    print(
+        f"  threshold {threshold:.4f} fitted on {len(source_scores)} source benign "
+        f"validation scores at quantile {args.quantile} (target-blind)"
+    )
+    print("at that threshold:")
     print(
         f"  recall {recall:.4f}  precision {report.precision:.4f}  f1 {report.f1:.4f}  "
         f"ROC-AUC {report.metrics.roc_auc:.4f}"
@@ -217,7 +274,12 @@ def main(argv: list[str] | None = None) -> int:
             "padded_windows": padded,
             "preprocessor_refit": False,
         },
-        "threshold": args.threshold,
+        "signal": args.signal,
+        "threshold": threshold,
+        "threshold_quantile": args.quantile,
+        "threshold_fit_on": "source benign validation scores",
+        "threshold_used_target_labels": False,
+        "source_validation_windows": len(source_scores),
         "recall": recall,
         "precision": float(report.precision),
         "f1": float(report.f1),
