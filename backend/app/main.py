@@ -22,6 +22,7 @@ from app.api.v1.endpoints import (
     audit,
     health,
     ingest,
+    models,
     privacy,
     stream,
     webhooks,
@@ -42,6 +43,7 @@ from app.services.erasure import (
     UserDeletionTarget,
 )
 from app.services.health_service import ReadinessRegistry
+from app.services.model_ops import ModelOpsService
 from app.services.retention import RetentionPolicy
 from app.services.webhook_targets import (
     InMemoryWebhookStore,
@@ -232,6 +234,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.entity_store = InMemoryEntityStore()
     app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
     app.state.erasure_ledger = InMemoryErasureLedger()
+    # Model ops (T-315). Empty on purpose: R-74 forbids inventing a metric, so
+    # nothing is registered until the model service registers a version, and the
+    # endpoints are the contract the model service will be called through. The
+    # authority for the lifecycle rules is ml-service's registry (T-212); this
+    # restates them at the edge, which is a named gap, not a hidden duplicate.
+    app.state.model_ops = ModelOpsService()
     app.state.erasure_service = ErasureService(
         [
             EntityRedactionTarget(app.state.entity_store),
@@ -254,6 +262,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(audit.router)
     app.include_router(api_keys.router)
     app.include_router(privacy.router)
+    app.include_router(models.router)
     return app
 
 

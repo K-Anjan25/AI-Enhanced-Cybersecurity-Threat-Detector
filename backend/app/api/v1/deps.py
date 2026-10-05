@@ -22,6 +22,7 @@ from fastapi import Request
 from app.auth.api_keys import ApiKeyStore, KeyDigest
 from app.services.audit_log import AuditTrail
 from app.services.erasure import ErasureService
+from app.services.model_ops import ModelOpsService
 from app.services.retention import RetentionPolicy, StatementRunner
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "client_ip",
     "erasure_service",
     "known_partitions",
+    "model_ops",
     "parse_instant",
     "partition_runner",
     "retention_policy",
@@ -147,6 +149,22 @@ def erasure_service(request: Request) -> ErasureService:
     service: ErasureService | None = getattr(request.app.state, "erasure_service", None)
     if service is None:
         msg = "erasure_service is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
+
+
+def model_ops(request: Request) -> ModelOpsService:
+    """The registry of model versions this deployment serves from.
+
+    Raises:
+        RuntimeError: if none is installed. The alternative -- an empty service
+            built per request -- would answer "no models are registered" for a
+            deployment that has some, which is the kind of confident wrong answer
+            this codebase refuses.
+    """
+    service: ModelOpsService | None = getattr(request.app.state, "model_ops", None)
+    if service is None:
+        msg = "model_ops is not configured on app.state"
         raise RuntimeError(msg)
     return service
 
