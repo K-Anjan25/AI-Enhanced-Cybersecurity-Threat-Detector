@@ -19,11 +19,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 
-from app.auth.rbac import Capability, require
+from app.api.v1.deps import audit_trail, client_ip
+from app.auth.rbac import Capability, Principal, require
 from app.schemas.webhook import WebhookCreate, WebhookCreatedOut, WebhookListOut, WebhookOut
+from app.services.audit_log import AuditAction, record_action
 from app.services.correlator import Severity
 from app.services.webhook_targets import (
     BlockedTarget,
@@ -85,9 +88,13 @@ def _out(target: WebhookTarget) -> WebhookOut:
     response_model=WebhookCreatedOut,
     status_code=status.HTTP_201_CREATED,
     summary="Register an outbound webhook (FR-21)",
-    dependencies=[require(Capability.WEBHOOK_CONFIG)],
 )
-def create_webhook(body: WebhookCreate, request: Request, response: Response) -> WebhookCreatedOut:
+def create_webhook(
+    body: WebhookCreate,
+    request: Request,
+    response: Response,
+    caller: Annotated[Principal, require(Capability.WEBHOOK_CONFIG)],
+) -> WebhookCreatedOut:
     """Validate and register a target, returning its signing secret once.
 
     Raises:
@@ -130,6 +137,22 @@ def create_webhook(body: WebhookCreate, request: Request, response: Response) ->
         created_at=datetime.now(UTC),
     )
     store.add(target)
+    record_action(
+        audit_trail(request),
+        action=AuditAction.webhook_create,
+        actor=caller.subject,
+        target_type="webhook",
+        target_id=target.id,
+        at=datetime.now(UTC),
+        # Neither the URL nor its host is recorded. A webhook URL can carry a
+        # token in its path, and the trail is readable by every role while
+        # webhook configuration is responder-and-above (R-53) -- mirroring
+        # internal infrastructure into a wider-read log is a privilege leak, and
+        # the target id is enough to join this row to the configuration. The
+        # signing secret is never recorded anywhere.
+        detail={"severity_floor": floor.value},
+        ip=client_ip(request),
+    )
     response.headers["Location"] = f"/api/v1/webhooks/{target.id}"
     return WebhookCreatedOut(**_out(target).model_dump(), secret=secret)
 
@@ -149,9 +172,12 @@ def list_webhooks(request: Request) -> WebhookListOut:
     "/{webhook_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a webhook",
-    dependencies=[require(Capability.WEBHOOK_CONFIG)],
 )
-def delete_webhook(webhook_id: str, request: Request) -> Response:
+def delete_webhook(
+    webhook_id: str,
+    request: Request,
+    caller: Annotated[Principal, require(Capability.WEBHOOK_CONFIG)],
+) -> Response:
     """Remove a target.
 
     Raises:
@@ -159,6 +185,18 @@ def delete_webhook(webhook_id: str, request: Request) -> Response:
     """
     if not _store(request).remove(webhook_id):
         raise HTTPException(status_code=404, detail="no webhook with that id")
+    record_action(
+        audit_trail(request),
+        action=AuditAction.webhook_delete,
+        actor=caller.subject,
+        target_type="webhook",
+        target_id=webhook_id,
+        at=datetime.now(UTC),
+        # The target id only, for the same reason the create record carries no
+        # host: the trail is read by more roles than may read the configuration.
+        detail={"deleted": True},
+        ip=client_ip(request),
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

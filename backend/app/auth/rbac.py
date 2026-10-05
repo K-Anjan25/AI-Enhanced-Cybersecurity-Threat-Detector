@@ -129,6 +129,10 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # as sensitive as writing it: a target's URL names internal infrastructure.
     "/api/v1/webhooks": frozenset({Role.RESPONDER, Role.ADMIN}),
     "/api/v1/webhooks/{webhook_id}": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # The audit trail is read by every role (FR-42, FR-43 reserves the *export*
+    # for responder and above). Reading it is reading: no capability beyond the
+    # one every authenticated role already holds.
+    "/api/v1/audit": frozenset(Role),
     # The stream is read-only for every role, viewer included (FR-20). The
     # WebSocket handshake is checked by `authenticate` rather than by the HTTP
     # dependency, because a socket is not a Request -- but it is the same table

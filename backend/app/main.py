@@ -15,10 +15,11 @@ from fastapi import FastAPI, Request
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.api.v1.endpoints import alerts, health, ingest, stream, webhooks
+from app.api.v1.endpoints import alerts, audit, health, ingest, stream, webhooks
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
 from app.services.alert_stream import AlertHub
+from app.services.audit_log import InMemoryAuditTrail
 from app.services.health_service import ReadinessRegistry
 from app.services.webhook_targets import (
     InMemoryWebhookStore,
@@ -136,6 +137,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.webhook_store = InMemoryWebhookStore()
     app.state.webhook_allowlist = parse_allowlist(resolved.webhook_allowlist)
     app.state.secret_vault = SecretVault(resolved.secret_key)
+    # The audit trail (T-312, FR-42). Every mutating route appends here after its
+    # work succeeded: a refused request changed nothing, and a row per attempt
+    # would let a client fill the trail at will.
+    app.state.audit_trail = InMemoryAuditTrail()
     # The one DNS seam (R-55). Production resolves for real; a test replaces this
     # attribute so a URL's fate is decided by the test rather than by whether a
     # name happens to resolve on the machine running the suite.
@@ -147,6 +152,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(alerts.router)
     app.include_router(stream.router)
     app.include_router(webhooks.router)
+    app.include_router(audit.router)
     return app
 
 

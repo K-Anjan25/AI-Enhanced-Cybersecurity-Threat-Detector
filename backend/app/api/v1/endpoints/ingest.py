@@ -15,10 +15,14 @@ oversized batch has no record to attribute the problem to.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from app.auth.rbac import Capability, require
+from app.api.v1.deps import audit_trail, client_ip
+from app.auth.rbac import Capability, Principal, require
 from app.schemas.ingest import (
     MAX_FLOW_RECORDS,
     MAX_LOG_LINES,
@@ -26,6 +30,7 @@ from app.schemas.ingest import (
     IngestResponse,
     LogRecordIn,
 )
+from app.services.audit_log import AuditAction, record_action
 from app.services.ingest_service import BatchTooLarge, UnsupportedMediaType, ingest_batch
 
 router = APIRouter(prefix="/api/v1/ingest", tags=["ingest"])
@@ -41,11 +46,22 @@ def _ingest(
     body: bytes,
     model: type[BaseModel],
     limit: int,
+    *,
+    caller: Principal,
+    action: AuditAction,
 ) -> IngestResponse:
-    """Run one ingest, translating batch-level failures into status codes.
+    """Run one ingest, translate batch-level failures into status codes, audit it.
 
     These are the failures that have no record to attribute them to, so they
     cannot be expressed as entries in a per-record error list.
+
+    The audit entry is written here and not by the caller, and only when the
+    batch put something into the system. A refused, oversized or entirely
+    rejected batch changed nothing, so recording it would let any client grow the
+    trail with rows of its choosing -- the access log already holds that the
+    request was made. A partly-bad batch *is* recorded, carrying both counts:
+    what the trail refuses to keep is the record content, not the fact that some
+    records were turned away.
     """
     content_type = request.headers.get("content-type", "")
     try:
@@ -62,6 +78,24 @@ def _ingest(
     # Accepted records are handed to the persistence layer by T-307; until then
     # the count is the contract and the records are validated and discarded.
     request.state.accepted_records = accepted
+    if result.accepted == 0:
+        return result
+    record_action(
+        audit_trail(request),
+        action=action,
+        actor=caller.subject,
+        target_type="ingest",
+        target_id=action.value,
+        at=datetime.now(UTC),
+        # Counts and a media type: enough to know what was taken in, with no
+        # record content and no source addresses (R-54, R-58).
+        detail={
+            "received": result.received,
+            "accepted": result.accepted,
+            "rejected": result.rejected,
+        },
+        ip=client_ip(request),
+    )
     return result
 
 
@@ -69,24 +103,46 @@ def _ingest(
     "/flows",
     response_model=IngestResponse,
     summary="Ingest flow records (flow@1)",
-    dependencies=[require(Capability.INGEST)],
 )
-async def ingest_flows(request: Request, response: Response) -> IngestResponse:
+async def ingest_flows(
+    request: Request,
+    response: Response,
+    caller: Annotated[Principal, require(Capability.INGEST)],
+) -> IngestResponse:
     """Accept up to 1,000 flow records as JSON or NDJSON (FR-01)."""
     body = await request.body()
-    return _ingest(request, response, body, FlowRecordIn, MAX_FLOW_RECORDS)
+    return _ingest(
+        request,
+        response,
+        body,
+        FlowRecordIn,
+        MAX_FLOW_RECORDS,
+        caller=caller,
+        action=AuditAction.ingest_flows,
+    )
 
 
 @router.post(
     "/logs",
     response_model=IngestResponse,
     summary="Ingest log lines (log@1)",
-    dependencies=[require(Capability.INGEST)],
 )
-async def ingest_logs(request: Request, response: Response) -> IngestResponse:
+async def ingest_logs(
+    request: Request,
+    response: Response,
+    caller: Annotated[Principal, require(Capability.INGEST)],
+) -> IngestResponse:
     """Accept up to 5,000 log lines as JSON or NDJSON (FR-02)."""
     body = await request.body()
-    return _ingest(request, response, body, LogRecordIn, MAX_LOG_LINES)
+    return _ingest(
+        request,
+        response,
+        body,
+        LogRecordIn,
+        MAX_LOG_LINES,
+        caller=caller,
+        action=AuditAction.ingest_logs,
+    )
 
 
 def ndjson_media_type() -> str:
