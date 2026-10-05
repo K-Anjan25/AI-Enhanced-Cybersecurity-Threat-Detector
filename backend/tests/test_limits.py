@@ -458,8 +458,8 @@ def test_the_middlewares_are_installed_in_order(client: TestClient) -> None:
         names.index(name)
         for name in (
             "RequestIdMiddleware",
-            "MetricsMiddleware",
             "TracingMiddleware",
+            "MetricsMiddleware",
             "RateLimitMiddleware",
             "BodySizeLimitMiddleware",
         )

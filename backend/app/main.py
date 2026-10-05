@@ -36,7 +36,7 @@ from app.api.v1.endpoints import (
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.core.config import ConfigurationError, Settings, get_settings
-from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
+from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.models import PARTITIONED_TABLES
 from app.observability.tracing import configure_tracing, exporter_for
 from app.services.alert_stream import AlertHub
@@ -91,7 +91,7 @@ class RequestIdMiddleware:
             return
         request = Request(scope)
         request_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
-        clear_request_id()
+        clear_request_context()
         bind_request_id(request_id)
         # The route's Request shares this scope, so `request.state.request_id`
         # is the same value the header gets.
@@ -106,9 +106,9 @@ class RequestIdMiddleware:
         try:
             await self.app(scope, receive, send_with_request_id)
         finally:
-            # The contextvar belongs to the task that served this request; clear
-            # it so a reused worker task cannot inherit the previous id.
-            clear_request_id()
+            # The contextvars belong to the task that served this request; clear
+            # them so a reused worker task cannot inherit the previous ids.
+            clear_request_context()
 
 
 @asynccontextmanager
@@ -295,14 +295,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     # Order matters, and the last one added is outermost. The request id is bound
-    # first, so a 429 or a 413 still carries X-Request-ID; metrics and tracing sit
-    # outside the limiters so a refusal is counted and traced like any other
-    # request; and the body cap is innermost because it must not read a byte more
-    # than it has to.
+    # first, so a 429 or a 413 still carries X-Request-ID; tracing comes next so
+    # its trace id is bound before the request observer writes the access line;
+    # metrics and tracing sit outside the limiters so a refusal is counted and
+    # traced like any other request; and the body cap is innermost because it must
+    # not read a byte more than it has to.
     app.add_middleware(BodySizeLimitMiddleware, max_bytes=resolved.max_request_bytes)
     app.add_middleware(RateLimitMiddleware, policy=app.state.rate_limit_policy)
-    app.add_middleware(TracingMiddleware)
     app.add_middleware(MetricsMiddleware)
+    app.add_middleware(TracingMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(metrics.router)
