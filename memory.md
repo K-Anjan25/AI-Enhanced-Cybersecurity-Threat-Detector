@@ -26,17 +26,17 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 | Aspect | State |
 |---|---|
-| Repository | Six planning documents plus the S0–S2 and E3 code (commit `04aeb71` onward) |
-| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310) and outbound webhooks (T-311). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
-| Tests | **1089 passing, 26 skipped** — 524 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Repository | Six planning documents plus the S0–S2 and E3 code (commit `04aeb71`, re-committed as `415a5b1` after the 2026-10-05 environment reset — see below) |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311) and the append-only audit trail (T-312). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
+| Tests | **1161 passing, 26 skipped** — 596 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
 | Checks green | `./scripts/check_all.sh` — **25 checks, 0 failed** (measured 2026-10-05): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
 | Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
 | Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
 | Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
 | Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
-| Next work | **T-312 — the append-only audit log** (FR-42), then T-313 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
+| Next work | **T-313 — API keys with scopes, hashing and revocation** (FR-44), then T-314 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
 
-**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-311.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-312.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -56,7 +56,25 @@ On 2026-10-02 the working tree was cleared at the request of the project owner, 
 | `docker/` | 2 | compose file and README |
 | root | 3 | `README.md`, `.gitignore`, `.github/workflows/ci.yml` |
 
-**Why.** The previous tree had grown into a very broad security platform — endpoint modules included CSPM, ZTNA, ITDR, deception, SBOM, SCIM, SOC-TV, and digital-risk protection. That breadth had outrun the project's actual objective: transformer-based anomaly detection over network traffic and system logs. Restarting from the PRD keeps the scope honest and matches [prd.md](prd.md#3-scope).
+**Second reset, 2026-10-05 — the environment, not the tree.** Between sessions the
+sandbox was recreated: `.venv` and `dashboard/node_modules` were gone, and `.git`
+was the original shallow clone at `04aeb71` again. **The working tree came back
+intact** — every E3 file, test and documentation edit present and unchanged — but
+the local commits were not: `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310)
+and `34dc7ff` (T-311) do not exist in this clone and never reached the remote, which
+the branch has no upstream for. One recovery commit, **`415a5b1`**, re-establishes
+their content in history. **What that costs, stated rather than glossed:** the
+per-task commit boundaries for T-308…T-311 are gone — one commit now stands in for
+four — and the hashes named in the change-log entries below no longer name anything
+in this clone. Individual file contents are unaffected, and every recorded
+measurement is a measurement of file contents, so the measurements stand. The tree
+was **re-verified rather than assumed green** after the reset: the Python
+environment was rebuilt from `backend/pyproject.toml` — which incidentally proves
+`cryptography>=44` is declared rather than hand-installed — the dashboard
+dependencies from `package.json`, and `./scripts/check_all.sh` re-run to 25/0 before
+T-312 started.
+
+**Why (first reset).** The previous tree had grown into a very broad security platform — endpoint modules included CSPM, ZTNA, ITDR, deception, SBOM, SCIM, SOC-TV, and digital-risk protection. That breadth had outrun the project's actual objective: transformer-based anomaly detection over network traffic and system logs. Restarting from the PRD keeps the scope honest and matches [prd.md](prd.md#3-scope).
 
 **What is recoverable.** The removal is a working-tree change; commit `60e9adf` is intact and still lists all 487 files. Anything can be brought back:
 
@@ -993,10 +1011,77 @@ retries are inline in the caller, so a pipeline that cannot afford the worst cas
 needs a delivery queue; the store is in-memory; and nothing calls ``dispatch()``
 yet — the correlator is not wired to T-310's hub either, which is the same seam.
 
+### D-041 — The trail records changes, and it is the widest-read thing in the system (T-312) (2026-10-05)
+
+**Decision.** Every mutating route appends to an append-only audit trail after its
+work succeeds. A request that changed nothing writes nothing, and the read side is
+open to every authenticated role.
+
+**Changes, not requests.** A refused request changed nothing, so there is no state
+for anyone to answer for -- and a row per attempt would let any authenticated
+client fill the trail with rows of its choosing, which is how a log becomes
+unreadable exactly when someone needs to read it. Three consequences are spelled
+out because each looks like an oversight otherwise: a 4xx writes nothing, an
+ingest batch that accepted **zero** records writes nothing (nothing entered the
+system; the access log already holds that the request was made), and a verdict
+re-sent unchanged writes nothing (no decision changed). A *partly* bad batch **is**
+recorded with both counts -- the rejected count is the only trace the trail keeps
+of what it turned away.
+
+**R-31 is asserted three ways, because one is not enough.** "No ORM update/delete
+path" covers the mapper. It does not cover a service that hands back a mutable row,
+or a store that grows an `update`. So the assertion also walks the trail object and
+the protocol for any mutating name, and the record that comes back is frozen with
+its ``detail`` in a read-only mapping -- freezing the field alone would leave the
+caller able to edit the dict the frozen record points at. A source-level test
+asserts no ``update(AuditLog)``/``delete(AuditLog)``/``on_conflict_do_update``
+appears anywhere in the module: the strongest form available without a server.
+
+**Completeness is a table plus a walk of the live application.** ``AUDITED_ROUTES``
+maps ``(method, path)`` to an action and ``AUDIT_EXEMPT_ROUTES`` is deliberately
+empty; the test enumerates every ``POST``/``PUT``/``PATCH``/``DELETE`` route on the
+built app and fails if one is in neither. "Every mutating route is audited" is then
+a property of the application rather than a list someone maintains -- the same
+mechanism ``ROUTE_MATRIX`` uses for RBAC, and it is proved non-vacuous and proved
+by planting an uncovered route.
+
+**The trail is the widest-read thing in the system, so it carries the least.** It
+is readable by every authenticated role; webhook configuration is
+responder-and-above (R-53). Mirroring a target's URL or host into the trail would
+therefore be a privilege leak dressed as thoroughness, and so would an analyst's
+note or a record's content (R-54, R-58). What a row holds is what FR-42 asks for --
+actor, action, target, timestamp, source IP -- plus thin counters. Each exclusion is
+asserted by planting the value and asserting its absence.
+
+**The source IP is the peer, never a header.** ``X-Forwarded-For`` is
+attacker-controlled, and an audit log that records whatever the client claims about
+itself is worse than one that omits the field. Behind a proxy the peer *is* the
+proxy; making it the real origin is uvicorn's ``--proxy-headers`` with
+``--forwarded-allow-ips`` naming that proxy. That is deployment configuration, so it
+is named here and in the service's docstring rather than silently guessed.
+
+**The read is bounded by construction.** ``start`` and ``end`` are required, the
+window is capped at the repository layer's own ``MAX_QUERY_SPAN_DAYS`` so there is
+one number rather than two that can disagree, and pages use an exclusive id cursor
+-- offset paging would drift as the trail grows, and a page that repeats or skips a
+row is a page an auditor cannot cite. The *compiled SQL* is asserted to carry both
+bounds, not just the helper's guard: a range that lives in a Python check and not
+in the WHERE clause reads the whole table while looking correct.
+
+**Gaps, named.** ``audit_insert`` and ``audit_select`` are the two statements the
+persistent trail will run, compiled and asserted, but no session runs them and there
+is no migration -- ``audit_log`` is in the model and T-301's migration, and neither
+has been applied to a live PostgreSQL here (D-030). The actor column wants a numeric
+``users.id`` while the token subject is opaque, so the adapter needs the mapping
+D-038 names for ``alerts.verdict_by``. The in-memory trail does not survive a
+restart. The admin screen and the audited export (FR-43) are E4's and a later task's.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.34 | **Environment reset, and the tree re-verified rather than assumed.** The sandbox was recreated between sessions: `.venv`, `dashboard/node_modules` and the local git history were gone, and `.git` was the initial shallow clone at `04aeb71` again. **The working tree was intact** — every E3 file, test and documentation edit unchanged — but `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310) and `34dc7ff` (T-311) no longer exist here and were never pushed (the branch has no upstream), so **`415a5b1`** re-establishes their content: one commit standing in for four, and the per-task commit boundaries are gone with them. No file content changed, so every recorded measurement still describes what is on disk. The Python environment was then rebuilt from `backend/pyproject.toml` (which is also what proves `cryptography>=44` is declared rather than hand-installed) and the dashboard dependencies from `package.json`, and the full suite re-run to 25 checks / 0 failed before T-312 began. |
+| 2026-10-05 | 1.33 | **T-312 done — the audit trail, append-only and complete over mutating routes.** `backend/app/services/audit_log.py`, `backend/app/schemas/audit.py`, `backend/app/api/v1/endpoints/audit.py`, `backend/app/api/v1/deps.py`, one `ROUTE_MATRIX` entry, 72 tests. Policy recorded as **D-041**. **R-31 is asserted three ways** — the mapper, the trail object and the protocol are each walked for a mutating name, and the record handed back is frozen with its `detail` in a read-only view, because freezing the field alone leaves the dict it points at editable; a source-level test asserts no `update(AuditLog)`, `delete(AuditLog)` or `on_conflict_do_update` exists in the module, which is the strongest form available without a server. **FR-42's completeness clause is a table plus a walk of the built app**: every `POST`/`PUT`/`PATCH`/`DELETE` route must be in `AUDITED_ROUTES` or the deliberately-empty `AUDIT_EXEMPT_ROUTES`, proved non-vacuous and proved by planting an uncovered route. **The trail records changes, not requests** — a 4xx writes nothing, an ingest batch that accepted zero records writes nothing, and a verdict re-sent unchanged writes nothing, while a partly-bad batch records both counts and is the only trace of what was refused. **The trail is the widest-read thing in the system and carries the least**: a webhook's URL or host, an analyst's note, a signing secret and any record content are each asserted absent by planting them, and the actor column is documented as needing the `users.id` mapping D-038 names. The source IP is `request.client`, never `X-Forwarded-For`, with the proxy caveat named as deployment configuration. Reads require `start`/`end`, are capped at the repository's own `MAX_QUERY_SPAN_DAYS`, page on an exclusive id cursor, and the *compiled SQL* — not just the Python guard — is asserted to carry both bounds. **35 injections each failed their target tests**, including the SQL losing its time bound (which survived the first battery and added the compiled-statement test), a trail that grows `update`, a re-sent verdict audited, the webhook host or the analyst note mirrored in, and a header-read client IP. **Gaps:** the persistent trail is unwritten and un-migrated, the in-memory one dies with the process, and the admin screen and audited export (FR-43) are later work. Backend 524 → 596 tests, coverage 96.41% → 96.89%. |
 | 2026-10-05 | 1.32 | **T-311 done — outbound webhooks, signed over the bytes that were sent and re-checked per attempt.** `backend/app/services/webhook_targets.py`, `backend/app/services/webhook_delivery.py`, `backend/app/schemas/webhook.py`, `backend/app/api/v1/endpoints/webhooks.py`, three `ROUTE_MATRIX` entries, 149 tests. Policy recorded as **D-040**: the signature is `t=<unix>,v1=<hmac-sha256 hex>` over `"<timestamp>.<body>"` with the body canonicalised once and the exact bytes sent; one timestamp, signature and delivery id per delivery so a retry is not re-signed into a second event; the default 15 s retry budget sits inside the 300 s replay window and a test asserts that; full jitter; 5xx/408/425/429/3xx retried and other 4xx not, because the receiver already refused those bytes; and **the destination is validated before every attempt and the transport is given the pinned address**, since a host that resolved public at registration is what a rebinding attack waits for. **The smoke matrix found what reading would not: CPython reports IPv4 multicast (224/4) as globally routable**, so `224.0.0.1` passed the first verdict function — the multicast refusal now precedes the `is_global` accept and a test names it. Secrets are 32 random bytes sealed with Fernet under an HKDF-SHA256 key from `AEGIS_SECRET_KEY`, returned once and never readable again; the allowlist is empty by default (fail-closed) and parsed at startup; and the log carries the target id, attempt, outcome and status and **never the URL, the operator note or the alert body** (R-58 asserted by planting all three). 30 injections each failed their target tests — including the multicast/private/CGNAT accepts, a rebinding target sent anyway, an unreadable secret returning `""`, 5xx not retried, a refusal retried as an overload, the replay window unchecked, the timestamp out of the MAC, a per-attempt delivery id, the hostname dialled instead of the pinned address, an exclusive floor, every delivery counted as delivered, the URL/description/body logged, jitter ignored and the retry bound off by one. **Gaps:** no HTTP client ships (a protocol, not an implementation); retries are inline, so a delivery queue is what a busy pipeline needs; the store is in-memory; and nothing calls `dispatch()` yet — the correlator is not wired to T-310's hub either. Backend 375 → 524 tests, coverage 95.67% → 96.41%. **One earlier verification claim corrected by this run:** `hooks: pre-commit` reported green at T-310 does not reproduce on this tree — `detect-secrets` flags a test-only settings literal in `backend/tests/test_alert_stream.py:334`, a file **byte-identical to `c6eacd4`**, plus three test-only fixtures added here (two application-secret constants and two `user:pass@` URLs that exist to be refused). Each is marked inline with `pragma: allowlist secret` at the line rather than added to `.secrets.baseline`, so a reviewer sees the claim where the literal is. Bandit's B311 on the delivery id was a real finding about the wrong tool: the id is now drawn from `secrets` rather than `random`. |
 | 2026-10-05 | 1.31 | **T-310 done — the alert stream, with the gap made visible.** `backend/app/services/alert_stream.py`, `backend/app/schemas/stream.py`, `backend/app/api/v1/endpoints/stream.py`, three `ROUTE_MATRIX` entries, 50 tests. Notification sequences give the fallback something to resume from: `WS /alerts/ws`, SSE with `Last-Event-ID`, and the REST polling endpoint at architecture.md §14's 15 s cadence. Policy recorded as **D-039** — a cursor out of step in either direction gets `resync_required` plus the whole retained window, a slow consumer is dropped with its resume cursor, cursor 0 means "no position yet", the cursor is per-process and comes with an epoch, and `publish()` is thread-safe because the producer is the scoring worker rather than the event loop. **Two defects were found by tests, not by reading.** The reader task must check for `websocket.disconnect` explicitly, because a server that hands the message back turns the reader into a busy loop; and `RequestIdMiddleware` had to become **pure ASGI**, since `BaseHTTPMiddleware` holds response chunks in a task group and an endless SSE response therefore never reaches the client. **Harness facts recorded for the next stream task:** Starlette's `TestClient` runs the app to completion before returning a response, so an endless stream cannot be read through it — the SSE tests drive the ASGI app directly — and a `receive` that returns immediately starves the event loop (that is how the first version hung rather than failed). 15 injections each failed their target tests: inline (non-loop) delivery, either half of the resync rule, a tail instead of the window on resync, an undetected full queue, no drop check before waiting, delivery to one subscriber, an ignored disconnect, SSE frames without ids, the resume header ignored or tolerated when malformed, header-only socket auth, 4401/4403 swapped, an accepted unauthorised handshake, accept-before-authenticate, and shutdown that leaves the hub open. **Gaps:** the in-process buffer does not survive a restart, so multi-replica needs a shared bus; uvicorn needs the new `ws` extra to serve the socket, and it is not installed here. Backend 325 → 375 tests, coverage 95.67%. |
 | 2026-10-05 | 1.30 | **T-309 done — analyst feedback is an append-only ledger, not a mutable field.** `backend/app/services/verdict_service.py`, `backend/app/schemas/verdict.py`, `POST /api/v1/alerts/{alert_id}/verdict` + `GET .../verdicts`, two `ROUTE_MATRIX` entries, 42 tests. The acceptance criterion is tested against the store rather than the return value: the first record still reads exactly as written after a supersession, and the interface is asserted to expose `current`/`history`/`append` and nothing else -- no update, no delete -- the way R-31 is asserted for `audit_log`. **A repeat is not a supersession** (D-038): the same verdict by the same analyst returns `unchanged` and appends nothing, so a client retry cannot manufacture a reconsideration; a different verdict, or the same verdict from a different analyst, appends and links `supersedes` to the previous record; `alert_verdict_update` returns `None` for `unchanged`, because writing `verdict_at` forward on a re-send would make a repeat look like a fresh decision. Alerts are addressed by `(id, created_at)` -- D-030's partition key, required rather than defaulted -- and a test proves `12:00+02:00` and `10:00Z` address the same alert. `require()` now returns a `Principal` (role + token subject) so the route records **who** decided without decoding the bearer token twice; viewer is refused by capability and absent from the matrix entry, with a parity test over all four roles. **Nine injections each failed their target tests:** an actor-blind repeat check, a removed unchanged short-circuit, a dropped `supersedes` link, off-by-one ids, an unstripped note, a write on `unchanged`, a viewer in the matrix, a placeholder actor, and a route that ignored the body's partition key. **Gaps named:** the durable half needs a new append-only table and a migration (the schema's `alerts.verdict` holds only the current decision) and a mapping from the token's opaque `sub` to `alerts.verdict_by`'s numeric `users.id`; audit rows for mutating routes are T-312's. Backend 283 → 325 tests, coverage 96.03%. FR-18's weekly recalibration job is filed as **T-322** — this task persists what it consumes. |

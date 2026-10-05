@@ -17,6 +17,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from app.api.v1.deps import audit_trail, client_ip
 from app.auth.rbac import Capability, Principal, require
 from app.schemas.query import AlertPage, AlertQuery, CursorError
 from app.schemas.verdict import (
@@ -25,10 +26,12 @@ from app.schemas.verdict import (
     VerdictRecordOut,
     VerdictRequest,
 )
+from app.services.audit_log import AuditAction, record_action
 from app.services.query_service import build_alert_select, paginate
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
     UnknownVerdict,
+    VerdictAction,
     VerdictLedger,
     VerdictRecord,
     record_verdict,
@@ -104,6 +107,11 @@ def record_alert_verdict(
     A repeat of the verdict already current, by the same analyst, returns
     ``unchanged`` instead of appending: a client retry must not manufacture a
     reconsideration that never happened.
+
+    The audit entry records the *decision*, not the analyst's reasoning: the
+    verdict value and the record it superseded, never the note text (FR-42, R-58).
+    An ``unchanged`` outcome wrote nothing, so it is not audited -- a row per
+    re-sent request would be a log the client controls.
     """
     try:
         outcome = record_verdict(
@@ -120,6 +128,21 @@ def record_alert_verdict(
     except ValueError as exc:
         # A naive timestamp, an empty actor or an over-long note.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if outcome.action is VerdictAction.recorded:
+        record_action(
+            audit_trail(request),
+            action=AuditAction.alert_verdict,
+            actor=caller.subject,
+            target_type="alert",
+            target_id=str(alert_id),
+            at=datetime.now(UTC),
+            detail={
+                "verdict": outcome.record.verdict.value,
+                "record": outcome.record.id,
+                "superseded": outcome.superseded.id if outcome.superseded else None,
+            },
+            ip=client_ip(request),
+        )
     return VerdictOutcomeOut(
         action=outcome.action.value,
         record=_record_out(outcome.record),
