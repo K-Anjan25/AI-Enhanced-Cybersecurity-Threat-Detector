@@ -664,6 +664,28 @@ Argon2-cffi raises `VerificationError`, not only `InvalidHashError`, for some
 malformed hashes; catching only the narrow one turned a corrupt stored hash
 into a 500.
 
+### D-032 — A completeness check that reads the framework must be checked for reaching anything
+R-53 is enforced by a matrix test that enumerates every route. The first version
+read `app.routes` and compared paths against `ROUTE_MATRIX`. FastAPI's
+`include_router` does not flatten: the parent holds an `_IncludedRouter`
+container whose `original_router` holds the real routes, so `app.routes`
+contains the four documentation endpoints and a container with no `path`. The
+walk found no endpoint paths, concluded the matrix was complete, and the test
+passed — while enforcing nothing. **A guard that cannot fail is worse than no
+guard**, because it is read as coverage.
+
+Two rules follow. Any completeness check that introspects a framework must be
+paired with a test asserting it actually sees the things it claims to count
+(`test_the_route_walk_is_not_vacuous` asserts `/healthz` and `/readyz` are
+found). And the "adding a route is detected" test must be written against the
+real application factory, not a toy `FastAPI()`, because the toy flattens and
+hides the difference.
+
+RBAC itself is default-deny with capabilities declared per role in a written-out
+table, so a new capability cannot reach other roles by inheritance. A 403 names
+the caller's role but never the missing capability, and an unknown role string
+is refused rather than defaulted to the least privilege.
+
 ## Change log
 
 | Date | Version | Change |
