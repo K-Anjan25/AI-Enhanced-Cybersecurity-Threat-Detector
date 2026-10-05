@@ -43,7 +43,13 @@ def test_up_with_an_active_model_reports_serving(
     client: TestClient, registry: ModelRegistry
 ) -> None:
     registry.register(
-        ModelInfo(model_id="flownet@1.0.0", kind="flow", status="active", loaded_at=T0)
+        ModelInfo(
+            model_id="flownet@1.0.0",
+            kind="flow",
+            status="active",
+            sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            loaded_at=T0,
+        )
     )
 
     body = client.get("/internal/healthz").json()
@@ -57,7 +63,13 @@ def test_staging_only_model_does_not_count_as_serving(
 ) -> None:
     """Shadow-mode models are resident but must not look like they own alerts."""
     registry.register(
-        ModelInfo(model_id="flownet@1.1.0", kind="flow", status="staging", loaded_at=T0)
+        ModelInfo(
+            model_id="flownet@1.1.0",
+            kind="flow",
+            status="staging",
+            sha256="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            loaded_at=T0,
+        )
     )
 
     body = client.get("/internal/healthz").json()
@@ -70,7 +82,13 @@ def test_retired_model_stops_the_service_reporting_serving(
     client: TestClient, registry: ModelRegistry
 ) -> None:
     registry.register(
-        ModelInfo(model_id="flownet@1.0.0", kind="flow", status="active", loaded_at=T0)
+        ModelInfo(
+            model_id="flownet@1.0.0",
+            kind="flow",
+            status="active",
+            sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            loaded_at=T0,
+        )
     )
     registry.retire("flownet@1.0.0")
 
@@ -79,9 +97,23 @@ def test_retired_model_stops_the_service_reporting_serving(
 
 def test_health_lists_every_resident_version(client: TestClient, registry: ModelRegistry) -> None:
     registry.register(
-        ModelInfo(model_id="flownet@1.0.0", kind="flow", status="active", loaded_at=T0)
+        ModelInfo(
+            model_id="flownet@1.0.0",
+            kind="flow",
+            status="active",
+            sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            loaded_at=T0,
+        )
     )
-    registry.register(ModelInfo(model_id="lognet@1.0.0", kind="log", status="active", loaded_at=T0))
+    registry.register(
+        ModelInfo(
+            model_id="lognet@1.0.0",
+            kind="log",
+            status="active",
+            sha256="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            loaded_at=T0,
+        )
+    )
 
     body = client.get("/internal/healthz").json()
 
