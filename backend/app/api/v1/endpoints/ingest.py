@@ -22,6 +22,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
+from app.api.openapi_docs import ndjson_batch_body
 from app.api.v1.deps import admission, audit_trail, client_ip
 from app.auth.rbac import Capability, Principal, require
 from app.observability import metrics
@@ -165,6 +166,9 @@ def _rejected_by_stage(errors: Sequence[RecordError]) -> dict[str, int]:
     "/flows",
     response_model=IngestResponse,
     summary="Ingest flow records (flow@1)",
+    # The route reads the bytes itself, so FastAPI cannot infer the body; the
+    # declared contract names the schema the parse path enforces (T-320).
+    openapi_extra=ndjson_batch_body(FlowRecordIn),
 )
 async def ingest_flows(
     request: Request,
@@ -189,6 +193,7 @@ async def ingest_flows(
     "/logs",
     response_model=IngestResponse,
     summary="Ingest log lines (log@1)",
+    openapi_extra=ndjson_batch_body(LogRecordIn),
 )
 async def ingest_logs(
     request: Request,

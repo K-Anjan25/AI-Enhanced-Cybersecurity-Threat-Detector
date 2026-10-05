@@ -43,8 +43,9 @@ run() {
 check_docs() {
     run "docs: lint"        ruff check scripts/
     run "docs: format"      black --check scripts/
-    run "scripts: types"    mypy scripts/check_docs.py scripts/check_compose.py scripts/fetch_datasets.py scripts/run_baselines.py scripts/check_frontend_boundaries.py scripts/generate_synthetic.py
+    run "scripts: types"    mypy scripts/check_docs.py scripts/check_compose.py scripts/fetch_datasets.py scripts/run_baselines.py scripts/check_frontend_boundaries.py scripts/generate_synthetic.py scripts/generate_api_reference.py
     run "docs: integrity"   python scripts/check_docs.py
+    run "docs: api reference" python scripts/generate_api_reference.py --check
 }
 
 check_infra() {

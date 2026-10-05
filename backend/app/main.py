@@ -22,6 +22,7 @@ from app.api.middleware import (
     RateLimitMiddleware,
     TracingMiddleware,
 )
+from app.api.openapi_docs import declare_components
 from app.api.v1.endpoints import (
     alerts,
     api_keys,
@@ -39,6 +40,7 @@ from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.models import PARTITIONED_TABLES
 from app.observability.tracing import configure_tracing, exporter_for
+from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
@@ -310,6 +312,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(MetricsMiddleware)
     app.add_middleware(TracingMiddleware)
     app.add_middleware(RequestIdMiddleware)
+    # The ingest routes read their bytes and declare their body schema with
+    # ``openapi_extra``; this adds the record models that body references, so the
+    # generated `/openapi.json` -- and the reference rendered from it -- names a
+    # schema that exists (T-320).
+    declare_components(app, (FlowRecordIn, LogRecordIn))
     app.include_router(health.router)
     app.include_router(metrics.router)
     app.include_router(ingest.router)
