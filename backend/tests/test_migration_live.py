@@ -251,3 +251,132 @@ def test_audit_log_has_no_foreign_key(engine: object) -> None:
         )
 
     assert fks == []
+
+
+# --- T-321: the typed score columns and the checked severity -----------------
+
+
+def _score_column_types(engine: object) -> dict[str, str]:
+    """The data type of each score column, from ``information_schema``."""
+    import sqlalchemy as sa
+
+    with engine.connect() as connection:  # type: ignore[attr-defined]
+        return {
+            f"{row[0]}.{row[1]}": row[2]
+            for row in connection.execute(
+                sa.text(
+                    "SELECT table_name, column_name, data_type FROM information_schema.columns "
+                    "WHERE table_schema = 'public' "
+                    "AND ((table_name = 'alerts' AND column_name = 'score') "
+                    "OR (table_name = 'thresholds' AND column_name = 'value'))"
+                )
+            )
+        }
+
+
+def _severity_constraints(engine: object) -> list[str]:
+    """The check constraints on ``alerts``, by name."""
+    import sqlalchemy as sa
+
+    with engine.connect() as connection:  # type: ignore[attr-defined]
+        return [
+            row[0]
+            for row in connection.execute(
+                sa.text(
+                    "SELECT conname FROM pg_constraint "
+                    "WHERE conrelid = 'alerts'::regclass AND contype = 'c'"
+                )
+            )
+        ]
+
+
+def test_a_score_round_trips_at_the_declared_scale(engine: object) -> None:
+    """T-321's criterion: 0.90 comes back exactly, to four decimals."""
+    import decimal
+
+    import sqlalchemy as sa
+
+    assert _alembic("upgrade", "head").returncode == 0
+    assert _score_column_types(engine) == {
+        "alerts.score": "numeric",
+        "thresholds.value": "numeric",
+    }
+    with engine.begin() as connection:  # type: ignore[attr-defined]
+        connection.execute(
+            sa.text(
+                "INSERT INTO entities (kind, value, first_seen, last_seen, meta) "
+                "VALUES ('ip', '10.7.7.7', now(), now(), '{}'::jsonb) ON CONFLICT DO NOTHING"
+            )
+        )
+        connection.execute(
+            sa.text(
+                "INSERT INTO alerts (entity_id, family, severity, score, status, "
+                "first_seen, last_seen, created_at) "
+                "SELECT id, 'DoS', 'high', 0.9, 'open', now(), now(), "
+                "'2026-03-16'::timestamptz FROM entities WHERE value = '10.7.7.7'"
+            )
+        )
+    with engine.connect() as connection:  # type: ignore[attr-defined]
+        stored = connection.execute(
+            sa.text(
+                "SELECT score, score::text FROM alerts "
+                "WHERE entity_id = (SELECT id FROM entities WHERE value = '10.7.7.7')"
+            )
+        ).all()
+        declared = connection.execute(
+            sa.text(
+                "SELECT numeric_precision, numeric_scale FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'alerts' "
+                "AND column_name = 'score'"
+            )
+        ).one()
+
+    assert stored, "the inserted alert is not in the table"
+    assert {row[0] for row in stored} == {
+        decimal.Decimal("0.9000")
+    }, "0.9 must come back as 0.9000, not a binary float"
+    assert {row[1] for row in stored} == {"0.9000"}
+    assert (declared[0], declared[1]) == (5, 4)
+
+
+def test_a_severity_outside_the_enum_is_rejected(engine: object) -> None:
+    """R-38: the column checks the enum, so a free-text severity cannot land."""
+    import sqlalchemy as sa
+
+    assert _alembic("upgrade", "head").returncode == 0
+    assert "ck_alerts_severity" in _severity_constraints(engine)
+    with engine.begin() as connection:  # type: ignore[attr-defined]
+        connection.execute(
+            sa.text(
+                "INSERT INTO entities (kind, value, first_seen, last_seen, meta) "
+                "VALUES ('ip', '10.6.6.6', now(), now(), '{}'::jsonb) ON CONFLICT DO NOTHING"
+            )
+        )
+    with (
+        pytest.raises(Exception, match="ck_alerts_severity"),  # noqa: B017, PT011
+        engine.begin() as connection,  # type: ignore[attr-defined]
+    ):
+        connection.execute(
+            sa.text(
+                "INSERT INTO alerts (entity_id, family, severity, score, status, "
+                "first_seen, last_seen, created_at) "
+                "SELECT id, 'DoS', 'urgent', 0.9, 'open', now(), now(), "
+                "'2026-03-16'::timestamptz FROM entities WHERE value = '10.6.6.6'"
+            )
+        )
+
+
+def test_the_typed_columns_survive_a_downgrade_and_re_upgrade(engine: object) -> None:
+    """The migration goes both ways, and comes back typed."""
+    assert _alembic("upgrade", "head").returncode == 0
+    assert _alembic("downgrade", "0001_initial").returncode == 0
+    assert _score_column_types(engine) == {
+        "alerts.score": "double precision",
+        "thresholds.value": "double precision",
+    }
+    assert "ck_alerts_severity" not in _severity_constraints(engine)
+
+    assert _alembic("upgrade", "head").returncode == 0
+
+    assert _score_column_types(engine) == {"alerts.score": "numeric", "thresholds.value": "numeric"}
+    assert "ck_alerts_severity" in _severity_constraints(engine)

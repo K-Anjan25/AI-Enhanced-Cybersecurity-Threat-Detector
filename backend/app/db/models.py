@@ -24,17 +24,19 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
-    Float,
     ForeignKey,
     Identity,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     func,
@@ -66,6 +68,43 @@ class EntityKind(enum.StrEnum):
     ip = "ip"
     user = "user"
     service = "service"
+
+
+class Severity(enum.StrEnum):
+    """The FR-13 bands, worst first when iterated in band order.
+
+    Defined here, beside the column that stores it, because R-38 wants one
+    definition: :data:`SEVERITY_CHECK` is built from these members, so the column
+    cannot accept a band the code does not have. ``app.services.correlator``
+    re-exports the enum for the code that bands detections by it.
+    """
+
+    info = "info"
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+    @property
+    def rank(self) -> int:
+        """Numeric order, so ``Severity.high > Severity.low`` is expressible."""
+        return _SEVERITY_RANK[self]
+
+
+#: Worst first, so a comparison of ranks matches the band order.
+_SEVERITY_RANK: dict[Severity, int] = {
+    Severity.info: 0,
+    Severity.low: 1,
+    Severity.medium: 2,
+    Severity.high: 3,
+    Severity.critical: 4,
+}
+
+
+#: The check constraint ``alerts.severity`` carries, built from the enum so the
+#: two cannot drift (R-38). Asserted equal to the migration's literal by the tests,
+#: because an applied migration must not change when the enum does.
+SEVERITY_CHECK = "severity IN (" + ", ".join(f"'{member.value}'" for member in Severity) + ")"
 
 
 class AlertStatus(enum.StrEnum):
@@ -176,7 +215,9 @@ class Alert(Base):
     entity_id: Mapped[int] = mapped_column(ForeignKey("entities.id"), nullable=False)
     family: Mapped[str] = mapped_column(String(80), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)
-    score: Mapped[float] = mapped_column(Float, nullable=False)
+    # R-39: a score is fixed-precision in the database, never a float, so 0.90
+    # round-trips as 0.9000 and a comparison cannot be decided by binary rounding.
+    score: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     model_flow_id: Mapped[str | None] = mapped_column(String(200))
     model_log_id: Mapped[str | None] = mapped_column(String(200))
     window_ref: Mapped[dict[str, object] | None] = mapped_column(JSONB)
@@ -194,7 +235,10 @@ class Alert(Base):
     verdict_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     verdict_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
-    __table_args__ = ({"postgresql_partition_by": "RANGE (created_at)"},)
+    __table_args__ = (
+        CheckConstraint(SEVERITY_CHECK, name="ck_alerts_severity"),
+        {"postgresql_partition_by": "RANGE (created_at)"},
+    )
 
 
 class ModelRecord(Base):
@@ -268,7 +312,7 @@ class Threshold(Base):
     tenant_id: Mapped[str] = mapped_column(String(80), nullable=False)
     family: Mapped[str] = mapped_column(String(80), nullable=False)
     band: Mapped[str] = mapped_column(String(40), nullable=False)
-    value: Mapped[float] = mapped_column(Float, nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     source: Mapped[str] = mapped_column(String(120), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

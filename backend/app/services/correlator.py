@@ -57,7 +57,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from app.db.models import AlertStatus
+from app.db.models import AlertStatus, Severity
 from app.observability import metrics
 from app.observability.tracing import span, trace_id_from_traceparent
 
@@ -98,30 +98,6 @@ DEFAULT_EVIDENCE_RETENTION = 20
 
 #: FR-14 asks for the top-3 contributing signals, per modality that contributed.
 MAX_REASONS_PER_MODALITY = 3
-
-
-class Severity(enum.StrEnum):
-    """The FR-13 bands, worst first when iterated in band order."""
-
-    info = "info"
-    low = "low"
-    medium = "medium"
-    high = "high"
-    critical = "critical"
-
-    @property
-    def rank(self) -> int:
-        """Numeric order, so ``Severity.high > Severity.low`` is expressible."""
-        return _SEVERITY_RANK[self]
-
-
-_SEVERITY_RANK: dict[Severity, int] = {
-    Severity.info: 0,
-    Severity.low: 1,
-    Severity.medium: 2,
-    Severity.high: 3,
-    Severity.critical: 4,
-}
 
 
 class Modality(enum.StrEnum):
