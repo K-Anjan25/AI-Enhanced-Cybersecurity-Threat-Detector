@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.v1.endpoints import health, ingest
+from app.api.v1.endpoints import alerts, health, ingest
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
 from app.services.health_service import ReadinessRegistry
@@ -92,6 +92,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(ingest.router)
+    app.include_router(alerts.router)
     return app
 
 

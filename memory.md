@@ -560,7 +560,7 @@ Tracked here; referenced from [prd.md](prd.md#12-open-questions). A question is 
 |---|---|---|---|---|
 | **Q-01** | Should `LogNet` use a frozen pretrained DistilBERT encoder over raw log messages, or a from-scratch transformer over Drain3-mined template IDs? | Model lead | **T-204** | **CLOSED by D-019 (2026-10-04)** — from-scratch over mined template IDs. 103 templates at 0.9530 purity means the input barely contains language, the miner already exists, and NFR-05's 150 ms cap rules out DistilBERT on CPU. |
 
-| **Q-02** | Is Elasticsearch justified at v1.0, or does partitioned PostgreSQL with full-text search cover the hunt console? | Backend lead | **T-305** | OPEN — depends on the target log volume, which is itself unknown until a reference deployment exists |
+| **Q-02** | Is Elasticsearch justified at v1.0, or does partitioned PostgreSQL with full-text search cover the hunt console? | Backend lead | **T-305** | **CLOSED 2026-10-05 — partitioned PostgreSQL (D-034)**; Elasticsearch deferred to T-6xx, with measured re-open triggers |
 | **Q-03** | What absolute false-positive budget (alerts/day) will the reference customer tolerate? | Product | Threshold defaults, T-207 | OPEN — needed to set the shipped defaults rather than guessing |
 | **Q-04** | Which reference deployment supplies real flow records, and in what format (NetFlow v5/v9, IPFIX, Zeek)? | Product | NFR-02 validation, T-612 | OPEN |
 | **Q-05** | Do we need multi-tenancy at v1.0, or is single-tenant per deployment acceptable? | Product | Schema design, T-301 | OPEN — currently assumed single-tenant per deployment (D-001 context); the schema includes `tenant_id` on thresholds only |
@@ -708,6 +708,34 @@ rather than recomputed after dropping bad lines.
 and the API process should not pull the ML package into its import graph.
 Duplication that may drift is worse than coupling, so a test imports the real
 models and asserts the two agree field for field.
+
+### D-034 — Q-02 decided: partitioned PostgreSQL for the hunt console at v1.0, Elasticsearch deferred
+Q-02 asked whether Elasticsearch is justified at v1.0 or whether partitioned
+PostgreSQL with full-text search covers the hunt console. **Decision: partitioned
+PostgreSQL, and Elasticsearch moves to the backlog (T-6xx).**
+
+The reasoning, and its limits. The stated blocker was that the target log volume
+is unknown until a reference deployment exists — and that is still true, so this
+is a decision under uncertainty rather than a measurement. What tips it is the
+asymmetry of the two errors. Choosing Postgres and being wrong costs a migration
+once volume is known and a real query profile exists. Choosing Elasticsearch now
+costs a second store to operate from day one, a second failure mode, duplicated
+data with consistency lag between the two, and a hunt console whose correctness
+depends on both agreeing. Paying that cost against an unmeasured volume is the
+worse bet.
+
+What already exists on the Postgres side: `alerts` and `ingest_stats` are
+monthly-partitioned with pruning verified against a real server (D-030), R-34
+makes every query time-bounded by signature (D-029), and Postgres supplies
+`tsvector`/GIN and `pg_trgm` for text search natively.
+
+**Re-open Q-02 if any of these is measured, not assumed:** sustained log volume
+above roughly 50 GB/day; a hunt query that needs multi-field aggregation across
+more than three months and misses its latency budget; or a full-text query whose
+`EXPLAIN` shows a scan that partition pruning cannot help, because the predicate
+does not include the partition key. That last one is the structural limit — FTS
+queries that cannot name a time window defeat the partitioning entirely, and
+that is a property of the workload rather than of tuning.
 
 ## Change log
 
