@@ -115,6 +115,8 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # it, so viewer is deliberately absent from both entries.
     "/api/v1/ingest/flows": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    # Reading alerts is the viewer's whole job, so viewer is present here.
+    "/api/v1/alerts": frozenset(Role),
 }
 
 
