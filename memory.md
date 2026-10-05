@@ -793,6 +793,29 @@ reimplemented — a second implementation would number windows differently and
 emit the same data under different identities, which is the same bug wearing a
 different hat.
 
+### D-037 — The cool-down anchor is policy, and a returned object must be a snapshot
+FR-15 does not say what the cool-down is measured from, and the two readings
+behave very differently. Sliding from `last_seen` (chosen) keeps an hours-long
+attack as a single alert whose `occurrence_count` grows; fixed from `first_seen`
+mints a new row every 15 minutes for the same ongoing event. Sliding is the
+default because an operator wants one incident, not twelve, and `anchor` exposes
+the alternative rather than burying it.
+
+The consequence is stated rather than hidden: a slow attack recurring every 14
+minutes forever produces exactly one alert. So `occurrence_count` and
+`last_seen - first_seen` are the only surviving record of how long it ran, and
+both are maintained on every increment. `last_seen` never moves backwards,
+because a late-arriving record must not make an alert look less recent than it
+already did.
+
+Two defects the tests caught, both about what `correlate` returns. The increment
+path returned the store's live object, so `is_new` stayed `True` and a caller
+could not distinguish a new alert from a suppression — and that flag is what a
+notifier keys on. Worse, it was the same object the caller already held from an
+earlier call, so mutating it rewrote history in the caller's hands. The rule:
+**a method that reports what just happened must return a snapshot, never a
+reference to mutable shared state.**
+
 ## Change log
 
 | Date | Version | Change |
