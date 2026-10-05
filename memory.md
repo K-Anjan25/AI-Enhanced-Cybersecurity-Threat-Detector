@@ -26,17 +26,17 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 | Aspect | State |
 |---|---|
-| Repository | Six planning documents plus the S0–S2 and E3 code (commit `04aeb71`, re-committed as `415a5b1` after the 2026-10-05 environment reset — see below) |
-| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311) and the append-only audit trail (T-312). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
-| Tests | **1161 passing, 26 skipped** — 596 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9` — see below) |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312) and scoped API keys (T-313). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
+| Tests | **1271 passing, 26 skipped** — 706 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
 | Checks green | `./scripts/check_all.sh` — **25 checks, 0 failed** (measured 2026-10-05): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
 | Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
 | Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
 | Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
 | Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
-| Next work | **T-313 — API keys with scopes, hashing and revocation** (FR-44), then T-314 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
+| Next work | **T-314 — retention + GDPR erasure** (NFR-05), then T-315 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
 
-**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-312.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-313.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -1069,17 +1069,122 @@ bounds, not just the helper's guard: a range that lives in a Python check and no
 in the WHERE clause reads the whole table while looking correct.
 
 **Gaps, named.** ``audit_insert`` and ``audit_select`` are the two statements the
-persistent trail will run, compiled and asserted, but no session runs them and there
-is no migration -- ``audit_log`` is in the model and T-301's migration, and neither
-has been applied to a live PostgreSQL here (D-030). The actor column wants a numeric
+persistent trail will run, compiled and asserted, but **no session runs them**: no
+database session is wired into the request path, so the trail that runs here is
+in-memory and dies with the process. The table itself is in T-301's migration
+(``backend/alembic/versions/0001_initial_schema.py``), which -- like every migration
+here -- has never been applied to a live PostgreSQL (D-030), so the DDL is
+compiled and checked rather than exercised. *Corrected while writing T-313, whose
+own table is in the same migration: ``audit_log`` was recorded as having "no
+migration" and that was wrong; what is missing is the adapter, not the schema.* The actor column wants a numeric
 ``users.id`` while the token subject is opaque, so the adapter needs the mapping
 D-038 names for ``alerts.verdict_by``. The in-memory trail does not survive a
 restart. The admin screen and the audited export (FR-43) are E4's and a later task's.
+
+### D-042 — An API key is stored as a keyed digest, never as an Argon2id password (T-313) (2026-10-05)
+
+**Decision.** `api_keys.key_hash` holds **HMAC-SHA256 over the whole presented key
+string**, under a digest key derived with HKDF-SHA256 from `AEGIS_SECRET_KEY`
+(salt `aegis.apikey.digest.v1`, info `api-key-digest`). 64 lowercase hex
+characters -- exactly the column's width, so the schema T-301 created needs no
+migration. Passwords stay Argon2id (R-51); a machine credential is not a password.
+
+**Why not Argon2id, stated as a threat argument rather than a shortcut.** R-51
+requires Argon2id because a user password is low-entropy and human-chosen, so the
+hash has to be expensive per guess. A key is 256 bits drawn from
+`secrets.token_urlsafe(32)`: there is nothing to guess and no amount of work makes
+a dictionary attack on it interesting. What Argon2id would add here is a 64 MiB
+allocation and tens of milliseconds **on every ingest request** -- a
+denial-of-service vector the deployment pays for and no attacker suffers from.
+
+**Why HMAC and not a bare digest.** ``sha256(key)`` is an offline oracle: anyone
+holding a database dump can test candidate keys against it. Keying the digest means
+the dump alone is not enough. The cost is the mirror image and is named: rotating
+``AEGIS_SECRET_KEY`` invalidates every issued key at once, the same consequence
+D-040 records for sealed webhook secrets. The digest key is a separate HKDF
+derivation, so the key that authenticates an API key is not the key that signs a
+JWT or seals a webhook secret.
+
+**The stored row is irreversibly short, and the format is the reason the prefix
+works.** A key is ``aegis_sk_<id>_<secret>``; the MAC covers prefix and secret
+together, so the public id half is protected too and a key with its id rewritten
+fails verification rather than merely missing a lookup. The record has no field
+that could hold the plaintext, the module exposes no function that returns one
+(asserted over its own names), and the only recoverable display value is
+``aegis_sk_<id>_`` -- design.md's "only a prefix is stored", satisfied without a
+second column.
+
+**A missing row is compared anyway.** Verification against an id that does not
+exist derives a digest and compares it against a dummy of the same length, so
+"unknown id" and "wrong secret" cost the same work. The residual is named: which
+ids exist is still observable through the store lookup, and that is metadata, not
+credential material.
+
+**Consequences.** The ``ix_api_keys_key_hash`` index is not on the lookup path
+(lookup is by id) and stays as T-301 created it. The in-memory store is what runs
+here, so a restart forgets issued keys; the persistent adapter's statements are
+written and compiled but no session runs them (D-030's wiring gap).
+
+### D-043 — A key is a principal with scopes, and it cannot outrank the least-privileged role on a route (T-313) (2026-10-05)
+
+**Decision.** An API key authenticates as a *kind* of principal, not as a role.
+``Principal`` gains ``kind``, ``scopes`` and ``key_id``; ``capabilities_of_principal``
+resolves a user through ``ROLE_CAPABILITIES`` and a key through
+``SCOPE_CAPABILITIES``. A key's ``role`` is ``None`` and the absence is deliberate:
+filling in the owner's role would hand a machine its owner's authority.
+
+**Reach is a table, and it is default-deny.** ``API_KEY_ROUTES`` maps
+``(method, route template)`` to the scope it requires -- three entries: the two
+ingest writes (``ingest:write``) and the alert list (``alerts:read``). A route
+absent from it refuses keys with 403 "this route does not accept API keys", which
+is a different 403 from a key that reached an accepting route without the scope
+("lacks a scope granting ..."), because the two are fixed differently: change the
+credential or change the route. The table is checked against the built application,
+so an entry for a route that no longer exists fails the suite.
+
+**The bound that makes scopes safe.** For every key-reachable route, the scope's
+capabilities must be a subset of the capabilities that **every** role the matrix
+permits there holds -- the intersection, not the union. Asserted for every entry,
+so a key can never hold authority that the least-privileged human allowed on that
+route lacks. That is the property which stops a sloppy scope map from becoming a
+robot with an administrator's reach, and widening ``alerts:read`` by one capability
+fails a test.
+
+**Two credential kinds, one dependency.** ``require()`` now calls
+``authenticate_request``, which knows about keys; ``authenticate()`` keeps its
+signature and behaviour for the WebSocket handshake (T-310). A key arrives in
+``X-API-Key`` or as a Bearer token shaped like one, because both are things
+collectors do; presenting an ``Authorization`` header **and** an ``X-API-Key`` is
+refused as 401 rather than resolved by precedence, since the failure mode of
+precedence is a request authorised by the credential the operator did not mean.
+
+**Revocation is a column, and it is immediate.** ``revoked_at`` is set, never
+deleted: the row is the record of a credential having existed, and "was this key
+revoked, and when" cannot be asked of a row that is gone. Verification reads the
+store on every request -- there is no cache to go stale -- which is what makes
+"rejected immediately" a property rather than a hope. A second revoke keeps the
+first timestamp, because the fact recorded is when the credential stopped working,
+not when someone last clicked.
+
+**Management is its own capability.** ``Capability.API_KEYS`` is held by ``admin``
+alone and is written into that row rather than inherited from ``USERS``: issuing a
+machine credential is its own decision. The three management routes are admin-only
+in the matrix, and issuing and revoking each append to the audit trail with the
+key's id, name and scopes -- never the secret and never the digest, because the
+trail is readable by every role while key management is not.
+
+**Gaps, named.** The store is in-memory while no database session is wired into
+the request path; ``api_keys`` itself has its table and index in migration 0001.
+``owner_id`` wants a numeric ``users.id`` while the principal subject is opaque --
+the same mapping D-038 and D-041 name. Per-key rate limiting (architecture.md
+§11's threat table) is T-316, and the screen that renders the secret once is T-410's
+``/admin/keys``.
 
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.35 | **T-313 done — scoped API keys, hashed with a key the database does not hold.** `backend/app/auth/api_keys.py`, `backend/app/schemas/api_key.py`, `backend/app/api/v1/endpoints/api_keys.py`, three `ROUTE_MATRIX` entries, `Capability.API_KEYS`, and the `Principal` extension that lets a key authenticate; 110 tests. Policy recorded as **D-042** (storage) and **D-043** (authorisation). **The hashing decision is the interesting one:** `key_hash` is `String(64)` and an Argon2id encoding is far longer, so the task's own bar -- "hashing" -- had to be settled rather than assumed. Argon2id is right for passwords because they are low-entropy and human-chosen; a 256-bit `secrets` key has nothing to guess, and memory-hard verification on every ingest request would be a self-inflicted denial-of-service. So the stored value is **HMAC-SHA256 over the whole presented key under an HKDF-derived key from `AEGIS_SECRET_KEY`** -- 64 hex characters, no migration, and a stolen database is not an offline oracle because the digest key is not in it. The consequence is named: rotating the application secret invalidates every key at once, as it already does for sealed webhook secrets. **The secret is exposed exactly once and this is asserted as an absence**: `ApiKeyOut` has no field for it, the record dataclass has none, the module exposes no name that returns a plaintext, issuing twice yields different strings, and a scan of the store and the audit trail after a create finds neither the key nor its digest. The only recoverable display value is the prefix `aegis_sk_<id>_`. **Only a prefix is stored**, and the MAC covers the id half too, so a key with its id rewritten fails the digest rather than merely missing a lookup; an unknown id is compared against a dummy so "no such key" and "wrong secret" cost the same work (the residual -- which ids exist -- is metadata and is named). **Revocation is a column, never a delete, and it lands on the next request**: verification reads the store every time, there is no cache, and a second revoke keeps the first timestamp. **Authorisation is by scope, not by role:** `API_KEY_ROUTES` is a default-deny table of three routes, and for each one the scope's capabilities must be a subset of the **intersection** of the capabilities of every role the matrix allows there -- so a key cannot outrank the least-privileged human on its own route, and that is asserted rather than intended. Presenting an `Authorization` header *and* an `X-API-Key` is a 401 rather than a precedence rule, since guessing authorises the request with the credential the operator did not mean. **38 injections each failed their target tests** -- including a digest over only the id, a short-circuit that skips the dummy comparison, a revoked key that still resolves, a revoked key that still grants, a second revoke that moves the timestamp, a store that deletes instead of revoking, both SQL guards dropped, a widened `alerts:read`, a key principal that borrows its owner's subject, a listing served with the create schema, a repeated revoke audited again, and an endpoint that silently drops an unknown scope. Two survivors in the first run were equivalent mutants (a no-op `int(int(...))`) and one was a mis-targeted battery entry; the equivalent ones were replaced with real defects rather than counted. **Gaps:** the store is in-memory while no database session is wired into the request path (`api_keys` has its table and index in migration 0001, so this is the same adapter gap D-030 names, not a schema one); `owner_id` wants the numeric `users.id` the opaque subject cannot supply (D-038); per-key rate limiting is T-316; and the `/admin/keys` screen is T-410's. Backend 596 → 706 tests, coverage 96.89% → 97.39%. |
 | 2026-10-05 | 1.34 | **Environment reset, and the tree re-verified rather than assumed.** The sandbox was recreated between sessions: `.venv`, `dashboard/node_modules` and the local git history were gone, and `.git` was the initial shallow clone at `04aeb71` again. **The working tree was intact** — every E3 file, test and documentation edit unchanged — but `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310) and `34dc7ff` (T-311) no longer exist here and were never pushed (the branch has no upstream), so **`415a5b1`** re-establishes their content: one commit standing in for four, and the per-task commit boundaries are gone with them. No file content changed, so every recorded measurement still describes what is on disk. The Python environment was then rebuilt from `backend/pyproject.toml` (which is also what proves `cryptography>=44` is declared rather than hand-installed) and the dashboard dependencies from `package.json`, and the full suite re-run to 25 checks / 0 failed before T-312 began. |
 | 2026-10-05 | 1.33 | **T-312 done — the audit trail, append-only and complete over mutating routes.** `backend/app/services/audit_log.py`, `backend/app/schemas/audit.py`, `backend/app/api/v1/endpoints/audit.py`, `backend/app/api/v1/deps.py`, one `ROUTE_MATRIX` entry, 72 tests. Policy recorded as **D-041**. **R-31 is asserted three ways** — the mapper, the trail object and the protocol are each walked for a mutating name, and the record handed back is frozen with its `detail` in a read-only view, because freezing the field alone leaves the dict it points at editable; a source-level test asserts no `update(AuditLog)`, `delete(AuditLog)` or `on_conflict_do_update` exists in the module, which is the strongest form available without a server. **FR-42's completeness clause is a table plus a walk of the built app**: every `POST`/`PUT`/`PATCH`/`DELETE` route must be in `AUDITED_ROUTES` or the deliberately-empty `AUDIT_EXEMPT_ROUTES`, proved non-vacuous and proved by planting an uncovered route. **The trail records changes, not requests** — a 4xx writes nothing, an ingest batch that accepted zero records writes nothing, and a verdict re-sent unchanged writes nothing, while a partly-bad batch records both counts and is the only trace of what was refused. **The trail is the widest-read thing in the system and carries the least**: a webhook's URL or host, an analyst's note, a signing secret and any record content are each asserted absent by planting them, and the actor column is documented as needing the `users.id` mapping D-038 names. The source IP is `request.client`, never `X-Forwarded-For`, with the proxy caveat named as deployment configuration. Reads require `start`/`end`, are capped at the repository's own `MAX_QUERY_SPAN_DAYS`, page on an exclusive id cursor, and the *compiled SQL* — not just the Python guard — is asserted to carry both bounds. **35 injections each failed their target tests**, including the SQL losing its time bound (which survived the first battery and added the compiled-statement test), a trail that grows `update`, a re-sent verdict audited, the webhook host or the analyst note mirrored in, and a header-read client IP. **Gaps:** the persistent trail is unwritten and un-migrated, the in-memory one dies with the process, and the admin screen and audited export (FR-43) are later work. Backend 524 → 596 tests, coverage 96.41% → 96.89%. |
 | 2026-10-05 | 1.32 | **T-311 done — outbound webhooks, signed over the bytes that were sent and re-checked per attempt.** `backend/app/services/webhook_targets.py`, `backend/app/services/webhook_delivery.py`, `backend/app/schemas/webhook.py`, `backend/app/api/v1/endpoints/webhooks.py`, three `ROUTE_MATRIX` entries, 149 tests. Policy recorded as **D-040**: the signature is `t=<unix>,v1=<hmac-sha256 hex>` over `"<timestamp>.<body>"` with the body canonicalised once and the exact bytes sent; one timestamp, signature and delivery id per delivery so a retry is not re-signed into a second event; the default 15 s retry budget sits inside the 300 s replay window and a test asserts that; full jitter; 5xx/408/425/429/3xx retried and other 4xx not, because the receiver already refused those bytes; and **the destination is validated before every attempt and the transport is given the pinned address**, since a host that resolved public at registration is what a rebinding attack waits for. **The smoke matrix found what reading would not: CPython reports IPv4 multicast (224/4) as globally routable**, so `224.0.0.1` passed the first verdict function — the multicast refusal now precedes the `is_global` accept and a test names it. Secrets are 32 random bytes sealed with Fernet under an HKDF-SHA256 key from `AEGIS_SECRET_KEY`, returned once and never readable again; the allowlist is empty by default (fail-closed) and parsed at startup; and the log carries the target id, attempt, outcome and status and **never the URL, the operator note or the alert body** (R-58 asserted by planting all three). 30 injections each failed their target tests — including the multicast/private/CGNAT accepts, a rebinding target sent anyway, an unreadable secret returning `""`, 5xx not retried, a refusal retried as an overload, the replay window unchecked, the timestamp out of the MAC, a per-attempt delivery id, the hostname dialled instead of the pinned address, an exclusive floor, every delivery counted as delivered, the URL/description/body logged, jitter ignored and the retry bound off by one. **Gaps:** no HTTP client ships (a protocol, not an implementation); retries are inline, so a delivery queue is what a busy pipeline needs; the store is in-memory; and nothing calls `dispatch()` yet — the correlator is not wired to T-310's hub either. Backend 375 → 524 tests, coverage 95.67% → 96.41%. **One earlier verification claim corrected by this run:** `hooks: pre-commit` reported green at T-310 does not reproduce on this tree — `detect-secrets` flags a test-only settings literal in `backend/tests/test_alert_stream.py:334`, a file **byte-identical to `c6eacd4`**, plus three test-only fixtures added here (two application-secret constants and two `user:pass@` URLs that exist to be refused). Each is marked inline with `pragma: allowlist secret` at the line rather than added to `.secrets.baseline`, so a reviewer sees the claim where the literal is. Bandit's B311 on the delivery id was a real finding about the wrong tool: the id is now drawn from `secrets` rather than `random`. |

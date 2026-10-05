@@ -147,6 +147,10 @@ def test_capabilities_are_declared_per_role_not_inherited() -> None:
             Capability.MODELS,
             Capability.RETENTION,
             Capability.INGEST,
+            # T-313: issuing a machine credential is an admin action, and the
+            # capability is written into this row rather than inherited from
+            # USERS -- the two are separate decisions (D-042).
+            Capability.API_KEYS,
         }
     )
 

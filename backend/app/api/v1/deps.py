@@ -1,6 +1,6 @@
-"""Shared request-level helpers for the v1 endpoints (T-312).
+"""Shared request-level helpers for the v1 endpoints (T-312, T-313).
 
-Two helpers, each in one place for correctness rather than convenience:
+Each helper is in one place for correctness rather than convenience:
 
 * :func:`audit_trail` hands back the process-wide trail that every mutating route
   appends to. A route that built its own would write to a store nobody reads.
@@ -8,6 +8,9 @@ Two helpers, each in one place for correctness rather than convenience:
   records a source IP, and the failure mode is a route reading a header; one
   implementation is a place to get that wrong once rather than five places to get
   it wrong differently.
+* :func:`api_key_store` and :func:`api_key_digest` are the two halves of the API
+  key credential path (FR-44): where issued keys live, and the digest key that
+  decides whether a presented string is one of them.
 """
 
 from __future__ import annotations
@@ -16,9 +19,16 @@ from datetime import datetime
 
 from fastapi import Request
 
+from app.auth.api_keys import ApiKeyStore, KeyDigest
 from app.services.audit_log import AuditTrail
 
-__all__ = ["audit_trail", "client_ip", "parse_instant"]
+__all__ = [
+    "api_key_digest",
+    "api_key_store",
+    "audit_trail",
+    "client_ip",
+    "parse_instant",
+]
 
 
 def audit_trail(request: Request) -> AuditTrail:
@@ -34,6 +44,36 @@ def audit_trail(request: Request) -> AuditTrail:
         msg = "audit_trail is not configured on app.state"
         raise RuntimeError(msg)
     return trail
+
+
+def api_key_store(request: Request) -> ApiKeyStore:
+    """The store issued keys live in.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly: the
+            alternative is an ingest route that 401s every machine credential
+            with no clue why, or -- worse -- one that skips key verification.
+    """
+    store: ApiKeyStore | None = getattr(request.app.state, "api_key_store", None)
+    if store is None:
+        msg = "api_key_store is not configured on app.state"
+        raise RuntimeError(msg)
+    return store
+
+
+def api_key_digest(request: Request) -> KeyDigest:
+    """The digest function for this deployment's application secret.
+
+    Raises:
+        RuntimeError: if it was never derived from the settings. The digest key
+            comes from ``AEGIS_SECRET_KEY`` via HKDF, so it is per-deployment and
+            it is not reachable from a request.
+    """
+    digest: KeyDigest | None = getattr(request.app.state, "api_key_digest", None)
+    if digest is None:
+        msg = "api_key_digest is not configured on app.state"
+        raise RuntimeError(msg)
+    return digest
 
 
 def client_ip(request: Request) -> str | None:

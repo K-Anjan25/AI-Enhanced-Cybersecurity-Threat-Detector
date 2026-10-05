@@ -913,6 +913,10 @@ def test_an_action_value_is_stable_wire_format() -> None:
         "alert.verdict",
         "webhook.create",
         "webhook.delete",
+        # T-313: issuing and revoking a machine credential are changes to who
+        # can act, which is exactly what the trail is for.
+        "key.create",
+        "key.revoke",
     }
 
 
