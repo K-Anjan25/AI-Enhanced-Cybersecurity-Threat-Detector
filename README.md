@@ -1,212 +1,90 @@
-# NOCTRA — an autonomous AI security analyst
+# AEGIS — AI-Enhanced Cybersecurity Threat Detector
 
-[![CI](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml/badge.svg)](https://github.com/K-Anjan25/AI-Enhanced-Cybersecurity-Threat-Detector/actions/workflows/ci.yml)
+Transformer models over **network flow records** and **system logs** to detect anomalies and
+predict cybersecurity threats before they become confirmed incidents.
 
-> **NOCTRA** — *Threat intelligence, always on.*
-> You employ an analyst; you don't operate a dashboard.
+> **Status: Sprint S0.** The planning documents and the backend / ml-service skeletons exist and
+> are tested. No models have been trained and no datasets have been fetched. See
+> [memory.md](memory.md) for the authoritative current state.
 
-Most small companies cannot staff a SOC. A single analyst costs $77–101K a year
-and covers business hours only; round-the-clock in-house coverage means four to
-five people. The usual alternatives — an MSSP or an MDR — run $3–15K a month and
-still hand back shallow investigations, because rotating analysts never learn
-your environment.
+## Read these first
 
-NOCTRA is the analyst. It triages every alert, explains its reasoning in plain
-English, says what the incident means *for your organisation specifically*, and
-proposes a reversible action — which it records and never executes until you
-approve it.
+The project is documented before it is coded. Start with the PRD, then the architecture.
 
-**What makes the reasoning trustworthy:**
+| Document                           | What it answers                                                 |
+| ---------------------------------- | --------------------------------------------------------------- |
+| [prd.md](prd.md)                   | What we are building, for whom, and what "done" means           |
+| [architecture.md](architecture.md) | How the system and the models are designed                      |
+| [rules.md](rules.md)               | How we write code — 89 binding rules with an enforcement column |
+| [design.md](design.md)             | How it looks and behaves, down to measured contrast ratios      |
+| [task.md](task.md)                 | What we build, in what order, with acceptance criteria          |
+| [memory.md](memory.md)             | Decisions, data sources, glossary, and the measurement ledger   |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to set up, run, test, and extend the system                 |
 
-- **Every number traces to a real row.** Where a signal cannot be measured, the
-  product says "not measured" rather than showing a flattering constant.
-- **Organisational context on every case.** How many hops the attacker is from
-  your crown jewels, what it does to your posture score, and whether the
-  credential involved is already leaked publicly.
-- **Nothing runs without you.** Actions are recorded with an explicit undo path
-  and wait for one-click approval.
-
-
-An end-to-end cybersecurity threat detection platform that analyzes network flows, security logs, credential abuse, and DNS anomalies with self-evident AI reasoning, blast-radius asset mapping, and reversible remediation actions that NOCTRA records — never executes — pending your one-click approval.
-
-The project supports both **local (REST)** and **streaming (Kafka)** execution modes.
-
----
-
-## Architecture
+## Repository layout
 
 ```
- ┌────────────┐   REST / Kafka   ┌─────────────┐   HTTP   ┌─────────────┐
- │ Dashboard  │ ───────────────▶ │   Backend   │ ───────▶ │  ML Service │
- │(React+Vite)│ ◀─────────────── │  (FastAPI)  │ ◀─────── │  (FastAPI)  │
- └────────────┘                  └─────────────┘          └─────────────┘
-                                       │                      │
-                                       ▼                      ▼
-                                  PostgreSQL (alerts,      scikit-learn models
-                                  users, audit, rules)     (IsolationForest,
-                                                           TF-IDF + logistic)
+prd.md architecture.md rules.md design.md task.md memory.md
+backend/      FastAPI ingest + query API        (T-002 — skeleton, tested)
+ml-service/   Transformer inference service     (T-003 — skeleton, tested)
+dashboard/    React + TypeScript dashboard      (T-004 — not started)
+data/         datasets, gitignored              (R-40 — never committed)
 ```
 
-- Security telemetry and events are ingested via REST or Kafka connectors (Okta, CrowdStrike, GuardDuty, Cloudflare WAF).
-- The backend leverages ML models and Anthropic LLM reasoning to evaluate incidents and map connected blast radius assets.
-- The NOCTRA React dashboard visualizes SOC incident briefs, blast-radius graph nodes, the interactive analyst chat, SOAR playbooks, and decision audit logs.
+## Running what exists
 
-## Tech Stack
-
-- **Backend**: Python / FastAPI, SQLAlchemy, PostgreSQL (SQLite for tests), JWT auth (JTI + refresh tokens), optional Kafka streaming
-- **ML Service**: Python / FastAPI, scikit-learn (IsolationForest), TF-IDF + LogisticRegression, pandas, joblib
-- **Frontend**: React, TypeScript, Tailwind CSS, DM Sans / Space Mono typography (SIGNAL system), Redux Toolkit, Recharts, Framer Motion
-- **Infrastructure**: Docker, Docker Compose (Kafka, Zookeeper, PostgreSQL), Kubernetes manifests
-
-## Capabilities
-
-The analyst loop is the product; everything below feeds it.
-
-**Core loop** — ingest telemetry (Okta, CrowdStrike, GuardDuty, Cloudflare WAF)
-→ detect with ML and LLM reasoning → open a case with blast radius → propose a
-reversible action → human approves → audited record.
-
-**Risk context wired into every case:**
-
-| Capability | Route | What it contributes |
-|---|---|---|
-| Posture score | `/posture-score` | One 0–100 NIST-CSF score from real vuln, CSPM, case-closure, retention and compliance rows. Unmeasurable dimensions are excluded and reported, not guessed. |
-| Attack paths | `/attack-path` | Dijkstra search over real exposures, assets and observed entity links to your crown jewels, plus the single choke point that breaks each path. |
-| Digital risk protection | `/drp` | Offline typosquat generation against your real domains. External dark-web and breach lookups run only when a provider key is configured, and report the gap when not. |
-| Autonomy control | `/noctra-os` | Metrics counted from real cases, including the recommendation-accept rate that justifies raising the autonomy level. |
-
-These four surface directly on the case and brief screens through the shared
-`CaseImpact` component — when a module has no real data, it renders nothing.
-
-**Supporting surfaces:** vulnerabilities, cloud posture (CSPM), SBOM/supply
-chain, zero-trust access, compliance packs, hunting, deception, forensics,
-threat-intel platform, SOAR playbooks, reporting and admin/RBAC.
-
-**Operate:** detection coverage, asset inventory, data retention and the SOC
-TV wall.
-
-### Scope note
-
-Earlier revisions advertised 150 "phases". Two groups have been withdrawn:
-
-- **50 speculative modules** (multiverse SOC, AGI council, akashic ledger and
-  similar) — 6,493 lines that modelled nothing real.
-- **6 mock-data modules** (federated intel, quantum-safe, data fabric, CNAPP,
-  continuous red teaming, SOC manager). These were more dangerous than the
-  first group because they looked plausible: CNAPP invented Kubernetes
-  clusters with a fabricated CVE, quantum-safe returned three hardcoded
-  algorithms, and SOC manager marked every orchestration step complete in a
-  loop. A buyer could not tell these from real findings.
-
-- **23 Labs capabilities.** Sixteen sat behind tabbed hubs that rendered raw
-  JSON; an audit against their database queries found three computing from
-  real rows (detection coverage, asset inventory, data retention), which were
-  promoted to their own pages. The other thirteen fabricated their output.
-  A later pass removed purple-team exercises and hunt notebooks: running an
-  exercise wrote synthetic alerts tagged with its own ATT&CK technique, which
-  the coverage scorer then counted as detection evidence, moving a technique
-  from 25 to 60 without any real capability being added; notebooks reported
-  `"mock_result"` and a `completed` status for Python they never executed.
-
-All were referenced by no other code. What remains is the product that can
-actually be demonstrated.
-
-## Project Structure
-
-```
-AI-Enhanced-Cybersecurity-Threat-Detector/
-├── backend/                # FastAPI backend service & ABAC policy engine
-│   ├── app/
-│   │   ├── api/v1/endpoints/  # REST endpoints
-│   │   ├── core/               # config, database, security, abac
-│   │   ├── models/             # SQLAlchemy models
-│   │   ├── schemas/            # Pydantic schemas
-│   │   ├── services/           # Domain services
-│   │   └── main.py
-│   ├── tests/               # Pytest suite
-│   ├── requirements.txt
-│   └── pyproject.toml
-├── ml-service/             # FastAPI ML microservice
-│   ├── app/
-│   │   ├── main.py             # /predict/* endpoints
-│   │   ├── network_model.py    # IsolationForest flow anomaly detection
-│   │   ├── log_model.py        # log attack classification
-│   │   ├── email_model.py      # phishing detection
-│   │   └── dns_model.py        # DNS threat scoring
-│   ├── train.py             # CLI: retrain models
-│   └── model/               # trained .pkl artifacts
-├── dashboard/               # Single production React + Vite frontend — 14 advanced pages
-│   ├── src/
-│   │   ├── features/advanced/pages/ # Security Operations + Labs surfaces
-│   │   ├── components/          # BrandLogo, UI components
-│   │   ├── api/                 # Axios API clients
-│   │   ├── store/               # Redux Toolkit
-│   │   └── constants/           # Brand tokens (NOCTRA)
-├── docs/
-│   ├── ROADMAP_150_FINAL.md # Historical roadmap (speculative phases withdrawn)
-│   └── ...                  # Brand specifications, requirements, architecture
-└── README.md
-```
-
-## Running the Application
-
-### 1. Docker Compose (Complete Stack)
+Requires Python 3.11+ (3.11.2 verified). From the repository root:
 
 ```bash
-cd docker
-docker compose up -d
-```
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e "backend[dev]" "ml-service[dev]"
 
-- **NOCTRA Dashboard**: `http://localhost:3000`
-- **FastAPI Backend**: `http://localhost:8000`
-- **ML Microservice**: `http://localhost:8001`
-- **PostgreSQL**: `localhost:5431`
-
-### 2. Manual Development Setup
-
-#### ML Service
-```bash
-cd ml-service
-python -m uvicorn app.main:app --port 8001
-```
-
-#### Backend API
-```bash
+# backend
 cd backend
-python -m uvicorn app.main:app --port 8000
+cp .env.example .env                       # then set AEGIS_SECRET_KEY
+python -m pytest -q                        # 20 tests
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+#   GET /healthz   liveness
+#   GET /readyz    readiness (503 when a dependency probe is not ok)
+
+# ml-service
+cd ../ml-service
+python -m pytest -q                        # 15 tests
+uvicorn aegis_ml.serving.app:app --host 0.0.0.0 --port 8001
+#   GET /internal/healthz  reports "no_model_loaded" until a model is promoted
 ```
 
-#### NOCTRA Dashboard
+`AEGIS_SECRET_KEY` is required and refuses placeholder values; generate one with
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+
+## Checks
+
+One command runs everything CI runs:
+
 ```bash
-cd dashboard
-npm install
-npm start        # Vite dev server on :3000, proxies /api → :8000
+./scripts/check_all.sh              # 21 checks across 5 suites
+./scripts/check_all.sh backend      # or one: docs|infra|backend|ml|dashboard
 ```
 
----
+| Suite          | Checks                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **docs**       | `ruff`, `black`, `mypy` on `scripts/`, and `scripts/check_docs.py` — cross-document links, anchors, requirement/task/rule ids, table integrity |
+| **infra**      | `scripts/check_compose.py` — compose file verified against the real application code                                                           |
+| **backend**    | `ruff`, `black`, `mypy --strict`, `bandit`, `lint-imports` (R-15), `pytest` with the 80% coverage gate                                         |
+| **ml-service** | `ruff`, `black`, `mypy --strict`, `pytest`                                                                                                     |
+| **dashboard**  | `tsc --noEmit`, `eslint` (incl. a11y), `vitest` (incl. the WCAG contrast suite), `vite build`                                                  |
 
-## Test Suites
+The planning documents are the specification, so broken anchors and dangling requirement ids
+fail the build rather than rotting silently. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to
+extend each part of the system.
 
-```bash
-# Run backend test suite
-cd backend
-pytest tests
+## What is deliberately not here yet
 
-# Run ML service test suite
-cd ml-service
-pytest tests
+No `docker-compose.yml` (T-005), no CI workflow (T-006), no dashboard (T-004), and no model code
+(T-201 onward). Docker is unavailable in the current development sandbox, so the compose file will
+be written but cannot be executed here — see the sandbox note in
+[memory.md](memory.md#environment-and-setup).
 
-# Run dashboard unit tests (Vitest + React Testing Library)
-cd dashboard
-npm test          # watch mode
-npm run test:ci   # single run, as CI does
-
-# jsdom is pinned to ^29: ^30 requires Node >=22.22, CI runs Node 20.
-
-# Typecheck + build dashboard frontend
-cd dashboard
-npm run build
-```
-
----
-
+Datasets (UNSW-NB15, CIC-IDS2017) are large and are **never committed** (R-40). They must be
+fetched from a machine with general internet access and their checksums recorded in
+[memory.md](memory.md#data-sources).

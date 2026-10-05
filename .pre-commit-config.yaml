@@ -1,0 +1,95 @@
+# Pre-commit hooks (T-007).
+#
+# Two kinds of hook are used, and the split is deliberate:
+#
+#   * the Python linters run from their published mirrors, pinned to the exact
+#     versions in requirements-dev.txt, so the hook environment and CI agree and
+#     a contributor does not need the dev venv activated to get a correct result;
+#   * prettier, stylelint and commitlint run the binaries the dashboard already
+#     pins in package-lock.json. There is no mirror for stylelint or commitlint
+#     at all, and the prettier mirror's newest v3 tag is 3.1.0 against the 3.9.9
+#     this repo formats with — two versions of prettier disagree, and a hook that
+#     reformats what CI accepts is worse than no hook. Running the project's own
+#     binary makes drift impossible.
+#
+# These hooks therefore need both `pip install -r requirements-dev.txt` and
+# `(cd dashboard && npm ci)`, which is the same prerequisite check_all.sh has.
+#
+# mypy is deliberately absent. It is configured three different ways (mypy.ini at
+# the root for scripts/, backend/pyproject.toml and ml-service/pyproject.toml, all
+# strict) and needs both services importable. pre-commit passes every file to one
+# invocation, which cannot honour per-directory config, so mypy stays in
+# check_all.sh and CI where it runs correctly.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      # The k8s manifests are intentionally multi-document: a Deployment and its
+      # Service live in one file so the pair cannot drift apart.
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # Datasets never belong in Git (R-40); this is the backstop for the one
+        # that gets `git add`ed by hand.
+        args: ['--maxkb=2048']
+      - id: detect-private-key
+      # Scoped to .py: the tests/ trees also hold CSV and log fixtures, which are
+      # data rather than test modules.
+      - id: name-tests-test
+        args: ['--pytest-test-first']
+        files: ^(backend|ml-service)/tests/.*\.py$
+
+  # Secret scanning. detect-secrets is heuristic, so it needs a baseline of
+  # known-benign findings; `.secrets.baseline` is committed and audited, and a
+  # genuinely new secret is what fails the hook.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: (package-lock\.json|\.secrets\.baseline)$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      # Scoped to scripts/: backend/ and ml-service/ have their own ruff config
+      # and are linted by their own CI jobs.
+      - id: ruff-check
+        args: ['--fix']
+        files: ^scripts/
+
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 26.5.1
+    hooks:
+      # scripts/ uses the 88-column default; the two services use 100 via their
+      # own pyproject.toml. One black invocation cannot serve both, so this is
+      # scoped and the services keep their own `black --check .`.
+      - id: black
+        files: ^scripts/
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: dashboard/node_modules/.bin/prettier --check
+        language: system
+        files: \.(js|cjs|mjs|ts|tsx|css|json|ya?ml|md)$
+        exclude: (package-lock\.json|^(prd|architecture|rules|design|task|memory)\.md)
+
+      - id: stylelint
+        name: stylelint
+        entry: dashboard/node_modules/.bin/stylelint --allow-empty-input
+        language: system
+        files: \.css$
+
+      - id: commitlint
+        name: commitlint
+        entry: dashboard/node_modules/.bin/commitlint --config dashboard/commitlint.config.cjs --edit
+        language: system
+        stages: [commit-msg]

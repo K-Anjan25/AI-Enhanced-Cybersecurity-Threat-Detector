@@ -1,107 +1,233 @@
+# AEGIS continuous integration.
+#
+# Every command below is the same one documented in README.md and runnable
+# locally via scripts/check_all.sh. A check that cannot be run locally is not
+# added here (rule R-92).
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'arena/**']
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '22'
 
 jobs:
+  docs:
+    name: Documentation integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install tools
+        run: pip install -r requirements-dev.txt
+
+      # The planning documents are the specification; broken anchors and dangling
+      # requirement ids are treated as build failures (R-94).
+      #
+      # No mypy here. scripts/check_compose.py imports the backend Settings model
+      # inside a function, and mypy follows function-level imports, so typechecking
+      # it needs fastapi, pydantic-settings, structlog and uvicorn. That belongs to
+      # the infra job, which installs both services and typechecks every script.
+      - name: Lint the repository scripts
+        run: |
+          ruff check scripts/
+          black --check scripts/
+
+      - name: Verify cross-document links, anchors, ids and tables
+        run: python scripts/check_docs.py
+
+  infra:
+    name: Compose, image and manifest consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      # Introspects the real applications, so the backend and ml-service
+      # dependencies must be importable.
+      - name: Install
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -e "backend[dev]"
+          pip install -e "ml-service"
+
+      # Static only: this verifies the compose file against the code, it does not
+      # build images. Docker is exercised by the deploy pipeline, not here.
+      - name: Verify compose against the application code
+        run: python scripts/check_compose.py
+
+      # Same discipline for the manifests: probe paths are checked against the
+      # routes the applications really serve, and every AEGIS_* variable against
+      # the Settings model. Nothing is applied; there is no cluster in CI.
+      - name: Verify the k8s manifests against the application code
+        run: python scripts/check_k8s.py
+
+      # T-009. Runs here rather than in the dashboard job because it is pure
+      # Python: it must not be skipped when node_modules is unavailable.
+      - name: Verify the dashboard import boundaries
+        run: python scripts/check_frontend_boundaries.py
+
+      # fetch_datasets.py and run_baselines.py import aegis_ml, so they can only
+      # be typechecked where ml-service is installed - which is this job, not the
+      # docs job. Checking them there would fail on missing fastapi/structlog.
+      - name: Typecheck every repository script
+        run: |
+          mypy scripts/check_docs.py scripts/check_compose.py scripts/check_k8s.py \
+               scripts/fetch_datasets.py scripts/run_baselines.py \
+               scripts/check_frontend_boundaries.py scripts/generate_synthetic.py
+
+  precommit:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      # The prettier, stylelint and commitlint hooks deliberately run the
+      # binaries the dashboard pins, so npm ci has to happen first. See the
+      # comment at the top of .pre-commit-config.yaml for why there is no mirror.
+      - name: Install the dashboard toolchain
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Install the Python toolchain
+        run: pip install -r requirements-dev.txt
+
+      # A local hook can be bypassed with --no-verify, so this is what actually
+      # enforces it (T-007).
+      - name: Run every hook over every file
+        run: pre-commit run --all-files
+
   backend:
-    name: Backend tests (pytest)
+    name: Backend
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: backend/requirements-dev.txt
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-      - name: Run tests
-        run: pytest
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install
+        # ml-service core is installed too: the scoring worker (T-307) windows
+        # flows with aegis_ml.data.windowing. Its core dependencies are
+        # fastapi/uvicorn/pydantic only -- torch is an optional extra -- so this
+        # does not pull the ML stack into the backend image. Sharing the
+        # windower is deliberate: a second implementation would number windows
+        # differently and emit the same data under different identities.
+        run: |
+          pip install -e ".[dev]"
+          pip install -e "../ml-service"
+
+      - name: Lint (R-12)
+        run: ruff check .
+
+      - name: Format check
+        run: black --check .
+
+      - name: Typecheck, strict (R-11)
+        run: mypy
+
+      - name: Security scan (R-50, R-17)
+        run: bandit -q -r app
+
+      - name: Import boundaries (R-15)
+        run: lint-imports
+
+      - name: Tests with coverage gate (R-80)
+        run: pytest --cov=app --cov-report=term-missing
 
   ml-service:
-    name: ML service import check
+    name: ML service
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ml-service
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: ml-service/requirements-dev.txt
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-      - name: Smoke import
-        run: python -c "from app.main import app; print('ml-service imports OK')"
-      - name: Run tests
-        run: pytest
+          cache-dependency-path: ml-service/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: black --check .
+
+      - name: Typecheck, strict
+        run: mypy
+
+      - name: Tests
+        run: pytest -q
 
   dashboard:
-    name: Dashboard typecheck + test + build
+    name: Dashboard
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: dashboard
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
-      - name: Install dependencies
+
+      # npm ci, not npm install: the lockfile is the pinned source of truth (R-08).
+      - name: Install
         run: npm ci
-      - name: Unit tests (Vitest)
-        run: npm run test:ci
-      - name: Typecheck + build
+
+      - name: Typecheck (R-20)
+        run: npm run typecheck
+
+      - name: Lint, including a11y (R-21, R-26)
+        run: npm run lint
+
+      - name: Tests, including the WCAG contrast regression suite
+        run: npm test
+
+      - name: Production build
         run: npm run build
-
-  k8s:
-    name: K8s manifest validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: bmuschko/setup-kubeconform@v1
-        with:
-          kubeconform-version: "0.6.3"
-      - name: Validate manifests
-        run: |
-          kubeconform -summary -verbose -strict -ignore-missing-schemas k8s/
-
-  loadtest:
-    name: Load test (k6 vs compose stack)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build + boot stack (postgres + backend + ml-service)
-        run: |
-          docker compose -f docker/docker-compose.yml up -d --build postgres backend ml-service
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8000/health/ready >/dev/null 2>&1 \
-               && curl -sf http://localhost:8001/health >/dev/null 2>&1; then
-              echo "stack ready after ${i}x5s"
-              break
-            fi
-            sleep 5
-          done
-          curl -sf http://localhost:8000/health/ready >/dev/null
-          curl -sf http://localhost:8001/health >/dev/null
-      - name: Install k6
-        run: |
-          curl -sL https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz | tar -xz
-          echo "$PWD/k6-v0.52.0-linux-amd64" >> "$GITHUB_PATH"
-      - name: Run k6 NFR-PERF suite
-        env:
-          BASE_HOST: http://localhost:8000
-          ML_HOST: http://localhost:8001
-          TOKENPASS: "ChangeMe#2026"
-          CI: "true"
-        run: k6 run loadtest/k6/threat-ai.js

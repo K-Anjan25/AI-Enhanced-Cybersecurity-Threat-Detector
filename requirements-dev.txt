@@ -1,0 +1,21 @@
+# Tooling for repository-level scripts (scripts/*.py).
+# Service-specific dependencies live in backend/pyproject.toml and
+# ml-service/pyproject.toml.
+ruff>=0.16
+black>=26.5
+mypy>=2.4
+pyyaml>=6.0
+types-PyYAML>=6.0
+# The root mypy.ini loads the pydantic plugin, and the repository scripts import
+# modules built on pydantic models, so mypy cannot even start without it. This
+# was undeclared: the CI docs job installs only this file, mypy failed to import
+# the plugin, and the job went red for 17 hours while local runs stayed green
+# because a developer venv already had pydantic from the service installs.
+pydantic>=2.13
+# pre-commit drives the hooks in .pre-commit-config.yaml, and the CI precommit
+# job installs nothing but this file. It was missing for the same reason pydantic
+# was: a local venv had it, so every local run was green.
+pre-commit>=4.0
+# Needed to regenerate .secrets.baseline with `detect-secrets scan`. The hook
+# itself installs its own environment from the pinned mirror revision.
+detect-secrets>=1.5

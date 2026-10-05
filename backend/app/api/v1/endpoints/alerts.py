@@ -1,96 +1,64 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
-from fastapi.responses import StreamingResponse
-import csv
-import io
-from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.models import SecurityAlert, User
-from app.services.alert_service import process_log
-from app.core.abac import require_permission
-from app.core.security import get_current_user
-from app.core.config import settings
-from app.utils.helpers import serialize_alert
+"""Alert query endpoint.
 
-router = APIRouter()
+`start` and `end` are required query parameters. They are not optional with a
+generous default, because a default is how an unbounded scan of a partitioned
+table gets shipped -- R-34.
+"""
 
+from __future__ import annotations
 
-@router.post("/analyze")
-def analyze(log: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Analyze a single log entry and return the anomaly result."""
-    alert = process_log(log, produce_kafka=settings.ENABLE_KAFKA, org_id=current_user.org_id)
-    return alert
+from fastapi import APIRouter, HTTPException, Query
+
+from app.auth.rbac import Capability, require
+from app.schemas.query import AlertPage, AlertQuery, CursorError
+from app.services.query_service import build_alert_select, paginate
+
+router = APIRouter(prefix="/api/v1", tags=["alerts"])
 
 
-@router.get("/alerts")
-def get_alerts(
-    page: int = 1,
-    limit: int = 20,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Return security alerts ordered by most recent first, paginated.
+@router.get(
+    "/alerts",
+    response_model=AlertPage,
+    summary="Query alerts within a time window",
+    dependencies=[require(Capability.READ)],
+)
+def list_alerts(
+    start: str = Query(description="Inclusive lower bound, ISO-8601 with timezone."),
+    end: str = Query(description="Exclusive upper bound, ISO-8601 with timezone."),
+    severity: str | None = None,
+    status: str | None = None,
+    family: str | None = None,
+    entity_id: int | None = None,
+    min_score: float | None = Query(default=None, ge=0.0, le=1.0),
+    order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    limit: int = Query(default=100, ge=1, le=1_000),
+    cursor: str | None = None,
+) -> AlertPage:
+    """Return one page of alerts matching the filters, newest first by default."""
+    from datetime import datetime  # noqa: PLC0415
 
-    Response shape: ``{"items": [...], "total": N, "page": P, "limit": L}``
-    """
-    page = max(1, page)
-    limit = min(max(1, limit), 100)
+    try:
+        query = AlertQuery(
+            start=datetime.fromisoformat(start),
+            end=datetime.fromisoformat(end),
+            severity=severity,
+            status=status,
+            family=family,
+            entity_id=entity_id,
+            min_score=min_score,
+            order=order,
+            limit=limit,
+            cursor=cursor,
+        )
+    except CursorError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        # A naive or inverted range, or one wider than the R-34 span limit.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    query = (
-        db.query(SecurityAlert)
-        .filter(or_(SecurityAlert.org_id == current_user.org_id, SecurityAlert.org_id.is_(None)))
-        .order_by(SecurityAlert.created_at.desc())
-    )
-    total = query.count()
-    alerts = query.offset((page - 1) * limit).limit(limit).all()
-
-    return {
-        "items": [serialize_alert(a) for a in alerts],
-        "total": total,
-        "page": page,
-        "limit": limit,
-    }
-
-
-@router.delete("/alerts/clear")
-def clear_alerts(db: Session = Depends(get_db), current_user: User = Depends(require_permission("alerts:delete"))):
-    """Clear all security alerts. Requires the alerts:delete permission."""
-    db.query(SecurityAlert).delete()
-    db.commit()
-    return {"message": "All alerts cleared"}
-
-
-@router.get("/alerts/export")
-def export_alerts(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("alerts:export")),
-):
-    """Stream all security alerts as a downloadable CSV file (requires alerts:export)."""
-    alerts = (
-        db.query(SecurityAlert)
-        .filter(or_(SecurityAlert.org_id == current_user.org_id, SecurityAlert.org_id.is_(None)))
-        .order_by(SecurityAlert.created_at.desc())
-        .all()
-    )
-
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(["id", "alert_type", "source_ip", "source", "severity", "score", "message", "created_at"])
-    for a in alerts:
-        writer.writerow([
-            a.id,
-            a.alert_type,
-            a.source_ip,
-            a.source,
-            a.severity,
-            a.score,
-            a.message,
-            a.created_at.isoformat() if a.created_at else "",
-        ])
-
-    buffer.seek(0)
-    return StreamingResponse(
-        iter([buffer.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=security_alerts.csv"},
-    )
+    # Executing needs a session, which T-307 wires up. The select is built here
+    # so the query shape -- bounded, filtered, keyset-paged -- is exercised and
+    # tested independently of the database connection.
+    statement = build_alert_select(query)
+    del statement
+    return paginate([], query)

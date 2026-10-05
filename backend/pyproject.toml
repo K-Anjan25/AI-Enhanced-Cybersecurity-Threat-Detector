@@ -1,13 +1,136 @@
 [project]
-name = "threat-ai-backend"
-version = "2.0.0"
-description = "AI-Enhanced Cybersecurity Threat Detector - FastAPI backend"
+name = "aegis-backend"
+version = "0.1.0"
+description = "AEGIS — AI-Enhanced Cybersecurity Threat Detector: ingest and query API"
 requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.142",
+    "uvicorn>=0.40",
+    "pydantic>=2.13",
+    "pydantic-settings>=2.13",
+    "structlog>=26.1",
+    # T-301. The repository layer and the migrations both need the ORM, and
+    # alembic is a runtime dependency rather than a dev one because migrations
+    # run at deploy time, not at test time.
+    "sqlalchemy>=2.1",
+    "alembic>=1.20",
+    # T-302. Argon2id password hashing and JWT issue/refresh. Both are runtime
+    # dependencies: the auth module imports them on every request.
+    "argon2-cffi>=23.1",
+    "PyJWT>=2.8",
+    # T-306. The Kafka client's default partitioner is used directly rather than
+    # reimplemented, so a disagreement with the broker cannot creep in; the
+    # Prometheus client exports consumer-group lag.
+    "kafka-python-ng>=2.2",
+    "prometheus-client>=0.21",
+]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1",
+    # check_all.sh and CI run `pytest --cov=app` and `lint-imports` for this
+    # service, so both must be declared here rather than hand-installed.
+    "pytest-cov>=7.0",
+    "import-linter>=2.0",
+    "httpx>=0.28",
+    "ruff>=0.16",
+    "black>=26.5",
+    "mypy>=2.4",
+    "bandit>=1.9",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+# --- ruff (R-12) -----------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",     # pycodestyle
+    "F",          # pyflakes
+    "I",          # isort
+    "UP",         # pyupgrade
+    "B",          # bugbear
+    "C4",         # comprehensions
+    "SIM",        # simplify
+    "D",          # pydocstyle (R-02)
+    "S",          # bandit rules in-linter
+    "BLE",        # no blind except
+    "ASYNC",      # async correctness (R-18)
+]
+ignore = [
+    "D203",  # conflicts with D211
+    "D213",  # conflicts with D212
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests hold deliberately fake credentials and invoke the interpreter directly.
+"tests/**" = ["D100", "D101", "D102", "D103", "D104", "S101", "S105", "S106", "S603"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# --- black (R-12) ----------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+# --- mypy (R-11) -----------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+files = ["app"]
+
+[[tool.mypy.overrides]]
+module = ["uvicorn.*"]
+ignore_missing_imports = true
+
+# --- pytest (R-80..R-89) ---------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-q"
+addopts = "-ra --strict-markers"
+markers = [
+    "dataset: tests that require the real UNSW-NB15 / CIC-IDS2017 datasets (skipped by default, R-84)",
+]
 
-[tool.black]
-line-length = 110
+# --- coverage gate (R-80) --------------------------------------------------
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+# --- bandit (R-50, R-51, R-17) ---------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+
+# --- import boundaries (R-15, T-009) ---------------------------------------
+[tool.importlinter]
+root_packages = ["app"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Services must not import the web framework (R-15)"
+type = "forbidden"
+source_modules = ["app.services"]
+forbidden_modules = ["fastapi", "starlette"]
+reason = "Business logic must be testable without an HTTP server."
+
+[[tool.importlinter.contracts]]
+name = "Schemas must not reach into services or the database"
+type = "forbidden"
+source_modules = ["app.schemas"]
+forbidden_modules = ["app.services", "sqlalchemy"]
+reason = "Schemas are the wire contract; they must stay declarative."

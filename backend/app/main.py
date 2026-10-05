@@ -1,134 +1,135 @@
-from contextlib import asynccontextmanager
-from pathlib import Path
+"""Application factory and process entry point for the AEGIS backend.
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-import logging
+Run with ``uvicorn app.main:app`` in development. Configuration errors are
+reported as a single actionable line rather than a traceback (rule R-06).
+"""
+
+from __future__ import annotations
+
 import sys
-import time
 import uuid
-from sqlalchemy import text
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from app.core.config import settings
-from app.core.database import Base, engine
-from app.core.migrations import run_additive_migrations, ensure_default_org
-from app.api.v1.router import api_router
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
-# Uploaded assets (profile images, ingest artifacts) live under backend/uploads
-# and are served from the /uploads static mount below. Created eagerly so the
-# mount can bind at import time (the lifespan handler also re-ensures it).
-UPLOAD_ROOT = Path(__file__).resolve().parents[1] / "uploads"
-UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+from app.api.v1.endpoints import alerts, health, ingest
+from app.core.config import ConfigurationError, Settings, get_settings
+from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
+from app.services.health_service import ReadinessRegistry
 
-# --- Structured logging -----------------------------------------------------
-_LOGGER = logging.getLogger("app")
-if not _LOGGER.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter(
-        "ts=%(asctime)s level=%(levelname)s logger=%(name)s %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-    ))
-    _LOGGER.addHandler(handler)
-_LOGGER.setLevel(settings.LOG_LEVEL or "INFO")
+__version__ = "0.1.0"
+
+REQUEST_ID_HEADER = "X-Request-ID"
 
 
-# --- Application lifespan ---------------------------------------------------
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    """Attach a correlation id to every request and every log line it produces.
+
+    Reuses an inbound ``X-Request-ID`` when present so a trace can be followed
+    across services (NFR-07), and always echoes the id back on the response.
+    """
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
+        """Bind a request id, call the next handler, and echo the id back."""
+        request_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
+        clear_request_id()
+        bind_request_id(request_id)
+        request.state.request_id = request_id
+        response: Response = await call_next(request)
+        response.headers[REQUEST_ID_HEADER] = request_id
+        return response
+
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Startup: verify/create DB schema (additive migrations + tables +
-    default org). Shutdown: nothing to release yet — engine pooling is
-    managed by SQLAlchemy and torn down at process exit."""
-    try:
-        run_additive_migrations(engine)
-        Base.metadata.create_all(bind=engine)
-        ensure_default_org(engine)
-        UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
-        _LOGGER.info("Database tables verified/created successfully!")
-    except Exception as exc:  # pragma: no cover - DB may be offline during tests/dev
-        _LOGGER.warning("Could not create database tables: %s", exc)
-    # Start connector poll scheduler (Phase 39) — watches continuously
-    try:
-        from app.services.connector_scheduler import start_poll_scheduler
-
-        start_poll_scheduler()
-    except Exception as exc:
-        _LOGGER.warning("Could not start connector scheduler: %s", exc)
-    yield
-    # Shutdown: stop scheduler
-    try:
-        from app.services.connector_scheduler import stop_poll_scheduler
-
-        stop_poll_scheduler()
-    except Exception:
-        pass
-
-
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
-
-
-# --- Request-ID + access-log middleware ------------------------------------
-@app.middleware("http")
-async def request_context_middleware(request: Request, call_next):
-    """Attach a request id and log one structured line per request."""
-    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
-    start = time.perf_counter()
-    response = await call_next(request)
-    duration_ms = (time.perf_counter() - start) * 1000
-    response.headers["X-Request-ID"] = request_id
-    _LOGGER.info(
-        "method=%s path=%s status=%s duration_ms=%.1f request_id=%s ip=%s",
-        request.method,
-        request.url.path,
-        response.status_code,
-        duration_ms,
-        request_id,
-        request.client.host if request.client else "-",
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Configure logging and declare startup/shutdown in one place."""
+    settings: Settings = app.state.settings
+    configure_logging(settings)
+    logger = get_logger("aegis.backend")
+    logger.info(
+        "startup",
+        service=settings.service_name,
+        environment=settings.env.value,
+        version=__version__,
     )
-    return response
-
-
-# Middleware must be registered BEFORE routes
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-app.include_router(api_router, prefix="/api/v1")
-
-
-@app.get("/")
-def health_check():
-    return {"status": "healthy", "service": settings.PROJECT_NAME, "version": settings.VERSION}
-
-
-@app.get("/health/live")
-def liveness_probe():
-    """Liveness probe: the process is up and can answer requests."""
-    return {"status": "alive"}
-
-
-@app.get("/health/ready")
-def readiness_probe():
-    """Readiness probe: dependencies (database) are reachable."""
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-    except Exception as exc:  # pragma: no cover - depends on DB availability
-        return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "reason": f"database unreachable: {exc}"},
-        )
-    return {"status": "ready"}
+        yield
+    finally:
+        logger.info("shutdown", service=settings.service_name)
 
 
-# Serve uploaded files (profile images, ingest artifacts) as static assets.
-# Registered last so API routes take precedence. Directory is created in the
-# lifespan handler on startup.
-app.mount("/uploads", StaticFiles(directory=UPLOAD_ROOT), name="uploads")
+def create_app(settings: Settings | None = None) -> FastAPI:
+    """Build the FastAPI application.
+
+    Args:
+        settings: configuration to use. When omitted, settings are loaded from
+            the environment via :func:`app.core.config.get_settings`.
+
+    Returns:
+        A configured application with probes mounted at the root path.
+    """
+    resolved = settings if settings is not None else get_settings()
+
+    app = FastAPI(
+        title="AEGIS Backend",
+        description=(
+            "AI-Enhanced Cybersecurity Threat Detector — ingest and query API. "
+            "See prd.md for requirements and architecture.md for design."
+        ),
+        version=__version__,
+        lifespan=lifespan,
+    )
+
+    app.state.settings = resolved
+    app.state.service_name = resolved.service_name
+    app.state.version = __version__
+    app.state.environment = resolved.env.value
+    # Dependencies register probes here as they are introduced (T-301, T-307).
+    app.state.readiness = ReadinessRegistry()
+
+    app.add_middleware(RequestIdMiddleware)
+    app.include_router(health.router)
+    app.include_router(ingest.router)
+    app.include_router(alerts.router)
+    return app
+
+
+def main() -> int:
+    """Console entry point. Returns a process exit code."""
+    try:
+        settings = get_settings()
+    except ConfigurationError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.env.value == "development",
+    )
+    return 0
+
+
+def __getattr__(name: str) -> object:
+    """Build the ASGI app lazily so importing this module has no side effects.
+
+    ``uvicorn app.main:app`` resolves the attribute and triggers configuration
+    loading; merely importing the module (tests, linters, docs builds) does not.
+    """
+    if name == "app":
+        try:
+            return create_app()
+        except ConfigurationError as exc:
+            # Fail with an actionable message naming the bad variable.
+            print(str(exc), file=sys.stderr)
+            raise SystemExit(1) from exc
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
