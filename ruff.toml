@@ -9,3 +9,13 @@ ignore = ["D203", "D213"]
 
 [lint.pydocstyle]
 convention = "google"
+
+# Every script in this directory inserts ml-service/ into sys.path before
+# importing aegis_ml, because the packages are not installed for a bare
+# `python scripts/x.py`. That makes E402 unavoidable by construction, and
+# suppressing it per-import is fragile: black re-wraps a long import onto
+# several lines and moves the trailing `# noqa` to the closing parenthesis,
+# where it suppresses nothing. It has broken the docs job three times this way,
+# so the rule is off for the directory instead of per line.
+[lint.per-file-ignores]
+"scripts/*.py" = ["E402"]

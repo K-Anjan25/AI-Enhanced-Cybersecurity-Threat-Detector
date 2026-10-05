@@ -220,6 +220,27 @@ On the Friday capture, of 6,415 source-keyed windows and 2,066 entities, there a
 
 **What did not change.** R-70's contract is enforced exactly as written: at least three reasons naming feature, value and baseline, or an explicit `explanation_unavailable`. A malformed window returns the marker rather than raising, because an alert that crashes its own explanation is an alert that disappears.
 
+### D-021 · Transfer from UNSW-NB15 to CIC-IDS2017 fails R-66: ranking transfers, calibration does not — MEASURED (2026-10-04), release blocked
+
+**What was run.** `scripts/transfer_eval.py`: FlowNet trained on the UNSW-NB15 official sample (95 training windows, family-holdout split, leakage audit clean), then scored against the whole of CIC-IDS2017 Friday (6,415 windows, 2,562 attack) **with the source preprocessor and no refit**. Refitting on the target would leak (R-62) and would also hide the very shift this task measures.
+
+**Result.**
+
+| threshold | recall | precision | F1 |
+|---|---|---|---|
+| 0.00 | 1.0000 | 0.3994 | 0.5708 (fpr 1.0) |
+| 0.05 | 0.0679 | 0.9355 | 0.1266 |
+| 0.50 (source operating point) | **0.0000** | 0.0000 | 0.0000 |
+| ≥ 0.10 | 0.0000 | — | — |
+
+**ROC-AUC 0.9048.** So the model *ranks* CIC attacks above CIC benign traffic — the representation transfers. What does not transfer is the **scale**: the entire target score distribution sits below 0.10, so the threshold fitted on the source catches nothing at all.
+
+**Diagnosis, and the part that is not just calibration.** A threshold at 0.05 recovers only 6.8% recall at 93.6% precision. That is not a misplaced cut on a good distribution; the model genuinely fails to flag most CIC DDoS windows. The likely cause is visible in the data: CIC's `state` and `service` categoricals never appear in UNSW's vocabulary, so both collapse to the reserved unknown column and carry no information across the boundary, while the numeric features are standardised with UNSW's mean and standard deviation and land far outside the range the model saw.
+
+**Decision.** The R-66 gate stands and fires: `transfer_eval.py` exits non-zero and the release is blocked. This is recorded as a measured negative result rather than tuned away, because a transfer number that reaches 0.70 by moving the threshold is not a transfer result.
+
+**What would have to change.** Per-target threshold calibration (T-207 supplies the mechanism, not the fix) and a feature layer that is stable across captures — the two collapsing categoricals and the unscaled numerics are the concrete places to start. Until then no release may claim cross-dataset generalisation.
+
 ## Data sources
 
 Datasets are never committed to Git (R-40). The checksums below are **measured**, not transcribed: each was computed over the bytes actually fetched, and `aegis_ml/data/datasets.py` is the single copy. `test_datasets.py` fails if this table and that module disagree.
@@ -459,6 +480,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-04 | 1.13 | **T-208 closed as a measured negative result; R-66 blocks the release.** Training on UNSW-NB15 and scoring CIC-IDS2017 whole, with the source preprocessor and no refit, gives **ROC-AUC 0.9048 but recall 0.0000** at the source's 0.50 threshold — and only 0.0679 recall at 0.05. Ranking transfers; calibration and coverage do not. Two concrete causes are recorded in D-021: CIC's `state` and `service` categoricals never appear in UNSW's vocabulary so both collapse to the reserved unknown column, and CIC's numerics are standardised with UNSW statistics and land far outside the trained range. The gate exits non-zero rather than being tuned into passing. Also fixed durably: E402 is now off for `scripts/` in `ruff.toml`, because black kept re-wrapping long imports and moving the trailing `# noqa` to the closing parenthesis where it suppressed nothing — the third time that broke the docs job. |
 | 2026-10-04 | 1.12 | **T-205, T-206 and T-207 closed.** Late fusion is monotonic in both inputs, asserted by sweeping the whole range at five levels of the other modality rather than spot-checking; a missing modality is penalised *and* flagged, because a penalised 0.9 still reads as a confident score. Threshold calibration clamps a run's movement to ±0.10 rather than refusing it — refusing would freeze the threshold the first time the calibration data is unusual — and records the requested value alongside the applied one, since the refused part is the interesting record. D-020 records that `explain()` uses occlusion attribution: attention weights are unreachable through `nn.TransformerEncoderLayer` (measured: no `need_weights` pass-through), and `shap` would add numpy, scipy and scikit-learn for what occlusion computes directly. Also fixed: `_safe_score` let a `ValueError` escape, so a malformed window crashed the explanation instead of being marked `explanation_unavailable`. |
 | 2026-10-04 | 1.11 | **Q-01 closed by D-019: `LogNet` is a from-scratch transformer over mined template IDs.** Decided on four measurements rather than preference: T-104's 103 templates at 0.9530 purity mean a log window is ~100 discrete tokens with little language left to transfer; the `TemplateMiner` already exists and is tested; NFR-05's p95 150 ms cap on 4 vCPU rules out DistilBERT over a 200-line window on CPU; and a self-contained model keeps R-67 determinism and the container size tractable. The cost is recorded rather than glossed: novel *wording* is invisible to this model, an unseen message becoming an unknown-template token, which is why `template_known` is a feature at all. |
 | 2026-10-04 | 1.10 | **T-203 closed; the leakage audit now inspects artifacts rather than declarations.** T-111's `check_scaler_leakage` audits what the caller *says* it fit on, so a caller that fits on the whole stream and passes `fit_on=split.train` sails through. `check_scaler_statistics` recomputes mean and standard deviation from the training fold and compares them against the values actually inside the fitted scaler, catching the leak regardless of what anyone declared; the acceptance case — re-fitting on the full dataset — is pinned by a test. `blocking_findings` separates a leak a split *declares* (a family-holdout split reporting a time finding, which is policy) from a violation of an invariant it claims to enforce, which blocks; scaler, record and label findings block under every policy. Wired into `train_pipeline.py` as a hard gate. Also recorded: a fixture whose numeric columns are constant cannot exercise a scaler check at all — measured as one distinct value across all 120 rows — so the leakage tests needed a fixture with per-band volume variation. |
