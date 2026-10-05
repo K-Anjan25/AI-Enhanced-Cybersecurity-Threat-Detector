@@ -149,7 +149,7 @@ def test_a_batch_spans_partitions_but_keeps_each_source_together() -> None:
         [("10.0.0.1", b"a"), ("10.0.0.2", b"b"), ("10.0.0.1", b"c"), ("10.0.0.2", b"d")]
     )
     by_key: dict[bytes, list[int]] = {}
-    for _, value, partition, key in client.sent:
+    for _, _value, partition, key in client.sent:
         by_key.setdefault(key, []).append(partition)
     for partitions in by_key.values():
         assert len(set(partitions)) == 1
