@@ -8,8 +8,9 @@ predict cybersecurity threats before they become confirmed incidents.
 > are produced, deduplicated and grouped, carry an immutable analyst verdict, are pushed over
 > a WebSocket with an SSE and REST fallback that resumes from a cursor, and can be delivered
 > to registered webhooks as HMAC-signed events with bounded retries, with every mutating
-> action recorded in an append-only audit trail; querying alerts still needs a database
-> connection (T-319). The dashboard is still the shell from T-004. See
+> action recorded in an append-only audit trail and scoped API keys for machine-to-machine
+> ingestion whose secret is stored only as a keyed digest; querying alerts still needs a
+> database connection (T-319). The dashboard is still the shell from T-004. See
 > [memory.md](memory.md) for the authoritative current state, and [task.md](task.md) for
 > per-task status.
 
@@ -32,7 +33,7 @@ The project is documented before it is coded. Start with the PRD, then the archi
 ```
 prd.md architecture.md rules.md design.md task.md memory.md
 backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, stream,
-              webhooks and the audit trail              (T-301…T-312)
+              webhooks, the audit trail and API keys     (T-301…T-313)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
 dashboard/    React + TypeScript dashboard — the shell only; E4 has not started
 data/         datasets, gitignored                              (R-40 — never committed)
@@ -53,7 +54,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 596 tests, 10 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 706 tests, 10 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -64,6 +65,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET  /api/v1/webhooks            list targets (never their secrets)
 #   DELETE /api/v1/webhooks/{id}     remove a target
 #   GET  /api/v1/audit               the append-only trail; ?start=&end= required
+#   POST /api/v1/keys                issue a scoped API key; the secret is returned once (admin)
+#   GET  /api/v1/keys                list keys, never their secrets (admin)
+#   GET  /api/v1/keys/scopes         the scopes a key may hold, and what each grants (admin)
+#   DELETE /api/v1/keys/{id}         revoke a key; the next request presenting it is refused
 
 # ml-service
 cd ../ml-service
@@ -122,9 +127,17 @@ an injected transport, but **no HTTP client ships** — connecting to the pinned
 redirects and enforcing the timeout are a `Protocol`'s contract, not behaviour measured here
 (D-040) — retries run inline in the caller rather than on a delivery queue, and the target store
 is in-memory. The audit trail is verified the same way: append-only, complete over every mutating
-route on the built application, and bounded on read, but the persistent trail is unwritten and
-**there is no migration** — `audit_log` has never been created against a live PostgreSQL (D-041) —
-so the in-memory trail dies with the process, and the admin screen and audited export are E4's.
+route on the built application, and bounded on read. API keys are verified more sharply than
+webhooks: key material is stored as **HMAC-SHA256 over the whole presented key** under a key
+derived from `AEGIS_SECRET_KEY` (D-042), because a 256-bit random secret has nothing to guess and
+Argon2id's cost per verification would be a self-inflicted denial of service on the ingest path;
+the secret appears in exactly one response and in no store, no listing, no error and no audit row.
+Scopes are a default-deny table (D-043), and a key's authority is asserted to be a subset of what
+the **least-privileged** role the matrix allows on each of its routes holds, so a machine credential
+cannot outrank a human one. `audit_log` and `api_keys` are both in T-301's migration, but **no
+migration here has been applied to a live PostgreSQL** (D-030) and no database session is wired into
+the request path, so both stores are in-memory and die with the process; the admin screens, the
+audited export (FR-43) and per-key rate limiting (T-316) are later tasks.
 
 Datasets (UNSW-NB15, CIC-IDS2017) are large and are **never committed** (R-40). The fetched
 copies are hash-verified by `scripts/fetch_datasets.py` and recorded in

@@ -15,7 +15,8 @@ from fastapi import FastAPI, Request
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.api.v1.endpoints import alerts, audit, health, ingest, stream, webhooks
+from app.api.v1.endpoints import alerts, api_keys, audit, health, ingest, stream, webhooks
+from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_id, configure_logging, get_logger
 from app.services.alert_stream import AlertHub
@@ -141,6 +142,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # work succeeded: a refused request changed nothing, and a row per attempt
     # would let a client fill the trail at will.
     app.state.audit_trail = InMemoryAuditTrail()
+    # API keys (T-313, FR-44). The digest key is derived from the application
+    # secret, so keys issued in this environment do not verify in another -- the
+    # same per-deployment consequence the webhook vault documents. The store is
+    # in-memory while no database session is wired into the request path (the gap
+    # D-030 names); ``api_keys`` has its table and index in migration 0001, so
+    # persistence is an adapter over ApiKeyStore rather than a schema change.
+    app.state.api_key_store = InMemoryApiKeyStore()
+    app.state.api_key_digest = KeyDigest(resolved.secret_key)
     # The one DNS seam (R-55). Production resolves for real; a test replaces this
     # attribute so a URL's fate is decided by the test rather than by whether a
     # name happens to resolve on the machine running the suite.
@@ -153,6 +162,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(stream.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)
+    app.include_router(api_keys.router)
     return app
 
 
