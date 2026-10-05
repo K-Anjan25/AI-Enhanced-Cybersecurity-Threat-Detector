@@ -31,8 +31,10 @@ import time
 from typing import Any
 
 from opentelemetry.trace import SpanKind
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.core.logging import bind_trace_id, get_logger, unbind_trace_id
 from app.observability import metrics
 from app.observability.tracing import span, traceparent_for
 from app.services.limits import RateLimitPolicy
@@ -43,6 +45,7 @@ __all__ = [
     "RATE_LIMIT_DETAIL",
     "BodySizeLimitMiddleware",
     "MetricsMiddleware",
+    "route_template",
     "RateLimitMiddleware",
     "TracingMiddleware",
 ]
@@ -244,7 +247,7 @@ def _client_ip(scope: Scope) -> str | None:
     return None
 
 
-def _route_template(scope: Scope) -> str | None:
+def route_template(scope: Scope) -> str | None:
     """The route template Starlette matched, or ``None`` if nothing matched.
 
     Read from the scope *after* the application has run: the router writes
@@ -257,20 +260,33 @@ def _route_template(scope: Scope) -> str | None:
 
 
 class MetricsMiddleware:
-    """Record golden signals per request, against the route template (T-317).
+    """Record golden signals per request, and log the request as one event (T-317, T-318).
 
     The route template, not the path: see :mod:`app.observability.metrics` for why
-    a request-derived label is a memory-growth vector. A request that never
-    produced a response start is recorded as 500, because that is what the client
-    sees -- a connection that closes with no status is a failure from the client's
-    side, and recording it as a success would hide exactly the requests worth
-    looking at.
+    a request-derived label is a memory-growth vector, and the same reasoning
+    applies to the access line -- a path or a query string can carry an
+    identifier, so neither is logged. The template is read from the scope after
+    the application has run, and a request that matched no route logs
+    ``unmatched``.
+
+    A request that never produced a response start is recorded as 500, because
+    that is what the client sees -- a connection that closes with no status is a
+    failure from the client's side, and recording it as a success would hide
+    exactly the requests worth looking at.
+
+    The log line lives here rather than in a middleware of its own because this is
+    the only layer that knows the status *and* the duration while both correlation
+    ids are still bound: ``request_id`` from the outermost middleware and
+    ``trace_id`` from the tracing middleware just outside this one. The level
+    follows the outcome -- a 5xx is an error, a 4xx a warning -- so an alerting
+    rule can be written against the level without parsing the status.
     """
 
     def __init__(self, app: ASGIApp, *, scrape_path: str = "/metrics") -> None:
         """Wrap the application, ignoring its own scrape traffic."""
         self.app = app
         self.scrape_path = scrape_path
+        self._logger = get_logger("aegis.request")
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Time the request and record its outcome, whatever the outcome is."""
@@ -296,12 +312,30 @@ class MetricsMiddleware:
             # `finally`, not `else`: a client that disconnects mid-request is a
             # request this process spent time on, and the duration histogram is
             # how that time becomes visible.
-            metrics.observe_http_request(
-                method,
-                _route_template(scope),
-                status,
-                max(0.0, time.perf_counter() - started),
-            )
+            route = route_template(scope)
+            elapsed = max(0.0, time.perf_counter() - started)
+            metrics.observe_http_request(method, route, status, elapsed)
+            self._log_request(method, route, status, elapsed)
+
+    def _log_request(self, method: str, route: str | None, status: int, elapsed: float) -> None:
+        """Write the one structured line this request produces.
+
+        Only labels and numbers: the route *template*, the status, the duration.
+        No path, no query string, no identifier -- the correlation ids arrive from
+        the context and the redaction processors of R-54 are the backstop.
+        """
+        fields: dict[str, Any] = {
+            "method": method.upper(),
+            "route": route or metrics.UNMATCHED_ROUTE,
+            "status": status,
+            "duration_ms": round(elapsed * 1000, 3),
+        }
+        if status >= HTTP_500_INTERNAL_SERVER_ERROR:
+            self._logger.error("request", **fields)
+        elif status >= HTTP_400_BAD_REQUEST:
+            self._logger.warning("request", **fields)
+        else:
+            self._logger.info("request", **fields)
 
 
 class TracingMiddleware:
@@ -336,6 +370,10 @@ class TracingMiddleware:
         with span(f"{method} request", parent_traceparent=inbound, kind=SpanKind.SERVER) as active:
             traceparent = traceparent_for(active)
             trace_id = traceparent.split("-")[1] if traceparent else None
+            if trace_id:
+                # Bound for the whole request so every log line it produces can be
+                # joined to the trace (T-318); unbound below, never left behind.
+                bind_trace_id(trace_id)
 
             async def traced_send(message: Message) -> None:
                 nonlocal status
@@ -347,10 +385,13 @@ class TracingMiddleware:
                         message = {**message, "headers": headers}
                 await send(message)
 
-            await self.app(scope, receive, traced_send)
-            route = _route_template(scope)
-            active.update_name(f"{method} {route or 'unmatched'}")
-            active.set_attribute("http.request.method", method)
-            active.set_attribute("http.response.status_code", status)
-            if route:
-                active.set_attribute("http.route", route)
+            try:
+                await self.app(scope, receive, traced_send)
+            finally:
+                unbind_trace_id()
+                route = route_template(scope)
+                active.update_name(f"{method} {route or 'unmatched'}")
+                active.set_attribute("http.request.method", method)
+                active.set_attribute("http.response.status_code", status)
+                if route:
+                    active.set_attribute("http.route", route)
