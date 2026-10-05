@@ -22,12 +22,14 @@ worth having.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
 from aegis_ml.data.features import NUMERIC_FEATURES, FlowFeatures
+from aegis_ml.data.preprocess import StandardScaler
 from aegis_ml.data.records import FlowRecord, LogRecord
 from aegis_ml.data.splits import Split
 from aegis_ml.data.windowing import Window
@@ -251,3 +253,128 @@ def audit_split(
     if rows is not None:
         findings.extend(check_label_leakage(rows))
     return AuditReport(findings=tuple(findings))
+
+
+def check_scaler_statistics(
+    scaler: StandardScaler,
+    train_rows: Sequence[Sequence[float]],
+    *,
+    tolerance: float = 1e-9,
+) -> tuple[Finding, ...]:
+    """Recompute the training-fold statistics and compare them with the fitted scaler.
+
+    This is the check T-203 exists for, and it is deliberately not the same as
+    :func:`check_scaler_leakage`. That one audits what the caller *says* it fit
+    on; a caller that fits on the whole stream and passes ``fit_on=split.train``
+    sails through it. This one audits the artifact: the means and standard
+    deviations actually inside the scaler are recomputed from the training fold
+    and compared, so a scaler that saw held-out data disagrees with itself no
+    matter what anyone declared.
+
+    The comparison is relative, because a feature measured in bytes per second
+    has a mean several orders of magnitude larger than one measured in seconds,
+    and one absolute tolerance cannot serve both.
+
+    Args:
+        scaler: the fitted scaler from the trained run.
+        train_rows: the numeric vectors of the training fold only.
+        tolerance: relative slack for floating-point round-trip.
+    """
+    if not train_rows:
+        return (
+            Finding(
+                LeakKind.SCALER,
+                "cannot verify the scaler — the training fold has no rows",
+            ),
+        )
+    width = len(scaler.feature_names)
+    for index, row in enumerate(train_rows):
+        if len(row) != width:
+            return (
+                Finding(
+                    LeakKind.SCALER,
+                    f"training row {index} has {len(row)} values, expected {width}",
+                ),
+            )
+
+    expected_means = [sum(row[i] for row in train_rows) / len(train_rows) for i in range(width)]
+    expected_stds = [
+        math.sqrt(sum((row[i] - expected_means[i]) ** 2 for row in train_rows) / len(train_rows))
+        for i in range(width)
+    ]
+
+    def worst(actual: Sequence[float], expected: Sequence[float]) -> float:
+        return max(abs(a - e) / max(1.0, abs(e)) for a, e in zip(actual, expected, strict=True))
+
+    mean_drift = worst(scaler.means, expected_means)
+    std_drift = worst(scaler.stds, expected_stds)
+    if mean_drift <= tolerance and std_drift <= tolerance:
+        return ()
+    return (
+        Finding(
+            LeakKind.SCALER,
+            "the fitted scaler does not match statistics computed from the training "
+            f"fold alone (relative mean drift {mean_drift:.3e}, std drift "
+            f"{std_drift:.3e}); it was fit on data beyond the training split",
+            value=max(mean_drift, std_drift),
+        ),
+    )
+
+
+def audit_trained(
+    split: Split[FlowRecord] | Split[LogRecord],
+    scaler: StandardScaler,
+    train_rows: Sequence[Sequence[float]],
+    *,
+    rows: Sequence[FlowFeatures] | None = None,
+    fit_on: Sequence[Window[FlowRecord]] | Sequence[Window[LogRecord]] | None = None,
+) -> AuditReport:
+    """Audit a *trained* run, not just a split (T-203).
+
+    Runs every split-level check plus the artifact-level scaler check. This is a
+    release blocker: a run whose report is produced by a leaking pipeline
+    describes the pipeline, not the model, and shipping that number is how a
+    project starts lying to itself.
+
+    Args:
+        split: the split the run used.
+        scaler: the preprocessor's fitted scaler.
+        train_rows: numeric vectors of the training fold, for the artifact check.
+        rows: extracted feature rows, to enable the label-leakage check.
+        fit_on: the windows the caller says it fit on, for the provenance check.
+    """
+    report = audit_split(split, fit_on=fit_on, rows=rows)
+    return AuditReport(
+        findings=(
+            *report.findings,
+            *check_scaler_statistics(scaler, train_rows),
+        )
+    )
+
+
+def blocking_findings(
+    report: AuditReport, split: Split[FlowRecord] | Split[LogRecord]
+) -> tuple[Finding, ...]:
+    """The findings that must block a release, given what the split declares.
+
+    A split records which invariants it enforces. When it says it does not enforce
+    the temporal order — as an entity-only or family-holdout split deliberately
+    does not — a time finding is a *declared* limitation of that policy, not a
+    defect in the run, and treating it as a blocker would make the policy
+    unusable. When the split claims to enforce an invariant and the audit finds a
+    violation anyway, that is a bug and it blocks.
+
+    Scaler, record and label findings always block: no policy declares itself
+    permitted to fit on held-out data, duplicate a window across folds, or carry a
+    feature that is the label in disguise.
+    """
+    return tuple(finding for finding in report.findings if not _is_declared(finding, split))
+
+
+def _is_declared(finding: Finding, split: Split[FlowRecord] | Split[LogRecord]) -> bool:
+    """Whether the split already admits to this class of leak."""
+    if finding.kind is LeakKind.TIME:
+        return not split.temporal_enforced
+    if finding.kind is LeakKind.ENTITY:
+        return not split.entity_disjoint_enforced
+    return False
