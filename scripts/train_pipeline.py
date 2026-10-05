@@ -25,6 +25,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "ml-service"))
 sys.path.insert(0, ROOT)
 
+from aegis_ml.data.audit import audit_trained, blocking_findings  # noqa: E402
+from aegis_ml.data.features import extract_flow_window  # noqa: E402
 from aegis_ml.data.records import FlowRecord  # noqa: E402
 from aegis_ml.data.splits import (  # noqa: E402
     Split,
@@ -101,6 +103,31 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  split {args.split_policy}: {split.audit()}")
 
     preprocessor = _fit(split.train, key)
+
+    # T-203 is a release blocker, so it runs on the real artifacts and not on a
+    # description of them: the scaler actually fitted above is recomputed from the
+    # training fold and compared. A run that leaks exits non-zero rather than
+    # producing a metric that describes the leak.
+    audit_train_rows = [
+        list(feature.numeric)
+        for window in split.train
+        for feature in extract_flow_window(window.records, key=key)
+    ]
+    audit = audit_trained(
+        split, preprocessor.scaler, audit_train_rows, fit_on=split.train
+    )
+    blockers = blocking_findings(audit, split)
+    declared = [f for f in audit.findings if f not in blockers]
+    for finding in declared:
+        print(f"  leakage audit: declared by this policy, not blocking - {finding}")
+    if blockers:
+        for finding in blockers:
+            print(f"leakage audit: {finding}", file=sys.stderr)
+        print(
+            "refusing to train: the leakage audit failed (T-203, R-62)", file=sys.stderr
+        )
+        return 1
+    print("  leakage audit: no blocking findings (T-203)")
     train_seq, train_y, _ = _sequences(split.train, key, preprocessor, 50)
     test_seq, test_y, _ = _sequences(split.test, key, preprocessor, 50)
     if not train_seq or not test_seq:
@@ -178,6 +205,10 @@ def main(argv: list[str] | None = None) -> int:
         "git_sha": sha,
         "git_dirty": dirty,
         "dataset_sha256": digest.sha256,
+        "leakage_audit": {
+            "blocking": [str(f) for f in blockers],
+            "declared_by_policy": [str(f) for f in declared],
+        },
     }
     with open(
         os.path.join(out_dir, "reproducibility.json"), "w", encoding="utf-8"
