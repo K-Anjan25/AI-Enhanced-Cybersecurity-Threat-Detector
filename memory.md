@@ -26,17 +26,17 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 | Aspect | State |
 |---|---|
-| Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9` and T-313 at `69b6b5e` — see below) |
-| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), and retention with GDPR erasure (T-314). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
-| Tests | **1382 passing, 26 skipped** — 817 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9`, T-313 at `69b6b5e` and T-314 at `0814cc7` — see below) |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), retention with GDPR erasure (T-314), and the model ops endpoints (T-315). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
+| Tests | **1456 passing, 26 skipped** — 891 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
 | Checks green | `./scripts/check_all.sh` — **25 checks, 0 failed** (measured 2026-10-05): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
 | Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
 | Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
 | Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
 | Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
-| Next work | **T-315 — model ops endpoints** (FR-30…FR-33), then T-316 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
+| Next work | **T-316 — rate limiting and back-pressure** (architecture.md §11), then T-317 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
 
-**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-314.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-315.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -1290,10 +1290,105 @@ erased them" is a claim about where the data is *not*.
 window where identifiers really do persist is the one D-044 names -- alert and
 verdict history -- which is why the erasure report keeps saying so.
 
+### D-046 — Promotion is one call, and a rollback is the reversal of one rather than a promotion (T-315) (2026-10-05)
+
+**Decision.** ``POST /api/v1/models/{model_id}/promote`` makes a version ``active``
+and retires the incumbent **in the same operation**. ``POST
+/api/v1/models/{kind}/rollback`` reverses the most recent un-reversed promotion of
+that kind, also in one call. The two are different operations, not two spellings
+of one.
+
+**Why promotion is one call.** Two calls -- promote, then retire the old one --
+leave a window in which either two versions of a kind are active or none is. T-212's
+registry took the same position, and FR-33's "no redeploy" is about exactly this
+swap.
+
+**Why a rollback is not a promotion.** ``model_status`` has no path back from
+``retired``, deliberately: the set of versions that have ever served traffic must
+stay append-only, so R-68's prohibition on reuse holds and a retired artifact is
+never quietly re-qualified. A rollback is the *reversal of a promotion*, so it is
+modelled as one: it re-activates the version that the current one displaced and
+retires the current one. **The caller names the kind, not a version**, which is what
+makes it one call and un-fakeable -- an operator cannot roll back to a version that
+never served, and the previous version comes from the service's own history rather
+than from the caller's memory. A second rollback moves one promotion further back,
+because the reversal is recorded by marking the promotion it reversed (the schema's
+own ``model_versions_history.rolled_back_at``) rather than by appending a second
+transition; a kind whose active version displaced nothing has nothing older, and
+that is a 409 rather than a guess.
+
+**Authority.** R-53 already names a ``models`` capability and gives it to ``admin``
+alone, so promotion and rollback use it and no new capability was invented. Reads
+need only ``Capability.READ``: which model is serving, and what it scored, is
+operational information an analyst needs to interpret an alert. A machine credential
+cannot promote anything -- T-313's route table does not accept keys here -- and the
+matrix rows say the same thing the tests assert behaviourally.
+
+**What is recorded.** Each transition appends one audit row when it changes
+something, carrying ids, kind and status. The justification for a promotion and the
+reason for a rollback are required by the request, stored on the version and
+returned in the response, and are **deliberately absent from the trail**: the trail
+is readable by every role and notes do not belong in it (R-58, and T-309's precedent
+for analyst notes). A promotion of the version that is already active changes
+nothing, returns ``changed=false`` and writes **no** row, so a retrying client cannot
+fill the trail with copies of one decision (D-041).
+
+**Refusals are shaped by their remedy.** A floating id is ``400`` and names R-68,
+because "``latest`` is forbidden" and "no such version" have different fixes; a
+retired version or one with no training manifest is ``409``, because the request is
+well formed and the conflict is with the version's own state (R-63 gates promotion,
+not registration -- an unmanifested artifact can be listed and staged); an unknown
+version is ``404``; an unknown kind or a blank note is ``400``; an unknown filter is
+``422`` rather than a filter that silently matches nothing.
+
+**Gaps, named.** Shadow mode is design.md's default promotion target and is **not
+modelled**: ``model_status`` has no ``shadow`` value, and architecture.md §9's
+staging → shadow-score → active step is T-213's harness with no scheduling decision
+yet made about who runs the comparison. The promotion modal's "type the model id"
+confirmation is T-409's. The durable ``models`` and ``model_versions_history`` tables
+have no adapter while no database session is wired into the request path (D-030).
+
+### D-047 — The backend restates the registry's rules at the edge, and refuses to invent a version or a metric (T-315) (2026-10-05)
+
+**Decision.** ``app/services/model_ops.py`` holds the API-side model of the registry:
+the versions a deployment serves, their recorded metrics, and the promote/rollback
+transitions. It is pure -- no FastAPI, no HTTP client -- and it starts **empty**.
+
+**The registry in ``ml-service`` is still the authority.** The backend cannot import
+``aegis_ml`` (it is not a dependency of this service) and no client to the model
+service exists, so the rules R-68 needs are restated here and the in-memory service
+is the deployment's state until a client replaces it. What the restatement buys is
+that a request is refused *before* a round trip with the right remedy: ``latest`` is a
+400 naming R-68, not a 404. What it costs is named rather than hidden -- two
+implementations of the same rules can drift, and the registry remains the authority,
+not this module.
+
+**Nothing is invented.** R-74 makes an unsourced number an honesty defect, so the
+registry is empty at startup and a version is registered explicitly. A metric cannot
+be built from a value alone: :class:`MetricPoint` names the artifact and the field
+the value was read from, :class:`ModelMetrics` refuses a set that is missing any of
+FR-31's five metrics (precision, recall, f1, roc_auc, pr_auc) or that names no split,
+and a value outside ``[0, 1]`` is refused because every one of those metrics is a
+proportion -- anything else is a units bug or a fabrication. A version with no
+recorded evaluation renders as a gap rather than a zero: the listing shows
+``metrics: null``, and the metrics route answers 404 saying the version *is*
+registered but unmeasured, which is a fact about the model and not a missing record.
+
+**Content addressing is enforced at the edge too.** A version's ``sha256`` must be 64
+lowercase hex, and re-registering an id against different bytes is refused with both
+addresses named. The check is duplicated from T-212 on purpose: an id that silently
+changed content is the supply-chain failure R-68 exists to prevent, and it is cheap
+to refuse at the edge.
+
+**Gaps, named.** No client to the model service (so ``model_ops`` is in-memory and
+``main.py`` says so); no ``shadow`` status; and the ``models``/
+``model_versions_history`` tables are unadapted while no session is wired (D-030).
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.37 | **T-315 done — model ops, where promotion is one call and a rollback is the reversal of one.** `backend/app/services/model_ops.py`, `backend/app/schemas/model.py`, `backend/app/api/v1/endpoints/models.py`, four `ROUTE_MATRIX` entries, two `AUDITED_ROUTES` rows and the `model_ops` seam; 74 tests. Policy recorded as **D-046** (promotion, rollback, authority) and **D-047** (the registry authority and R-74 at the edge). **Promotion retires the incumbent in the same call**, because two calls leave a window with either two active versions of a kind or none; **a rollback is not a promotion** -- `model_status` has no path back from `retired` (R-68 keeps the set of versions that have served traffic append-only), so rollback is modelled as the *reversal* of a promotion: it re-activates the version the current one displaced and retires the current one, both in one call. The caller names the **kind**, not a version, so an operator cannot roll back to something that never served, and the predecessor comes from the service's own history. The reversal is recorded by marking the promotion it reversed -- the schema's own `rolled_back_at` -- rather than by appending a second transition, so a second rollback moves one promotion further back instead of bouncing the same two versions, and a kind whose active version displaced nothing answers 409 rather than guessing. Authorisation needed no new capability: R-53 already names a `models` capability and gives it to `admin` alone, so promote and rollback use it while reads only need `READ` (which model is serving is what an analyst interprets an alert with), and a machine credential cannot promote anything because T-313's route table does not accept keys here. **The trail records ids, kind and status only**: the promotion justification and the rollback reason are required by the request, stored on the version and returned, and deliberately absent from the widest-read table (R-58, T-309's precedent); a no-op promotion returns `changed=false` and writes no row, so a retrying client cannot fill the trail. Refusals are shaped by their remedy: 400 for a floating id (naming R-68, since "forbidden" and "not found" have different fixes) and for a blank note or unknown kind, 404 for an unknown version, 409 for a retired version or one without a training manifest (R-63 gates promotion, not registration), 422 for an unknown filter. **R-74 is enforced structurally**: the registry starts empty, a metric cannot be built from a value alone (each names its artifact and field), a set missing any of FR-31's five metrics or naming no split is refused, a value outside [0, 1] is refused as a units bug or a fabrication, and a version with no recorded evaluation renders as a gap -- the metrics route says the version is registered but unmeasured rather than showing a zero. **45 injected defects each failed their target tests**, covering every R-68 refusal, the manifest gate, the incumbent retirement, no-op promotions, the rollback's predecessor and marking, the wrong-actor record, the two audit rows and their absent notes, the 400/404/409/422 mapping, the role matrix, and the seam that must refuse rather than answer with an empty registry. One survivor was real and is now closed: a seam that returned an empty `ModelOpsService` instead of raising would have answered "no models are registered" for a deployment that has some -- a confident wrong answer -- and a test now asserts the refusal. Backend 817 → 891 tests, coverage 97.83% → 98.00%; 25 checks, 0 failed. **Gaps:** shadow mode is design.md's default promotion target and is not modelled (`model_status` has no `shadow`; architecture.md §9's staging → shadow-score → active step is T-213's harness with no scheduling decision yet), the promotion modal's type-the-id confirmation is T-409's, no client to the model service exists (so `model_ops` is in-memory), and the `models`/`model_versions_history` tables are unadapted while no session is wired (D-030). |
 | 2026-10-05 | 1.36 | **T-314 done — retention that drops only the months the policy has finished with, and an erasure that says what it did not touch.** `backend/app/services/retention.py`, `backend/app/services/erasure.py`, `backend/app/schemas/privacy.py`, `backend/app/api/v1/endpoints/privacy.py`, the retention settings, `Capability.RETENTION`, four `ROUTE_MATRIX` entries and two `AUDITED_ROUTES` rows; 111 new tests (32 retention, 43 erasure, 31 API, plus the audit-table enumeration). Policy recorded as **D-044** (retention) and **D-045** (erasure). **The boundary is the whole task**: a month may be dropped only when its *end* is at or before the cutoff, so a month that straddles it keeps the rows the policy promised; the equality case (a 399-day window ending exactly on a partition's last day) is asserted on its own, because an implementation using `<` passes every other test while retaining a day more than it claims. Windows are configuration -- 30 days for raw records per FR-05, 400 for alerts and ingest stats -- and an inverted pair (alerts kept shorter than the raw records they came from) fails at startup, not at the first run. The plan is a pure function of policy, today and the catalog, which is what lets the admin preview and the run build it the same way; `missing` months are reported because there is no default partition, and `audit_log` is reported unevictable with its reason (R-31) in every plan rather than omitted. Kafka and Elasticsearch retention are reported as mechanisms, not executed. **Erasure redacts entities and deletes accounts**: a host row stays with a tombstone because alerts reference it, a user row goes because the row *is* the account, and the `api_keys` rows go with it (the schema's own `ON DELETE CASCADE`). The tombstone is an HKDF-keyed HMAC truncated to 32 hex, prefixed `erased:`, kind-separated -- and explicitly a pseudonym rather than anonymisation, since whoever holds the secret can test candidates. `audit_log` and `verdicts` are named as preserved with reasons and never rewritten. **Idempotence comes from the ledger**: a repeat request appends nothing and writes no second audit row, so a client that retries cannot fill the trail; the identifier is in the process for one call and appears in no response, store, ledger entry or audit detail -- asserted by scanning all four. **46 injected defects each failed their target tests**, covering the boundary rule both ways, the cutoff arithmetic, per-table window mapping, the equality and range validations, unevictable reporting, swallowed drop failures, an already-absent partition counted as dropped, unkeyed and kind-blind tombstones, a ledger that ignores its cursor or its own history, a row-deleting entity store, kept API-key rows, a repeat erasure audited twice, the identifier copied into the audit detail or echoed back in the report, an unknown kind guessed instead of refused, a cursor that skips a page, widened matrix rows, a runner seam that reports a clean run, and both audit-table rows. Two survivors in the first run were *equivalent* rather than missed -- stats and alerts shared a window of 400, so mapping one to the other changed nothing, and the matrix's role lists are intent while `require` is the gate -- and were closed by adding the tests that make the difference observable instead of counting them. One battery bug matters more than any mutation: the first run invoked pytest without `-m`, every run exited 2 in milliseconds, and a battery that read a collection error as "the tests failed, so the mutation was killed" reported a 45/45 sweep while proving nothing; it now checks a baseline first and treats a collection error as infrastructure. The pre-commit detect-secrets scan was failing on two pre-existing false positives (the public `aegis_sk_` prefix constant and a JWT-shaped test string); both carry the repository's inline allowlist pragma now. Backend 706 → 817 tests, coverage 97.39% → 97.83%; 25 checks, 0 failed. **Gaps:** the catalog query and the statement runner are seams with no session behind them (D-030), the ledger table has no adapter, and erasure of the raw records that live in Kafka and Elasticsearch is reported, not performed. |
 | 2026-10-05 | 1.35 | **T-313 done — scoped API keys, hashed with a key the database does not hold.** `backend/app/auth/api_keys.py`, `backend/app/schemas/api_key.py`, `backend/app/api/v1/endpoints/api_keys.py`, three `ROUTE_MATRIX` entries, `Capability.API_KEYS`, and the `Principal` extension that lets a key authenticate; 110 tests. Policy recorded as **D-042** (storage) and **D-043** (authorisation). **The hashing decision is the interesting one:** `key_hash` is `String(64)` and an Argon2id encoding is far longer, so the task's own bar -- "hashing" -- had to be settled rather than assumed. Argon2id is right for passwords because they are low-entropy and human-chosen; a 256-bit `secrets` key has nothing to guess, and memory-hard verification on every ingest request would be a self-inflicted denial-of-service. So the stored value is **HMAC-SHA256 over the whole presented key under an HKDF-derived key from `AEGIS_SECRET_KEY`** -- 64 hex characters, no migration, and a stolen database is not an offline oracle because the digest key is not in it. The consequence is named: rotating the application secret invalidates every key at once, as it already does for sealed webhook secrets. **The secret is exposed exactly once and this is asserted as an absence**: `ApiKeyOut` has no field for it, the record dataclass has none, the module exposes no name that returns a plaintext, issuing twice yields different strings, and a scan of the store and the audit trail after a create finds neither the key nor its digest. The only recoverable display value is the prefix `aegis_sk_<id>_`. **Only a prefix is stored**, and the MAC covers the id half too, so a key with its id rewritten fails the digest rather than merely missing a lookup; an unknown id is compared against a dummy so "no such key" and "wrong secret" cost the same work (the residual -- which ids exist -- is metadata and is named). **Revocation is a column, never a delete, and it lands on the next request**: verification reads the store every time, there is no cache, and a second revoke keeps the first timestamp. **Authorisation is by scope, not by role:** `API_KEY_ROUTES` is a default-deny table of three routes, and for each one the scope's capabilities must be a subset of the **intersection** of the capabilities of every role the matrix allows there -- so a key cannot outrank the least-privileged human on its own route, and that is asserted rather than intended. Presenting an `Authorization` header *and* an `X-API-Key` is a 401 rather than a precedence rule, since guessing authorises the request with the credential the operator did not mean. **38 injections each failed their target tests** -- including a digest over only the id, a short-circuit that skips the dummy comparison, a revoked key that still resolves, a revoked key that still grants, a second revoke that moves the timestamp, a store that deletes instead of revoking, both SQL guards dropped, a widened `alerts:read`, a key principal that borrows its owner's subject, a listing served with the create schema, a repeated revoke audited again, and an endpoint that silently drops an unknown scope. Two survivors in the first run were equivalent mutants (a no-op `int(int(...))`) and one was a mis-targeted battery entry; the equivalent ones were replaced with real defects rather than counted. **Gaps:** the store is in-memory while no database session is wired into the request path (`api_keys` has its table and index in migration 0001, so this is the same adapter gap D-030 names, not a schema one); `owner_id` wants the numeric `users.id` the opaque subject cannot supply (D-038); per-key rate limiting is T-316; and the `/admin/keys` screen is T-410's. Backend 596 → 706 tests, coverage 96.89% → 97.39%. |
 | 2026-10-05 | 1.34 | **Environment reset, and the tree re-verified rather than assumed.** The sandbox was recreated between sessions: `.venv`, `dashboard/node_modules` and the local git history were gone, and `.git` was the initial shallow clone at `04aeb71` again. **The working tree was intact** — every E3 file, test and documentation edit unchanged — but `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310) and `34dc7ff` (T-311) no longer exist here and were never pushed (the branch has no upstream), so **`415a5b1`** re-establishes their content: one commit standing in for four, and the per-task commit boundaries are gone with them. No file content changed, so every recorded measurement still describes what is on disk. The Python environment was then rebuilt from `backend/pyproject.toml` (which is also what proves `cryptography>=44` is declared rather than hand-installed) and the dashboard dependencies from `package.json`, and the full suite re-run to 25 checks / 0 failed before T-312 began. |

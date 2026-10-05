@@ -921,6 +921,10 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # most destructive things this system can do, so both are recorded.
         "retention.apply",
         "privacy.erasure",
+        # T-315: promoting a model and rolling one back change what produces
+        # production scores, which is a change to the system's behaviour.
+        "model.promote",
+        "model.rollback",
     }
 
 

@@ -167,6 +167,13 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/retention/run": frozenset({Role.ADMIN}),
     "/api/v1/privacy/erasure": frozenset({Role.ADMIN}),
     "/api/v1/privacy/erasures": frozenset({Role.ADMIN}),
+    # Which model is serving, and what it scored, is operational information every
+    # role needs to interpret an alert. Changing it is admin's per R-53, which
+    # names a `models` capability and gives it to admin alone.
+    "/api/v1/models": frozenset(Role),
+    "/api/v1/models/{model_id}/metrics": frozenset(Role),
+    "/api/v1/models/{model_id}/promote": frozenset({Role.ADMIN}),
+    "/api/v1/models/{kind}/rollback": frozenset({Role.ADMIN}),
     # The audit trail is read by every role (FR-42, FR-43 reserves the *export*
     # for responder and above). Reading it is reading: no capability beyond the
     # one every authenticated role already holds.
