@@ -22,10 +22,12 @@ from fastapi import Request
 from app.auth.api_keys import ApiKeyStore, KeyDigest
 from app.services.audit_log import AuditTrail
 from app.services.erasure import ErasureService
+from app.services.limits import AdmissionController
 from app.services.model_ops import ModelOpsService
 from app.services.retention import RetentionPolicy, StatementRunner
 
 __all__ = [
+    "admission",
     "api_key_digest",
     "api_key_store",
     "audit_trail",
@@ -167,6 +169,21 @@ def model_ops(request: Request) -> ModelOpsService:
         msg = "model_ops is not configured on app.state"
         raise RuntimeError(msg)
     return service
+
+
+def admission(request: Request) -> AdmissionController:
+    """The bounded in-flight budget the ingest API consults before accepting a batch.
+
+    Raises:
+        RuntimeError: if none is installed. An unwired budget must fail loudly: the
+            alternative is an ingest path that accepts everything and drops later,
+            which is the silent-loss failure architecture.md §12 names.
+    """
+    controller: AdmissionController | None = getattr(request.app.state, "admission", None)
+    if controller is None:
+        msg = "admission is not configured on app.state"
+        raise RuntimeError(msg)
+    return controller
 
 
 def client_ip(request: Request) -> str | None:

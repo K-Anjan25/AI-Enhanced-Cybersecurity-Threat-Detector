@@ -16,6 +16,7 @@ from fastapi import FastAPI, Request
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.api.middleware import BodySizeLimitMiddleware, RateLimitMiddleware
 from app.api.v1.endpoints import (
     alerts,
     api_keys,
@@ -43,6 +44,7 @@ from app.services.erasure import (
     UserDeletionTarget,
 )
 from app.services.health_service import ReadinessRegistry
+from app.services.limits import AdmissionController, RateLimitPolicy
 from app.services.model_ops import ModelOpsService
 from app.services.retention import RetentionPolicy
 from app.services.webhook_targets import (
@@ -253,6 +255,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # name happens to resolve on the machine running the suite.
     app.state.webhook_resolver = resolve_host
 
+    # Limits and back-pressure (R-56, T-316). The policy and the budget live on
+    # app.state as well as in the middleware, so a test can tighten a limit without
+    # rebuilding the application and an operator can change one without a deploy.
+    app.state.rate_limit_policy = RateLimitPolicy(
+        credential_per_minute=resolved.rate_limit_requests_per_minute,
+        anonymous_per_minute=resolved.rate_limit_anonymous_per_minute,
+        secret=resolved.secret_key,
+    )
+    app.state.max_request_bytes = resolved.max_request_bytes
+    app.state.admission = AdmissionController(resolved.ingest_max_in_flight_records)
+
+    # Order matters, and the last one added is outermost: the request id is bound
+    # before the limiters run, so a 429 or a 413 still carries X-Request-ID.
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=resolved.max_request_bytes)
+    app.add_middleware(RateLimitMiddleware, policy=app.state.rate_limit_policy)
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health.router)
     app.include_router(ingest.router)

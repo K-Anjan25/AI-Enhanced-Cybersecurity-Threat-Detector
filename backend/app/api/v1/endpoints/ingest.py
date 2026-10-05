@@ -21,7 +21,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from app.api.v1.deps import audit_trail, client_ip
+from app.api.v1.deps import admission, audit_trail, client_ip
 from app.auth.rbac import Capability, Principal, require
 from app.schemas.ingest import (
     MAX_FLOW_RECORDS,
@@ -78,25 +78,44 @@ def _ingest(
     # Accepted records are handed to the persistence layer by T-307; until then
     # the count is the contract and the records are validated and discarded.
     request.state.accepted_records = accepted
-    if result.accepted == 0:
+    # Back-pressure (architecture.md §12, T-316). The budget is taken for the
+    # records this batch puts in flight and returned when the request ends; a
+    # producer would release on delivery instead, which is D-039's decision. A
+    # batch that does not fit is refused **whole** -- admitting the part that fits
+    # and failing the request would be the silent partial write the trail exists to
+    # prevent -- and the client is told to retry rather than left to guess.
+    controller = admission(request)
+    if not controller.admit(result.accepted):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "ingest buffer is full; the batch was refused whole so it can be "
+                "retried without duplicating records"
+            ),
+            headers={"Retry-After": str(controller.retry_after())},
+        )
+    try:
+        if result.accepted == 0:
+            return result
+        record_action(
+            audit_trail(request),
+            action=action,
+            actor=caller.subject,
+            target_type="ingest",
+            target_id=action.value,
+            at=datetime.now(UTC),
+            # Counts and a media type: enough to know what was taken in, with no
+            # record content and no source addresses (R-54, R-58).
+            detail={
+                "received": result.received,
+                "accepted": result.accepted,
+                "rejected": result.rejected,
+            },
+            ip=client_ip(request),
+        )
         return result
-    record_action(
-        audit_trail(request),
-        action=action,
-        actor=caller.subject,
-        target_type="ingest",
-        target_id=action.value,
-        at=datetime.now(UTC),
-        # Counts and a media type: enough to know what was taken in, with no
-        # record content and no source addresses (R-54, R-58).
-        detail={
-            "received": result.received,
-            "accepted": result.accepted,
-            "rejected": result.rejected,
-        },
-        ip=client_ip(request),
-    )
-    return result
+    finally:
+        controller.release(result.accepted)
 
 
 @router.post(

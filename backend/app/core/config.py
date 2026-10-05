@@ -66,7 +66,21 @@ class Settings(BaseSettings):
     # Ingest limits (FR-01, FR-02, R-56).
     max_flow_batch: int = Field(default=1000, ge=1)
     max_log_batch: int = Field(default=5000, ge=1)
+    # Enforced before parsing by app.api.middleware.BodySizeLimitMiddleware: a
+    # declared length over the cap is answered without reading the body, and a
+    # streamed body is counted as it arrives.
     max_request_bytes: int = Field(default=8 * 1024 * 1024, ge=1024)
+
+    # Rate limiting (R-56, T-316). Ten per second sustained per credential, which
+    # is far above a collector's rate and far below what it takes to make the
+    # service spend its time refusing. Anonymous requests get a lower limit
+    # because they are the unauthenticated flood the rule names.
+    rate_limit_requests_per_minute: int = Field(default=600, ge=1)
+    rate_limit_anonymous_per_minute: int = Field(default=120, ge=1)
+    # Back-pressure (architecture.md §12): the number of records allowed in flight
+    # before the ingest API answers 503 with Retry-After instead of queueing
+    # without limit and dropping something later.
+    ingest_max_in_flight_records: int = Field(default=20_000, ge=1)
 
     ml_service_url: str = Field(default="http://localhost:8001")
 
