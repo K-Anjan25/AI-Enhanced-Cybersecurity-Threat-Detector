@@ -23,9 +23,18 @@ dependencies = [
     # Prometheus client exports consumer-group lag.
     "kafka-python-ng>=2.2",
     "prometheus-client>=0.21",
+    # T-311. Webhook signing secrets are stored sealed with Fernet, whose key is
+    # derived from the application secret; R-51's Argon2id is for passwords and
+    # cannot encrypt. A runtime dependency, not a dev one.
+    "cryptography>=44",
 ]
 
 [project.optional-dependencies]
+# T-310. uvicorn needs a WebSocket protocol implementation to serve /alerts/ws
+# in production; it is not needed for the tests, which drive the ASGI contract
+# directly, and it is not installed in the sandbox -- recorded, not implied.
+ws = ["websockets>=15"]
+
 dev = [
     "pytest>=9.1",
     # check_all.sh and CI run `pytest --cov=app` and `lint-imports` for this
