@@ -32,6 +32,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     String,
@@ -160,7 +161,12 @@ class Alert(Base):
     # Both columns must be declared as key columns explicitly -- omitting either
     # leaves the mapper with no primary key at all, and `id` alone cannot be
     # enforced globally across partitions.
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    #
+    # Identity(), not autoincrement=True. On a composite key SQLAlchemy does not
+    # create a sequence for autoincrement, so `id` would have no default and every
+    # insert would fail with a not-null violation. That is invisible until the
+    # migration is applied to a real server.
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -278,8 +284,10 @@ class IngestStat(Base):
 
     __tablename__ = "ingest_stats"
 
-    # Partition key in the primary key, for the same reason as Alert.
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Partition key in the primary key, for the same reason as Alert. Identity()
+    # rather than autoincrement for the same reason: a composite key gets no
+    # sequence from autoincrement.
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     window_start: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, primary_key=True
     )
