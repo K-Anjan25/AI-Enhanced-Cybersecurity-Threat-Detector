@@ -1384,10 +1384,135 @@ to refuse at the edge.
 ``main.py`` says so); no ``shadow`` status; and the ``models``/
 ``model_versions_history`` tables are unadapted while no session is wired (D-030).
 
+### D-048 — R-56 is a coverage rule, and the limiter answers before routing (T-316) (2026-10-05)
+
+**Decision.** R-56 ("rate limiting on every unauthenticated and every write
+endpoint") is read as a *coverage* rule rather than a rate to tune. The scope is
+written down once, in ``app/services/limits.py``: every write method (POST, PUT,
+PATCH, DELETE) and every unauthenticated route (``/healthz``, ``/readyz``,
+``/openapi.json``, ``/docs``, ``/docs/oauth2-redirect``, ``/redoc``).
+``EXEMPT_ROUTES`` is empty and asserted empty, because an exemption is how a
+coverage rule stops being one; an exemption needs a decision recorded here first.
+
+**The rule is checked against the application, not against a list.** A test
+compares the literals with ``UNAUTHENTICATED_ROUTES | DOC_ROUTES`` from
+``app.auth.rbac`` -- the literals are repeated in the service layer because
+``app.services`` must not import the HTTP layer (R-15), so the test is what binds
+them -- and another walks the built application, collecting every method/path the
+route table exposes and requiring each write and each unauthenticated route to be
+in scope. A new write endpoint is covered the moment it exists, and an endpoint
+that is *not* covered fails the suite rather than production. The walk is proven
+non-vacuous in both directions: planted write and unauthenticated routes are
+asserted to be limited, and an authenticated read is asserted **not** to be, so
+"everything is limited" is not a passing implementation.
+
+**Identity is a keyed fingerprint or the peer address, never a header.** A
+credential (API key or bearer token) is turned into an HKDF-SHA256 fingerprint --
+``salt=b"aegis.ratelimit.fingerprint.v1"``, ``info=b"rate-limit-fingerprint"``,
+deliberately a different purpose from the api-key digest's (D-042) so the two can
+never be cross-matched even if both were leaked -- and the raw credential is
+never stored, logged or echoed (R-58). A request with no credential is bucketed by
+the address the kernel reports in the ASGI scope. ``X-Forwarded-For`` is *not*
+consulted: it is attacker-controlled unless a trusted proxy is known to set it,
+and a limiter keyed on a spoofable value is worse than one keyed on nothing,
+since a client could rotate the header for a fresh bucket per request.
+
+**Two rates, one bucket per identity:** 600 requests per minute for a credential
+(an API key or a token) and 120 for an anonymous address, both settings. A request
+with a credential is judged by that credential's bucket alone -- a shared office
+address must not make two collectors compete -- and a request without one never
+spends somebody else's allowance.
+
+**Bucket semantics, each chosen for a reason.** A bucket starts full, so a fresh
+client is not throttled before it has done anything and a restart is not a
+punishment. It refills by elapsed time at ``per_minute / 60`` per second, capped
+at capacity, so an idle client may burst a minute's worth and a hammering one gets
+the same long-run rate; the client that has been waiting earns tokens while it
+waits. A refused request consumes nothing, so a client retrying inside the window
+neither extends its own wait nor is pre-charged for it. ``Retry-After`` is whole
+seconds (RFC 9110), **rounded up** and never zero: truncating would make every
+refusal a promise the client can disprove. Buckets idle past 600 s are dropped
+when a new identity arrives -- they are full again by then, so nothing observable
+is lost -- and the table is capped, evicting the least recently used identity, so
+rotating identities cannot turn the limiter into a memory leak.
+
+**Where it runs, and what it is not built on.** The limiter is a pure-ASGI
+middleware, installed inside ``RequestIdMiddleware`` (the last one added is
+outermost), so a refusal still carries ``X-Request-ID`` and can be traced.
+``BaseHTTPMiddleware`` is not used: it holds response messages until more arrive,
+which is exactly why T-310's stream avoided it, and a limiter built on the base
+class would stall a long-lived SSE response. Running before routing is also why a
+429 costs nothing downstream: no dependency, no store, no audit row.
+
+**Reads that need a credential are out of scope** -- unless the path is one of the
+unauthenticated ones. They are cheap, they are already gated by a token, and the
+alert stream is a long-lived connection that must not be counted as traffic while
+it stays open.
+
+**Gaps, named.** Buckets live in the process: a multi-worker deployment gives each
+worker its own allowance, so the effective limit is the configured rate times the
+worker count (a shared store is the fix; Redis is not chosen here). The anonymous
+identity is the peer address, so clients behind one NAT share a bucket by design.
+The limiter is not applied to the WebSocket/SSE stream, which is a decision rather
+than an omission.
+
+### D-049 — Limits refuse explicitly: 413 before parsing, 503 with Retry-After for a full buffer (T-316) (2026-10-05)
+
+**Decision.** Two request limits that had never been enforced are enforced now, and
+"back-pressure" (architecture.md §12: *explicit back-pressure, never silent
+drops*) is modelled as a refusal rather than as a queue.
+
+**The byte cap refuses before any parser runs.** ``max_request_bytes`` existed as
+configuration with nothing reading it. A request whose declared
+``Content-Length`` is over the cap is answered **413 without reading the body**.
+A body that arrives without a length, or with one that lies, is counted as it
+streams: the middleware wraps ``receive`` and answers 413 the moment the running
+total crosses the cap, so no parser is handed more than the cap. The header check
+is an optimisation for honest clients; the count is the control, and a test drives
+chunks through the middleware directly because the ASGI test client materialises a
+streamed body into a single message -- counting only on the last chunk would pass
+an integration test and fail a real upload. The refusal carries
+``connection: close``: the rest of the body was never read, so the connection
+cannot be reused, and saying so stops an intermediary from trying. The cap is
+scoped to POST, PUT and PATCH; a body on a read is unusual enough that policing it
+would break an odd client for nothing.
+
+**This is a different limit from the record-count 413.** ``BatchTooLarge``
+(``max_flow_batch``/``max_log_batch``) refuses a body that parsed into too many
+*records* and names the counts; the byte cap refuses a body that is too large to
+parse at all and names the cap. They are kept distinct -- one is about the work the
+payload implies, the other about the request itself -- and both say so where they
+live.
+
+**A full buffer refuses the batch whole.** The ingest route takes the *accepted*
+record count from an ``AdmissionController`` and answers **503 with
+``Retry-After``** when the batch does not fit, rather than admitting the part that
+fits and failing the request: a partial accept followed by an error is the silent
+partial write the audit trail exists to prevent, and the client is told to retry
+rather than left to guess. Only accepted records are charged (rejected records cost
+the buffer nothing), and the budget is released in a ``finally`` so a route that
+raises still gives it back. Per D-039 the budget is held for the duration of the
+request until the producer exists; when a producer is wired it is released on
+delivery instead, and that is the wiring's decision to make. ``retry_after()``
+returns one second: the budget is released as work completes, and a longer wait
+computed from a backlog with no arrival-rate estimate would be a fabricated number.
+
+**The seam fails loudly.** ``admission`` raises when no controller is installed
+rather than returning a default: an ingest path with no budget would accept
+everything and drop it later, which is precisely the silent-loss failure the
+architecture names. A test asserts the refusal.
+
+**Ordering and testability.** Both middlewares are pure ASGI and are installed
+inside ``RequestIdMiddleware``, so a 429 or a 413 still carries a request id. The
+live policy and the byte cap are published on ``app.state`` as well as passed to
+the middleware, so a test can tighten a limit on a built application instead of
+rebuilding it, and the wiring is asserted against the setting end to end.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.38 | **T-316 done — limits that refuse before work is done, and a buffer that refuses whole batches.** `backend/app/services/limits.py`, `backend/app/api/middleware.py`, the three limit settings, `app.state.rate_limit_policy`/`max_request_bytes`/`admission` in `create_app`, the `admission` seam and the ingest gate; 75 tests. Policy recorded as **D-048** (R-56 is a coverage rule; identity and bucket semantics) and **D-049** (413 before parsing, 503 with `Retry-After` for a full buffer). **R-56 is read as coverage, not as a rate**: every write method and every unauthenticated route, with `EXEMPT_ROUTES` empty and asserted empty, checked three ways -- the literals equal the union of `UNAUTHENTICATED_ROUTES` and `DOC_ROUTES`, every write and unauthenticated route on the *built* application is in scope, and a planted write route is limited the moment it exists, while an authenticated read is asserted out of scope so "everything is limited" cannot pass. **Identity is an HKDF fingerprint or the peer address**: the fingerprint uses a purpose distinct from the api-key digest's (D-042) so the two can never be cross-matched, the raw credential is never stored or echoed, and `X-Forwarded-For` is deliberately **not** consulted because a spoofable identity is worse than none. Buckets start full, refill at a minute's rate, charge nothing for a refusal, and `Retry-After` is rounded **up** and never zero; buckets idle past 600 s are pruned and the table is capped so rotating identities cannot leak memory. The limiter is pure ASGI and sits inside `RequestIdMiddleware` (a 429 carries the id), never `BaseHTTPMiddleware`, which buffers and would stall T-310's SSE stream. **`max_request_bytes` was configuration nothing read**: it is now enforced before any parser runs -- a declared oversize length is answered 413 without reading the body, and a body with no length or a lying one is counted as it streams -- with `connection: close` because the rest of the body was never read, and kept distinct from `BatchTooLarge`, which is the *record-count* 413. **Back-pressure refuses whole batches**: the ingest route charges an `AdmissionController` for the accepted records and answers 503 with `Retry-After` when they do not fit, because admitting the part that fits and failing the request is the silent partial write the audit trail exists to prevent; only accepted records are charged and the budget is released in a `finally`; the seam raises when unwired rather than defaulting to a budget that accepts everything. **59 injected defects each failed their target tests.** The first run left six alive and the two categories are worth separating: two were *battery* defects (a replacement that is not valid Python inside a list comprehension -- on which the battery reports "error" and counts it as a survivor rather than as a kill -- and a mutation neutralised by the guard above it), and four were real gaps that are now tested (a GET carrying a body, two credentials alternating so neither can reset the other's bucket, a running total that spans chunks, and the configured cap reaching the middleware rather than only `app.state`). **Two mistakes of mine were found by tests rather than by review:** the unauthenticated set was written `/docs/oauth-redirect` where the framework mounts `/docs/oauth2-redirect`, caught by the equality test that exists for exactly that; and the ingest fixture used in the back-pressure tests was a record the API *rejected*, so `accepted` was 0, the gate admitted zero, and four tests passed without exercising it -- the fixture is now valid and the accepted count is asserted, so the gate cannot go unexercised again. Backend 891 → 966 tests, coverage 98.00% → 98.13%; 25 checks, 0 failed. **Gaps:** limits are per-process (a multi-worker deployment gets one allowance per worker; a shared store is not chosen here), the anonymous bucket is shared behind NAT by design, and the budget is held for the request rather than released on delivery to Kafka while the producer does not exist (D-039). |
 | 2026-10-05 | 1.37 | **T-315 done — model ops, where promotion is one call and a rollback is the reversal of one.** `backend/app/services/model_ops.py`, `backend/app/schemas/model.py`, `backend/app/api/v1/endpoints/models.py`, four `ROUTE_MATRIX` entries, two `AUDITED_ROUTES` rows and the `model_ops` seam; 74 tests. Policy recorded as **D-046** (promotion, rollback, authority) and **D-047** (the registry authority and R-74 at the edge). **Promotion retires the incumbent in the same call**, because two calls leave a window with either two active versions of a kind or none; **a rollback is not a promotion** -- `model_status` has no path back from `retired` (R-68 keeps the set of versions that have served traffic append-only), so rollback is modelled as the *reversal* of a promotion: it re-activates the version the current one displaced and retires the current one, both in one call. The caller names the **kind**, not a version, so an operator cannot roll back to something that never served, and the predecessor comes from the service's own history. The reversal is recorded by marking the promotion it reversed -- the schema's own `rolled_back_at` -- rather than by appending a second transition, so a second rollback moves one promotion further back instead of bouncing the same two versions, and a kind whose active version displaced nothing answers 409 rather than guessing. Authorisation needed no new capability: R-53 already names a `models` capability and gives it to `admin` alone, so promote and rollback use it while reads only need `READ` (which model is serving is what an analyst interprets an alert with), and a machine credential cannot promote anything because T-313's route table does not accept keys here. **The trail records ids, kind and status only**: the promotion justification and the rollback reason are required by the request, stored on the version and returned, and deliberately absent from the widest-read table (R-58, T-309's precedent); a no-op promotion returns `changed=false` and writes no row, so a retrying client cannot fill the trail. Refusals are shaped by their remedy: 400 for a floating id (naming R-68, since "forbidden" and "not found" have different fixes) and for a blank note or unknown kind, 404 for an unknown version, 409 for a retired version or one without a training manifest (R-63 gates promotion, not registration), 422 for an unknown filter. **R-74 is enforced structurally**: the registry starts empty, a metric cannot be built from a value alone (each names its artifact and field), a set missing any of FR-31's five metrics or naming no split is refused, a value outside [0, 1] is refused as a units bug or a fabrication, and a version with no recorded evaluation renders as a gap -- the metrics route says the version is registered but unmeasured rather than showing a zero. **45 injected defects each failed their target tests**, covering every R-68 refusal, the manifest gate, the incumbent retirement, no-op promotions, the rollback's predecessor and marking, the wrong-actor record, the two audit rows and their absent notes, the 400/404/409/422 mapping, the role matrix, and the seam that must refuse rather than answer with an empty registry. One survivor was real and is now closed: a seam that returned an empty `ModelOpsService` instead of raising would have answered "no models are registered" for a deployment that has some -- a confident wrong answer -- and a test now asserts the refusal. Backend 817 → 891 tests, coverage 97.83% → 98.00%; 25 checks, 0 failed. **Gaps:** shadow mode is design.md's default promotion target and is not modelled (`model_status` has no `shadow`; architecture.md §9's staging → shadow-score → active step is T-213's harness with no scheduling decision yet), the promotion modal's type-the-id confirmation is T-409's, no client to the model service exists (so `model_ops` is in-memory), and the `models`/`model_versions_history` tables are unadapted while no session is wired (D-030). |
 | 2026-10-05 | 1.36 | **T-314 done — retention that drops only the months the policy has finished with, and an erasure that says what it did not touch.** `backend/app/services/retention.py`, `backend/app/services/erasure.py`, `backend/app/schemas/privacy.py`, `backend/app/api/v1/endpoints/privacy.py`, the retention settings, `Capability.RETENTION`, four `ROUTE_MATRIX` entries and two `AUDITED_ROUTES` rows; 111 new tests (32 retention, 43 erasure, 31 API, plus the audit-table enumeration). Policy recorded as **D-044** (retention) and **D-045** (erasure). **The boundary is the whole task**: a month may be dropped only when its *end* is at or before the cutoff, so a month that straddles it keeps the rows the policy promised; the equality case (a 399-day window ending exactly on a partition's last day) is asserted on its own, because an implementation using `<` passes every other test while retaining a day more than it claims. Windows are configuration -- 30 days for raw records per FR-05, 400 for alerts and ingest stats -- and an inverted pair (alerts kept shorter than the raw records they came from) fails at startup, not at the first run. The plan is a pure function of policy, today and the catalog, which is what lets the admin preview and the run build it the same way; `missing` months are reported because there is no default partition, and `audit_log` is reported unevictable with its reason (R-31) in every plan rather than omitted. Kafka and Elasticsearch retention are reported as mechanisms, not executed. **Erasure redacts entities and deletes accounts**: a host row stays with a tombstone because alerts reference it, a user row goes because the row *is* the account, and the `api_keys` rows go with it (the schema's own `ON DELETE CASCADE`). The tombstone is an HKDF-keyed HMAC truncated to 32 hex, prefixed `erased:`, kind-separated -- and explicitly a pseudonym rather than anonymisation, since whoever holds the secret can test candidates. `audit_log` and `verdicts` are named as preserved with reasons and never rewritten. **Idempotence comes from the ledger**: a repeat request appends nothing and writes no second audit row, so a client that retries cannot fill the trail; the identifier is in the process for one call and appears in no response, store, ledger entry or audit detail -- asserted by scanning all four. **46 injected defects each failed their target tests**, covering the boundary rule both ways, the cutoff arithmetic, per-table window mapping, the equality and range validations, unevictable reporting, swallowed drop failures, an already-absent partition counted as dropped, unkeyed and kind-blind tombstones, a ledger that ignores its cursor or its own history, a row-deleting entity store, kept API-key rows, a repeat erasure audited twice, the identifier copied into the audit detail or echoed back in the report, an unknown kind guessed instead of refused, a cursor that skips a page, widened matrix rows, a runner seam that reports a clean run, and both audit-table rows. Two survivors in the first run were *equivalent* rather than missed -- stats and alerts shared a window of 400, so mapping one to the other changed nothing, and the matrix's role lists are intent while `require` is the gate -- and were closed by adding the tests that make the difference observable instead of counting them. One battery bug matters more than any mutation: the first run invoked pytest without `-m`, every run exited 2 in milliseconds, and a battery that read a collection error as "the tests failed, so the mutation was killed" reported a 45/45 sweep while proving nothing; it now checks a baseline first and treats a collection error as infrastructure. The pre-commit detect-secrets scan was failing on two pre-existing false positives (the public `aegis_sk_` prefix constant and a JWT-shaped test string); both carry the repository's inline allowlist pragma now. Backend 706 → 817 tests, coverage 97.39% → 97.83%; 25 checks, 0 failed. **Gaps:** the catalog query and the statement runner are seams with no session behind them (D-030), the ledger table has no adapter, and erasure of the raw records that live in Kafka and Elasticsearch is reported, not performed. |
 | 2026-10-05 | 1.35 | **T-313 done — scoped API keys, hashed with a key the database does not hold.** `backend/app/auth/api_keys.py`, `backend/app/schemas/api_key.py`, `backend/app/api/v1/endpoints/api_keys.py`, three `ROUTE_MATRIX` entries, `Capability.API_KEYS`, and the `Principal` extension that lets a key authenticate; 110 tests. Policy recorded as **D-042** (storage) and **D-043** (authorisation). **The hashing decision is the interesting one:** `key_hash` is `String(64)` and an Argon2id encoding is far longer, so the task's own bar -- "hashing" -- had to be settled rather than assumed. Argon2id is right for passwords because they are low-entropy and human-chosen; a 256-bit `secrets` key has nothing to guess, and memory-hard verification on every ingest request would be a self-inflicted denial-of-service. So the stored value is **HMAC-SHA256 over the whole presented key under an HKDF-derived key from `AEGIS_SECRET_KEY`** -- 64 hex characters, no migration, and a stolen database is not an offline oracle because the digest key is not in it. The consequence is named: rotating the application secret invalidates every key at once, as it already does for sealed webhook secrets. **The secret is exposed exactly once and this is asserted as an absence**: `ApiKeyOut` has no field for it, the record dataclass has none, the module exposes no name that returns a plaintext, issuing twice yields different strings, and a scan of the store and the audit trail after a create finds neither the key nor its digest. The only recoverable display value is the prefix `aegis_sk_<id>_`. **Only a prefix is stored**, and the MAC covers the id half too, so a key with its id rewritten fails the digest rather than merely missing a lookup; an unknown id is compared against a dummy so "no such key" and "wrong secret" cost the same work (the residual -- which ids exist -- is metadata and is named). **Revocation is a column, never a delete, and it lands on the next request**: verification reads the store every time, there is no cache, and a second revoke keeps the first timestamp. **Authorisation is by scope, not by role:** `API_KEY_ROUTES` is a default-deny table of three routes, and for each one the scope's capabilities must be a subset of the **intersection** of the capabilities of every role the matrix allows there -- so a key cannot outrank the least-privileged human on its own route, and that is asserted rather than intended. Presenting an `Authorization` header *and* an `X-API-Key` is a 401 rather than a precedence rule, since guessing authorises the request with the credential the operator did not mean. **38 injections each failed their target tests** -- including a digest over only the id, a short-circuit that skips the dummy comparison, a revoked key that still resolves, a revoked key that still grants, a second revoke that moves the timestamp, a store that deletes instead of revoking, both SQL guards dropped, a widened `alerts:read`, a key principal that borrows its owner's subject, a listing served with the create schema, a repeated revoke audited again, and an endpoint that silently drops an unknown scope. Two survivors in the first run were equivalent mutants (a no-op `int(int(...))`) and one was a mis-targeted battery entry; the equivalent ones were replaced with real defects rather than counted. **Gaps:** the store is in-memory while no database session is wired into the request path (`api_keys` has its table and index in migration 0001, so this is the same adapter gap D-030 names, not a schema one); `owner_id` wants the numeric `users.id` the opaque subject cannot supply (D-038); per-key rate limiting is T-316; and the `/admin/keys` screen is T-410's. Backend 596 → 706 tests, coverage 96.89% → 97.39%. |

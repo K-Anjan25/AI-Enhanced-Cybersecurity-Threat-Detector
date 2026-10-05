@@ -54,7 +54,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 891 tests, 10 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 966 tests, 10 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -142,10 +142,19 @@ Argon2id's cost per verification would be a self-inflicted denial of service on 
 the secret appears in exactly one response and in no store, no listing, no error and no audit row.
 Scopes are a default-deny table (D-043), and a key's authority is asserted to be a subset of what
 the **least-privileged** role the matrix allows on each of its routes holds, so a machine credential
-cannot outrank a human one. `audit_log` and `api_keys` are both in T-301's migration, but **no
+cannot outrank a human one. Limits are verified against the built application rather than by
+inspection: every write and every unauthenticated route is asserted in scope, an authenticated read
+is asserted out of scope, and the identity a request is bucketed by is asserted to come from the
+credential or the peer address -- never from `X-Forwarded-For` (D-048). A declared oversize body is
+refused without being read, a streamed or mis-declared one is counted as it arrives, and a batch
+that does not fit the ingest buffer is refused **whole** with `Retry-After` (D-049). `audit_log` and `api_keys` are both in T-301's migration, but **no
 migration here has been applied to a live PostgreSQL** (D-030) and no database session is wired into
 the request path, so both stores are in-memory and die with the process; the admin screens, the
-audited export (FR-43) and per-key rate limiting (T-316) are later tasks.
+audited export (FR-43) and the observability lane (T-317…T-320) are later tasks. The rate limiter is
+in-memory too: buckets do not survive a restart, and each worker process counts its own, so a
+multi-worker deployment gets the configured rate per worker until a shared store exists (D-048). The
+ingest buffer is the same shape of limitation -- it is held for the duration of a request, not
+released on delivery to Kafka, because the producer does not exist yet (D-039).
 
 Datasets (UNSW-NB15, CIC-IDS2017) are large and are **never committed** (R-40). The fetched
 copies are hash-verified by `scripts/fetch_datasets.py` and recorded in
