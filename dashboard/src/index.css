@@ -1,1 +1,113 @@
-@import "./styles/globals.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — design.md §5.
+ *
+ * Contrast ratios below were computed with the WCAG 2.1 relative-luminance
+ * formula against the stated background, and are asserted by
+ * src/theme/tokens.test.ts. Do not change a value without re-running that test.
+ *
+ * Dark theme is the default (SOC context: dim rooms, long shifts).
+ */
+
+:root,
+[data-theme='dark'] {
+  --color-bg-base: #0b0e14;
+  --color-bg-surface: #141a23;
+  --color-border: #232a35;
+  --color-text-primary: #e6e9ef; /* 15.88:1 on base */
+  --color-text-muted: #98a2b3; /* 7.50:1 on base, 6.79:1 on surface */
+  --color-accent: #8b72ff; /* 5.47:1 on base, 4.95:1 on surface */
+  --color-on-accent: #0b0e14;
+
+  /* Severity: base hues for fills, charts, and the alert rail. */
+  --severity-critical: #e5484d;
+  --severity-high: #f76808;
+  --severity-medium: #ffc53d;
+  --severity-low: #3e8ef7;
+  --severity-info: #8b8d98;
+  --severity-benign: #30a46c;
+
+  /* Severity text variants: the base hues fail AA as text, so text uses these. */
+  --severity-text-critical: #ff6369; /* 6.66:1 / 6.03:1 */
+  --severity-text-high: #ffa057; /* 9.58:1 / 8.67:1 */
+  --severity-text-medium: #ffc53d; /* 12.24:1 / 11.07:1 */
+  --severity-text-low: #70b0ff; /* 8.59:1 / 7.77:1 */
+  --severity-text-info: #98a2b3; /* 7.50:1 / 6.79:1 */
+  --severity-text-benign: #4cc38a; /* 8.72:1 / 7.89:1 */
+
+  /* Badge rule (design.md §5.3): base-hue fill with #0B0E14 text.
+     critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 6.12.
+     White text on these fills fails (3.91 / 1.58) and is prohibited. */
+  --color-on-severity: #0b0e14;
+
+  --focus-ring: #8b72ff; /* 5.47:1 against base, above the 3:1 requirement */
+}
+
+[data-theme='light'] {
+  --color-bg-base: #ffffff;
+  --color-bg-surface: #f6f7f9;
+  --color-border: #e2e5ea;
+  --color-text-primary: #0b0e14; /* 19.32:1 on base */
+  --color-text-muted: #5a6473; /* 5.99:1 on base, 5.59:1 on surface */
+  --color-accent: #6c4fe0; /* 5.48:1 on base, 5.11:1 on surface */
+  --color-on-accent: #ffffff;
+
+  --severity-critical: #e5484d;
+  --severity-high: #f76808;
+  --severity-medium: #ffc53d;
+  --severity-low: #3e8ef7;
+  --severity-info: #8b8d98;
+  --severity-benign: #30a46c;
+
+  --severity-text-critical: #c62a2f; /* 5.57:1 / 5.19:1 */
+  --severity-text-high: #b34700; /* 5.50:1 / 5.13:1 */
+  --severity-text-medium: #7a5b00; /* 6.32:1 / 5.89:1 */
+  --severity-text-low: #0b62c4; /* 5.90:1 / 5.51:1 */
+  --severity-text-info: #5a6473; /* 5.99:1 / 5.59:1 */
+  --severity-text-benign: #1e7a4c; /* 5.33:1 / 4.97:1 */
+
+  --color-on-severity: #0b0e14;
+  --focus-ring: #6c4fe0; /* 5.48:1 against base */
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  [data-theme='light'] {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-base font-sans text-body text-ink antialiased;
+  }
+
+  /* Visible focus ring on every interactive element (design.md §5.3, NFR-09). */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Honour reduced-motion globally, not per component (design.md §8.2). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Numeric columns use tabular figures so values align vertically. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

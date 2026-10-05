@@ -1,0 +1,18 @@
+# Generated / vendored
+node_modules/
+dist/
+coverage/
+data/
+*.lock
+package-lock.json
+
+# The planning documents are the specification and their tables are parsed by
+# scripts/check_docs.py. Prettier normalises table separator rows, which is
+# harmless to a reader but churns every table on every touch; they are excluded
+# rather than reformatted so that a diff in them means a real edit.
+prd.md
+architecture.md
+rules.md
+design.md
+task.md
+memory.md

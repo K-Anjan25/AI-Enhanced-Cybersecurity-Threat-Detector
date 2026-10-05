@@ -1,215 +1,94 @@
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
-import json
-import csv
-import io
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
-from app.core.database import get_db
-from app.core.config import settings
-from app.core.security import get_current_user
-from app.services import alert_service
-from app.services.alert_service import process_batch
-from app.models import SecurityAlert, ScannedAlert, ScanBatch, User
-from app.utils.helpers import severity_to_score
+"""Ingest endpoints (FR-01, FR-02, FR-04).
 
-router = APIRouter()
+Thin by design (R-13): read the body, hand it to the service, serialise the
+result. The service owns the batch semantics so they are testable without an
+HTTP layer.
 
+A batch that is partly bad returns **207-style information in a 200 body**
+rather than a 4xx, because the request did succeed for most of its records and
+a client that sees 422 will reasonably retry the whole batch and duplicate the
+records that were accepted. The counts in the body are the contract.
 
-def _run_background_scan(batch_id: int, records: list[dict], filename: str, org_id: int | None = None):
-    """Scan an uploaded log batch in the background and persist the result."""
-    db: Session = alert_service.session_factory()
-    try:
-        batch = db.query(ScanBatch).filter(ScanBatch.id == batch_id).first()
-        if not batch:
-            return
-        batch.status = "processing"
-        db.commit()
+Batch-level failures are the exception and do return an error status: an
+oversized batch has no record to attribute the problem to.
+"""
 
-        summary = process_batch(records, filename, produce_kafka=settings.ENABLE_KAFKA, org_id=org_id)
+from __future__ import annotations
 
-        batch.total_logs = summary["total_logs"]
-        batch.threats_detected = summary["threats_detected"]
-        batch.status = "completed"
-        batch.message = "Scan completed"
-        db.commit()
-    except Exception as exc:  # pragma: no cover - error path for background task
-        batch = db.query(ScanBatch).filter(ScanBatch.id == batch_id).first()
-        if batch:
-            batch.status = "failed"
-            batch.message = str(exc)
-            db.commit()
-    finally:
-        db.close()
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel
+
+from app.auth.rbac import Capability, require
+from app.schemas.ingest import (
+    MAX_FLOW_RECORDS,
+    MAX_LOG_LINES,
+    FlowRecordIn,
+    IngestResponse,
+    LogRecordIn,
+)
+from app.services.ingest_service import BatchTooLarge, UnsupportedMediaType, ingest_batch
+
+router = APIRouter(prefix="/api/v1/ingest", tags=["ingest"])
+
+#: FR-01/FR-02 accept JSON or NDJSON. NDJSON is the streaming form and is what
+#: collectors send; JSON is what a human debugging with curl will send.
+_NDJSON = "application/x-ndjson"
 
 
-@router.post("/upload-logs")
-async def upload_logs(
-    log_file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    try:
-        contents = await log_file.read()
-        text_content = contents.decode("utf-8", errors="ignore")
+def _ingest(
+    request: Request,
+    response: Response,
+    body: bytes,
+    model: type[BaseModel],
+    limit: int,
+) -> IngestResponse:
+    """Run one ingest, translating batch-level failures into status codes.
 
-        # Check if file is JSON, CSV, or raw plain-text logs
-        if log_file.filename.endswith(".json"):
-            records = json.loads(text_content)
-            if not isinstance(records, list):
-                records = [records]
-        elif log_file.filename.endswith(".csv"):
-            reader = csv.DictReader(io.StringIO(text_content))
-            records = [row for row in reader]
-        else:
-            records = [{"message": line, "level": "INFO"} for line in text_content.splitlines() if line.strip()]
-
-        records = records[:100]  # Limit to first 100 rows for safe payload processing
-
-        batch = ScanBatch(
-            filename=log_file.filename,
-            total_logs=len(records),
-            threats_detected=0,
-            status="pending",
-            org_id=current_user.org_id,
-        )
-        db.add(batch)
-        db.commit()
-        db.refresh(batch)
-
-        if background_tasks is not None:
-            background_tasks.add_task(_run_background_scan, batch.id, records, log_file.filename, batch.org_id)
-
-        return {
-            "message": "Logs uploaded and queued for scanning.",
-            "batch_id": batch.id,
-            "filename": log_file.filename,
-            "totalLogsParsed": len(records),
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get("/uploads/{batch_id}")
-def get_upload_batch_status(
-    batch_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Return the status and result summary of a background scan batch."""
-    batch = db.query(ScanBatch).filter(ScanBatch.id == batch_id).first()
-    if not batch:
-        raise HTTPException(status_code=404, detail="Scan batch not found")
-    # Tenant scoping: batches from another org are invisible (legacy NULL-org
-    # batches from before tenancy remain visible to authenticated users).
-    if batch.org_id is not None and batch.org_id != current_user.org_id:
-        raise HTTPException(status_code=404, detail="Scan batch not found")
-
-    return {
-        "batch": {
-            "id": batch.id,
-            "filename": batch.filename,
-            "total_logs": batch.total_logs,
-            "threats_detected": batch.threats_detected,
-            "status": batch.status,
-            "message": batch.message,
-            "created_at": batch.created_at.isoformat() if batch.created_at else None,
-        }
-    }
-
-@router.post("/save-scanned-alerts")
-def save_scanned_alerts(
-    payload: dict,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    threats = payload.get("threats")
-    if not isinstance(threats, list):
-        raise HTTPException(status_code=400, detail="A threat list is required.")
-
-    saved_alerts = []
-    for threat in threats:
-        if not isinstance(threat, dict):
-            continue
-
-        rule_name = threat.get("ruleName") or "Detected Threat"
-        severity = (threat.get("severity") or "LOW").upper()
-        details = threat.get("details") or "Threat detected from uploaded log."
-        raw_log = threat.get("rawLog") or details or ""
-
-        alert_message = f"{rule_name}: {details}"
-        score = severity_to_score(severity)
-
-        security_alert = SecurityAlert(
-            alert_type="scanned_log",
-            source_ip=None,
-            source="upload",
-            severity=severity,
-            score=score,
-            message=alert_message,
-            org_id=current_user.org_id,
-        )
-        db.add(security_alert)
-        db.flush()
-
-        scanned_alert = ScannedAlert(
-            filename=payload.get("filename") or "uploaded_log",
-            threat_type=rule_name,
-            raw_log=raw_log,
-            risk=severity,
-        )
-        db.add(scanned_alert)
-        saved_alerts.append(security_alert)
-
-    db.commit()
-
-    return {
-        "message": "Scanned threats saved as alerts.",
-        "savedCount": len(saved_alerts),
-        "alerts": [
-            {
-                "id": alert.id,
-                "alert_type": alert.alert_type,
-                "source_ip": alert.source_ip,
-                "source": alert.source,
-                "severity": alert.severity,
-                "score": alert.score,
-                "message": alert.message,
-                "created_at": alert.created_at.isoformat() if alert.created_at else None,
-            }
-            for alert in saved_alerts
-        ],
-    }
-
-
-@router.get("/logs/history")
-def get_log_history(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
+    These are the failures that have no record to attribute them to, so they
+    cannot be expressed as entries in a per-record error list.
     """
-    Returns persistent upload/scan history from the database (survives restarts).
-    Tenant-scoped: own-org batches plus legacy NULL-org rows.
-    """
-    batches = (
-        db.query(ScanBatch)
-        .filter(or_(ScanBatch.org_id == current_user.org_id, ScanBatch.org_id.is_(None)))
-        .order_by(ScanBatch.created_at.desc())
-        .limit(50)
-        .all()
-    )
-    return {
-        "logs": [
-            {
-                "filename": b.filename,
-                "batch_id": b.id,
-                "totalLogsParsed": b.total_logs,
-                "threatsDetected": b.threats_detected,
-                "status": b.status,
-                "timestamp": b.created_at.isoformat() if b.created_at else None,
-            }
-            for b in batches
-        ]
-    }
+    content_type = request.headers.get("content-type", "")
+    try:
+        result, accepted = ingest_batch(body, model, limit=limit, content_type=content_type)
+    except BatchTooLarge as exc:
+        # 413 rather than 422: the problem is the size of the request, and a
+        # client that sees 422 will retry the same oversized batch.
+        raise HTTPException(
+            status_code=413,
+            detail=f"batch of {exc.received} records exceeds the limit of {exc.limit}",
+        ) from exc
+    except UnsupportedMediaType as exc:
+        raise HTTPException(status_code=415, detail=str(exc)) from exc
+    # Accepted records are handed to the persistence layer by T-307; until then
+    # the count is the contract and the records are validated and discarded.
+    request.state.accepted_records = accepted
+    return result
+
+
+@router.post(
+    "/flows",
+    response_model=IngestResponse,
+    summary="Ingest flow records (flow@1)",
+    dependencies=[require(Capability.INGEST)],
+)
+async def ingest_flows(request: Request, response: Response) -> IngestResponse:
+    """Accept up to 1,000 flow records as JSON or NDJSON (FR-01)."""
+    body = await request.body()
+    return _ingest(request, response, body, FlowRecordIn, MAX_FLOW_RECORDS)
+
+
+@router.post(
+    "/logs",
+    response_model=IngestResponse,
+    summary="Ingest log lines (log@1)",
+    dependencies=[require(Capability.INGEST)],
+)
+async def ingest_logs(request: Request, response: Response) -> IngestResponse:
+    """Accept up to 5,000 log lines as JSON or NDJSON (FR-02)."""
+    body = await request.body()
+    return _ingest(request, response, body, LogRecordIn, MAX_LOG_LINES)
+
+
+def ndjson_media_type() -> str:
+    """The media type collectors should send."""
+    return _NDJSON

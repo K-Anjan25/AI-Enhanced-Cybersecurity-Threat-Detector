@@ -1,0 +1,20 @@
+- 1117838570 2005.06.03 R02-M1-N0-C:J12-U11 2005-06-03-15.42.50.675872 R02-M1-N0-C:J12-U11 RAS KERNEL INFO instruction cache parity error corrected
+- 1117838573 2005.06.03 R02-M1-N0-C:J12-U11 2005-06-03-15.42.53.276129 R02-M1-N0-C:J12-U11 RAS KERNEL INFO instruction cache parity error corrected
+- 1117838976 2005.06.03 R02-M1-N0-C:J12-U11 2005-06-03-15.49.36.156884 R02-M1-N0-C:J12-U11 RAS KERNEL INFO instruction cache parity error corrected
+- 1117838978 2005.06.03 R02-M1-N0-C:J12-U11 2005-06-03-15.49.38.026704 R02-M1-N0-C:J12-U11 RAS KERNEL INFO instruction cache parity error corrected
+APPREAD 1117869872 2005.06.04 R04-M1-N4-I:J18-U11 2005-06-04-00.24.32.432192 R04-M1-N4-I:J18-U11 RAS APP FATAL ciod: failed to read message prefix on control stream (CioStream socket to 172.16.96.116:33569
+APPREAD 1117869876 2005.06.04 R27-M1-N4-I:J18-U01 2005-06-04-00.24.36.222560 R27-M1-N4-I:J18-U01 RAS APP FATAL ciod: failed to read message prefix on control stream (CioStream socket to 172.16.96.116:33370
+- 1117984246 2005.06.05 R30-M1-N3-C:J02-U01 2005-06-05-08.10.46.344235 R30-M1-N3-C:J02-U01 RAS KERNEL FATAL force load/store alignment...............0
+- 1118193358 2005.06.07 R11-M0-NC-I:J18-U01 2005-06-07-18.15.58.583443 R11-M0-NC-I:J18-U01 RAS APP FATAL ciod: LOGIN chdir(/p/gb2/glosli/8M_5000K/t800) failed: No such file or directory
+- 1119977619 2005.06.28 R02-M1-NE 2005-06-28-09.53.39.479164 R02-M1-NE NULL DISCOVERY WARNING Node card is not fully functional
+- 1120241131 2005.07.01 R37-M1-N4 2005-07-01-11.05.31.120732 R37-M1-N4 NULL DISCOVERY SEVERE Can not get assembly information for node card
+- 1120889703 2005.07.08 R05-M0-N2 2005-07-08-23.15.03.798449 R05-M0-N2 NULL DISCOVERY WARNING Node card is not fully functional
+- 1123025954 2005.08.02 R23-M0-N7 2005-08-02-16.39.14.159918 R23-M0-N7 NULL HARDWARE SEVERE NodeCard is not fully functional
+- 1123030687 2005.08.02 R00-M0-N2 2005-08-02-17.58.07.084868 R00-M0-N2 NULL DISCOVERY ERROR Node card status: ALERT 0, ALERT 1, ALERT 2, ALERT 3 is (are) active. Clock Mode is Low. Clock Select is Midplane. Phy JTAG Reset is asserted. ASIC JTAG Reset is not asserted. Temperature Mask is not active. No temperature error. Temperature Limit Error Latch is clear. PGOOD is asserted. PGOOD error latch is clear. MPGOOD is OK. MPGOOD error latch is clear. The 2.5 volt rail is OK. The 1.5 volt rail is OK.
+- 1123042536 2005.08.02 UNKNOWN_LOCATION 2005-08-02-21.15.36.811548 UNKNOWN_LOCATION NULL DISCOVERY SEVERE Can not get assembly information for node card
+- 1123060215 2005.08.03 UNKNOWN_LOCATION 2005-08-03-02.10.15.206558 UNKNOWN_LOCATION NULL DISCOVERY SEVERE Can not get assembly information for node card
+- 1123110662 2005.08.03 NULL 2005-08-03-16.11.02.839771 NULL RAS MMCS ERROR idoproxydb hit ASSERT condition: ASSERT expression=0 Source file=idotransportmgr.cpp Source line=1043 Function=int IdoTransportMgr::SendPacket(IdoUdpMgr*, BglCtlPavTrace*)
+- 1123110668 2005.08.03 NULL 2005-08-03-16.11.08.572137 NULL RAS MMCS ERROR idoproxydb hit ASSERT condition: ASSERT expression=0 Source file=idotransportmgr.cpp Source line=1043 Function=int IdoTransportMgr::SendPacket(IdoUdpMgr*, BglCtlPavTrace*)
+- 1123110754 2005.08.03 NULL 2005-08-03-16.12.34.240816 NULL RAS MMCS ERROR idoproxydb hit ASSERT condition: ASSERT expression=0 Source file=idotransportmgr.cpp Source line=1043 Function=int IdoTransportMgr::SendPacket(IdoUdpMgr*, BglCtlPavTrace*)
+- 1123178302 2005.08.04 R06-M1-ND 2005-08-04-10.58.22.010246 R06-M1-ND NULL DISCOVERY WARNING Node card is not fully functional
+- 1123262593 2005.08.05 R25-M1-N2 2005-08-05-10.23.13.029850 R25-M1-N2 NULL HARDWARE WARNING PrepareForService shutting down NodeCard(mLctn(R25-M1-N2), mCardSernum(203231503833343000000000594c31304b34333431303158), mLp(FF:F2:9F:16:CF:0F:00:0D:60:E9:30:F0), mIp(10.2.2.80), mType(4)) as part of Service Action 310

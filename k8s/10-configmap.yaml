@@ -1,0 +1,19 @@
+# Non-secret configuration only. AEGIS_SECRET_KEY and AEGIS_DATABASE_URL come
+# from the `aegis-secrets` Secret, which is created out of band from the cluster
+# secret store and is never committed (R-50).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aegis-config
+  namespace: aegis
+  labels:
+    app.kubernetes.io/part-of: aegis
+data:
+  AEGIS_ENV: production
+  AEGIS_LOG_LEVEL: INFO
+  # The datastore itself is provisioned outside these manifests -- a managed
+  # service or a dedicated operator. Deploying stateful brokers from an
+  # application chart is a different decision and is deliberately not made here.
+  # The connection string is AEGIS_DATABASE_URL, which is a secret and so comes
+  # from aegis-secrets rather than from this ConfigMap.
+  AEGIS_ML_SERVICE_URL: http://ml-service:8001

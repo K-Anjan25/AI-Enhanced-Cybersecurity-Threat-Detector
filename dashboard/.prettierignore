@@ -1,0 +1,6 @@
+# Build output. Prettier resolves .prettierignore from the working directory, so
+# the repository-root ignore file does not apply when the dashboard's own
+# `npm run format:check` runs from here.
+dist/
+coverage/
+node_modules/

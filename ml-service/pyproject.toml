@@ -1,4 +1,99 @@
+[project]
+name = "aegis-ml-service"
+version = "0.1.0"
+description = "AEGIS — transformer inference for flow and log anomaly scoring"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.142",
+    "uvicorn>=0.40",
+    "pydantic>=2.13",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1",
+    "httpx>=0.28",
+    "ruff>=0.16",
+    "black>=26.5",
+    "mypy>=2.4",
+]
+# T-201. torch is an extra rather than a core dependency: the service must
+# install, typecheck and serve without a multi-gigabyte deep-learning stack.
+# Note the default PyPI wheel on Linux bundles the CUDA runtime even for
+# CPU-only training, because download.pytorch.org - which serves the CPU-only
+# wheels - is not reachable from every build environment.
+training = [
+    "torch>=2.14",
+]
+# T-210. The ONNX path is the documented latency fallback, so it is an extra and
+# never a core dependency: the service must start and score without it.
+# onnxscript is required by torch 2.14's exporter, not by our code directly.
+onnx = [
+    "onnx>=1.23",
+    "onnxruntime>=1.30",
+    "onnxscript>=0.5",
+]
+# transformers and drain3 land with T-204.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["aegis_ml*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["aegis_ml", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "D", "S", "BLE", "ASYNC"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D100", "D101", "D102", "D103", "D104", "S101"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+files = ["aegis_ml"]
+
+[[tool.mypy.overrides]]
+# torch, the ONNX stack and numpy all ship without usable stubs, and mypy strict
+# rejects an untyped import outright. Every one of these is an optional extra, so
+# they are frequently absent entirely - which surfaces as import-not-found rather
+# than import-untyped, and has to be silenced the same way.
+module = ["torch.*", "onnx.*", "onnxruntime.*", "onnxscript.*", "numpy.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# strict enables disallow_subclassing_any, which rejects `class FlowNet(nn.Module)`
+# whenever torch is absent, because nn.Module then resolves to Any. It does not
+# fire when torch IS installed - so a local mypy run passes and CI fails. These
+# modules cannot be written without subclassing torch types: models defines the
+# networks, and serving defines the ONNX export wrapper that adapts FlowNet's
+# dataclass output to the tuple of tensors the exporter requires.
+module = ["aegis_ml.models.*", "aegis_ml.serving.*"]
+disallow_subclassing_any = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-q"
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["aegis_ml"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
