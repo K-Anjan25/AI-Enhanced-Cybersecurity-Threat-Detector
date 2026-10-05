@@ -11,6 +11,8 @@ Each helper is in one place for correctness rather than convenience:
 * :func:`api_key_store` and :func:`api_key_digest` are the two halves of the API
   key credential path (FR-44): where issued keys live, and the digest key that
   decides whether a presented string is one of them.
+* :func:`alert_store` is where alert rows live (T-319): the query API reads back
+  what the pipeline wrote, and both halves go through one composition root.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from datetime import datetime
 from fastapi import Request
 
 from app.auth.api_keys import ApiKeyStore, KeyDigest
+from app.services.alert_store import AlertStore
 from app.services.audit_log import AuditTrail
 from app.services.erasure import ErasureService
 from app.services.limits import AdmissionController
@@ -28,6 +31,7 @@ from app.services.retention import RetentionPolicy, StatementRunner
 
 __all__ = [
     "admission",
+    "alert_store",
     "api_key_digest",
     "api_key_store",
     "audit_trail",
@@ -54,6 +58,22 @@ def audit_trail(request: Request) -> AuditTrail:
         msg = "audit_trail is not configured on app.state"
         raise RuntimeError(msg)
     return trail
+
+
+def alert_store(request: Request) -> AlertStore:
+    """The store alert rows live in.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, because
+            a query API reading an empty store that no one ever wrote to is
+            indistinguishable from a quiet network -- the failure mode this seam
+            exists to make visible.
+    """
+    store: AlertStore | None = getattr(request.app.state, "alert_store", None)
+    if store is None:
+        msg = "alert_store is not configured on app.state"
+        raise RuntimeError(msg)
+    return store
 
 
 def api_key_store(request: Request) -> ApiKeyStore:

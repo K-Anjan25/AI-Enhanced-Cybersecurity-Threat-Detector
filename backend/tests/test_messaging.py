@@ -10,6 +10,8 @@ is recorded rather than papered over.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
 from app.messaging.lag import (
     CONSUMER_LAG,
@@ -33,10 +35,19 @@ class RecordingClient:
     def __init__(self) -> None:
         """Start with nothing sent."""
         self.sent: list[tuple[str, bytes, int, bytes]] = []
+        self.headers: list[dict[str, str]] = []
 
-    def send(self, topic: str, value: bytes, partition: int, key: bytes) -> None:
-        """Record the call."""
+    def send(
+        self,
+        topic: str,
+        value: bytes,
+        partition: int,
+        key: bytes,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
+        """Record the call and its headers."""
         self.sent.append((topic, value, partition, key))
+        self.headers.append(dict(headers or {}))
 
 
 # --- the partitioner --------------------------------------------------------

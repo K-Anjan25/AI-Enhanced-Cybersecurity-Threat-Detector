@@ -369,10 +369,11 @@ class RecordingSink(InMemoryScoreSink):
         records: int,
         *,
         traceparent: str | None = None,
+        closed_at: datetime | None = None,
     ) -> None:
         """Store the score and keep the identity for the caller."""
         self.identities.append(identity)
-        super().put(identity, score, records, traceparent=traceparent)
+        super().put(identity, score, records, traceparent=traceparent, closed_at=closed_at)
 
 
 def test_a_trace_id_from_the_ingest_response_appears_in_the_alert_record(

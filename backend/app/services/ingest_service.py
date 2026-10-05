@@ -15,13 +15,19 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from typing import TypeVar
+from typing import Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from app.schemas.ingest import IngestResponse, RecordError
+from app.schemas.ingest import FlowRecordIn, IngestResponse, RecordError
 
-__all__ = ["BatchTooLarge", "UnsupportedMediaType", "ingest_batch", "split_ndjson"]
+__all__ = [
+    "BatchTooLarge",
+    "FlowPublisher",
+    "UnsupportedMediaType",
+    "ingest_batch",
+    "split_ndjson",
+]
 
 _T = TypeVar("_T", bound=BaseModel)
 
@@ -38,6 +44,21 @@ class BatchTooLarge(ValueError):
 
 class UnsupportedMediaType(ValueError):
     """The body is neither NDJSON nor a JSON array."""
+
+
+class FlowPublisher(Protocol):
+    """The broker call an ingest route makes for the records it accepted (T-319).
+
+    Declared here, beside the batch it carries: the route that validated the
+    records is the one that hands them on, and what it depends on is this call,
+    not the pipeline that implements it. A publisher is optional -- a process with
+    no consumer wired still counts what it accepted -- and the traceparent travels
+    with the batch because every record in one request shares one trace context.
+    """
+
+    def publish(self, records: Sequence[FlowRecordIn], *, traceparent: str | None = None) -> object:
+        """Hand accepted records to the broker."""
+        ...
 
 
 def split_ndjson(body: bytes) -> tuple[list[tuple[int, object]], list[RecordError]]:
