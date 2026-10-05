@@ -111,7 +111,11 @@ def upgrade() -> None:
         "alerts",
         # Partition key inside the primary key: PostgreSQL cannot enforce a key
         # that excludes the partition column.
-        sa.Column("id", sa.BigInteger, nullable=False),
+        # Identity(), not autoincrement: on a composite primary key SQLAlchemy
+        # creates no sequence for autoincrement, so id would have no default
+        # and every insert would fail. Found by applying this migration to a
+        # real PostgreSQL 16; compiling the DDL alone does not show it.
+        sa.Column("id", sa.BigInteger, sa.Identity(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
@@ -209,7 +213,9 @@ def upgrade() -> None:
 
     op.create_table(
         "ingest_stats",
-        sa.Column("id", sa.BigInteger, nullable=False),
+        # Identity() for the same reason as alerts: a composite key gets no
+        # sequence from autoincrement.
+        sa.Column("id", sa.BigInteger, sa.Identity(), nullable=False),
         sa.Column("window_start", sa.DateTime(timezone=True), nullable=False),
         sa.Column("source", sa.String(120), nullable=False),
         sa.Column("accepted", sa.Integer, nullable=False, server_default="0"),
