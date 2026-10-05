@@ -26,17 +26,17 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 | Aspect | State |
 |---|---|
-| Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9` — see below) |
-| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312) and scoped API keys (T-313). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
-| Tests | **1271 passing, 26 skipped** — 706 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9` and T-313 at `69b6b5e` — see below) |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), and retention with GDPR erasure (T-314). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
+| Tests | **1382 passing, 26 skipped** — 817 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
 | Checks green | `./scripts/check_all.sh` — **25 checks, 0 failed** (measured 2026-10-05): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
 | Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
 | Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
 | Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
 | Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
-| Next work | **T-314 — retention + GDPR erasure** (NFR-05), then T-315 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
+| Next work | **T-315 — model ops endpoints** (FR-30…FR-33), then T-316 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
 
-**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-313.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-314.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -1180,10 +1180,121 @@ the same mapping D-038 and D-041 name. Per-key rate limiting (architecture.md
 §11's threat table) is T-316, and the screen that renders the secret once is T-410's
 ``/admin/keys``.
 
+### D-044 — Retention drops a month only when the whole month is outside the window, and the windows are configuration (T-314) (2026-10-05)
+
+**Decision.** A monthly partition is droppable when its **end** is at or before the
+cutoff: ``end <= cutoff``, never ``start <= cutoff``. The cutoff is ``today - window``
+for that table, and the window comes from configuration: raw records
+``AEGIS_RETENTION_RAW_RECORDS_DAYS`` (30, FR-05's default), alerts and
+``ingest_stats`` ``AEGIS_RETENTION_ALERTS_DAYS``/``..._STATS_DAYS`` (400 each). The
+policy refuses anything outside ``1..3650``, and refuses
+``alerts_days < raw_records_days`` -- keeping fewer days of alerts than the raw
+records they were derived from inverts FR-05, and that now fails at **startup**
+rather than at the first retention run.
+
+**Why the end, and not the start.** A month whose start is before the cutoff but
+whose end is after it holds rows inside the promised window. Dropping it would
+destroy data the policy says is retained, and -- worse -- the run would report
+success, so nothing would look wrong. The two directions are asymmetric:
+``start`` drops a month the policy protects, ``end`` keeps a month it could have
+dropped, and only the first is a privacy-incident-shaped failure. The tests assert
+the boundary from both sides, including the equality case where a partition's last
+instant *is* the cutoff day (a 399-day window on 2026-10-05 ends exactly on
+2025-09-01, so ``alerts_2025_08`` drops) -- an implementation using ``end <
+cutoff`` passes every other boundary test while holding a day more than it claims.
+
+**The plan is a pure function.** ``plan_retention(policy, today, partitions)``
+takes the clock and the catalog as arguments rather than reading either, so every
+boundary case is testable without a database, and the preview an operator approves
+is exactly what the run executes -- the route builds both through one function.
+``missing`` exists because there is no default partition: a month inside the window
+with no partition is a month whose rows were rejected at insert, and reporting it
+is what stops a plan's silence reading as "nothing to do".
+
+**What retention will not do, named in every plan.** ``audit_log`` appears as
+``unevictable`` with the reason: R-31 makes it append-only and it is deliberately
+not partitioned, so nothing here can drop it, and erasing an actor from history is
+a non-goal whose mechanism is the trail's own retention window. The raw records
+themselves are retained **outside this service** -- Kafka's
+``AEGIS_KAFKA_RETENTION_HOURS`` and the Elasticsearch ILM policy -- and the plan
+reports those mechanisms and the source of each number rather than pretending to
+execute them.
+
+**Mechanism and authority.** ``DROP TABLE IF EXISTS`` of the partition, which is
+immediate and reclaims space, unlike a ``DELETE`` that leaves dead tuples in every
+replica and backup. The service produces drop statements and never runs DDL
+itself; the runner is injected, so ``app/services/retention.py`` stays free of the
+database (R-15) and of FastAPI. The four routes are admin-only under a new
+``Capability.RETENTION`` (R-53); the read-only preview is not audited (D-041: the
+trail records changes) and the run records the partitions it dropped **and** the
+ones already absent -- "dropped nothing" and "dropped March" are different facts.
+A run with no runner wired raises rather than reporting a clean run it did not
+perform.
+
+**Gaps, named.** The catalog query (``pg_class``) and the session-backed runner
+are not written: there is no database session in the request path yet (D-030), so
+``main.py`` installs a named catalog stand-in and a runner that refuses, and the
+retention route fails loudly until a real one is wired.
+
+### D-045 — Erasure is a pseudonym in the stores that hold history and a deletion in the stores that hold identity (T-314) (2026-10-05)
+
+**Decision.** Erasure has two kinds. ``entity`` -- an observed host, address,
+service, or a user seen in traffic -- is **redacted**: the identifier is replaced
+with a tombstone and the row stays, because alerts reference it and removing it
+would either destroy incident history an analyst may still be investigating or
+leave those references pointing at nothing. ``user`` -- an account -- is
+**deleted**, cascading to what hangs off it, because the row *is* the account and
+an account whose identifier is a pseudonym has not been erased in any sense the
+subject would recognise.
+
+**The tombstone is a keyed pseudonym, not an anonymisation, and it is named as
+one.** ``erased:`` plus the first 32 hex characters of
+``HMAC-SHA256(HKDF(AEGIS_SECRET_KEY, salt="aegis.erasure.tombstone.v1", info="erasure-tombstone"), "<kind>:<value>")``.
+The kind is in the MAC input, so ``bob`` the host and ``bob`` the user get
+different tombstones, and a dump is not an offline oracle for the values because
+the key is not in the database. It is stable per deployment (a repeat request
+produces the same tombstone, which is how idempotence is visible) and not
+reversible by inspection -- but an operator who holds the secret can test
+candidate values, so this is pseudonymisation. That is stated in the module
+docstring rather than implied, because "hashed, therefore anonymous" is the
+mistake that turns a compliance answer into a false claim.
+
+**Which stores are rewritten, and which are named instead.** ``audit_log`` (R-31,
+append-only) and ``verdicts`` (D-038's actor history, which exists precisely to
+attribute what an account did) are never rewritten; every report lists them as
+preserved **with the reason**, so a report cannot be read as a complete inventory
+of where a subject's data lives. ``api_keys`` rows are a cascade: the delete is
+the schema's own ``ON DELETE CASCADE``, and the in-memory store's ``erase_owner``
+models it (``revoke`` is the other operation, and it keeps the row).
+
+**Idempotence comes from the ledger, not from the targets.** The ledger is
+append-only, holds tombstones -- never identifiers -- plus per-target counts and
+the authenticated ``requested_by``, and a repeat request for a tombstone already
+in it returns ``already_erased`` with zero affected, **no ledger append and no
+second audit row**. A client that retries a privacy request must not be able to
+fill the trail with copies of it, and the ledger is the record of what happened,
+so a second entry would be a false one. One identifier *is* in the ledger and the
+trail -- ``requested_by`` -- because R-37 requires the action to be attributable;
+that trade-off is named, not hidden.
+
+**Where the identifier can appear, which is nowhere durable.** It arrives in one
+request body, is in the process for the length of one call, and the response
+carries the tombstone instead. No store keeps it (the entity row is redacted, the
+user row is gone), no audit detail holds it, no ledger entry holds it, and no log
+line is given it. The test module asserts this positively -- after a call it scans
+the response, the store, the ledger and the trail for the value -- because "we
+erased them" is a claim about where the data is *not*.
+
+**Gaps, named.** Both stores are in-memory while no database session is wired
+(D-030); ``erasure_ledger`` is a table in the schema with no adapter yet; and the
+window where identifiers really do persist is the one D-044 names -- alert and
+verdict history -- which is why the erasure report keeps saying so.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.36 | **T-314 done — retention that drops only the months the policy has finished with, and an erasure that says what it did not touch.** `backend/app/services/retention.py`, `backend/app/services/erasure.py`, `backend/app/schemas/privacy.py`, `backend/app/api/v1/endpoints/privacy.py`, the retention settings, `Capability.RETENTION`, four `ROUTE_MATRIX` entries and two `AUDITED_ROUTES` rows; 111 new tests (32 retention, 43 erasure, 31 API, plus the audit-table enumeration). Policy recorded as **D-044** (retention) and **D-045** (erasure). **The boundary is the whole task**: a month may be dropped only when its *end* is at or before the cutoff, so a month that straddles it keeps the rows the policy promised; the equality case (a 399-day window ending exactly on a partition's last day) is asserted on its own, because an implementation using `<` passes every other test while retaining a day more than it claims. Windows are configuration -- 30 days for raw records per FR-05, 400 for alerts and ingest stats -- and an inverted pair (alerts kept shorter than the raw records they came from) fails at startup, not at the first run. The plan is a pure function of policy, today and the catalog, which is what lets the admin preview and the run build it the same way; `missing` months are reported because there is no default partition, and `audit_log` is reported unevictable with its reason (R-31) in every plan rather than omitted. Kafka and Elasticsearch retention are reported as mechanisms, not executed. **Erasure redacts entities and deletes accounts**: a host row stays with a tombstone because alerts reference it, a user row goes because the row *is* the account, and the `api_keys` rows go with it (the schema's own `ON DELETE CASCADE`). The tombstone is an HKDF-keyed HMAC truncated to 32 hex, prefixed `erased:`, kind-separated -- and explicitly a pseudonym rather than anonymisation, since whoever holds the secret can test candidates. `audit_log` and `verdicts` are named as preserved with reasons and never rewritten. **Idempotence comes from the ledger**: a repeat request appends nothing and writes no second audit row, so a client that retries cannot fill the trail; the identifier is in the process for one call and appears in no response, store, ledger entry or audit detail -- asserted by scanning all four. **46 injected defects each failed their target tests**, covering the boundary rule both ways, the cutoff arithmetic, per-table window mapping, the equality and range validations, unevictable reporting, swallowed drop failures, an already-absent partition counted as dropped, unkeyed and kind-blind tombstones, a ledger that ignores its cursor or its own history, a row-deleting entity store, kept API-key rows, a repeat erasure audited twice, the identifier copied into the audit detail or echoed back in the report, an unknown kind guessed instead of refused, a cursor that skips a page, widened matrix rows, a runner seam that reports a clean run, and both audit-table rows. Two survivors in the first run were *equivalent* rather than missed -- stats and alerts shared a window of 400, so mapping one to the other changed nothing, and the matrix's role lists are intent while `require` is the gate -- and were closed by adding the tests that make the difference observable instead of counting them. One battery bug matters more than any mutation: the first run invoked pytest without `-m`, every run exited 2 in milliseconds, and a battery that read a collection error as "the tests failed, so the mutation was killed" reported a 45/45 sweep while proving nothing; it now checks a baseline first and treats a collection error as infrastructure. The pre-commit detect-secrets scan was failing on two pre-existing false positives (the public `aegis_sk_` prefix constant and a JWT-shaped test string); both carry the repository's inline allowlist pragma now. Backend 706 → 817 tests, coverage 97.39% → 97.83%; 25 checks, 0 failed. **Gaps:** the catalog query and the statement runner are seams with no session behind them (D-030), the ledger table has no adapter, and erasure of the raw records that live in Kafka and Elasticsearch is reported, not performed. |
 | 2026-10-05 | 1.35 | **T-313 done — scoped API keys, hashed with a key the database does not hold.** `backend/app/auth/api_keys.py`, `backend/app/schemas/api_key.py`, `backend/app/api/v1/endpoints/api_keys.py`, three `ROUTE_MATRIX` entries, `Capability.API_KEYS`, and the `Principal` extension that lets a key authenticate; 110 tests. Policy recorded as **D-042** (storage) and **D-043** (authorisation). **The hashing decision is the interesting one:** `key_hash` is `String(64)` and an Argon2id encoding is far longer, so the task's own bar -- "hashing" -- had to be settled rather than assumed. Argon2id is right for passwords because they are low-entropy and human-chosen; a 256-bit `secrets` key has nothing to guess, and memory-hard verification on every ingest request would be a self-inflicted denial-of-service. So the stored value is **HMAC-SHA256 over the whole presented key under an HKDF-derived key from `AEGIS_SECRET_KEY`** -- 64 hex characters, no migration, and a stolen database is not an offline oracle because the digest key is not in it. The consequence is named: rotating the application secret invalidates every key at once, as it already does for sealed webhook secrets. **The secret is exposed exactly once and this is asserted as an absence**: `ApiKeyOut` has no field for it, the record dataclass has none, the module exposes no name that returns a plaintext, issuing twice yields different strings, and a scan of the store and the audit trail after a create finds neither the key nor its digest. The only recoverable display value is the prefix `aegis_sk_<id>_`. **Only a prefix is stored**, and the MAC covers the id half too, so a key with its id rewritten fails the digest rather than merely missing a lookup; an unknown id is compared against a dummy so "no such key" and "wrong secret" cost the same work (the residual -- which ids exist -- is metadata and is named). **Revocation is a column, never a delete, and it lands on the next request**: verification reads the store every time, there is no cache, and a second revoke keeps the first timestamp. **Authorisation is by scope, not by role:** `API_KEY_ROUTES` is a default-deny table of three routes, and for each one the scope's capabilities must be a subset of the **intersection** of the capabilities of every role the matrix allows there -- so a key cannot outrank the least-privileged human on its own route, and that is asserted rather than intended. Presenting an `Authorization` header *and* an `X-API-Key` is a 401 rather than a precedence rule, since guessing authorises the request with the credential the operator did not mean. **38 injections each failed their target tests** -- including a digest over only the id, a short-circuit that skips the dummy comparison, a revoked key that still resolves, a revoked key that still grants, a second revoke that moves the timestamp, a store that deletes instead of revoking, both SQL guards dropped, a widened `alerts:read`, a key principal that borrows its owner's subject, a listing served with the create schema, a repeated revoke audited again, and an endpoint that silently drops an unknown scope. Two survivors in the first run were equivalent mutants (a no-op `int(int(...))`) and one was a mis-targeted battery entry; the equivalent ones were replaced with real defects rather than counted. **Gaps:** the store is in-memory while no database session is wired into the request path (`api_keys` has its table and index in migration 0001, so this is the same adapter gap D-030 names, not a schema one); `owner_id` wants the numeric `users.id` the opaque subject cannot supply (D-038); per-key rate limiting is T-316; and the `/admin/keys` screen is T-410's. Backend 596 → 706 tests, coverage 96.89% → 97.39%. |
 | 2026-10-05 | 1.34 | **Environment reset, and the tree re-verified rather than assumed.** The sandbox was recreated between sessions: `.venv`, `dashboard/node_modules` and the local git history were gone, and `.git` was the initial shallow clone at `04aeb71` again. **The working tree was intact** — every E3 file, test and documentation edit unchanged — but `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310) and `34dc7ff` (T-311) no longer exist here and were never pushed (the branch has no upstream), so **`415a5b1`** re-establishes their content: one commit standing in for four, and the per-task commit boundaries are gone with them. No file content changed, so every recorded measurement still describes what is on disk. The Python environment was then rebuilt from `backend/pyproject.toml` (which is also what proves `cryptography>=44` is declared rather than hand-installed) and the dashboard dependencies from `package.json`, and the full suite re-run to 25 checks / 0 failed before T-312 began. |
 | 2026-10-05 | 1.33 | **T-312 done — the audit trail, append-only and complete over mutating routes.** `backend/app/services/audit_log.py`, `backend/app/schemas/audit.py`, `backend/app/api/v1/endpoints/audit.py`, `backend/app/api/v1/deps.py`, one `ROUTE_MATRIX` entry, 72 tests. Policy recorded as **D-041**. **R-31 is asserted three ways** — the mapper, the trail object and the protocol are each walked for a mutating name, and the record handed back is frozen with its `detail` in a read-only view, because freezing the field alone leaves the dict it points at editable; a source-level test asserts no `update(AuditLog)`, `delete(AuditLog)` or `on_conflict_do_update` exists in the module, which is the strongest form available without a server. **FR-42's completeness clause is a table plus a walk of the built app**: every `POST`/`PUT`/`PATCH`/`DELETE` route must be in `AUDITED_ROUTES` or the deliberately-empty `AUDIT_EXEMPT_ROUTES`, proved non-vacuous and proved by planting an uncovered route. **The trail records changes, not requests** — a 4xx writes nothing, an ingest batch that accepted zero records writes nothing, and a verdict re-sent unchanged writes nothing, while a partly-bad batch records both counts and is the only trace of what was refused. **The trail is the widest-read thing in the system and carries the least**: a webhook's URL or host, an analyst's note, a signing secret and any record content are each asserted absent by planting them, and the actor column is documented as needing the `users.id` mapping D-038 names. The source IP is `request.client`, never `X-Forwarded-For`, with the proxy caveat named as deployment configuration. Reads require `start`/`end`, are capped at the repository's own `MAX_QUERY_SPAN_DAYS`, page on an exclusive id cursor, and the *compiled SQL* — not just the Python guard — is asserted to carry both bounds. **35 injections each failed their target tests**, including the SQL losing its time bound (which survived the first battery and added the compiled-statement test), a trail that grows `update`, a re-sent verdict audited, the webhook host or the analyst note mirrored in, and a header-read client IP. **Gaps:** the persistent trail is unwritten and un-migrated, the in-memory one dies with the process, and the admin screen and audited export (FR-43) are later work. Backend 524 → 596 tests, coverage 96.41% → 96.89%. |

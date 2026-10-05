@@ -917,6 +917,10 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # can act, which is exactly what the trail is for.
         "key.create",
         "key.revoke",
+        # T-314: dropping a month of data and erasing a data subject are the two
+        # most destructive things this system can do, so both are recorded.
+        "retention.apply",
+        "privacy.erasure",
     }
 
 

@@ -54,7 +54,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 706 tests, 10 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 817 tests, 10 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -69,6 +69,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET  /api/v1/keys                list keys, never their secrets (admin)
 #   GET  /api/v1/keys/scopes         the scopes a key may hold, and what each grants (admin)
 #   DELETE /api/v1/keys/{id}         revoke a key; the next request presenting it is refused
+#   GET  /api/v1/retention           the retention policy and what a run would drop (admin)
+#   POST /api/v1/retention/run       drop the months the plan names; the run is audited (admin)
+#   POST /api/v1/privacy/erasure     erase one data subject across every store (admin)
+#   GET  /api/v1/privacy/erasures    the erasure ledger: tombstones, counts, who asked (admin)
 
 # ml-service
 cd ../ml-service

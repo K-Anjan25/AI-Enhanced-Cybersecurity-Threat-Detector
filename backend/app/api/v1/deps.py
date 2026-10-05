@@ -21,13 +21,19 @@ from fastapi import Request
 
 from app.auth.api_keys import ApiKeyStore, KeyDigest
 from app.services.audit_log import AuditTrail
+from app.services.erasure import ErasureService
+from app.services.retention import RetentionPolicy, StatementRunner
 
 __all__ = [
     "api_key_digest",
     "api_key_store",
     "audit_trail",
     "client_ip",
+    "erasure_service",
+    "known_partitions",
     "parse_instant",
+    "partition_runner",
+    "retention_policy",
 ]
 
 
@@ -74,6 +80,75 @@ def api_key_digest(request: Request) -> KeyDigest:
         msg = "api_key_digest is not configured on app.state"
         raise RuntimeError(msg)
     return digest
+
+
+def retention_policy(request: Request) -> RetentionPolicy:
+    """The deployment's retention windows.
+
+    Raises:
+        RuntimeError: if none is installed. Loudly: a default policy invented here
+            would quietly disagree with the settings an operator configured.
+    """
+    policy: RetentionPolicy | None = getattr(request.app.state, "retention_policy", None)
+    if policy is None:
+        msg = "retention_policy is not configured on app.state"
+        raise RuntimeError(msg)
+    return policy
+
+
+def known_partitions(request: Request) -> set[tuple[str, int, int]]:
+    """The monthly partitions this deployment can see, as ``(table, year, month)``.
+
+    A dependency rather than a query in the route: there is no database session in
+    the request path yet (D-030), and a test proving a boundary case should not
+    need one. The wired implementation is the stand-in described in ``main.py``.
+
+    Raises:
+        RuntimeError: if nothing is wired, for the same reason as the policy.
+    """
+    provider: object = getattr(request.app.state, "known_partitions", None)
+    if provider is None:
+        msg = "known_partitions is not configured on app.state"
+        raise RuntimeError(msg)
+    if callable(provider):
+        value: set[tuple[str, int, int]] = provider()
+        return value
+    if isinstance(provider, (set, frozenset, list, tuple)):
+        return {(str(table), int(year), int(month)) for table, year, month in provider}
+    msg = f"known_partitions must be a callable or a collection, got {type(provider).__name__}"
+    raise RuntimeError(msg)
+
+
+def partition_runner(request: Request) -> StatementRunner:
+    """The callable that executes one DDL statement against the real database.
+
+    Raises:
+        RuntimeError: if none is wired. A retention run with no runner must fail
+            loudly rather than report a clean run that dropped nothing.
+    """
+    runner: StatementRunner | None = getattr(request.app.state, "partition_runner", None)
+    if runner is None:
+        msg = (
+            "partition_runner is not configured on app.state: the retention job "
+            "refuses to report a run it cannot execute"
+        )
+        raise RuntimeError(msg)
+    return runner
+
+
+def erasure_service(request: Request) -> ErasureService:
+    """The erasure cascade.
+
+    Raises:
+        RuntimeError: if none is installed. The alternative -- constructing one per
+            request with no targets -- would report a successful erasure of
+            nothing, and the service refuses to be built that way.
+    """
+    service: ErasureService | None = getattr(request.app.state, "erasure_service", None)
+    if service is None:
+        msg = "erasure_service is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
 
 
 def client_ip(request: Request) -> str | None:

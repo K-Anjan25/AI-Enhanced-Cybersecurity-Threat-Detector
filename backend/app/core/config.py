@@ -81,6 +81,15 @@ class Settings(BaseSettings):
     # prefixed '*.', comma-separated.
     webhook_allowlist: str = Field(default="")
 
+    # Retention (FR-05, NFR-05). Raw records default to 30 days; alerts live
+    # longer because they are the analyst-facing record, and the validator in
+    # app.services.retention refuses a deployment that inverts the two. Same
+    # ceiling as the policy (ten years), so a units mistake fails at startup
+    # rather than at the first retention run.
+    retention_raw_records_days: int = Field(default=30, ge=1, le=3650)
+    retention_alerts_days: int = Field(default=400, ge=1, le=3650)
+    retention_stats_days: int = Field(default=400, ge=1, le=3650)
+
     @field_validator("log_level")
     @classmethod
     def _normalise_log_level(cls, value: str) -> str:
