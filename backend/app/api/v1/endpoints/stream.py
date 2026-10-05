@@ -182,6 +182,19 @@ def _sse(kind: str, payload: Mapping[str, Any], *, sequence: int | None = None) 
     "/stream",
     summary="Server-Sent Events alert stream (FR-20 fallback)",
     dependencies=[require(Capability.READ)],
+    response_class=StreamingResponse,
+    # The media type the handler actually serves. Without this the schema claims
+    # ``application/json`` with no schema, which is neither what a client receives
+    # nor something a client can generate from (T-320).
+    responses={
+        200: {
+            "description": (
+                "One Server-Sent Events frame per notification: an ``alert`` or "
+                "``heartbeat`` event whose data is the JSON of ``AlertNotification``."
+            ),
+            "content": {"text/event-stream": {"schema": {"type": "string"}}},
+        }
+    },
 )
 async def stream(
     request: Request,

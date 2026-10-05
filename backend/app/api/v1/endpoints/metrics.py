@@ -32,7 +32,12 @@ router = APIRouter(tags=["observability"])
     "/metrics",
     summary="Prometheus metrics",
     response_class=Response,
-    responses={200: {"content": {"text/plain": {}}, "description": "Prometheus exposition format"}},
+    responses={
+        200: {
+            "description": "Prometheus exposition format",
+            "content": {"text/plain": {"schema": {"type": "string"}}},
+        }
+    },
 )
 def prometheus_metrics() -> Response:
     """Every metric this process exports, in the exposition format.
