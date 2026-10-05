@@ -143,7 +143,15 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
 
       - name: Install
-        run: pip install -e ".[dev]"
+        # ml-service core is installed too: the scoring worker (T-307) windows
+        # flows with aegis_ml.data.windowing. Its core dependencies are
+        # fastapi/uvicorn/pydantic only -- torch is an optional extra -- so this
+        # does not pull the ML stack into the backend image. Sharing the
+        # windower is deliberate: a second implementation would number windows
+        # differently and emit the same data under different identities.
+        run: |
+          pip install -e ".[dev]"
+          pip install -e "../ml-service"
 
       - name: Lint (R-12)
         run: ruff check .

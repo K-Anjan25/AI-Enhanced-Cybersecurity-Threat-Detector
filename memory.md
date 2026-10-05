@@ -768,6 +768,31 @@ a one-line injection point (`Producer` protocol) and has never run against a rea
 cluster. Recording this rather than implying coverage: the untested part is small
 and named, and the untested part is the part that needs a cluster.
 
+### D-036 — Idempotence needs identity from data, not from process state
+At-least-once delivery plus an idempotent sink is the standard way to get
+exactly-once *effect*, and the sink is the easy half. The half that breaks is
+choosing the identity.
+
+Two failures were measured here rather than reasoned about. Windowing each batch
+independently restarts the window numbering, so batch two's first window
+collides with batch one's and overwrites it: the same 20 records produced 1, 2
+or 4 windows depending on `batch_size`, a throughput knob. And a window counter
+held in worker memory resets on restart, so a replayed window takes index zero
+again and lands on an identity already used. That second one passes every test
+that stays inside a single process lifetime and fails the one the task is about.
+
+The fix is to key on the **log offset of the window's first record**. A Kafka
+offset is a property of the record and is immutable, so it is stable across
+reads and across restarts. The general rule: an idempotency key must be derived
+from the data being processed, never from the state of the process processing
+it. Process state is exactly what a restart destroys.
+
+Records are now buffered per entity across batches so windows and their offsets
+stay continuous. The windower is shared with `aegis_ml` rather than
+reimplemented — a second implementation would number windows differently and
+emit the same data under different identities, which is the same bug wearing a
+different hat.
+
 ## Change log
 
 | Date | Version | Change |
