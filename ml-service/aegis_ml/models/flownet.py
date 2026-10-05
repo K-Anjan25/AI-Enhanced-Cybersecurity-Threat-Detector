@@ -210,3 +210,23 @@ def reconstruction_error(output: FlowNetOutput, target: Tensor) -> Tensor:
     reused for it.
     """
     return nn.functional.mse_loss(output.reconstruction, target)
+
+
+def per_window_reconstruction_error(output: FlowNetOutput, target: Tensor) -> Tensor:
+    r"""Reconstruction error per window, shape ``(batch,)``.
+
+    :func:`reconstruction_error` reduces to one number, which is what a training
+    loss needs and what a detector does not: a detector has to say which window
+    is the anomalous one. This averages over the window's timesteps and features
+    instead of over the batch, so every window keeps its own error.
+
+    Both are the same quantity, and the two must not be allowed to drift apart —
+    a scoring function that disagrees with the loss trains on one notion of
+    anomalous and reports another. The equivalence is asserted in the tests.
+    """
+    if output.reconstruction.shape != target.shape:
+        raise ValueError(
+            f"reconstruction {tuple(output.reconstruction.shape)} does not match "
+            f"target {tuple(target.shape)}"
+        )
+    return (output.reconstruction - target).pow(2).mean(dim=tuple(range(1, target.dim())))
