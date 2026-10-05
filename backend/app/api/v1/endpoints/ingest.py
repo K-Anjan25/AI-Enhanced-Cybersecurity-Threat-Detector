@@ -79,9 +79,13 @@ def _ingest(
         ) from exc
     except UnsupportedMediaType as exc:
         raise HTTPException(status_code=415, detail=str(exc)) from exc
-    # Accepted records are handed to the persistence layer by T-307; until then
-    # the count is the contract and the records are validated and discarded.
+    # Accepted records are handed to the broker by the composition root's
+    # publisher when one is wired (T-319). With no publisher -- no consumer in this
+    # process -- the count is still the contract and the records stop here, which
+    # is what every deployment before the pipeline had.
     request.state.accepted_records = accepted
+    publisher = getattr(request.app.state, "flow_publisher", None)
+    traceparent = getattr(request.state, "traceparent", None)
     # Back-pressure (architecture.md §12, T-316). The budget is taken for the
     # records this batch puts in flight and returned when the request ends; a
     # producer would release on delivery instead, which is D-039's decision. A
@@ -111,6 +115,10 @@ def _ingest(
     try:
         if result.accepted == 0:
             return result
+        if publisher is not None:
+            # Before the audit row, deliberately: a record is not audited as taken
+            # in unless it was handed on.
+            publisher.publish(accepted, traceparent=traceparent)
         record_action(
             audit_trail(request),
             action=action,

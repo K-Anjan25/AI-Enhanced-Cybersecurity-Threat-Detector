@@ -32,6 +32,7 @@ from __future__ import annotations
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from aegis_ml.data.records import FlowRecord  # type: ignore[import-not-found]
@@ -123,20 +124,28 @@ class ScoreSink(Protocol):
         records: int,
         *,
         traceparent: str | None = None,
+        closed_at: datetime | None = None,
     ) -> None:
-        """Store one scored window, replacing any earlier score for it."""
+        """Store one scored window, replacing any earlier score for it.
+
+        ``closed_at`` is the timestamp of the window's last record. It travels
+        with the score because a sink that turns a score into an alert has to date
+        the occurrence from the data; the worker's own clock is when the window
+        was *processed*, which on a replay is not when the traffic happened.
+        """
         ...
 
 
 class InMemoryScoreSink:
     """A ScoreSink that overwrites, which is what makes replay safe."""
 
-    __slots__ = ("_scores", "_traceparents", "puts")
+    __slots__ = ("_closed_at", "_scores", "_traceparents", "puts")
 
     def __init__(self) -> None:
         """Start empty, counting puts so replays are observable."""
         self._scores: dict[str, tuple[float, int]] = {}
         self._traceparents: dict[str, str] = {}
+        self._closed_at: dict[str, datetime] = {}
         self.puts = 0
 
     def put(
@@ -146,12 +155,15 @@ class InMemoryScoreSink:
         records: int,
         *,
         traceparent: str | None = None,
+        closed_at: datetime | None = None,
     ) -> None:
-        """Store or replace one window's score."""
+        """Store or replace one window's score, with what came with it."""
         self.puts += 1
         self._scores[identity.as_string()] = (score, records)
         if traceparent is not None:
             self._traceparents[identity.as_string()] = traceparent
+        if closed_at is not None:
+            self._closed_at[identity.as_string()] = closed_at
 
     def traceparent_for(self, identity: WindowIdentity) -> str | None:
         """The trace context stored with one window's score, if it had one.
@@ -160,6 +172,10 @@ class InMemoryScoreSink:
         score, and so on to the alert record.
         """
         return self._traceparents.get(identity.as_string())
+
+    def closed_at_for(self, identity: WindowIdentity) -> datetime | None:
+        """The close time stored with one window's score, if it had one."""
+        return self._closed_at.get(identity.as_string())
 
     def scores(self) -> dict[str, tuple[float, int]]:
         """Every stored score, keyed by window identity."""
@@ -306,7 +322,14 @@ class ScoringWorker:
                     score = self._scorer.score(window)
                     active.set_attribute("aegis.score", score)
                 metrics.observe_score_latency(duration_seconds(started))
-                self._sink.put(identity, score, len(window.records), traceparent=traceparent)
+                self._sink.put(
+                    identity,
+                    score,
+                    len(window.records),
+                    traceparent=traceparent,
+                    # The window's own close time, not the worker's clock (T-319).
+                    closed_at=window.end,
+                )
 
 
 def drain(consumer: Consumer, partitions: Sequence[int], worker: ScoringWorker) -> dict[int, int]:

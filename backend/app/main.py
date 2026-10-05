@@ -39,6 +39,7 @@ from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.models import PARTITIONED_TABLES
 from app.observability.tracing import configure_tracing, exporter_for
+from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.erasure import (
@@ -218,6 +219,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # per-process; a multi-replica deployment needs a shared bus behind this
     # interface, which is named in the module docstring rather than implied.
     app.state.alert_hub = AlertHub()
+    # The store the query API reads and the pipeline writes (T-319). In memory
+    # here, like every other store in this environment; D-053 records the
+    # PostgreSQL adapter as unwired and the case-id column it would need.
+    app.state.alert_store = InMemoryAlertStore()
     # Webhook configuration (T-311). The allowlist is parsed here, at startup,
     # so a malformed entry stops the process with a clear message instead of
     # failing the first alert delivery of the day (R-55).

@@ -374,6 +374,11 @@ class TracingMiddleware:
                 # Bound for the whole request so every log line it produces can be
                 # joined to the trace (T-318); unbound below, never left behind.
                 bind_trace_id(trace_id)
+            if traceparent:
+                # Stashed on the scope for the route that hands the records on: the
+                # records a request accepted carry its trace context, so the score
+                # and the alert land on the same trace as the ingest (T-319).
+                scope.setdefault("state", {})["traceparent"] = traceparent
 
             async def traced_send(message: Message) -> None:
                 nonlocal status

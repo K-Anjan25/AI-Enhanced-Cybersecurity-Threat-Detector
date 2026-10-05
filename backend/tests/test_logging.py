@@ -431,7 +431,8 @@ def test_a_secret_field_is_never_rendered(
         ("2001:0db8:0000:0000:0000:0000:0000:0001", "0db8"),
         ("Bearer abcdefghijklmnop", "abcdefghijklmnop"),
         (
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            # A planted, unsigned token for the redaction test, not a credential.
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",  # noqa: E501  # pragma: allowlist secret
             "eyJhbGciOiJIUzI1NiJ9",
         ),
     ],

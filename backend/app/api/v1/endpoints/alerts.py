@@ -17,7 +17,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from app.api.v1.deps import audit_trail, client_ip
+from app.api.v1.deps import alert_store, audit_trail, client_ip
 from app.auth.rbac import Capability, Principal, require
 from app.schemas.query import AlertPage, AlertQuery, CursorError
 from app.schemas.verdict import (
@@ -27,7 +27,7 @@ from app.schemas.verdict import (
     VerdictRequest,
 )
 from app.services.audit_log import AuditAction, record_action
-from app.services.query_service import build_alert_select, paginate
+from app.services.query_service import paginate
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
     UnknownVerdict,
@@ -182,6 +182,7 @@ def list_alert_verdicts(
     dependencies=[require(Capability.READ)],
 )
 def list_alerts(
+    request: Request,
     start: str = Query(description="Inclusive lower bound, ISO-8601 with timezone."),
     end: str = Query(description="Exclusive upper bound, ISO-8601 with timezone."),
     severity: str | None = None,
@@ -215,9 +216,10 @@ def list_alerts(
         # A naive or inverted range, or one wider than the R-34 span limit.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    # Executing needs a session, which T-307 wires up. The select is built here
-    # so the query shape -- bounded, filtered, keyset-paged -- is exercised and
-    # tested independently of the database connection.
-    statement = build_alert_select(query)
-    del statement
-    return paginate([], query)
+    try:
+        rows = alert_store(request).fetch(query)
+    except ValueError as exc:
+        # The range is validated where it is used (R-34), so a naive, inverted or
+        # over-wide window is a client error rather than a 500.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return paginate(rows, query)
