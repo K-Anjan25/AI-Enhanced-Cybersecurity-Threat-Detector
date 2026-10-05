@@ -15,6 +15,7 @@ oversized batch has no record to attribute the problem to.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -23,12 +24,14 @@ from pydantic import BaseModel
 
 from app.api.v1.deps import admission, audit_trail, client_ip
 from app.auth.rbac import Capability, Principal, require
+from app.observability import metrics
 from app.schemas.ingest import (
     MAX_FLOW_RECORDS,
     MAX_LOG_LINES,
     FlowRecordIn,
     IngestResponse,
     LogRecordIn,
+    RecordError,
 )
 from app.services.audit_log import AuditAction, record_action
 from app.services.ingest_service import BatchTooLarge, UnsupportedMediaType, ingest_batch
@@ -49,6 +52,7 @@ def _ingest(
     *,
     caller: Principal,
     action: AuditAction,
+    modality: str,
 ) -> IngestResponse:
     """Run one ingest, translate batch-level failures into status codes, audit it.
 
@@ -85,7 +89,17 @@ def _ingest(
     # and failing the request would be the silent partial write the trail exists to
     # prevent -- and the client is told to retry rather than left to guess.
     controller = admission(request)
-    if not controller.admit(result.accepted):
+    admitted = controller.admit(result.accepted)
+    # Counters move after validation and admission: the rejections happened
+    # whether or not the batch fit, and nothing counts as ingested that the
+    # buffer refused, or "flows ingested" would include records that were
+    # turned away and will be retried.
+    metrics.observe_ingest(
+        modality,
+        accepted=result.accepted if admitted else 0,
+        rejected=_rejected_by_stage(result.errors),
+    )
+    if not admitted:
         raise HTTPException(
             status_code=503,
             detail=(
@@ -118,6 +132,27 @@ def _ingest(
         controller.release(result.accepted)
 
 
+def _rejected_by_stage(errors: Sequence[RecordError]) -> dict[str, int]:
+    """How many records each validation stage refused, for the rejection counter.
+
+    The unit is the **record**, not the error: a record missing three fields
+    appears three times in ``errors``, and a counter that iterated the list would
+    report three records where the collector has one to fix. The stage comes from
+    the ingest service's own vocabulary (``parse`` when a line is not JSON,
+    ``validation`` when it is JSON that fails the schema), so the label cannot be
+    chosen by the sender.
+    """
+    seen: set[tuple[int, str]] = set()
+    counts: dict[str, int] = {}
+    for error in errors:
+        key = (error.index, error.stage)
+        if key in seen:
+            continue
+        seen.add(key)
+        counts[error.stage] = counts.get(error.stage, 0) + 1
+    return counts
+
+
 @router.post(
     "/flows",
     response_model=IngestResponse,
@@ -138,6 +173,7 @@ async def ingest_flows(
         MAX_FLOW_RECORDS,
         caller=caller,
         action=AuditAction.ingest_flows,
+        modality="flow",
     )
 
 
@@ -161,6 +197,7 @@ async def ingest_logs(
         MAX_LOG_LINES,
         caller=caller,
         action=AuditAction.ingest_logs,
+        modality="log",
     )
 
 

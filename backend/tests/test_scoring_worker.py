@@ -23,6 +23,9 @@ from app.workers.scoring_worker import (
     InMemoryScoreSink,
     ScoringWorker,
     WindowIdentity,
+    count_windows,
+    drain,
+    iter_batches,
     window_identity,
 )
 
@@ -346,3 +349,15 @@ def test_a_partial_final_window_is_still_scored() -> None:
     )
     sizes = [count for _, count in sink.scores().values()]
     assert sorted(sizes) == [2, 5]
+
+
+def test_the_module_level_helpers_agree_with_the_worker() -> None:
+    """``drain``, ``count_windows`` and ``iter_batches`` are the batch interface."""
+    records = records_for("10.0.0.1", 5)
+    assert [len(batch) for batch in iter_batches(records, 2)] == [2, 2, 1]
+    assert list(iter_batches([], 4)) == []
+
+    consumer = ListConsumer(records)
+    worker = ScoringWorker(FixedScorer(), InMemoryScoreSink(), DictCommitter(), window_size=5)
+    assert drain(consumer, [0], worker) == {0: 5}
+    assert count_windows([record.flow for record in records], size=5) == 1

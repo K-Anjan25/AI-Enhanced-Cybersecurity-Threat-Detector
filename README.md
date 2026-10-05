@@ -54,7 +54,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 966 tests, 10 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 1022 tests, 10 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -147,10 +147,10 @@ inspection: every write and every unauthenticated route is asserted in scope, an
 is asserted out of scope, and the identity a request is bucketed by is asserted to come from the
 credential or the peer address -- never from `X-Forwarded-For` (D-048). A declared oversize body is
 refused without being read, a streamed or mis-declared one is counted as it arrives, and a batch
-that does not fit the ingest buffer is refused **whole** with `Retry-After` (D-049). `audit_log` and `api_keys` are both in T-301's migration, but **no
+that does not fit the ingest buffer is refused **whole** with `Retry-After` (D-049). Observability is verified from the ids outwards: the four metric names are the ones architecture.md §13 specifies, their labels are a closed vocabulary asserted against the registry (a request that matched no route is one `unmatched` series, so a client cannot grow the process by choosing paths), and the scrape is asserted to carry no identifiers and no alert content (R-58, D-050). A trace id from the ingest response travels through the scoring worker and the correlator into the alert row and the stream notification, the response carries `traceparent` and `x-trace-id`, and a request produces exactly one server span because FastAPI's native telemetry is off (D-051). Nothing is exported here: with no collector configured the ids are generated and propagated but no span leaves the process, and the OTLP exporter is an opt-in extra that is not installed. `audit_log` and `api_keys` are both in T-301's migration, but **no
 migration here has been applied to a live PostgreSQL** (D-030) and no database session is wired into
 the request path, so both stores are in-memory and die with the process; the admin screens, the
-audited export (FR-43) and the observability lane (T-317…T-320) are later tasks. The rate limiter is
+audited export (FR-43) and the observability lane (T-318…T-320) are later tasks. The rate limiter is
 in-memory too: buckets do not survive a restart, and each worker process counts its own, so a
 multi-worker deployment gets the configured rate per worker until a shared store exists (D-048). The
 ingest buffer is the same shape of limitation -- it is held for the duration of a request, not

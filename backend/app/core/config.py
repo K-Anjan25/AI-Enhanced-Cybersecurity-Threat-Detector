@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     # without limit and dropping something later.
     ingest_max_in_flight_records: int = Field(default=20_000, ge=1)
 
+    # Tracing (NFR-07, T-317). Empty means no exporter: spans are still created
+    # and their ids still propagate to the alert record, and nothing leaves the
+    # process. Set it to an OTLP/HTTP endpoint to ship spans to a collector.
+    otel_exporter_endpoint: str = Field(default="")
+
     ml_service_url: str = Field(default="http://localhost:8001")
 
     # Alert stream (FR-20). The interval is both how often a quiet stream says

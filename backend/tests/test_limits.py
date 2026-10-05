@@ -447,9 +447,25 @@ def test_the_request_id_is_on_the_throttled_response(client: TestClient) -> None
 
 
 def test_the_middlewares_are_installed_in_order(client: TestClient) -> None:
+    """Last added is outermost, and the order is the one the comment documents.
+
+    Request id first, so a refusal still carries one; metrics and tracing outside
+    the limiters, so a 429 or a 413 is counted and traced like any other request;
+    the body cap innermost, so not a byte more than necessary is read (T-317).
+    """
     names = [middleware.cls.__name__ for middleware in client.app.user_middleware]  # type: ignore[attr-defined]
+    order = [
+        names.index(name)
+        for name in (
+            "RequestIdMiddleware",
+            "MetricsMiddleware",
+            "TracingMiddleware",
+            "RateLimitMiddleware",
+            "BodySizeLimitMiddleware",
+        )
+    ]
+    assert order == sorted(order), f"unexpected middleware order: {names}"
     assert names.index("RequestIdMiddleware") < names.index("RateLimitMiddleware")
-    assert "BodySizeLimitMiddleware" in names
 
 
 # --- the body cap -------------------------------------------------------------

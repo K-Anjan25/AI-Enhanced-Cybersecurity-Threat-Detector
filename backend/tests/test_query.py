@@ -207,6 +207,9 @@ def test_paginate_returns_no_cursor_on_the_last_page() -> None:
             self.first_seen = self.created_at
             self.last_seen = self.created_at
             self.occurrence_count = 1
+            # Read by the query service for the alert's trace id (T-317); None is
+            # what an alert persisted without a trace context carries.
+            self.window_ref = None
 
     q = query(limit=3)
     page = paginate([Row(i) for i in range(2)], q)  # type: ignore[arg-type]
@@ -227,6 +230,9 @@ def test_paginate_returns_a_cursor_when_more_rows_exist() -> None:
             self.first_seen = self.created_at
             self.last_seen = self.created_at
             self.occurrence_count = 1
+            # Read by the query service for the alert's trace id (T-317); None is
+            # what an alert persisted without a trace context carries.
+            self.window_ref = None
 
     q = query(limit=2)
     rows = [Row(i) for i in range(3)]  # the extra row means "more available"

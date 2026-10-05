@@ -82,6 +82,22 @@ def build_alert_select(query: AlertQuery) -> sa.Select[tuple[object, ...]]:
     return statement.order_by(*ordering).limit(query.limit + 1)
 
 
+def _trace_id_of(row: Alert) -> str | None:
+    """The trace id recorded for an alert row, if it has one.
+
+    It lives inside ``window_ref`` -- the pointer to the window the case opened
+    on -- rather than in a column of its own: the trace is part of that window's
+    provenance, and ``window_ref`` is specified as opaque JSONB for exactly this
+    kind of bounded addition. Anything that is not the shape this wrote is
+    reported as absent rather than guessed at.
+    """
+    window_ref = row.window_ref
+    if not isinstance(window_ref, dict):
+        return None
+    trace_id = window_ref.get("trace_id")
+    return trace_id if isinstance(trace_id, str) and trace_id else None
+
+
 def paginate(rows: list[Alert], query: AlertQuery) -> AlertPage:
     """Turn fetched rows into a page, setting a cursor only if there is more."""
     has_more = len(rows) > query.limit
@@ -104,6 +120,7 @@ def paginate(rows: list[Alert], query: AlertQuery) -> AlertPage:
                 first_seen=row.first_seen,
                 last_seen=row.last_seen,
                 occurrence_count=row.occurrence_count,
+                trace_id=_trace_id_of(row),
             )
             for row in page_rows
         ],

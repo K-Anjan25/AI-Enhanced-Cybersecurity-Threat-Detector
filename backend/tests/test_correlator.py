@@ -70,6 +70,26 @@ def build(config: CorrelatorConfig | None = None) -> tuple[Correlator, InMemoryC
     return Correlator(store, fuse, config=config), store
 
 
+def test_a_late_arrival_outside_the_grouping_window_opens_its_own_case() -> None:
+    """FR-19 grouping is symmetric but bounded: too far apart is two incidents.
+
+    The store can still hand back a case when the detection predates it -- a
+    detection that finished after the case it belongs to, arriving out of order --
+    and the window is what decides whether it belongs at all. A detection five
+    minutes older than the case is a different incident, in either direction.
+    """
+    correlator, _store = build()
+    correlator.ingest(detection(modality=Modality.flow, evidence="flow:a@1"))
+    late = detection(
+        modality=Modality.log,
+        family="Exfiltration",
+        evidence="log:b@2",
+        at=NOW - timedelta(minutes=5),
+    )
+    outcome = correlator.ingest(late)
+    assert outcome.action is Action.created, "a different family, five minutes out of window"
+
+
 # --- severity banding (FR-13) ----------------------------------------------
 
 
