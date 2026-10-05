@@ -25,6 +25,14 @@ dev = [
 training = [
     "torch>=2.14",
 ]
+# T-210. The ONNX path is the documented latency fallback, so it is an extra and
+# never a core dependency: the service must start and score without it.
+# onnxscript is required by torch 2.14's exporter, not by our code directly.
+onnx = [
+    "onnx>=1.23",
+    "onnxruntime>=1.30",
+    "onnxscript>=0.5",
+]
 # transformers and drain3 land with T-204.
 
 [build-system]
@@ -61,16 +69,21 @@ plugins = ["pydantic.mypy"]
 files = ["aegis_ml"]
 
 [[tool.mypy.overrides]]
-# torch ships no type stubs, and mypy strict rejects an untyped import outright.
-module = "torch.*"
+# torch, the ONNX stack and numpy all ship without usable stubs, and mypy strict
+# rejects an untyped import outright. Every one of these is an optional extra, so
+# they are frequently absent entirely - which surfaces as import-not-found rather
+# than import-untyped, and has to be silenced the same way.
+module = ["torch.*", "onnx.*", "onnxruntime.*", "onnxscript.*", "numpy.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # strict enables disallow_subclassing_any, which rejects `class FlowNet(nn.Module)`
 # whenever torch is absent, because nn.Module then resolves to Any. It does not
 # fire when torch IS installed - so a local mypy run passes and CI fails. These
-# modules cannot be written without subclassing torch types.
-module = "aegis_ml.models.*"
+# modules cannot be written without subclassing torch types: models defines the
+# networks, and serving defines the ONNX export wrapper that adapts FlowNet's
+# dataclass output to the tuple of tensors the exporter requires.
+module = ["aegis_ml.models.*", "aegis_ml.serving.*"]
 disallow_subclassing_any = false
 
 [tool.pytest.ini_options]
