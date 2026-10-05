@@ -737,6 +737,37 @@ does not include the partition key. That last one is the structural limit — FT
 queries that cannot name a time window defeat the partitioning entirely, and
 that is a property of the workload rather than of tuning.
 
+### D-035 — Ordering is a partition-assignment property, and there is no broker here to test against
+Kafka orders records within a partition and makes no promise across partitions.
+So "one entity's flows stay ordered" is decided entirely by which partition a
+record is sent to, and the broker is not where to look for the bug. Two
+consequences shaped the implementation.
+
+The partitioner delegates to `kafka.partitioner.DefaultPartitioner` instead of
+hashing the key directly. A hand-rolled hash would be perfectly deterministic,
+pass every stability test, and still disagree with the broker -- and the
+disagreement would only appear as out-of-order scoring after a rebalance. A test
+asserts agreement across 50 keys, which is the only thing making the delegation
+meaningful rather than decorative.
+
+Resume after a restart is `committed + 1`. A Kafka offset identifies a record
+already in the log, so resuming *at* the committed offset reprocesses it, and
+resuming from the log end skips everything written while the consumer was down.
+Commits are also monotonic: a stale commit arriving after a newer one, which
+happens when a rebalance moves a partition, must not rewind the position.
+
+Lag is exported per `(group, topic, partition)`. A single group-level number
+hides the one case that matters -- a single stuck partition -- by averaging it
+into a healthy-looking total. Lag is clamped at zero because retention can delete
+records a consumer never reached, and a negative value reads as "ahead" when the
+consumer has actually lost its place.
+
+**What is not verified.** There is no Kafka broker in this environment. The
+partitioning, the offset arithmetic and the gauge are tested; the broker call is
+a one-line injection point (`Producer` protocol) and has never run against a real
+cluster. Recording this rather than implying coverage: the untested part is small
+and named, and the untested part is the part that needs a cluster.
+
 ## Change log
 
 | Date | Version | Change |
