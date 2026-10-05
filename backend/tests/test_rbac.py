@@ -125,9 +125,17 @@ def test_the_four_roles_r53_names() -> None:
 def test_capabilities_are_declared_per_role_not_inherited() -> None:
     """R-53 says escalation is explicit, so the table is written out."""
     assert capabilities_of(Role.VIEWER) == frozenset({Capability.READ})
-    assert capabilities_of(Role.ANALYST) == frozenset({Capability.READ, Capability.VERDICT})
+    assert capabilities_of(Role.ANALYST) == frozenset(
+        {Capability.READ, Capability.VERDICT, Capability.INGEST}
+    )
     assert capabilities_of(Role.RESPONDER) == frozenset(
-        {Capability.READ, Capability.VERDICT, Capability.EXPORT, Capability.WEBHOOK_CONFIG}
+        {
+            Capability.READ,
+            Capability.VERDICT,
+            Capability.EXPORT,
+            Capability.WEBHOOK_CONFIG,
+            Capability.INGEST,
+        }
     )
     assert capabilities_of(Role.ADMIN) == frozenset(
         {
@@ -138,6 +146,7 @@ def test_capabilities_are_declared_per_role_not_inherited() -> None:
             Capability.USERS,
             Capability.MODELS,
             Capability.RETENTION,
+            Capability.INGEST,
         }
     )
 
@@ -276,9 +285,9 @@ def test_the_matrix_keys_are_real_paths_or_documented(settings: Settings) -> Non
     """A typo in the matrix would silently protect nothing."""
     from app.main import create_app
 
-    known = {
-        p for r in create_app(settings).routes if isinstance(p := getattr(r, "path", None), str)
-    }
+    # Must walk nested routers exactly as the source does, or the routes added
+    # by include_router are invisible and this check passes vacuously.
+    known = set(registered_paths(create_app(settings).routes))
     for path in ROUTE_MATRIX:
         assert path in known or path in DOC_ROUTES, f"matrix names an unknown route: {path}"
 
