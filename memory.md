@@ -4,7 +4,7 @@
 |---|---|
 | **Document** | Persistent project context, decisions, and ledger |
 | **Version** | 0.1 |
-| **Last updated** | 2026-10-02 (Friday) |
+| **Last updated** | 2026-10-05 (Sunday) |
 | **Purpose** | The document a new engineer — or you in three months — reads first |
 | **Related** | [prd.md](prd.md) · [architecture.md](architecture.md) · [rules.md](rules.md) · [design.md](design.md) · [task.md](task.md) |
 
@@ -22,21 +22,21 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 **One-line pitch.** Signature-based detection misses novel behaviour; AEGIS learns what "normal" looks like per entity and flags the deviation, with evidence attached.
 
-## Current state (as of 2026-10-03)
+## Current state (as of 2026-10-05)
 
 | Aspect | State |
 |---|---|
-| Repository | Six planning documents plus the Sprint S0 scaffolding (commit `23b6a57` onward) |
-| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator, `features@1` extraction, windowing, splits, leakage audit; `aegis_ml/training/` evaluation harness), `dashboard/` React shell — all tested. No model code |
-| Tests | 188 passing — 20 backend, 134 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
-| Checks green | `./scripts/check_all.sh` — 20 checks: ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, vitest, vite build, doc integrity, compose consistency. Five were proven to fail on an injected violation before being trusted |
-| Dependencies | Python via `pip install -e "backend[dev]" -e "ml-service[dev]"` (both verified); npm `package-lock.json` committed for `npm ci` (R-08) |
-| Datasets | **Public sets not downloaded** — their hosts are unreachable from this sandbox. Synthetic data generates on demand via `scripts/generate_synthetic.py` into the gitignored `data/` |
-| Models | **None trained.** No baselines, no metrics |
-| Branch | `arena/01a0fee2-ai-enhanced-cybersecurity-thre`, based on `60e9adf` |
-| Next work | S0 is complete except running the compose stack and applying the manifests, both of which need infrastructure this sandbox does not have. In S1 everything is DONE except T-101…T-105 and T-110, all of which need the real datasets |
+| Repository | Six planning documents plus the S0–S2 and E3 code (commit `04aeb71` onward) |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310) and outbound webhooks (T-311). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell only; E4 has not started |
+| Tests | **1089 passing, 26 skipped** — 524 backend (10 need a live PostgreSQL), 531 ml-service (16 need torch), 34 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Checks green | `./scripts/check_all.sh` — **25 checks, 0 failed** (measured 2026-10-05): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
+| Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
+| Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
+| Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
+| Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
+| Next work | **T-312 — the append-only audit log** (FR-42), then T-313 onward. Two follow-ons are filed in [task.md](task.md): **T-321** (schema conformance for `alerts.score`/`severity`, R-38/R-39) and **T-322** (FR-18's weekly recalibration from verdicts, which T-309 feeds). Docker and PostgreSQL remain unavailable here, so T-005, the migration half of T-301 and the k8s apply are still unverified — each says so in [task.md](task.md) |
 
-Sprint S0 started early, on 2026-10-02. Per-task status lives under the E0 table in [task.md](task.md#3-epic-e0--foundations-m0); the rest of the plan is still `TODO`.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-311.** **E4 and E5 are untouched** — everything past T-320 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -619,19 +619,15 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | # | Action | Task | When |
 |---|---|---|---|
-| 1 | Confirm Q-01, Q-03, and Q-05 owners and dates | — | Before 2026-10-05 |
-| 2 | ~~Commit the six documents as the baseline~~ — done, `3d74000` | — | Complete |
-| 3 | ~~Begin S0: scaffolding, CI, compose, docs~~ — done except T-005 execution and `k8s/` | T-001…T-010 | Complete |
-| 4 | Run the compose stack on a host with a Docker daemon and close T-005 | T-005 | When Docker is available |
-| 5 | Fetch datasets and record real checksums — blocked, hosts unreachable here | T-101, T-102 | S1 |
-| 6 | ~~Build `features@1` extraction against synthetic `flow@1` records~~ — done, 23 features, hash-pinned | T-107 | Complete |
-| 7 | ~~Settle Q-06 and build windowing~~ — done, closed by D-013 | T-108 | Complete |
-| 8 | ~~Build the temporal + entity-disjoint split utility~~ — done, refuses rather than leaks | T-109 | Complete |
-| 9 | ~~Build the leakage audit on top of `Split.audit()`~~ — done, five leak classes | T-111 | Complete |
-| 10 | ~~Build the evaluation harness~~ — done, `eval@1` | T-112 | Complete |
-| 11 | ~~Write the `k8s/` manifests~~ — done, statically verified | T-001 | Complete |
-| 12 | Wire `AuditReport.raise_for_leaks()` and `evaluate()` into the training entrypoint | T-201 | M2 |
-| 13 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
+| 1 | **Build analyst verdicts** — immutable once written, superseding with history (T-309) | T-309 | Next |
+| 2 | Continue E3: verdicts, WebSocket channel, webhooks, audit service | T-309…T-320 | This sprint |
+| 3 | Confirm Q-03 (false-positive budget) and Q-05 (multi-tenancy) with their owners | — | Before threshold defaults ship |
+| 4 | Run the compose stack where a Docker daemon exists; close T-005 and settle Q-08 | T-005 | When Docker is available |
+| 5 | Verify the T-301 migration up and down against a live PostgreSQL 16 | T-301 remainder | When a server is reachable |
+| 6 | Apply the k8s manifests to a cluster — the checks are static only | T-504 | M5 |
+| 7 | Build the family-holdout release gate Q-07 still owes, then a gated metric for `LogNet` | T-203, T-208 | Before release |
+
+Completed since the last revision of this table: the datasets were fetched and checksummed (T-101–T-105, T-110), `features@1` was pinned (T-107), windowing, splits, the leakage audit and the evaluation harness landed (T-108, T-109, T-111, T-112), both models and the scoring modules landed (T-201–T-215), and E3 reached T-307.
 
 ### D-031 — R-51 is enforced where verification happens, and rotation means the old token dies
 Argon2id hashing is easy to get nominally right and still be wrong, because the
@@ -793,10 +789,224 @@ reimplemented — a second implementation would number windows differently and
 emit the same data under different identities, which is the same bug wearing a
 different hat.
 
+### D-037 — Correlation policy: a case is one incident, and it never gets quieter (T-308) (2026-10-05)
+The correlator is small enough that every choice in it looks obvious and only
+one reading of each is defensible. Writing them down so the next person changing
+one knows what they are changing.
+
+**Boundaries are inclusive, and the cool-down runs from `last_seen`.** A repeat
+at exactly 15 minutes is still the same incident; 15 minutes and one second is a
+new one. Measuring from the last occurrence rather than the first makes the
+cool-down a debounce — a sustained attack stays one alert, which is the point of
+FR-15 — at the cost that a case can stay open indefinitely under continuous
+traffic. That is the intended trade: the analyst triages an incident, not a
+stream of identical rows.
+
+**A case never de-escalates.** Every occurrence is re-fused from the best score
+per modality, and the case keeps the highest composite it has seen. Two reasons.
+An alert that reads HIGH and later reads MEDIUM while nothing improved teaches
+an analyst that the label is noise. And the loudest evidence in an incident is
+what a triager needs; averaging it down with quieter repeats is how a real
+intrusion gets triaged as noise. `first_severity` records what it opened at, so
+escalation is visible rather than hidden.
+
+**Retention must not become a severity input.** Occurrences are capped for
+memory (a flood inside one cool-down would otherwise grow a case without bound),
+but the count stays exact and the loudest score survives eviction. This was the
+one clause my first test suite did not actually test: substituting
+`fused.score` for `max(case.score, fused.score)` left both de-escalation tests
+green, because `_fuse_best` already keeps the maximum per modality, so only
+eviction can make a case's available best fall. The failing test — retention of
+one, a 0.99 evicted by a 0.4 — was added and the substitution then failed it.
+
+**Grouping is not deduplication.** Dedup keys `(entity, family)`; grouping keys
+the entity, the opposite modality and ±60 s, symmetric because either model can
+finish first. A grouped case clears `partial_evidence`, since it now genuinely
+has both sides, and its score rises from the penalised single-modality number to
+the fused one. The case keeps the family it opened with — the filter and the
+cool-down key both refer to it — while `families` grows, and repeats of any
+family the case carries dedup into it. A closed case absorbs nothing and groups
+nothing: swallowing a fresh occurrence into a row the analyst has closed leaves
+nobody looking at it.
+
+**Replay safety is per evidence id.** T-307 emits at-least-once, so the same
+window can arrive twice; a detection whose window is already recorded is a
+no-op. The evidence index deliberately outlives the display retention, or a
+replayed window whose occurrence was evicted would be counted twice — the same
+class of defect D-036 describes, one layer up.
+
+**The persistence gap is named, not hidden.** `CaseStore` is a protocol and the
+in-memory implementation is what runs here. A SQLAlchemy adapter is not written
+because the `alerts` table holds one `window_ref` per row and cannot answer "was
+this window already counted?" without a queryable evidence index, and there is
+no PostgreSQL in this environment to verify one against. `alert_row()` pins the
+column encoding — including the bounded evidence trail under `window_ref`
+(defined as opaque) and R-70's explanation payload — so the adapter is a thin
+insert rather than a design question. `FusionRule` is injected for the same
+reason `aegis_ml` is not installed in the backend image: one implementation of
+the arithmetic, wired at the composition root.
+
+**A defect found here and deliberately not fixed here:** `alerts.score` and
+`thresholds.value` are `Float` and `alerts.severity` is an unconstrained
+`String(20)`, against R-39 (`numeric(5,4)`) and R-38 (enum + check constraint).
+Both are real, both are schema changes to a migration that has still never been
+applied to a live server (D-030), and neither belongs inside T-308's change.
+Raised as **T-321** so it is tracked with acceptance criteria rather than
+carried in someone's head.
+
+
+
+### D-038 — A verdict is an appended record, and a repeat is not a supersession (T-309) (2026-10-05)
+
+**Decision.** An analyst's verdict is an immutable record appended to a per-alert
+ordered ledger. `alerts.verdict`, `verdict_at` and `verdict_by` are a
+denormalised pointer for the list view; the ledger is the source of truth, and a
+change appends a record whose `supersedes` names the one it replaces, so the
+history is a chain rather than a field whose previous values are lost. An alert
+is addressed by `(id, created_at)`: D-030 makes a bare id ambiguous across
+partitions and R-34 forbids touching the partitioned table without a time bound,
+so the partition key is required on every verdict read and write, never
+defaulted.
+
+**A repeat is not a supersession.** Recording the verdict already current, for
+the same alert by the same analyst, returns ``unchanged`` and appends nothing. A
+different verdict appends, and so does the same verdict from a *different*
+analyst: that is independent agreement, which is worth a record, while a re-sent
+request is not. Without the rule, a timeout retry or a double-click pads the
+history with rows that are indistinguishable from reconsideration.
+
+**The alert row is written only when something changed.** `alert_verdict_update`
+returns ``None`` for ``unchanged``; issuing the update anyway would move
+`verdict_at` forward and make a re-submission look like a fresh decision.
+
+**Open, and named in the code rather than left implicit.** A durable ledger needs
+a new append-only table and a migration (R-32) -- the `alerts` row cannot carry
+history -- and the actor is the token's opaque ``sub`` while
+``alerts.verdict_by`` is a numeric ``users.id`` foreign key, so the adapter must
+resolve one to the other through the users table rather than an ``int()`` cast.
+Neither is written here because there is no PostgreSQL in this environment to
+verify a migration against. Audit rows for mutating routes are T-312's job, per
+the `AuditLog` model's own docstring.
+
+### D-039 — The alert stream is a cache, and a client that fell behind is told so (T-310) (2026-10-05)
+
+**Decision.** Alerts are pushed over one in-process hub that keeps a bounded window
+of recent notifications, and the `alerts` table stays the record. Every
+notification carries a sequence, every handshake carries the hub's `epoch`, and a
+client reconnects by naming the last sequence it processed.
+
+**A cursor that is out of step gets `resync_required`, in either direction.** Behind
+the retained window means notifications are gone; ahead of the newest sequence
+means the cursor came from somewhere else — another process's numbering, or a
+replica that has not seen it. Both answer the same way: hand over the whole
+retained window *and* set the flag, because a silent "nothing new for you" is how
+an alert stream loses alerts while looking healthy. Cursor `0` is neither: it
+means "no position yet", which is why sequences start at one.
+
+**A subscriber that stops reading is dropped, with its cursor.** Each
+subscription has a bounded queue; overflow marks it dropped with the reason and
+the last sequence it actually received, and the transport closes carrying that
+cursor. An unbounded queue turns one hung browser tab into a memory leak, and
+dropping without a cursor turns it into a silent gap.
+
+**Publishing is thread-safe because the producer is not the event loop.** The
+correlator runs in the scoring worker, which is synchronous. `publish()` is a
+plain call any thread may make; delivery hops onto each subscriber's own loop.
+Subscribe and publish share one lock, so a publish either joins a catch-up or
+arrives live — never both, never neither, which is what makes "no alert is lost
+across the switch" a property rather than a hope.
+
+**The cursor is per-process, so it comes with an epoch.** A restart renumbers
+from one; a client whose epoch changed must resync rather than trust its cursor.
+D-036's rule — identity from data, not from process state — applied to the
+stream.
+
+**Auth is the same check, not a second one.** The socket handshake calls the same
+capability table the HTTP dependency does (`rbac.authenticate`), because a
+WebSocket is not a `Request` and a second copy of "is this token valid, may this
+role read" is exactly how a socket becomes the way around the matrix. The token
+travels in `Sec-WebSocket-Protocol` for browsers, which cannot set a header, and
+never in the URL, where it would reach access logs.
+
+**Gaps, named.** The buffer is in-process and does not survive a restart, so a
+multi-replica deployment needs a shared bus (Redis or Kafka) behind the same
+interface. The `ws` extra is what lets uvicorn serve the socket; it is not
+installed here, so the ASGI contract is verified and uvicorn's transport is not.
+The dashboard half of the fallback — banner, 15 s polling, resume — is T-405.
+
+### D-040 — A webhook signature covers the bytes that were sent, and the destination is re-checked per attempt (T-311) (2026-10-05)
+
+**Decision.** An outbound webhook body is canonicalised once (sorted keys, compact
+separators), signed as ``HMAC-SHA256(secret, "<timestamp>.<body>")``, and the
+header ``X-AEGIS-Signature: t=<unix>,v1=<hex>`` is sent alongside those exact
+bytes. Every attempt of one delivery carries the same timestamp, signature and
+``X-AEGIS-Delivery`` id.
+
+**Why sign bytes rather than an object.** A scheme that signs a re-serialised
+object verifies right up until a field order or a float representation changes;
+a scheme that signs the wire bytes verifies against what the receiver actually
+holds. The timestamp is inside the MAC, so it cannot be swapped for a fresh one
+over an old body, and the header carries a version, so a future scheme can be
+introduced without a receiver accepting a downgrade.
+
+**Why one signature per delivery rather than one per attempt.** A retry is the
+same event: a receiver that deduplicates on the signature would otherwise see one
+alert as several, and a receiver that enforces the replay window would refuse a
+retry the moment the backoff exceeded it. The default budget — five attempts,
+1/2/4/8 s of exponential backoff with full jitter, 15 s total — is deliberately
+inside the 300 s window receivers are told to enforce, and a test asserts that
+inequality so neither number can move alone. Full jitter, because a fleet
+retrying a recovered receiver in lockstep is a self-inflicted thundering herd.
+A 4xx that is not 408/425/429 is not retried: the receiver received and refused
+the bytes, and repeating them only delays the operator learning that the endpoint
+rejects the payload.
+
+**Why the destination is validated per attempt, not once at registration.** The
+address that was checked must be the address dialled (R-55). A hostname that
+resolved public when the target was registered may resolve to
+``169.254.169.254`` later, and a stored target is exactly what a rebinding attack
+waits for. So the sender validates immediately before each attempt and hands the
+transport a request that names the **pinned** address to connect to and the
+hostname to present for ``Host``/SNI; the transport resolves nothing itself. A
+DNS failure is a retryable network condition; a private answer is a block.
+
+**The verdict is named, and multicast is refused first.** ``is_global`` is the
+accept rather than a hand-written list of ranges, because the list is the thing
+that goes stale — but CPython counts IPv4 multicast (224/4) as global, which a
+smoke matrix found and a test now names. Loopback, link-local, multicast,
+unspecified, private and not-globally-routable are refused in that order, so a
+refusal names a cause, and a host with *any* refused address is refused whole.
+
+**Secrets are sealed, and shown once.** A signing secret is 32 random bytes,
+stored Fernet-sealed under an HKDF-SHA256 key derived from ``AEGIS_SECRET_KEY``,
+and returned in the creation response only: no route opens it, so a listing
+cannot leak it. Rotating the application secret orphans sealed secrets, and that
+is a named error rather than an empty secret — a delivery signed with an empty
+key would be refused by every receiver and look like the receiver's fault.
+
+**Gaps, named.** The retry bound and per-attempt timeout are constructor
+arguments, not environment settings: the pipeline that would read a setting
+does not exist, and a knob nothing reads looks configurable and is not. No
+HTTP client ships (``WebhookTransport`` is a protocol), so pinning, redirect
+refusal and timeouts are contract, not verified behaviour;
+retries are inline in the caller, so a pipeline that cannot afford the worst case
+needs a delivery queue; the store is in-memory; and nothing calls ``dispatch()``
+yet — the correlator is not wired to T-310's hub either, which is the same seam.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.32 | **T-311 done — outbound webhooks, signed over the bytes that were sent and re-checked per attempt.** `backend/app/services/webhook_targets.py`, `backend/app/services/webhook_delivery.py`, `backend/app/schemas/webhook.py`, `backend/app/api/v1/endpoints/webhooks.py`, three `ROUTE_MATRIX` entries, 149 tests. Policy recorded as **D-040**: the signature is `t=<unix>,v1=<hmac-sha256 hex>` over `"<timestamp>.<body>"` with the body canonicalised once and the exact bytes sent; one timestamp, signature and delivery id per delivery so a retry is not re-signed into a second event; the default 15 s retry budget sits inside the 300 s replay window and a test asserts that; full jitter; 5xx/408/425/429/3xx retried and other 4xx not, because the receiver already refused those bytes; and **the destination is validated before every attempt and the transport is given the pinned address**, since a host that resolved public at registration is what a rebinding attack waits for. **The smoke matrix found what reading would not: CPython reports IPv4 multicast (224/4) as globally routable**, so `224.0.0.1` passed the first verdict function — the multicast refusal now precedes the `is_global` accept and a test names it. Secrets are 32 random bytes sealed with Fernet under an HKDF-SHA256 key from `AEGIS_SECRET_KEY`, returned once and never readable again; the allowlist is empty by default (fail-closed) and parsed at startup; and the log carries the target id, attempt, outcome and status and **never the URL, the operator note or the alert body** (R-58 asserted by planting all three). 30 injections each failed their target tests — including the multicast/private/CGNAT accepts, a rebinding target sent anyway, an unreadable secret returning `""`, 5xx not retried, a refusal retried as an overload, the replay window unchecked, the timestamp out of the MAC, a per-attempt delivery id, the hostname dialled instead of the pinned address, an exclusive floor, every delivery counted as delivered, the URL/description/body logged, jitter ignored and the retry bound off by one. **Gaps:** no HTTP client ships (a protocol, not an implementation); retries are inline, so a delivery queue is what a busy pipeline needs; the store is in-memory; and nothing calls `dispatch()` yet — the correlator is not wired to T-310's hub either. Backend 375 → 524 tests, coverage 95.67% → 96.41%. **One earlier verification claim corrected by this run:** `hooks: pre-commit` reported green at T-310 does not reproduce on this tree — `detect-secrets` flags a test-only settings literal in `backend/tests/test_alert_stream.py:334`, a file **byte-identical to `c6eacd4`**, plus three test-only fixtures added here (two application-secret constants and two `user:pass@` URLs that exist to be refused). Each is marked inline with `pragma: allowlist secret` at the line rather than added to `.secrets.baseline`, so a reviewer sees the claim where the literal is. Bandit's B311 on the delivery id was a real finding about the wrong tool: the id is now drawn from `secrets` rather than `random`. |
+| 2026-10-05 | 1.31 | **T-310 done — the alert stream, with the gap made visible.** `backend/app/services/alert_stream.py`, `backend/app/schemas/stream.py`, `backend/app/api/v1/endpoints/stream.py`, three `ROUTE_MATRIX` entries, 50 tests. Notification sequences give the fallback something to resume from: `WS /alerts/ws`, SSE with `Last-Event-ID`, and the REST polling endpoint at architecture.md §14's 15 s cadence. Policy recorded as **D-039** — a cursor out of step in either direction gets `resync_required` plus the whole retained window, a slow consumer is dropped with its resume cursor, cursor 0 means "no position yet", the cursor is per-process and comes with an epoch, and `publish()` is thread-safe because the producer is the scoring worker rather than the event loop. **Two defects were found by tests, not by reading.** The reader task must check for `websocket.disconnect` explicitly, because a server that hands the message back turns the reader into a busy loop; and `RequestIdMiddleware` had to become **pure ASGI**, since `BaseHTTPMiddleware` holds response chunks in a task group and an endless SSE response therefore never reaches the client. **Harness facts recorded for the next stream task:** Starlette's `TestClient` runs the app to completion before returning a response, so an endless stream cannot be read through it — the SSE tests drive the ASGI app directly — and a `receive` that returns immediately starves the event loop (that is how the first version hung rather than failed). 15 injections each failed their target tests: inline (non-loop) delivery, either half of the resync rule, a tail instead of the window on resync, an undetected full queue, no drop check before waiting, delivery to one subscriber, an ignored disconnect, SSE frames without ids, the resume header ignored or tolerated when malformed, header-only socket auth, 4401/4403 swapped, an accepted unauthorised handshake, accept-before-authenticate, and shutdown that leaves the hub open. **Gaps:** the in-process buffer does not survive a restart, so multi-replica needs a shared bus; uvicorn needs the new `ws` extra to serve the socket, and it is not installed here. Backend 325 → 375 tests, coverage 95.67%. |
+| 2026-10-05 | 1.30 | **T-309 done — analyst feedback is an append-only ledger, not a mutable field.** `backend/app/services/verdict_service.py`, `backend/app/schemas/verdict.py`, `POST /api/v1/alerts/{alert_id}/verdict` + `GET .../verdicts`, two `ROUTE_MATRIX` entries, 42 tests. The acceptance criterion is tested against the store rather than the return value: the first record still reads exactly as written after a supersession, and the interface is asserted to expose `current`/`history`/`append` and nothing else -- no update, no delete -- the way R-31 is asserted for `audit_log`. **A repeat is not a supersession** (D-038): the same verdict by the same analyst returns `unchanged` and appends nothing, so a client retry cannot manufacture a reconsideration; a different verdict, or the same verdict from a different analyst, appends and links `supersedes` to the previous record; `alert_verdict_update` returns `None` for `unchanged`, because writing `verdict_at` forward on a re-send would make a repeat look like a fresh decision. Alerts are addressed by `(id, created_at)` -- D-030's partition key, required rather than defaulted -- and a test proves `12:00+02:00` and `10:00Z` address the same alert. `require()` now returns a `Principal` (role + token subject) so the route records **who** decided without decoding the bearer token twice; viewer is refused by capability and absent from the matrix entry, with a parity test over all four roles. **Nine injections each failed their target tests:** an actor-blind repeat check, a removed unchanged short-circuit, a dropped `supersedes` link, off-by-one ids, an unstripped note, a write on `unchanged`, a viewer in the matrix, a placeholder actor, and a route that ignored the body's partition key. **Gaps named:** the durable half needs a new append-only table and a migration (the schema's `alerts.verdict` holds only the current decision) and a mapping from the token's opaque `sub` to `alerts.verdict_by`'s numeric `users.id`; audit rows for mutating routes are T-312's. Backend 283 → 325 tests, coverage 96.03%. FR-18's weekly recalibration job is filed as **T-322** — this task persists what it consumes. |
+| 2026-10-05 | 1.29 | **T-308 done — the alert path now runs from detection to row.** `backend/app/services/correlator.py` + 71 tests. The acceptance criterion is verified by counting rows in the store rather than reading the returned action, because an implementation that reports `absorbed` and inserts anyway passes the weaker test. Banding treats published thresholds as inclusive boundaries and refuses an out-of-range score instead of clamping it; the bounds are data (R-69). The composite is fused from the best score per modality through the **injected** real `aegis_ml.scoring.fusion` rule — one implementation of the arithmetic, wired at the composition root, since the backend image does not install the ML package. Policy recorded as **D-037**: cool-down measured from `last_seen` and inclusive at the boundary, a case that never de-escalates, grouping by entity + opposite modality ±60 s which clears `partial_evidence`, closed cases that absorb nothing, and replay safety keyed on the window's evidence id with an evidence index that outlives display retention. **One clause was vacuous until injection proved it** — `max(case.score, fused.score)` could be replaced by `fused.score` and the original de-escalation tests still passed, because the best per modality only falls when retention evicts the loudest occurrence; that test was added, and four other injections (zero-width cool-down, removed replay check, same-modality grouping, exclusive band boundary) each failed their target tests. `CaseStore` is the persistence boundary and `alert_row()` pins the encoding; the SQL adapter is the named gap. Also found while writing the row mapping and raised as **T-321**, not fixed here: `alerts.score`/`thresholds.value` are `Float` and `severity` is an unconstrained `String(20)`, against R-39 and R-38. Backend 212 → 283 tests, coverage 95.81%. |
+| 2026-10-05 | 1.28 | **T-307 done.** `backend/app/workers/scoring_worker.py`. Loss and duplicates pull in opposite directions — commit before the work is at-most-once and loses records on a crash, commit after is at-least-once and replays them — so the worker commits **after** emitting and gets "no duplicates" from the other end: emission is idempotent per window identity. Two bugs, both found by tests rather than by reading. Windowing each batch independently restarted the numbering, so batch two's first window silently **overwrote** batch one's — the idempotent sink that makes replay safe became the thing hiding the loss — and batch sizes 3/7/50 produced 1, 2 and 4 windows from the same 20 records. A window counter held in worker memory then collided across restarts, passing every test that stays inside one process lifetime. Identity is now the entity plus the **log offset of the window's first record**: a property of the data, not of the process (D-036). My own test asserted the opposite and had to be reversed. The windower is shared with `aegis_ml` rather than reimplemented, so the two cannot number windows differently. **Gap:** ml-service still exposes only `/healthz`, so the model call behind `Scorer` is injected and untested. 16 tests. |
+| 2026-10-05 | 1.27 | **T-306 done.** `backend/app/messaging/{partitioner,producer,lag}.py`. Ordering is a **partition-assignment** property, not a broker guarantee: two flows from one source on different partitions have no ordering however correct the broker is. The partitioner therefore delegates to Kafka's own `DefaultPartitioner` rather than reimplementing a hash that would agree in tests and disagree in production, and keys on `src_ip` alone — a port or timestamp in the key would split one entity and lose exactly what this exists to provide. Resume is `committed + 1`; the committed offset reprocesses and the log end skips. Lag is per `(group, topic, partition)`, because one stuck partition averages away into a healthy-looking total, and clamps at zero since retention can delete records a consumer never reached (D-035). **No broker exists here**, so the arithmetic is tested and the broker call is a one-line injection point that is not. 26 tests. |
+| 2026-10-05 | 1.26 | **T-305 done.** Q-02 recorded before the work, as the row required — D-034 chooses partitioned PostgreSQL and defers Elasticsearch, on the asymmetry that being wrong about Postgres costs a later migration while being wrong about Elasticsearch costs a second store from day one. Pagination is keyset on `(created_at, id)`, because offset pagination cannot be stable under concurrent inserts and `id` alone is not unique across partitions (D-030); the cursor compares as a **row value**, since `created_at < a AND id < b` silently drops rows that share the cursor's timestamp. `start`/`end` are required with no default, because a generous default is how an unbounded partitioned scan ships, and a malformed cursor is a 400 rather than a silent restart from page one. 23 tests. |
+| 2026-10-05 | 1.25 | **T-304 done.** `backend/app/schemas/ingest.py`, `services/ingest_service.py`, `api/v1/endpoints/ingest.py`. "No partial batch is silently dropped" is arithmetic rather than a promise: `received == accepted + rejected` with one error entry per rejected record, both halves asserted. An unparseable NDJSON line is a per-record `parse` error, not a whole-batch 415 — my first version failed the batch, which is exactly what FR-04 forbids — and line numbers are carried through the parse rather than recomputed, so "record 7 is bad" still points at record 7. Every pydantic error becomes an entry, so a record with three bad fields explains all three. R-53 does not name ingest, so `Capability.INGEST` was added for analyst/responder/admin and not viewer; recorded as a judgement call, not a reading of the rule (D-033). 34 tests (27 ingest, 7 contract). |
+| 2026-10-05 | 1.24 | **T-303 done.** RBAC dependency plus a route × role matrix test. **The first completeness check enforced nothing:** it read `app.routes`, and FastAPI's `include_router` does not flatten — the parent holds a container whose `original_router` holds the real routes — so the walk found four documentation endpoints, concluded the matrix was complete and passed. Two rules follow (D-032): a completeness check that introspects a framework carries a test asserting it sees the things it claims to count, and the "adding a route is detected" test runs against the real app factory rather than a toy `FastAPI()`. RBAC is default-deny from a written-out capability table; a 403 names the caller's role but never the missing capability, and an unknown role string is refused rather than defaulted. 25 tests. |
+| 2026-10-05 | 1.23 | **T-302 done.** `backend/app/auth/{passwords,tokens}.py`. R-51 is enforced where verification happens: `verify_password` **raises** on MD5, SHA-1, bcrypt and Argon2i rather than returning False, because False reads as "wrong password" and would turn a migration into an endless stream of login failures instead of a rehash on next login. Refresh rotation is single-use, and replaying a spent token revokes the whole family — two holders of one single-use credential means at least one is not the user. **A test of mine was wrong and the code was right:** I forged a token by editing the payload *and re-signing with the correct key*, which is issuing, not tampering; that a re-signed forgery is accepted is now its own test, because HS256 is a symmetric MAC and the secret is the entire boundary (D-031). `RefreshStore` is a protocol; the in-memory default is explicitly not for production. 28 tests. |
 | 2026-10-05 | 1.22 | **T-301 — R-34 clause done and verified; the migration clause is NOT verified here and says so.** `backend/app/db/{models,partitions,repository}.py` + `backend/alembic/`. R-34 is enforced by two layers because either alone has a hole: `query_partitioned` takes the `TimeRange` positionally so no call shape omits it, and `assert_time_bounded` inspects hand-built statements and refuses any partitioned table whose partition column is unconstrained — catching `select(func.count()).select_from(Alert)`, which `column_descriptions` would have missed since it reports `None` for aggregates. Partitioned primary keys must include the partition key, so `id` is not globally unique on `alerts`/`ingest_stats`; no default partition, because one accumulates silently until retention is meaningless. **Honest gap: no PostgreSQL is reachable in this sandbox (no `psql`, 5432 refused, no container runtime) and partitioning is PostgreSQL-only, so "migration up and down apply cleanly" is unverified.** What is verified: all 9 tables compile for the postgres dialect, both partitioned tables emit `PARTITION BY RANGE`, the migration imports with both hooks and `down_revision = None`, and the pure partition builders are unit-tested including December rollover. `audit_log.actor_id` has no foreign key on purpose — a cascade would give an append-only table a delete path. 40 new backend tests, 60 total. |
 | 2026-10-05 | 1.21 | **T-215 done.** `training/search.py`. **`search()` has no test-split parameter at all** — train and valid only, with the omission pinned by a test on `inspect.signature`, because a discipline note holds only until someone is in a hurry. R-71's second half is a separately named `final_test_evaluation` so the one permitted look cannot be reached by accident. Selection defaults to ROC-AUC since it is threshold-independent; selecting on F1 at a fixed cut would reward a fortunate threshold rather than better ranking. Every trial logs the complete config, and a test asserts the logged key set equals `TrainingConfig.model_fields` so a new knob cannot go unlogged by default. **A gap recorded rather than hidden:** `TrainingConfig` does not validate `d_model` divisibility by `nhead`, so an incompatible pair passes expansion and fails later at model build. **A bug mypy caught that my tests shared:** both entry points were annotated flat rows where `train` needs windows of timesteps; now a named `Windows` alias. 25 tests. |
 | 2026-10-05 | 1.20 | **T-214 done.** `registry/model_card.py` + `scripts/model_card.py`. **A number cannot reach a card without a recorded run behind it:** `SourcedMetric` requires `artifact` and `field` beside the value, `load_metric` reads the value from the file itself, and the CLI's `--metric` takes `NAME=ARTIFACT:FIELD.PATH` with no way to pass a value. Citing an absent field raises `MetricNotFound`, an unrecorded run raises `FileNotFoundError`, both exit 1 — verified end to end. `bool` is refused explicitly since `isinstance(True, int)` is True in Python. A card with no limitations or no adversarial caveat is refused; the default caveat is concrete (padding, rate-limiting below the detection window, splitting across hosts) because a vague one tells an operator nothing. **The card is generated at release, not committed**, since it cites gitignored run artifacts and a committed copy would eventually cite numbers nothing in the repository reproduces. Built a real card from regenerated runs: recall 0.795472, precision 0.590382, ROC-AUC 0.746354 — reproducing D-022 exactly — p95 20.9889 ms, 2562 attack windows, five metrics all cited. 31 tests. |

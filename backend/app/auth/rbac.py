@@ -18,7 +18,8 @@ reads the code looking for the omission.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 
 from fastapi import HTTPException, Request, status
@@ -32,8 +33,10 @@ __all__ = [
     "UNAUTHENTICATED_ROUTES",
     "Capability",
     "Forbidden",
+    "Principal",
     "Role",
     "Unauthenticated",
+    "authenticate",
     "capabilities_of",
     "classify",
     "registered_paths",
@@ -117,7 +120,38 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     # Reading alerts is the viewer's whole job, so viewer is present here.
     "/api/v1/alerts": frozenset(Role),
+    # Setting a verdict is an analyst action; R-53 makes viewer read-only, so
+    # viewer is deliberately absent from the POST.
+    "/api/v1/alerts/{alert_id}/verdict": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    # Reading the verdict history is reading.
+    "/api/v1/alerts/{alert_id}/verdicts": frozenset(Role),
+    # Webhook configuration is responder-and-above (R-53). Reading the list is
+    # as sensitive as writing it: a target's URL names internal infrastructure.
+    "/api/v1/webhooks": frozenset({Role.RESPONDER, Role.ADMIN}),
+    "/api/v1/webhooks/{webhook_id}": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # The stream is read-only for every role, viewer included (FR-20). The
+    # WebSocket handshake is checked by `authenticate` rather than by the HTTP
+    # dependency, because a socket is not a Request -- but it is the same table
+    # and the same capabilities, so a socket is not a way around the matrix.
+    "/api/v1/alerts/notifications": frozenset(Role),
+    "/api/v1/alerts/stream": frozenset(Role),
+    "/api/v1/alerts/ws": frozenset(Role),
 }
+
+
+@dataclass(frozen=True, slots=True)
+class Principal:
+    """The authenticated caller: their role, and the subject that names them.
+
+    The subject is carried because a verdict has to record *who* decided, and
+    the token is where that identity comes from. It is kept as the token's
+    opaque string rather than coerced to an integer: resolving it to a row in
+    ``users`` needs the users table, and an ``int()`` here would turn a token
+    issued with an email subject into a runtime failure on the verdict path.
+    """
+
+    role: Role
+    subject: str
 
 
 class Unauthenticated(HTTPException):
@@ -207,22 +241,55 @@ def _token_service(request: Request) -> TokenService:
     return service
 
 
-def _role_from_request(request: Request) -> Role:
-    """Extract and validate the caller's role from the bearer token."""
-    header = request.headers.get("authorization", "")
+def _principal_from_request(request: Request) -> Principal:
+    """Extract and validate the caller's identity from the bearer token."""
+    return _principal_from_headers(request.headers, _token_service(request))
+
+
+def _principal_from_headers(headers: Mapping[str, str], token_service: TokenService) -> Principal:
+    """Verify a bearer token and describe its holder.
+
+    Takes a header mapping rather than a Request so the WebSocket handshake,
+    which has no Request, authenticates through exactly this code.
+    """
+    header = headers.get("authorization", "")
     scheme, _, token = header.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise Unauthenticated
     try:
-        claims = _token_service(request).verify_access(token)
+        claims = token_service.verify_access(token)
     except MalformedToken as exc:
         raise Unauthenticated from exc
     raw_role = str(claims.get("role", ""))
     try:
-        return Role(raw_role)
+        role = Role(raw_role)
     except ValueError as exc:
         # An unknown role is not a privilege. Refuse rather than default.
         raise Forbidden(raw_role, ()) from exc
+    return Principal(role=role, subject=str(claims.get("sub", "")))
+
+
+def authenticate(
+    headers: Mapping[str, str],
+    token_service: TokenService,
+    *capabilities: Capability,
+) -> Principal:
+    """Resolve and authorise a caller from headers and a token service.
+
+    The non-Request entry point to the same check :func:`require` performs, for
+    a transport that has no Request -- the WebSocket handshake. Sharing the
+    implementation is the point: a second copy of "is this token valid, does
+    this role hold this capability" is how a socket ends up being the way around
+    a route's permissions.
+
+    Raises:
+        Unauthenticated: no usable bearer token was presented.
+        Forbidden: the token is valid but the role lacks a capability.
+    """
+    caller = _principal_from_headers(headers, token_service)
+    if not set(capabilities) <= ROLE_CAPABILITIES[caller.role]:
+        raise Forbidden(caller.role.value, capabilities)
+    return caller
 
 
 def require(*capabilities: Capability) -> DependsParam:
@@ -234,14 +301,14 @@ def require(*capabilities: Capability) -> DependsParam:
 
     The route must also appear in ROUTE_MATRIX; the dependency checks the
     caller's capabilities and the matrix is what CI checks for completeness.
+
+    Returns the :class:`Principal` so a route that needs to record *who* acted
+    -- a verdict, an audit entry -- can take ``caller: Annotated[Principal,
+    require(...)]`` and get it without decoding the token a second time.
     """
 
-    def dependency(request: Request) -> Role:
-        role = _role_from_request(request)
-        held = ROLE_CAPABILITIES[role]
-        if not set(capabilities) <= held:
-            raise Forbidden(role.value, capabilities)
-        return role
+    def dependency(request: Request) -> Principal:
+        return authenticate(request.headers, _token_service(request), *capabilities)
 
     # Constructed directly rather than via Depends(): the helper is typed to
     # return Any, which would leak an untyped value into every route signature.

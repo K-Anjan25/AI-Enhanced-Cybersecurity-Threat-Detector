@@ -1,19 +1,155 @@
-"""Alert query endpoint.
+"""Alert query and verdict endpoints.
 
-`start` and `end` are required query parameters. They are not optional with a
-generous default, because a default is how an unbounded scan of a partitioned
-table gets shipped -- R-34.
+`start` and `end` are required query parameters, and so is `created_at` on the
+verdict routes. They are not optional with a generous default, because a default
+is how an unbounded scan of a partitioned table gets shipped -- R-34 -- and per
+D-030 an alert id alone does not identify a row across partitions.
+
+The routers stay thin (R-13): parse, call a service, serialise. Everything worth
+testing about verdicts -- immutability, supersession, the repeat rule -- lives in
+``app.services.verdict_service`` and is tested without an HTTP server.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from datetime import UTC, datetime
+from typing import Annotated
 
-from app.auth.rbac import Capability, require
+from fastapi import APIRouter, HTTPException, Query, Request
+
+from app.auth.rbac import Capability, Principal, require
 from app.schemas.query import AlertPage, AlertQuery, CursorError
+from app.schemas.verdict import (
+    VerdictHistoryOut,
+    VerdictOutcomeOut,
+    VerdictRecordOut,
+    VerdictRequest,
+)
 from app.services.query_service import build_alert_select, paginate
+from app.services.verdict_service import (
+    InMemoryVerdictLedger,
+    UnknownVerdict,
+    VerdictLedger,
+    VerdictRecord,
+    record_verdict,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["alerts"])
+
+
+def _ledger(request: Request) -> VerdictLedger:
+    """The verdict store, from app state.
+
+    The process-wide instance is in-memory in this environment and is replaced
+    by the persistent ledger where the database is wired; the type is the
+    protocol, so the route cannot tell which one it has.
+    """
+    ledger: VerdictLedger | None = getattr(request.app.state, "verdict_ledger", None)
+    if ledger is None:
+        ledger = InMemoryVerdictLedger()
+        request.app.state.verdict_ledger = ledger
+    return ledger
+
+
+def _record_out(record: VerdictRecord) -> VerdictRecordOut:
+    """Serialise one verdict record."""
+    return VerdictRecordOut(
+        id=record.id,
+        alert_id=record.alert_id,
+        verdict=record.verdict.value,
+        actor=record.actor,
+        at=record.at,
+        note=record.note,
+        supersedes=record.supersedes,
+    )
+
+
+def _parse_created_at(value: str) -> datetime:
+    """Parse the alert's partition key, refusing anything unusable.
+
+    A naive timestamp is refused rather than assumed to be UTC: it addresses a
+    different instant than the aware value the row was written with, so the
+    lookup would silently find nothing.
+    """
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail="created_at must be an ISO-8601 timestamp"
+        ) from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise HTTPException(
+            status_code=400,
+            detail="created_at must carry a timezone; a naive timestamp addresses a "
+            "different instant than the one the alert was stored with",
+        )
+    return parsed
+
+
+@router.post(
+    "/alerts/{alert_id}/verdict",
+    response_model=VerdictOutcomeOut,
+    summary="Record an analyst verdict on an alert (FR-16)",
+)
+def record_alert_verdict(
+    alert_id: int,
+    body: VerdictRequest,
+    request: Request,
+    # Annotated rather than a `dependencies=[...]` list: the route needs *who*
+    # acted as well as that they may, and this is the shape that returns it.
+    caller: Annotated[Principal, require(Capability.VERDICT)],
+) -> VerdictOutcomeOut:
+    """Append the analyst's verdict, superseding any current one.
+
+    A repeat of the verdict already current, by the same analyst, returns
+    ``unchanged`` instead of appending: a client retry must not manufacture a
+    reconsideration that never happened.
+    """
+    try:
+        outcome = record_verdict(
+            _ledger(request),
+            alert_id=alert_id,
+            alert_created_at=body.created_at,
+            verdict=body.verdict,
+            actor=caller.subject,
+            at=datetime.now(UTC),
+            note=body.note,
+        )
+    except UnknownVerdict as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        # A naive timestamp, an empty actor or an over-long note.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return VerdictOutcomeOut(
+        action=outcome.action.value,
+        record=_record_out(outcome.record),
+        superseded=_record_out(outcome.superseded) if outcome.superseded else None,
+    )
+
+
+@router.get(
+    "/alerts/{alert_id}/verdicts",
+    response_model=VerdictHistoryOut,
+    summary="Read an alert's verdict history, oldest first (FR-16, FR-18)",
+    dependencies=[require(Capability.READ)],
+)
+def list_alert_verdicts(
+    alert_id: int,
+    request: Request,
+    created_at: str = Query(
+        description="The alert's created_at, which addresses its partition (D-030)."
+    ),
+) -> VerdictHistoryOut:
+    """Return every verdict on one alert, and the current one."""
+    partition_key = _parse_created_at(created_at)
+    history = _ledger(request).history(alert_id, partition_key)
+    current = history[-1] if history else None
+    return VerdictHistoryOut(
+        alert_id=alert_id,
+        created_at=partition_key,
+        current=_record_out(current) if current else None,
+        items=[_record_out(record) for record in history],
+    )
 
 
 @router.get(

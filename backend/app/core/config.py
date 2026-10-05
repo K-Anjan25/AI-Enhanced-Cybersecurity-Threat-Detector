@@ -70,6 +70,17 @@ class Settings(BaseSettings):
 
     ml_service_url: str = Field(default="http://localhost:8001")
 
+    # Alert stream (FR-20). The interval is both how often a quiet stream says
+    # "still here" and, per architecture.md §14, how often a dashboard whose
+    # socket dropped polls instead -- 15 s by default.
+    alert_stream_heartbeat_seconds: float = Field(default=15.0, gt=0)
+
+    # Outbound webhooks (FR-21, R-55). The allowlist is empty by default, which
+    # means no host is permitted: an empty allowlist is a fail-closed
+    # configuration, not a disabled check. Entries are hostnames, optionally
+    # prefixed '*.', comma-separated.
+    webhook_allowlist: str = Field(default="")
+
     @field_validator("log_level")
     @classmethod
     def _normalise_log_level(cls, value: str) -> str:
