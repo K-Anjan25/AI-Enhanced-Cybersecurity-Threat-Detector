@@ -299,6 +299,35 @@ That is the answer to prd.md's "is the latency fallback worth landing early?": t
 
 **Why the fallback is an extra and never a dependency.** The module imports cleanly with neither torch nor ONNX installed and `onnx_available()` probes with `importlib.util.find_spec` rather than importing. `load_scorer` returns `(scorer, backend)` and the label is part of the contract, because "which backend scored this alert" is an audit question — a silent fallback would answer it wrongly. 13 of the 16 tests pass in a torch-free, ONNX-free interpreter, which is the environment the fallback exists for.
 
+### D-025 · Per-feature PSI works, and it independently confirms D-022: 20 of 23 features drift between UNSW-NB15 and CIC-IDS2017 (2026-10-05)
+
+`ml-service/aegis_ml/scoring/drift.py` (the computation) and `scripts/drift_report.py` (the measurement). FR-32's criterion — PSI matching a hand-computed reference case — is tested by doing the arithmetic in the test itself: reference proportions (0.5, 0.3, 0.2) against actual (0.4, 0.4, 0.2) gives `−0.1·ln(0.8) + 0.1·ln(4/3) = 0.051082562`, asserted to `rel=1e-12`. A test that built its own expected value from the function under test would pass against any consistent implementation, including a wrong one.
+
+**Three design points, each of which changes the number.**
+* **Bin edges come from the reference distribution alone.** Using incoming data to place bins would make PSI incomparable between two windows — the metric would move because the partition moved, not because the traffic did. This is R-62 applied to a different artifact.
+* **Empty bins are floored at `EPSILON = 1e-6`, not skipped.** Skipping hides exactly the "this traffic appeared from nowhere" case drift monitoring exists to catch. The cost is that PSI is bounded above instead of able to reach infinity, and a test pins that bound rather than leaving it implicit.
+* **Categorical features are never binned.** A category is already a partition; re-binning an encoded id would invent an ordering that was never there.
+
+**The measurement, and why it matters beyond this task.** UNSW-NB15 as reference, CIC-IDS2017 as incoming, 20,000 rows each:
+
+| feature | PSI | band |
+|---|---|---|
+| `state` | **26.6670** | significant |
+| `direction` | 9.0923 | significant |
+| `dst_ip_count` | 6.7233 | significant |
+| `inter_arrival_std` | 5.6420 | significant |
+| `service` | 3.9367 | significant |
+| … 15 more over threshold | 0.53–5.26 | significant |
+| `fin` | 0.0866 | stable |
+| `protocol` | 0.0143 | stable |
+| `rst` | 0.0011 | stable |
+
+**20 of 23 features exceed 0.25.** The three that do not drift are the three whose meaning is identical in both captures.
+
+The top three drifters are `state`, `direction` and `service` — and `state` and `service` are precisely the two categoricals that D-022 identified as collapsing into the reserved unknown column and carrying no information across the capture boundary. **A drift monitor written after the fact, from a different measurement, names the same features.** That is independent corroboration of D-022 rather than a restatement of it, and it is the strongest evidence yet that the transfer problem is a feature-representation problem rather than a modelling one.
+
+**Drift is a signal, not a failure**, so the CLI exits 0 when drift is found. A monitor that fails the build every time traffic legitimately changes gets switched off. `--fail-on-drift` turns it into a gate for releases that must not ship against a shifted distribution. Every feature is published, drifted or not: a gauge that only appears on failure cannot show that a feature has been stable for weeks, and "no news" would be indistinguishable from "not measured". The metric name `aegis_drift_psi{feature}` is fixed by architecture.md §12, not chosen here.
+
 ## Data sources
 
 Datasets are never committed to Git (R-40). The checksums below are **measured**, not transcribed: each was computed over the bytes actually fetched, and `aegis_ml/data/datasets.py` is the single copy. `test_datasets.py` fails if this table and that module disagree.
@@ -538,6 +567,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-05 | 1.17 | **T-211 done.** `scoring/drift.py` + `scripts/drift_report.py`. FR-32's criterion is tested by doing the arithmetic in the test itself — reference (0.5, 0.3, 0.2) against actual (0.4, 0.4, 0.2) gives `−0.1·ln(0.8) + 0.1·ln(4/3) = 0.051082562`, asserted to rel=1e-12 — because a test that builds its own expected value from the function under test passes against a wrong implementation too. Bin edges come from the reference alone (R-62 applied to a different artifact); empty bins are floored, not skipped, with the resulting upper bound pinned by a test; categoricals are never binned. **Measured UNSW→CIC: 20 of 23 features exceed 0.25**, worst `state` 26.6670, `direction` 9.0923, `service` 3.9367; only `fin`, `protocol` and `rst` are stable. The top drifters are exactly the categoricals D-022 blamed for the transfer failure, so a monitor written afterwards independently corroborates that diagnosis. Drift exits 0 by default because a monitor that fails the build on legitimate traffic change gets switched off; `--fail-on-drift` gates. 42 tests. |
 | 2026-10-05 | 1.16 | **T-210 done.** ONNX export path. **Agreement: max abs Δ 9.537e-07 / 1.341e-07** on the two heads against a 1e-4 tolerance, ~100× inside it and reproducible run to run — which is why it gates the build. **The latency figure first written here (−0.088 ms) was single-round noise and is corrected:** three further runs gave −1.123, +2.311 and −2.257 ms with the sign flipping. The script now interleaves both backends over `--rounds` and reports the spread; over 5 rounds the delta median is **+1.172 ms** (range −0.975 to +2.224) with ONNX faster in **2 of 5**, so it reports the sign as inconsistent and the backends as the same speed at this resolution. **Two exporter facts found by measurement:** opset must be 18 (torch 2.14 refuses 17 and fails its own downgrade conversion), and **`dynamo=False` is required** because the default exporter specialises the batch dimension and fails above batch 1 on a baked-in Reshape. Fallback is an `onnx` extra, imports cleanly with neither torch nor ONNX present, `load_scorer` returns the backend it chose. 16 tests, 13 passing in a torch-free and ONNX-free interpreter. |
 | 2026-10-05 | 1.15 | **T-209 done.** `scripts/inference_benchmark.py` measures both halves. **R-67 determinism passes all four checks** — repeated passes byte-identical, a second instance from the same seed identical, the torch RNG state unchanged by a forward pass, and the weights untouched — compared over raw storage bytes rather than approximate equality. **Latency p95 22.590 ms** per window (1×50×23, 300 passes, 20 warmups discarded) against NFR-01's 150 ms. Recorded honestly: NFR-01 specifies 4 vCPU, this machine has 2, and the script writes `matches_nfr01_reference: false` instead of labelling the figure a 4 vCPU result; the measurement was taken single-threaded, a stricter configuration. Two threads measured *slower* than one on a window this small (p95 28.611 vs 26.609 ms), so the scoring path should pin one thread. Replaced an `assert` in the byte-extraction helper with a `TypeError` — asserts vanish under `python -O`. |
 | 2026-10-05 | 1.14 | **T-208 solved; R-66 passes at recall 0.7955 — and D-021's diagnosis was wrong.** Measured the real cause: `family_split(holdout=['Generic'])` leaves the training fold benign-only (`POSITIVES=0` out of 95 windows), so the supervised head that `transfer_eval.py` was scoring could only learn to emit a constant. Switched the transfer signal to the **reconstruction** head via a new `per_window_reconstruction_error` in `flownet.py`, with the operating point fitted target-blind on the source's benign validation scores through T-207 (`0.3622` at the 0.99 quantile). Same split and training run as before, recall goes 0.1725 → **0.7955** and the gate passes. The supervised head had the *higher* AUC (0.9048 vs 0.7464) and the worse recall — a near-constant head still ranks, so AUC rewarded the broken signal. Precision 0.5904 against a 40% attack base rate remains the open problem. D-021 kept, corrected, and marked superseded by D-022. Added 9 tests. |
