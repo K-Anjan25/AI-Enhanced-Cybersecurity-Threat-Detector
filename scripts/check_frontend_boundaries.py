@@ -20,7 +20,10 @@ Two contracts, both from ``rules.md``:
 
 The layering, lowest first::
 
-    lib  ->  theme, test  ->  components  ->  features  ->  app shell
+    lib  ->  api, theme, test  ->  components  ->  features  ->  app shell
+
+``api`` sits beside ``theme``: the typed HTTP client knows nothing about React or
+about components (R-23), and features are what use it.
 
 A file may import from its own layer and from anything below it. ``App.tsx`` and
 ``main.tsx`` sit at the top and may import anything, because composing the tree
@@ -52,6 +55,9 @@ LAYER_RANK: dict[str, int] = {
     "lib": 0,
     "theme": 1,
     "test": 1,
+    # The typed API client (R-23): below components, because a shared presentational
+    # component has no business making requests.
+    "api": 1,
     "components": 2,
     "features": 3,
 }

@@ -4,9 +4,9 @@
 |---|---|
 | **Document** | Persistent project context, decisions, and ledger |
 | **Version** | 0.1 |
-| **Last updated** | 2026-10-02 (Friday) |
+| **Last updated** | 2026-10-06 (Monday) |
 | **Purpose** | The document a new engineer — or you in three months — reads first |
-| **Related** | [prd.md](prd.md) · [architecture.md](architecture.md) · [rules.md](rules.md) · [design.md](design.md) · [task.md](task.md) |
+| **Related** | [prd.md](prd.md) · [architecture.md](architecture.md) · [rules.md](rules.md) · [design.md](design.md) · [task.md](task.md) · [api-reference.md](api-reference.md) |
 
 ---
 
@@ -22,21 +22,21 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 
 **One-line pitch.** Signature-based detection misses novel behaviour; AEGIS learns what "normal" looks like per entity and flags the deviation, with evidence attached.
 
-## Current state (as of 2026-10-03)
+## Current state (as of 2026-10-06)
 
 | Aspect | State |
 |---|---|
-| Repository | Six planning documents plus the Sprint S0 scaffolding (commit `23b6a57` onward) |
-| Source code | `backend/` FastAPI skeleton, `ml-service/` inference skeleton **plus the S1 data layer** (`aegis_ml/data/`: `flow@1` and `log@1` records, seven-scenario synthetic generator, `features@1` extraction, windowing, splits, leakage audit; `aegis_ml/training/` evaluation harness), `dashboard/` React shell — all tested. No model code |
-| Tests | 188 passing — 20 backend, 134 ml-service, 34 dashboard. Coverage 90.3% on `app/` against the 80% gate (R-80) |
-| Checks green | `./scripts/check_all.sh` — 20 checks: ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, vitest, vite build, doc integrity, compose consistency. Five were proven to fail on an injected violation before being trusted |
-| Dependencies | Python via `pip install -e "backend[dev]" -e "ml-service[dev]"` (both verified); npm `package-lock.json` committed for `npm ci` (R-08) |
-| Datasets | **Public sets not downloaded** — their hosts are unreachable from this sandbox. Synthetic data generates on demand via `scripts/generate_synthetic.py` into the gitignored `data/` |
-| Models | **None trained.** No baselines, no metrics |
-| Branch | `arena/01a0fee2-ai-enhanced-cybersecurity-thre`, based on `60e9adf` |
-| Next work | S0 is complete except running the compose stack and applying the manifests, both of which need infrastructure this sandbox does not have. In S1 everything is DONE except T-101…T-105 and T-110, all of which need the real datasets |
+| Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9`, T-313 at `69b6b5e` and T-314 at `0814cc7` — see below) |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), retention with GDPR erasure (T-314), the model ops endpoints (T-315), the request limits (T-316), the metrics and traces (T-317), the structured logging (T-318), the in-process golden pipeline (T-319), the generated API reference (T-320), the typed score columns with the checked severity (T-321), the weekly threshold recalibration (T-322), the declared PostgreSQL driver (T-323), the closed design-token layer (T-401), the UI primitives every screen composes from (T-402), the overview dashboard with its API client and Prometheus reader (T-403), and the triage screen with its alert-detail read model (T-404), the real-time layer at the shell with the polling fallback it degrades into (T-405), and the traffic explorer with its brushable series and entity graph (T-406), the bounded in-process log tail behind the log explorer's two read routes (T-407), and the audited hunt export with the console that runs it (T-408). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — the shell, theming, routing, the design tokens, the primitives and the first six real screens (T-401…T-408) |
+| Tests | **2652 passing, 29 skipped** — 1370 backend (13 need a live PostgreSQL), 531 ml-service (16 need torch), 751 dashboard in 62 files. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Checks green | `./scripts/check_all.sh` — **26 checks, 0 failed** (measured 2026-10-06): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, the API reference drift check, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
+| Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
+| Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
+| Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
+| Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
+| Next work | E3 is closed and **E4 is under way**: T-401 (the design tokens), T-402 (the UI primitives), T-403 (the overview dashboard), T-404 (the alert triage screen), T-405 (the real-time layer), T-406 (the traffic explorer), T-407 (the log explorer) and T-408 (the hunt console, with its audited CSV export) are done, and **T-409** (model ops and drift) and **T-410** (admin) are next. **T-418** was raised by T-406 rather than assumed: the explorer's series and edges are alerted records and correlation traces because this build has no read API for ingested flows. **T-419** was raised the same way by T-407: the log explorer reads a bounded in-process tail because there is no persistent log read model, and the API's own caveat says so. **T-409/T-410** were unblocked by T-315 and **T-506** follows T-311; E5 is untouched. **T-417** (dashboard sign-in) was raised by T-405 rather than assumed — the realtime layer needs a credential the dashboard has no way to obtain yet. One follow-on was filed by T-323 rather than fixed: the database session D-030 is missing will need `sqlalchemy[asyncio]` when it is wired, because R-18's request path may not use the synchronous engine Alembic uses — the driver itself is declared and the sync half is proven. Docker remains unavailable here, so T-005 and the k8s apply are still unverified, and T-301's migration half was verified once against a sandbox PostgreSQL rather than in CI (D-055) — each says so in [task.md](task.md) |
 
-Sprint S0 started early, on 2026-10-02. Per-task status lives under the E0 table in [task.md](task.md#3-epic-e0--foundations-m0); the rest of the plan is still `TODO`.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-323**; every E3 task is closed. **E4 is under way** — T-401…T-408 are done, T-409 onwards are `TODO` — and **E5 is untouched** — everything past E3 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -56,7 +56,25 @@ On 2026-10-02 the working tree was cleared at the request of the project owner, 
 | `docker/` | 2 | compose file and README |
 | root | 3 | `README.md`, `.gitignore`, `.github/workflows/ci.yml` |
 
-**Why.** The previous tree had grown into a very broad security platform — endpoint modules included CSPM, ZTNA, ITDR, deception, SBOM, SCIM, SOC-TV, and digital-risk protection. That breadth had outrun the project's actual objective: transformer-based anomaly detection over network traffic and system logs. Restarting from the PRD keeps the scope honest and matches [prd.md](prd.md#3-scope).
+**Second reset, 2026-10-05 — the environment, not the tree.** Between sessions the
+sandbox was recreated: `.venv` and `dashboard/node_modules` were gone, and `.git`
+was the original shallow clone at `04aeb71` again. **The working tree came back
+intact** — every E3 file, test and documentation edit present and unchanged — but
+the local commits were not: `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310)
+and `34dc7ff` (T-311) do not exist in this clone and never reached the remote, which
+the branch has no upstream for. One recovery commit, **`415a5b1`**, re-establishes
+their content in history. **What that costs, stated rather than glossed:** the
+per-task commit boundaries for T-308…T-311 are gone — one commit now stands in for
+four — and the hashes named in the change-log entries below no longer name anything
+in this clone. Individual file contents are unaffected, and every recorded
+measurement is a measurement of file contents, so the measurements stand. The tree
+was **re-verified rather than assumed green** after the reset: the Python
+environment was rebuilt from `backend/pyproject.toml` — which incidentally proves
+`cryptography>=44` is declared rather than hand-installed — the dashboard
+dependencies from `package.json`, and `./scripts/check_all.sh` re-run to 25/0 before
+T-312 started.
+
+**Why (first reset).** The previous tree had grown into a very broad security platform — endpoint modules included CSPM, ZTNA, ITDR, deception, SBOM, SCIM, SOC-TV, and digital-risk protection. That breadth had outrun the project's actual objective: transformer-based anomaly detection over network traffic and system logs. Restarting from the PRD keeps the scope honest and matches [prd.md](prd.md#3-scope).
 
 **What is recoverable.** The removal is a working-tree change; commit `60e9adf` is intact and still lists all 487 files. Anything can be brought back:
 
@@ -619,19 +637,15 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | # | Action | Task | When |
 |---|---|---|---|
-| 1 | Confirm Q-01, Q-03, and Q-05 owners and dates | — | Before 2026-10-05 |
-| 2 | ~~Commit the six documents as the baseline~~ — done, `3d74000` | — | Complete |
-| 3 | ~~Begin S0: scaffolding, CI, compose, docs~~ — done except T-005 execution and `k8s/` | T-001…T-010 | Complete |
-| 4 | Run the compose stack on a host with a Docker daemon and close T-005 | T-005 | When Docker is available |
-| 5 | Fetch datasets and record real checksums — blocked, hosts unreachable here | T-101, T-102 | S1 |
-| 6 | ~~Build `features@1` extraction against synthetic `flow@1` records~~ — done, 23 features, hash-pinned | T-107 | Complete |
-| 7 | ~~Settle Q-06 and build windowing~~ — done, closed by D-013 | T-108 | Complete |
-| 8 | ~~Build the temporal + entity-disjoint split utility~~ — done, refuses rather than leaks | T-109 | Complete |
-| 9 | ~~Build the leakage audit on top of `Split.audit()`~~ — done, five leak classes | T-111 | Complete |
-| 10 | ~~Build the evaluation harness~~ — done, `eval@1` | T-112 | Complete |
-| 11 | ~~Write the `k8s/` manifests~~ — done, statically verified | T-001 | Complete |
-| 12 | Wire `AuditReport.raise_for_leaks()` and `evaluate()` into the training entrypoint | T-201 | M2 |
-| 13 | Fill the measurement ledger with the first measured baselines | T-110 | End of S1 |
+| 1 | **Build the hunt console** — query input, autocomplete, saved queries and the audited CSV export (T-408) | T-408 | Next |
+| 2 | Continue E4: the explore screens and the admin surfaces | T-408…T-419 | This sprint |
+| 3 | Confirm Q-03 (false-positive budget) and Q-05 (multi-tenancy) with their owners | — | Before threshold defaults ship |
+| 4 | Run the compose stack where a Docker daemon exists; close T-005 and settle Q-08 | T-005 | When Docker is available |
+| 5 | Verify the T-301 migration up and down against a live PostgreSQL 16 | T-301 remainder | When a server is reachable |
+| 6 | Apply the k8s manifests to a cluster — the checks are static only | T-504 | M5 |
+| 7 | Build the family-holdout release gate Q-07 still owes, then a gated metric for `LogNet` | T-203, T-208 | Before release |
+
+Completed since the last revision of this table: the datasets were fetched and checksummed (T-101–T-105, T-110), `features@1` was pinned (T-107), windowing, splits, the leakage audit and the evaluation harness landed (T-108, T-109, T-111, T-112), both models and the scoring modules landed (T-201–T-215), E3 closed through T-323, and E4 opened with T-401, T-402, T-403, T-404, T-405, T-406 and T-407.
 
 ### D-031 — R-51 is enforced where verification happens, and rotation means the old token dies
 Argon2id hashing is easy to get nominally right and still be wrong, because the
@@ -793,10 +807,1736 @@ reimplemented — a second implementation would number windows differently and
 emit the same data under different identities, which is the same bug wearing a
 different hat.
 
+### D-037 — Correlation policy: a case is one incident, and it never gets quieter (T-308) (2026-10-05)
+The correlator is small enough that every choice in it looks obvious and only
+one reading of each is defensible. Writing them down so the next person changing
+one knows what they are changing.
+
+**Boundaries are inclusive, and the cool-down runs from `last_seen`.** A repeat
+at exactly 15 minutes is still the same incident; 15 minutes and one second is a
+new one. Measuring from the last occurrence rather than the first makes the
+cool-down a debounce — a sustained attack stays one alert, which is the point of
+FR-15 — at the cost that a case can stay open indefinitely under continuous
+traffic. That is the intended trade: the analyst triages an incident, not a
+stream of identical rows.
+
+**A case never de-escalates.** Every occurrence is re-fused from the best score
+per modality, and the case keeps the highest composite it has seen. Two reasons.
+An alert that reads HIGH and later reads MEDIUM while nothing improved teaches
+an analyst that the label is noise. And the loudest evidence in an incident is
+what a triager needs; averaging it down with quieter repeats is how a real
+intrusion gets triaged as noise. `first_severity` records what it opened at, so
+escalation is visible rather than hidden.
+
+**Retention must not become a severity input.** Occurrences are capped for
+memory (a flood inside one cool-down would otherwise grow a case without bound),
+but the count stays exact and the loudest score survives eviction. This was the
+one clause my first test suite did not actually test: substituting
+`fused.score` for `max(case.score, fused.score)` left both de-escalation tests
+green, because `_fuse_best` already keeps the maximum per modality, so only
+eviction can make a case's available best fall. The failing test — retention of
+one, a 0.99 evicted by a 0.4 — was added and the substitution then failed it.
+
+**Grouping is not deduplication.** Dedup keys `(entity, family)`; grouping keys
+the entity, the opposite modality and ±60 s, symmetric because either model can
+finish first. A grouped case clears `partial_evidence`, since it now genuinely
+has both sides, and its score rises from the penalised single-modality number to
+the fused one. The case keeps the family it opened with — the filter and the
+cool-down key both refer to it — while `families` grows, and repeats of any
+family the case carries dedup into it. A closed case absorbs nothing and groups
+nothing: swallowing a fresh occurrence into a row the analyst has closed leaves
+nobody looking at it.
+
+**Replay safety is per evidence id.** T-307 emits at-least-once, so the same
+window can arrive twice; a detection whose window is already recorded is a
+no-op. The evidence index deliberately outlives the display retention, or a
+replayed window whose occurrence was evicted would be counted twice — the same
+class of defect D-036 describes, one layer up.
+
+**The persistence gap is named, not hidden.** `CaseStore` is a protocol and the
+in-memory implementation is what runs here. A SQLAlchemy adapter is not written
+because the `alerts` table holds one `window_ref` per row and cannot answer "was
+this window already counted?" without a queryable evidence index, and there is
+no PostgreSQL in this environment to verify one against. `alert_row()` pins the
+column encoding — including the bounded evidence trail under `window_ref`
+(defined as opaque) and R-70's explanation payload — so the adapter is a thin
+insert rather than a design question. `FusionRule` is injected for the same
+reason `aegis_ml` is not installed in the backend image: one implementation of
+the arithmetic, wired at the composition root.
+
+**A defect found here and deliberately not fixed here:** `alerts.score` and
+`thresholds.value` are `Float` and `alerts.severity` is an unconstrained
+`String(20)`, against R-39 (`numeric(5,4)`) and R-38 (enum + check constraint).
+Both are real, both are schema changes to a migration that has still never been
+applied to a live server (D-030), and neither belongs inside T-308's change.
+Raised as **T-321** so it is tracked with acceptance criteria rather than
+carried in someone's head.
+
+
+
+### D-038 — A verdict is an appended record, and a repeat is not a supersession (T-309) (2026-10-05)
+
+**Decision.** An analyst's verdict is an immutable record appended to a per-alert
+ordered ledger. `alerts.verdict`, `verdict_at` and `verdict_by` are a
+denormalised pointer for the list view; the ledger is the source of truth, and a
+change appends a record whose `supersedes` names the one it replaces, so the
+history is a chain rather than a field whose previous values are lost. An alert
+is addressed by `(id, created_at)`: D-030 makes a bare id ambiguous across
+partitions and R-34 forbids touching the partitioned table without a time bound,
+so the partition key is required on every verdict read and write, never
+defaulted.
+
+**A repeat is not a supersession.** Recording the verdict already current, for
+the same alert by the same analyst, returns ``unchanged`` and appends nothing. A
+different verdict appends, and so does the same verdict from a *different*
+analyst: that is independent agreement, which is worth a record, while a re-sent
+request is not. Without the rule, a timeout retry or a double-click pads the
+history with rows that are indistinguishable from reconsideration.
+
+**The alert row is written only when something changed.** `alert_verdict_update`
+returns ``None`` for ``unchanged``; issuing the update anyway would move
+`verdict_at` forward and make a re-submission look like a fresh decision.
+
+**Open, and named in the code rather than left implicit.** A durable ledger needs
+a new append-only table and a migration (R-32) -- the `alerts` row cannot carry
+history -- and the actor is the token's opaque ``sub`` while
+``alerts.verdict_by`` is a numeric ``users.id`` foreign key, so the adapter must
+resolve one to the other through the users table rather than an ``int()`` cast.
+Neither is written here because there is no PostgreSQL in this environment to
+verify a migration against. Audit rows for mutating routes are T-312's job, per
+the `AuditLog` model's own docstring.
+
+### D-039 — The alert stream is a cache, and a client that fell behind is told so (T-310) (2026-10-05)
+
+**Decision.** Alerts are pushed over one in-process hub that keeps a bounded window
+of recent notifications, and the `alerts` table stays the record. Every
+notification carries a sequence, every handshake carries the hub's `epoch`, and a
+client reconnects by naming the last sequence it processed.
+
+**A cursor that is out of step gets `resync_required`, in either direction.** Behind
+the retained window means notifications are gone; ahead of the newest sequence
+means the cursor came from somewhere else — another process's numbering, or a
+replica that has not seen it. Both answer the same way: hand over the whole
+retained window *and* set the flag, because a silent "nothing new for you" is how
+an alert stream loses alerts while looking healthy. Cursor `0` is neither: it
+means "no position yet", which is why sequences start at one.
+
+**A subscriber that stops reading is dropped, with its cursor.** Each
+subscription has a bounded queue; overflow marks it dropped with the reason and
+the last sequence it actually received, and the transport closes carrying that
+cursor. An unbounded queue turns one hung browser tab into a memory leak, and
+dropping without a cursor turns it into a silent gap.
+
+**Publishing is thread-safe because the producer is not the event loop.** The
+correlator runs in the scoring worker, which is synchronous. `publish()` is a
+plain call any thread may make; delivery hops onto each subscriber's own loop.
+Subscribe and publish share one lock, so a publish either joins a catch-up or
+arrives live — never both, never neither, which is what makes "no alert is lost
+across the switch" a property rather than a hope.
+
+**The cursor is per-process, so it comes with an epoch.** A restart renumbers
+from one; a client whose epoch changed must resync rather than trust its cursor.
+D-036's rule — identity from data, not from process state — applied to the
+stream.
+
+**Auth is the same check, not a second one.** The socket handshake calls the same
+capability table the HTTP dependency does (`rbac.authenticate`), because a
+WebSocket is not a `Request` and a second copy of "is this token valid, may this
+role read" is exactly how a socket becomes the way around the matrix. The token
+travels in `Sec-WebSocket-Protocol` for browsers, which cannot set a header, and
+never in the URL, where it would reach access logs.
+
+**Gaps, named.** The buffer is in-process and does not survive a restart, so a
+multi-replica deployment needs a shared bus (Redis or Kafka) behind the same
+interface. The `ws` extra is what lets uvicorn serve the socket; it is not
+installed here, so the ASGI contract is verified and uvicorn's transport is not.
+The dashboard half of the fallback — banner, 15 s polling, resume — is T-405.
+
+### D-040 — A webhook signature covers the bytes that were sent, and the destination is re-checked per attempt (T-311) (2026-10-05)
+
+**Decision.** An outbound webhook body is canonicalised once (sorted keys, compact
+separators), signed as ``HMAC-SHA256(secret, "<timestamp>.<body>")``, and the
+header ``X-AEGIS-Signature: t=<unix>,v1=<hex>`` is sent alongside those exact
+bytes. Every attempt of one delivery carries the same timestamp, signature and
+``X-AEGIS-Delivery`` id.
+
+**Why sign bytes rather than an object.** A scheme that signs a re-serialised
+object verifies right up until a field order or a float representation changes;
+a scheme that signs the wire bytes verifies against what the receiver actually
+holds. The timestamp is inside the MAC, so it cannot be swapped for a fresh one
+over an old body, and the header carries a version, so a future scheme can be
+introduced without a receiver accepting a downgrade.
+
+**Why one signature per delivery rather than one per attempt.** A retry is the
+same event: a receiver that deduplicates on the signature would otherwise see one
+alert as several, and a receiver that enforces the replay window would refuse a
+retry the moment the backoff exceeded it. The default budget — five attempts,
+1/2/4/8 s of exponential backoff with full jitter, 15 s total — is deliberately
+inside the 300 s window receivers are told to enforce, and a test asserts that
+inequality so neither number can move alone. Full jitter, because a fleet
+retrying a recovered receiver in lockstep is a self-inflicted thundering herd.
+A 4xx that is not 408/425/429 is not retried: the receiver received and refused
+the bytes, and repeating them only delays the operator learning that the endpoint
+rejects the payload.
+
+**Why the destination is validated per attempt, not once at registration.** The
+address that was checked must be the address dialled (R-55). A hostname that
+resolved public when the target was registered may resolve to
+``169.254.169.254`` later, and a stored target is exactly what a rebinding attack
+waits for. So the sender validates immediately before each attempt and hands the
+transport a request that names the **pinned** address to connect to and the
+hostname to present for ``Host``/SNI; the transport resolves nothing itself. A
+DNS failure is a retryable network condition; a private answer is a block.
+
+**The verdict is named, and multicast is refused first.** ``is_global`` is the
+accept rather than a hand-written list of ranges, because the list is the thing
+that goes stale — but CPython counts IPv4 multicast (224/4) as global, which a
+smoke matrix found and a test now names. Loopback, link-local, multicast,
+unspecified, private and not-globally-routable are refused in that order, so a
+refusal names a cause, and a host with *any* refused address is refused whole.
+
+**Secrets are sealed, and shown once.** A signing secret is 32 random bytes,
+stored Fernet-sealed under an HKDF-SHA256 key derived from ``AEGIS_SECRET_KEY``,
+and returned in the creation response only: no route opens it, so a listing
+cannot leak it. Rotating the application secret orphans sealed secrets, and that
+is a named error rather than an empty secret — a delivery signed with an empty
+key would be refused by every receiver and look like the receiver's fault.
+
+**Gaps, named.** The retry bound and per-attempt timeout are constructor
+arguments, not environment settings: the pipeline that would read a setting
+does not exist, and a knob nothing reads looks configurable and is not. No
+HTTP client ships (``WebhookTransport`` is a protocol), so pinning, redirect
+refusal and timeouts are contract, not verified behaviour;
+retries are inline in the caller, so a pipeline that cannot afford the worst case
+needs a delivery queue; the store is in-memory; and nothing calls ``dispatch()``
+yet — the correlator is not wired to T-310's hub either, which is the same seam.
+
+### D-041 — The trail records changes, and it is the widest-read thing in the system (T-312) (2026-10-05)
+
+**Decision.** Every mutating route appends to an append-only audit trail after its
+work succeeds. A request that changed nothing writes nothing, and the read side is
+open to every authenticated role.
+
+**Changes, not requests.** A refused request changed nothing, so there is no state
+for anyone to answer for -- and a row per attempt would let any authenticated
+client fill the trail with rows of its choosing, which is how a log becomes
+unreadable exactly when someone needs to read it. Three consequences are spelled
+out because each looks like an oversight otherwise: a 4xx writes nothing, an
+ingest batch that accepted **zero** records writes nothing (nothing entered the
+system; the access log already holds that the request was made), and a verdict
+re-sent unchanged writes nothing (no decision changed). A *partly* bad batch **is**
+recorded with both counts -- the rejected count is the only trace the trail keeps
+of what it turned away.
+
+**R-31 is asserted three ways, because one is not enough.** "No ORM update/delete
+path" covers the mapper. It does not cover a service that hands back a mutable row,
+or a store that grows an `update`. So the assertion also walks the trail object and
+the protocol for any mutating name, and the record that comes back is frozen with
+its ``detail`` in a read-only mapping -- freezing the field alone would leave the
+caller able to edit the dict the frozen record points at. A source-level test
+asserts no ``update(AuditLog)``/``delete(AuditLog)``/``on_conflict_do_update``
+appears anywhere in the module: the strongest form available without a server.
+
+**Completeness is a table plus a walk of the live application.** ``AUDITED_ROUTES``
+maps ``(method, path)`` to an action and ``AUDIT_EXEMPT_ROUTES`` is deliberately
+empty; the test enumerates every ``POST``/``PUT``/``PATCH``/``DELETE`` route on the
+built app and fails if one is in neither. "Every mutating route is audited" is then
+a property of the application rather than a list someone maintains -- the same
+mechanism ``ROUTE_MATRIX`` uses for RBAC, and it is proved non-vacuous and proved
+by planting an uncovered route.
+
+**The trail is the widest-read thing in the system, so it carries the least.** It
+is readable by every authenticated role; webhook configuration is
+responder-and-above (R-53). Mirroring a target's URL or host into the trail would
+therefore be a privilege leak dressed as thoroughness, and so would an analyst's
+note or a record's content (R-54, R-58). What a row holds is what FR-42 asks for --
+actor, action, target, timestamp, source IP -- plus thin counters. Each exclusion is
+asserted by planting the value and asserting its absence.
+
+**The source IP is the peer, never a header.** ``X-Forwarded-For`` is
+attacker-controlled, and an audit log that records whatever the client claims about
+itself is worse than one that omits the field. Behind a proxy the peer *is* the
+proxy; making it the real origin is uvicorn's ``--proxy-headers`` with
+``--forwarded-allow-ips`` naming that proxy. That is deployment configuration, so it
+is named here and in the service's docstring rather than silently guessed.
+
+**The read is bounded by construction.** ``start`` and ``end`` are required, the
+window is capped at the repository layer's own ``MAX_QUERY_SPAN_DAYS`` so there is
+one number rather than two that can disagree, and pages use an exclusive id cursor
+-- offset paging would drift as the trail grows, and a page that repeats or skips a
+row is a page an auditor cannot cite. The *compiled SQL* is asserted to carry both
+bounds, not just the helper's guard: a range that lives in a Python check and not
+in the WHERE clause reads the whole table while looking correct.
+
+**Gaps, named.** ``audit_insert`` and ``audit_select`` are the two statements the
+persistent trail will run, compiled and asserted, but **no session runs them**: no
+database session is wired into the request path, so the trail that runs here is
+in-memory and dies with the process. The table itself is in T-301's migration
+(``backend/alembic/versions/0001_initial_schema.py``), which -- like every migration
+here. That gap closed once on 2026-10-05: the migration was applied to a real
+PostgreSQL 16 while verifying T-321 (D-055), and D-055 records that one run: the DDL is
+checked in ``--sql`` mode *and* has been applied end to end once -- from a sandbox
+install, not from CI, which still has no server. *Corrected while writing T-313, whose
+own table is in the same migration: ``audit_log`` was recorded as having "no
+migration" and that was wrong; what is missing is the adapter, not the schema.* The actor column wants a numeric
+``users.id`` while the token subject is opaque, so the adapter needs the mapping
+D-038 names for ``alerts.verdict_by``. The in-memory trail does not survive a
+restart. The admin screen and the audited export (FR-43) are E4's and a later task's.
+
+### D-042 — An API key is stored as a keyed digest, never as an Argon2id password (T-313) (2026-10-05)
+
+**Decision.** `api_keys.key_hash` holds **HMAC-SHA256 over the whole presented key
+string**, under a digest key derived with HKDF-SHA256 from `AEGIS_SECRET_KEY`
+(salt `aegis.apikey.digest.v1`, info `api-key-digest`). 64 lowercase hex
+characters -- exactly the column's width, so the schema T-301 created needs no
+migration. Passwords stay Argon2id (R-51); a machine credential is not a password.
+
+**Why not Argon2id, stated as a threat argument rather than a shortcut.** R-51
+requires Argon2id because a user password is low-entropy and human-chosen, so the
+hash has to be expensive per guess. A key is 256 bits drawn from
+`secrets.token_urlsafe(32)`: there is nothing to guess and no amount of work makes
+a dictionary attack on it interesting. What Argon2id would add here is a 64 MiB
+allocation and tens of milliseconds **on every ingest request** -- a
+denial-of-service vector the deployment pays for and no attacker suffers from.
+
+**Why HMAC and not a bare digest.** ``sha256(key)`` is an offline oracle: anyone
+holding a database dump can test candidate keys against it. Keying the digest means
+the dump alone is not enough. The cost is the mirror image and is named: rotating
+``AEGIS_SECRET_KEY`` invalidates every issued key at once, the same consequence
+D-040 records for sealed webhook secrets. The digest key is a separate HKDF
+derivation, so the key that authenticates an API key is not the key that signs a
+JWT or seals a webhook secret.
+
+**The stored row is irreversibly short, and the format is the reason the prefix
+works.** A key is ``aegis_sk_<id>_<secret>``; the MAC covers prefix and secret
+together, so the public id half is protected too and a key with its id rewritten
+fails verification rather than merely missing a lookup. The record has no field
+that could hold the plaintext, the module exposes no function that returns one
+(asserted over its own names), and the only recoverable display value is
+``aegis_sk_<id>_`` -- design.md's "only a prefix is stored", satisfied without a
+second column.
+
+**A missing row is compared anyway.** Verification against an id that does not
+exist derives a digest and compares it against a dummy of the same length, so
+"unknown id" and "wrong secret" cost the same work. The residual is named: which
+ids exist is still observable through the store lookup, and that is metadata, not
+credential material.
+
+**Consequences.** The ``ix_api_keys_key_hash`` index is not on the lookup path
+(lookup is by id) and stays as T-301 created it. The in-memory store is what runs
+here, so a restart forgets issued keys; the persistent adapter's statements are
+written and compiled but no session runs them (D-030's wiring gap).
+
+### D-043 — A key is a principal with scopes, and it cannot outrank the least-privileged role on a route (T-313) (2026-10-05)
+
+**Decision.** An API key authenticates as a *kind* of principal, not as a role.
+``Principal`` gains ``kind``, ``scopes`` and ``key_id``; ``capabilities_of_principal``
+resolves a user through ``ROLE_CAPABILITIES`` and a key through
+``SCOPE_CAPABILITIES``. A key's ``role`` is ``None`` and the absence is deliberate:
+filling in the owner's role would hand a machine its owner's authority.
+
+**Reach is a table, and it is default-deny.** ``API_KEY_ROUTES`` maps
+``(method, route template)`` to the scope it requires -- three entries: the two
+ingest writes (``ingest:write``) and the alert list (``alerts:read``). A route
+absent from it refuses keys with 403 "this route does not accept API keys", which
+is a different 403 from a key that reached an accepting route without the scope
+("lacks a scope granting ..."), because the two are fixed differently: change the
+credential or change the route. The table is checked against the built application,
+so an entry for a route that no longer exists fails the suite.
+
+**The bound that makes scopes safe.** For every key-reachable route, the scope's
+capabilities must be a subset of the capabilities that **every** role the matrix
+permits there holds -- the intersection, not the union. Asserted for every entry,
+so a key can never hold authority that the least-privileged human allowed on that
+route lacks. That is the property which stops a sloppy scope map from becoming a
+robot with an administrator's reach, and widening ``alerts:read`` by one capability
+fails a test.
+
+**Two credential kinds, one dependency.** ``require()`` now calls
+``authenticate_request``, which knows about keys; ``authenticate()`` keeps its
+signature and behaviour for the WebSocket handshake (T-310). A key arrives in
+``X-API-Key`` or as a Bearer token shaped like one, because both are things
+collectors do; presenting an ``Authorization`` header **and** an ``X-API-Key`` is
+refused as 401 rather than resolved by precedence, since the failure mode of
+precedence is a request authorised by the credential the operator did not mean.
+
+**Revocation is a column, and it is immediate.** ``revoked_at`` is set, never
+deleted: the row is the record of a credential having existed, and "was this key
+revoked, and when" cannot be asked of a row that is gone. Verification reads the
+store on every request -- there is no cache to go stale -- which is what makes
+"rejected immediately" a property rather than a hope. A second revoke keeps the
+first timestamp, because the fact recorded is when the credential stopped working,
+not when someone last clicked.
+
+**Management is its own capability.** ``Capability.API_KEYS`` is held by ``admin``
+alone and is written into that row rather than inherited from ``USERS``: issuing a
+machine credential is its own decision. The three management routes are admin-only
+in the matrix, and issuing and revoking each append to the audit trail with the
+key's id, name and scopes -- never the secret and never the digest, because the
+trail is readable by every role while key management is not.
+
+**Gaps, named.** The store is in-memory while no database session is wired into
+the request path; ``api_keys`` itself has its table and index in migration 0001.
+``owner_id`` wants a numeric ``users.id`` while the principal subject is opaque --
+the same mapping D-038 and D-041 name. Per-key rate limiting (architecture.md
+§11's threat table) is T-316, and the screen that renders the secret once is T-410's
+``/admin/keys``.
+
+### D-044 — Retention drops a month only when the whole month is outside the window, and the windows are configuration (T-314) (2026-10-05)
+
+**Decision.** A monthly partition is droppable when its **end** is at or before the
+cutoff: ``end <= cutoff``, never ``start <= cutoff``. The cutoff is ``today - window``
+for that table, and the window comes from configuration: raw records
+``AEGIS_RETENTION_RAW_RECORDS_DAYS`` (30, FR-05's default), alerts and
+``ingest_stats`` ``AEGIS_RETENTION_ALERTS_DAYS``/``..._STATS_DAYS`` (400 each). The
+policy refuses anything outside ``1..3650``, and refuses
+``alerts_days < raw_records_days`` -- keeping fewer days of alerts than the raw
+records they were derived from inverts FR-05, and that now fails at **startup**
+rather than at the first retention run.
+
+**Why the end, and not the start.** A month whose start is before the cutoff but
+whose end is after it holds rows inside the promised window. Dropping it would
+destroy data the policy says is retained, and -- worse -- the run would report
+success, so nothing would look wrong. The two directions are asymmetric:
+``start`` drops a month the policy protects, ``end`` keeps a month it could have
+dropped, and only the first is a privacy-incident-shaped failure. The tests assert
+the boundary from both sides, including the equality case where a partition's last
+instant *is* the cutoff day (a 399-day window on 2026-10-05 ends exactly on
+2025-09-01, so ``alerts_2025_08`` drops) -- an implementation using ``end <
+cutoff`` passes every other boundary test while holding a day more than it claims.
+
+**The plan is a pure function.** ``plan_retention(policy, today, partitions)``
+takes the clock and the catalog as arguments rather than reading either, so every
+boundary case is testable without a database, and the preview an operator approves
+is exactly what the run executes -- the route builds both through one function.
+``missing`` exists because there is no default partition: a month inside the window
+with no partition is a month whose rows were rejected at insert, and reporting it
+is what stops a plan's silence reading as "nothing to do".
+
+**What retention will not do, named in every plan.** ``audit_log`` appears as
+``unevictable`` with the reason: R-31 makes it append-only and it is deliberately
+not partitioned, so nothing here can drop it, and erasing an actor from history is
+a non-goal whose mechanism is the trail's own retention window. The raw records
+themselves are retained **outside this service** -- Kafka's
+``AEGIS_KAFKA_RETENTION_HOURS`` and the Elasticsearch ILM policy -- and the plan
+reports those mechanisms and the source of each number rather than pretending to
+execute them.
+
+**Mechanism and authority.** ``DROP TABLE IF EXISTS`` of the partition, which is
+immediate and reclaims space, unlike a ``DELETE`` that leaves dead tuples in every
+replica and backup. The service produces drop statements and never runs DDL
+itself; the runner is injected, so ``app/services/retention.py`` stays free of the
+database (R-15) and of FastAPI. The four routes are admin-only under a new
+``Capability.RETENTION`` (R-53); the read-only preview is not audited (D-041: the
+trail records changes) and the run records the partitions it dropped **and** the
+ones already absent -- "dropped nothing" and "dropped March" are different facts.
+A run with no runner wired raises rather than reporting a clean run it did not
+perform.
+
+**Gaps, named.** The catalog query (``pg_class``) and the session-backed runner
+are not written: there is no database session in the request path yet (D-030), so
+``main.py`` installs a named catalog stand-in and a runner that refuses, and the
+retention route fails loudly until a real one is wired.
+
+### D-045 — Erasure is a pseudonym in the stores that hold history and a deletion in the stores that hold identity (T-314) (2026-10-05)
+
+**Decision.** Erasure has two kinds. ``entity`` -- an observed host, address,
+service, or a user seen in traffic -- is **redacted**: the identifier is replaced
+with a tombstone and the row stays, because alerts reference it and removing it
+would either destroy incident history an analyst may still be investigating or
+leave those references pointing at nothing. ``user`` -- an account -- is
+**deleted**, cascading to what hangs off it, because the row *is* the account and
+an account whose identifier is a pseudonym has not been erased in any sense the
+subject would recognise.
+
+**The tombstone is a keyed pseudonym, not an anonymisation, and it is named as
+one.** ``erased:`` plus the first 32 hex characters of
+``HMAC-SHA256(HKDF(AEGIS_SECRET_KEY, salt="aegis.erasure.tombstone.v1", info="erasure-tombstone"), "<kind>:<value>")``.
+The kind is in the MAC input, so ``bob`` the host and ``bob`` the user get
+different tombstones, and a dump is not an offline oracle for the values because
+the key is not in the database. It is stable per deployment (a repeat request
+produces the same tombstone, which is how idempotence is visible) and not
+reversible by inspection -- but an operator who holds the secret can test
+candidate values, so this is pseudonymisation. That is stated in the module
+docstring rather than implied, because "hashed, therefore anonymous" is the
+mistake that turns a compliance answer into a false claim.
+
+**Which stores are rewritten, and which are named instead.** ``audit_log`` (R-31,
+append-only) and ``verdicts`` (D-038's actor history, which exists precisely to
+attribute what an account did) are never rewritten; every report lists them as
+preserved **with the reason**, so a report cannot be read as a complete inventory
+of where a subject's data lives. ``api_keys`` rows are a cascade: the delete is
+the schema's own ``ON DELETE CASCADE``, and the in-memory store's ``erase_owner``
+models it (``revoke`` is the other operation, and it keeps the row).
+
+**Idempotence comes from the ledger, not from the targets.** The ledger is
+append-only, holds tombstones -- never identifiers -- plus per-target counts and
+the authenticated ``requested_by``, and a repeat request for a tombstone already
+in it returns ``already_erased`` with zero affected, **no ledger append and no
+second audit row**. A client that retries a privacy request must not be able to
+fill the trail with copies of it, and the ledger is the record of what happened,
+so a second entry would be a false one. One identifier *is* in the ledger and the
+trail -- ``requested_by`` -- because R-37 requires the action to be attributable;
+that trade-off is named, not hidden.
+
+**Where the identifier can appear, which is nowhere durable.** It arrives in one
+request body, is in the process for the length of one call, and the response
+carries the tombstone instead. No store keeps it (the entity row is redacted, the
+user row is gone), no audit detail holds it, no ledger entry holds it, and no log
+line is given it. The test module asserts this positively -- after a call it scans
+the response, the store, the ledger and the trail for the value -- because "we
+erased them" is a claim about where the data is *not*.
+
+**Gaps, named.** Both stores are in-memory while no database session is wired
+(D-030); ``erasure_ledger`` is a table in the schema with no adapter yet; and the
+window where identifiers really do persist is the one D-044 names -- alert and
+verdict history -- which is why the erasure report keeps saying so.
+
+### D-046 — Promotion is one call, and a rollback is the reversal of one rather than a promotion (T-315) (2026-10-05)
+
+**Decision.** ``POST /api/v1/models/{model_id}/promote`` makes a version ``active``
+and retires the incumbent **in the same operation**. ``POST
+/api/v1/models/{kind}/rollback`` reverses the most recent un-reversed promotion of
+that kind, also in one call. The two are different operations, not two spellings
+of one.
+
+**Why promotion is one call.** Two calls -- promote, then retire the old one --
+leave a window in which either two versions of a kind are active or none is. T-212's
+registry took the same position, and FR-33's "no redeploy" is about exactly this
+swap.
+
+**Why a rollback is not a promotion.** ``model_status`` has no path back from
+``retired``, deliberately: the set of versions that have ever served traffic must
+stay append-only, so R-68's prohibition on reuse holds and a retired artifact is
+never quietly re-qualified. A rollback is the *reversal of a promotion*, so it is
+modelled as one: it re-activates the version that the current one displaced and
+retires the current one. **The caller names the kind, not a version**, which is what
+makes it one call and un-fakeable -- an operator cannot roll back to a version that
+never served, and the previous version comes from the service's own history rather
+than from the caller's memory. A second rollback moves one promotion further back,
+because the reversal is recorded by marking the promotion it reversed (the schema's
+own ``model_versions_history.rolled_back_at``) rather than by appending a second
+transition; a kind whose active version displaced nothing has nothing older, and
+that is a 409 rather than a guess.
+
+**Authority.** R-53 already names a ``models`` capability and gives it to ``admin``
+alone, so promotion and rollback use it and no new capability was invented. Reads
+need only ``Capability.READ``: which model is serving, and what it scored, is
+operational information an analyst needs to interpret an alert. A machine credential
+cannot promote anything -- T-313's route table does not accept keys here -- and the
+matrix rows say the same thing the tests assert behaviourally.
+
+**What is recorded.** Each transition appends one audit row when it changes
+something, carrying ids, kind and status. The justification for a promotion and the
+reason for a rollback are required by the request, stored on the version and
+returned in the response, and are **deliberately absent from the trail**: the trail
+is readable by every role and notes do not belong in it (R-58, and T-309's precedent
+for analyst notes). A promotion of the version that is already active changes
+nothing, returns ``changed=false`` and writes **no** row, so a retrying client cannot
+fill the trail with copies of one decision (D-041).
+
+**Refusals are shaped by their remedy.** A floating id is ``400`` and names R-68,
+because "``latest`` is forbidden" and "no such version" have different fixes; a
+retired version or one with no training manifest is ``409``, because the request is
+well formed and the conflict is with the version's own state (R-63 gates promotion,
+not registration -- an unmanifested artifact can be listed and staged); an unknown
+version is ``404``; an unknown kind or a blank note is ``400``; an unknown filter is
+``422`` rather than a filter that silently matches nothing.
+
+**Gaps, named.** Shadow mode is design.md's default promotion target and is **not
+modelled**: ``model_status`` has no ``shadow`` value, and architecture.md §9's
+staging → shadow-score → active step is T-213's harness with no scheduling decision
+yet made about who runs the comparison. The promotion modal's "type the model id"
+confirmation is T-409's. The durable ``models`` and ``model_versions_history`` tables
+have no adapter while no database session is wired into the request path (D-030).
+
+### D-047 — The backend restates the registry's rules at the edge, and refuses to invent a version or a metric (T-315) (2026-10-05)
+
+**Decision.** ``app/services/model_ops.py`` holds the API-side model of the registry:
+the versions a deployment serves, their recorded metrics, and the promote/rollback
+transitions. It is pure -- no FastAPI, no HTTP client -- and it starts **empty**.
+
+**The registry in ``ml-service`` is still the authority.** The backend cannot import
+``aegis_ml`` (it is not a dependency of this service) and no client to the model
+service exists, so the rules R-68 needs are restated here and the in-memory service
+is the deployment's state until a client replaces it. What the restatement buys is
+that a request is refused *before* a round trip with the right remedy: ``latest`` is a
+400 naming R-68, not a 404. What it costs is named rather than hidden -- two
+implementations of the same rules can drift, and the registry remains the authority,
+not this module.
+
+**Nothing is invented.** R-74 makes an unsourced number an honesty defect, so the
+registry is empty at startup and a version is registered explicitly. A metric cannot
+be built from a value alone: :class:`MetricPoint` names the artifact and the field
+the value was read from, :class:`ModelMetrics` refuses a set that is missing any of
+FR-31's five metrics (precision, recall, f1, roc_auc, pr_auc) or that names no split,
+and a value outside ``[0, 1]`` is refused because every one of those metrics is a
+proportion -- anything else is a units bug or a fabrication. A version with no
+recorded evaluation renders as a gap rather than a zero: the listing shows
+``metrics: null``, and the metrics route answers 404 saying the version *is*
+registered but unmeasured, which is a fact about the model and not a missing record.
+
+**Content addressing is enforced at the edge too.** A version's ``sha256`` must be 64
+lowercase hex, and re-registering an id against different bytes is refused with both
+addresses named. The check is duplicated from T-212 on purpose: an id that silently
+changed content is the supply-chain failure R-68 exists to prevent, and it is cheap
+to refuse at the edge.
+
+**Gaps, named.** No client to the model service (so ``model_ops`` is in-memory and
+``main.py`` says so); no ``shadow`` status; and the ``models``/
+``model_versions_history`` tables are unadapted while no session is wired (D-030).
+
+### D-048 — R-56 is a coverage rule, and the limiter answers before routing (T-316) (2026-10-05)
+
+**Decision.** R-56 ("rate limiting on every unauthenticated and every write
+endpoint") is read as a *coverage* rule rather than a rate to tune. The scope is
+written down once, in ``app/services/limits.py``: every write method (POST, PUT,
+PATCH, DELETE) and every unauthenticated route (``/healthz``, ``/readyz``,
+``/openapi.json``, ``/docs``, ``/docs/oauth2-redirect``, ``/redoc``).
+``EXEMPT_ROUTES`` is empty and asserted empty, because an exemption is how a
+coverage rule stops being one; an exemption needs a decision recorded here first.
+
+**The rule is checked against the application, not against a list.** A test
+compares the literals with ``UNAUTHENTICATED_ROUTES | DOC_ROUTES`` from
+``app.auth.rbac`` -- the literals are repeated in the service layer because
+``app.services`` must not import the HTTP layer (R-15), so the test is what binds
+them -- and another walks the built application, collecting every method/path the
+route table exposes and requiring each write and each unauthenticated route to be
+in scope. A new write endpoint is covered the moment it exists, and an endpoint
+that is *not* covered fails the suite rather than production. The walk is proven
+non-vacuous in both directions: planted write and unauthenticated routes are
+asserted to be limited, and an authenticated read is asserted **not** to be, so
+"everything is limited" is not a passing implementation.
+
+**Identity is a keyed fingerprint or the peer address, never a header.** A
+credential (API key or bearer token) is turned into an HKDF-SHA256 fingerprint --
+``salt=b"aegis.ratelimit.fingerprint.v1"``, ``info=b"rate-limit-fingerprint"``,
+deliberately a different purpose from the api-key digest's (D-042) so the two can
+never be cross-matched even if both were leaked -- and the raw credential is
+never stored, logged or echoed (R-58). A request with no credential is bucketed by
+the address the kernel reports in the ASGI scope. ``X-Forwarded-For`` is *not*
+consulted: it is attacker-controlled unless a trusted proxy is known to set it,
+and a limiter keyed on a spoofable value is worse than one keyed on nothing,
+since a client could rotate the header for a fresh bucket per request.
+
+**Two rates, one bucket per identity:** 600 requests per minute for a credential
+(an API key or a token) and 120 for an anonymous address, both settings. A request
+with a credential is judged by that credential's bucket alone -- a shared office
+address must not make two collectors compete -- and a request without one never
+spends somebody else's allowance.
+
+**Bucket semantics, each chosen for a reason.** A bucket starts full, so a fresh
+client is not throttled before it has done anything and a restart is not a
+punishment. It refills by elapsed time at ``per_minute / 60`` per second, capped
+at capacity, so an idle client may burst a minute's worth and a hammering one gets
+the same long-run rate; the client that has been waiting earns tokens while it
+waits. A refused request consumes nothing, so a client retrying inside the window
+neither extends its own wait nor is pre-charged for it. ``Retry-After`` is whole
+seconds (RFC 9110), **rounded up** and never zero: truncating would make every
+refusal a promise the client can disprove. Buckets idle past 600 s are dropped
+when a new identity arrives -- they are full again by then, so nothing observable
+is lost -- and the table is capped, evicting the least recently used identity, so
+rotating identities cannot turn the limiter into a memory leak.
+
+**Where it runs, and what it is not built on.** The limiter is a pure-ASGI
+middleware, installed inside ``RequestIdMiddleware`` (the last one added is
+outermost), so a refusal still carries ``X-Request-ID`` and can be traced.
+``BaseHTTPMiddleware`` is not used: it holds response messages until more arrive,
+which is exactly why T-310's stream avoided it, and a limiter built on the base
+class would stall a long-lived SSE response. Running before routing is also why a
+429 costs nothing downstream: no dependency, no store, no audit row.
+
+**Reads that need a credential are out of scope** -- unless the path is one of the
+unauthenticated ones. They are cheap, they are already gated by a token, and the
+alert stream is a long-lived connection that must not be counted as traffic while
+it stays open.
+
+**Gaps, named.** Buckets live in the process: a multi-worker deployment gives each
+worker its own allowance, so the effective limit is the configured rate times the
+worker count (a shared store is the fix; Redis is not chosen here). The anonymous
+identity is the peer address, so clients behind one NAT share a bucket by design.
+The limiter is not applied to the WebSocket/SSE stream, which is a decision rather
+than an omission.
+
+### D-049 — Limits refuse explicitly: 413 before parsing, 503 with Retry-After for a full buffer (T-316) (2026-10-05)
+
+**Decision.** Two request limits that had never been enforced are enforced now, and
+"back-pressure" (architecture.md §12: *explicit back-pressure, never silent
+drops*) is modelled as a refusal rather than as a queue.
+
+**The byte cap refuses before any parser runs.** ``max_request_bytes`` existed as
+configuration with nothing reading it. A request whose declared
+``Content-Length`` is over the cap is answered **413 without reading the body**.
+A body that arrives without a length, or with one that lies, is counted as it
+streams: the middleware wraps ``receive`` and answers 413 the moment the running
+total crosses the cap, so no parser is handed more than the cap. The header check
+is an optimisation for honest clients; the count is the control, and a test drives
+chunks through the middleware directly because the ASGI test client materialises a
+streamed body into a single message -- counting only on the last chunk would pass
+an integration test and fail a real upload. The refusal carries
+``connection: close``: the rest of the body was never read, so the connection
+cannot be reused, and saying so stops an intermediary from trying. The cap is
+scoped to POST, PUT and PATCH; a body on a read is unusual enough that policing it
+would break an odd client for nothing.
+
+**This is a different limit from the record-count 413.** ``BatchTooLarge``
+(``max_flow_batch``/``max_log_batch``) refuses a body that parsed into too many
+*records* and names the counts; the byte cap refuses a body that is too large to
+parse at all and names the cap. They are kept distinct -- one is about the work the
+payload implies, the other about the request itself -- and both say so where they
+live.
+
+**A full buffer refuses the batch whole.** The ingest route takes the *accepted*
+record count from an ``AdmissionController`` and answers **503 with
+``Retry-After``** when the batch does not fit, rather than admitting the part that
+fits and failing the request: a partial accept followed by an error is the silent
+partial write the audit trail exists to prevent, and the client is told to retry
+rather than left to guess. Only accepted records are charged (rejected records cost
+the buffer nothing), and the budget is released in a ``finally`` so a route that
+raises still gives it back. Per D-039 the budget is held for the duration of the
+request until the producer exists; when a producer is wired it is released on
+delivery instead, and that is the wiring's decision to make. ``retry_after()``
+returns one second: the budget is released as work completes, and a longer wait
+computed from a backlog with no arrival-rate estimate would be a fabricated number.
+
+**The seam fails loudly.** ``admission`` raises when no controller is installed
+rather than returning a default: an ingest path with no budget would accept
+everything and drop it later, which is precisely the silent-loss failure the
+architecture names. A test asserts the refusal.
+
+**Ordering and testability.** Both middlewares are pure ASGI and are installed
+inside ``RequestIdMiddleware``, so a 429 or a 413 still carries a request id. The
+live policy and the byte cap are published on ``app.state`` as well as passed to
+the middleware, so a test can tighten a limit on a built application instead of
+rebuilding it, and the wiring is asserted against the setting end to end.
+
+### D-050 — The metric names are the architecture's, the labels are a closed vocabulary, and the scrape is unauthenticated on purpose (T-317) (2026-10-05)
+
+**Decision.** ``app/observability/metrics.py`` registers the names architecture.md
+§13 lists -- ``aegis_flows_ingested_total``, ``aegis_score_latency_seconds``,
+``aegis_alerts_created_total``, ``aegis_drift_psi`` (``aegis_kafka_consumer_lag``
+already existed in :mod:`app.messaging.lag`) -- plus this process's golden signals,
+on the default ``REGISTRY``. A dashboard is written against a *name*, so a name
+that is approximated is a panel that silently shows nothing: a test reads the
+names back from the registry and asserts they are the documented ones, and the
+exposed name rather than the client's internal ``_name``, which drops the
+``_total`` a counter adds to its samples.
+
+**Labels are a closed vocabulary, not free-form text.** Every label is either a
+constant this code chooses (``modality``, ``stage``, ``severity``, ``status``) or
+the **route template** after routing, and a request that matched no route lands on
+one ``unmatched`` series. A label taken from the request is a memory-growth vector
+-- one series per path an attacker invents -- which is why the template is read
+from the scope *after* the application has run, and why
+:func:`~app.observability.metrics.metric_label_names` exists: a test can assert
+the whole label set instead of a reviewer noticing a new one. Zero counts are
+skipped, so a stage that never refused anything costs no series; the counter's unit
+is the **record**, not the pydantic error (one record with three bad fields is one
+rejection), and it is charged after validation and admission so nothing counts as
+ingested that the buffer refused.
+
+**No identifiers, no content (R-58).** Counters of numbers, histograms of
+durations, one gauge of a drift statistic. A test asserts that a scrape taken after
+an ingest carries no source address, no token, no family and no host name, which is
+what lets the endpoint be readable without disclosing what the service protects.
+
+**``/metrics`` is unauthenticated by decision.** A scraper is a process, not a
+person, and the alternatives are worse: a token in the scraper's configuration is a
+credential to rotate and leak. It is in ``UNAUTHENTICATED_ROUTES`` *and* in
+``LIMITED_UNAUTHENTICATED_ROUTES``, so R-56 covers it like every other
+unauthenticated route (the tests assert the exemption set is empty and that the
+route is refused once its allowance is spent), and the request middleware skips the
+scrape path so the observer never measures itself.
+
+**Gaps, named.** Counters are per-process; a multi-replica deployment scrapes each
+replica and sums, which is what Prometheus does. Nothing here alerts -- dashboards
+and alert rules are T-505. ``aegis_drift_psi`` has a setter that nothing calls yet;
+T-409's drift report is its caller.
+
+### D-051 — One server span per request, the traceparent rides the record, and the collector is configuration (T-317) (2026-10-05)
+
+**Decision.** ``app/observability/tracing.py`` is the process's tracing seam, built
+on ``opentelemetry-api``/``-sdk``. The provider is installed once
+(``configure_tracing`` is idempotent: OpenTelemetry refuses a second global
+provider, and a provider replaced mid-run silently drops the spans the first one
+had accepted) and it exports **only** when a deployment names an endpoint -- the
+OTLP exporter is an opt-in extra that is not installed here. With no endpoint the
+ids are still generated and propagated, which is what the pipeline and the
+acceptance criterion need, and nothing leaves the process.
+
+**Propagation is W3C ``traceparent``, both ways.** A valid inbound header continues
+the caller's trace; a malformed one is ignored rather than refused, because
+refusing a batch of security telemetry over a broken tracing header trades the data
+for the telemetry. Every response carries ``traceparent`` and ``x-trace-id``, which
+is what makes the id of an ingest request available to the client that sent it.
+:func:`~app.observability.tracing.traceparent_for` passes the span's own flag byte
+through instead of re-deriving "sampled": masking it to one bit made the header
+disagree with the span it described.
+
+**Context is carried explicitly between stages.** The scoring worker and the
+correlator do not run inside the ingest request, so the traceparent rides the
+record -- a Kafka header in production, the ``ConsumedRecord`` and the score sink
+in process -- and each stage rebuilds the parent context from it
+(``context_from_traceparent``). A window is attributed to the record that **opened**
+it, and a case keeps the trace of the first occurrence that carried one
+(``case.traceparent or detection.traceparent``): the question a trace answers is
+which request opened the alert. The id is written into the alert's ``window_ref``
+-- the pointer to the window the case opened on, already specified as opaque -- and
+read back by the query API into ``AlertRow.trace_id``, so the alert record carries
+it without a migration. ``Detection.traceparent`` is deliberately **not** part of
+the evidence identity, because identity is what makes a replay idempotent and
+telemetry must never be able to change it.
+
+**One server span, named by this code.** The middleware opens ``GET request``,
+renames it to the route template once the router chose one (a client-chosen path
+never becomes a span name), and sets method, route and status. ``correlate
+detection`` is a child of the ingest request that produced the window, and ``score
+window`` is a child of the same trace in the worker. FastAPI 0.142 traces every
+request natively unless it is told otherwise, which would produce a second,
+identically named server span per request, a second export path configured from
+``OTEL_*`` environment variables rather than from this application's settings, and
+framework HTTP metrics competing with the ones §13 names; ``create_app`` therefore
+turns the framework's native telemetry off explicitly, and a test asserts that a
+request produces exactly one server span. The middleware is pure ASGI and sits
+outside the limiters, so a 429 or a 413 is still traced and counted.
+
+**Gaps, named.** No collector is configured in this environment, so propagation is
+exercised and export is not. Kafka's per-record trace headers need
+:meth:`~app.messaging.producer.FlowProducer.send`'s batch-per-source signature to
+change (D-035), so the context is carried on the consumed record and in the sink
+but not yet on the wire. There is no ``NOTIFY`` span: the notification payload
+carries the alert row and therefore the trace id, but the delivery itself is not
+traced. T-318 (structured logs with the trace id) and T-319/T-320 build on this and
+are not done here.
+
+### D-052 — R-54 is a mechanism here: an allowlist, a keyed hash, and one line per request (T-318) (2026-10-05)
+
+**Decision.** Logging is structured JSON, one event per line, through structlog --
+the library architecture.md selects -- with the console renderer in development and
+the JSON renderer everywhere else, and **both go through the redaction processors**:
+"human-readable" is not a reason to write a username to disk. Three controls
+implement R-54 rather than asking call sites to respect it:
+
+* **The field allowlist.** Every key is checked against a short, written-down set of
+  fields this application actually logs. Anything else is **dropped**, including
+  nested keys inside a mapping and the keys of a list's mappings. A dropped key is
+  not reported in a warning: the *name* of a field can be the identifier
+  (``alice@corp: 1``), so naming it would be the leak the drop exists to prevent.
+  A test logs through the built application and asserts every key it emits is on
+  the list, and that nothing is both allowed and redacted.
+* **Identifiers are salted-hashed, secrets are masked.** ``user``, ``username``,
+  ``actor``, ``subject``, ``email``, ``host``, ``hostname`` and the address fields
+  become ``id:<12 hex>`` under an HKDF-derived key from ``AEGIS_SECRET_KEY``
+  (purpose ``aegis.logging.redaction.v1``, distinct from the rate-limit fingerprint
+  and the api-key digest so no two can be cross-matched). The relationship survives
+  -- the same user is the same name within one deployment -- and the value does
+  not. ``token``, ``authorization``, ``api_key``, ``password``, ``secret``,
+  ``cookie`` and ``signature`` are ``[redacted]`` outright. Before a secret is
+  configured an identifier is ``[redacted]`` too: hashing with a constant key would
+  be a lookup table away from the value, which is a fake protection.
+* **Free text is scrubbed.** The event name, every string value and the formatted
+  exception go through the same scrubber: e-mail addresses (with the TLD optional,
+  because an internal login is ``alice@corp`` and a rule requiring a dot walks
+  past it), IPv4 and IPv6, bearer tokens and JWTs, and ``user=...``-style
+  assignments, which keep the key and hash the value. The same scrub is the last
+  step of the stdlib formatter, so records that never reach a structlog processor
+  -- uvicorn's access line, a library's warning -- are covered too; a test plants a
+  username in an access log and asserts it comes out hashed.
+
+**One line per request, with both correlation ids.** The request observer emits
+``event="request"`` with the method, the **route template**, the status and the
+duration in milliseconds, plus ``request_id`` (T-304's ``X-Request-ID``) and
+``trace_id`` (T-317) from the context. The template and never the path: a path
+segment or a query string is where an identifier hides, and a test drives the
+application with a planted username in both and asserts neither appears. The level
+follows the outcome -- 2xx ``info``, 4xx ``warning``, 5xx ``error`` -- so an alerting
+rule can be written against the level without parsing the status. The line lives in
+the metrics middleware because that is the only layer that knows the status *and*
+the duration while both ids are still bound; tracing therefore sits outside metrics
+in the stack, which is asserted.
+
+**The boundary, stated.** Shape cannot identify a hostname or a username: ``the
+collector at web-01 is down`` has no pattern to match, and any word could be a
+hostname. The control for those is the allowlist -- a hostname reaches a line only
+by being bound to a field, and a ``host`` field is hashed. This is a test, so the
+boundary is a decision on record rather than a surprise during a review.
+
+**Gaps, named.** Logs go to stdout and no shipping, rotation or retention decision
+is made here (that is the deployment's, like the metrics scrape). Alert *content*
+is not logged at all -- the allowlist makes that structural, and the audit trail is
+the table where content belongs -- so there is no redaction of record bodies to
+test. The trace id on a log line is only as good as the propagation behind it, and
+that is not yet on the Kafka wire (D-051's gap).
+
+### D-053 — The golden path fakes the systems CI does not have, and a row needs a case id (T-319) (2026-10-05)
+
+**Decision.** R-88's golden test runs the real stages over in-process fakes for the
+two systems this environment does not have, and the fakes sit at the *external
+system's boundary* rather than above it. `InProcessBus` is a broker -- a log per
+topic and partition, offsets assigned on append, headers per record -- and
+`FlowConsumer` decodes the `flow@1` payload the producer actually sent, so the
+real `FlowProducer` still chooses the partition and the real `ScoringWorker` still
+chooses the window. An in-process double that handed over `ConsumedRecord`s
+directly would skip exactly the code the test exists to exercise.
+`InMemoryAlertStore` is a row store: the query API reads back the same `Alert`
+class a persistent adapter will hand it, so `paginate` cannot tell which store it
+was given.
+
+**The alert row is keyed by the case, and that is a schema gap.** An incident that
+absorbs a repeat refreshes one row instead of appending another -- the row's own
+`id` and `created_at` stay, its count and `last_seen` move, its severity can only
+escalate. So `AlertStore.save` takes the correlator's case id, which is derived
+from data (entity, family, first evidence) and therefore stable across a replay.
+The `alerts` table has no column for it and no unique index over the data it is
+derived from, so a persistent adapter has nothing to upsert against: it needs a
+case-id column (or an equivalent indexed expression) before the seam can be wired.
+That is recorded as schema work, in the same shape as T-321's typed columns,
+rather than papered over with an insert-then-search.
+
+**Times come from the data.** `ScoreSink.put` now carries `closed_at`, which the
+worker fills from `Window.end` -- the last record's timestamp. A detection is
+dated from that, not from the worker's clock, because an alert's `first_seen` says
+when the traffic happened and a replay stamped with the replay's clock would move
+an incident's start time. A sink that is not told refuses rather than inventing
+one, and a test asserts the refusal. The consequence is visible in the API: an
+alert opened by a 50-flow window carries the *window's close* as `first_seen`, not
+the first record's time, which is T-308's documented `Detection.at` semantics
+rather than a new choice.
+
+**The trace context now travels on the record's headers.** D-035's gap --
+"`FlowProducer.send` is batch-per-source so per-record Kafka trace headers need a
+shape change" -- landed here: the broker-client protocol, `FlowProducer.send` and
+`send_batch` take an optional header mapping, the ingest route passes the request's
+traceparent (which the tracing middleware leaves on the request scope), and the
+consumer reads it back into `ConsumedRecord.traceparent`. That is the mechanism
+behind T-317's criterion: the id the ingest response returned is the id on every
+alert that request opened, asserted through the API rather than at the sink.
+
+**Gaps, named.** The log topic has no publisher and no consumer (the worker is
+flow-only). The model-service HTTP call is not exercised -- the scorer is injected,
+because no scoring endpoint exists. Family attribution is injected, because no
+attributed classifier is wired into ingest. Entity ids are allocated in memory:
+`entities.id` is an Identity column the ingest path does not write, so an alert's
+`entity_id` is meaningful within one process and nowhere else. And the golden test
+is deliberately not a deployment test: it asserts the path that is built, with the
+broker and the store faked, which is what R-88 asks for and what a CI runner
+without Docker can run.
+
+### D-054 — The reference is generated from the schemas, and the file the build ships is checked (T-320) (2026-10-05)
+
+**Decision.** T-320's reference is *rendered*, never written. `render_reference` in
+`backend/app/api/openapi_docs.py` turns the application's own OpenAPI document into
+markdown; `scripts/generate_api_reference.py` writes it to the committed root file
+`api-reference.md`; and CI runs that script with `--check`, which re-renders the
+document in-process and fails when the committed file differs. A route, a field or a
+summary cannot change without the published document changing in the same commit, and
+the render is a pure function of the schema and the route matrix: paths, methods and
+components sorted, no timestamp, exactly one trailing newline.
+
+**Completeness is a rule over the built application, and its exceptions are asserted to
+still be necessary.** `documentation_problems` walks every registered route and every
+operation in the schema: a route has an operation or a reasoned entry on
+`EXEMPT_ROUTES` (the WebSocket route and the framework's own four); an operation has a
+summary and a documented success response; a documented response is a schema, a
+no-content status (204/205/304) or a declared media type that carries no JSON model;
+every body method documents a body unless its path is on `BODYLESS_POSTS`; and every
+`$ref` resolves to a component. Two details keep this from becoming a slogan. First, an
+exemption that stopped being necessary — the route is documented anyway, the route is
+gone, the reason is blank, the bodyless path takes no body or documents one — is itself
+a problem, which is how T-316 reads R-56. Second, FastAPI's *empty* schema is not a
+schema: it is what a route that declares no response model produces, so `-> Response`
+fails rather than passing as "any JSON". Both ingest routes read their bytes
+themselves, so FastAPI cannot infer a body: they declare the record model with
+`ndjson_batch_body`, and the same declaration folds those models into
+`components.schemas` (`declare_components`) so the `$ref`s they produce resolve instead
+of naming nothing. The SSE route and the scrape declare `text/event-stream` and
+`text/plain`, because the reference has to name the media type the route actually
+serves.
+
+**Two consequences of publishing a generated file are recorded rather than
+rediscovered.** `api-reference.md` is excluded from prettier, which reflows markdown
+tables, and the renderer ends the file with exactly one newline, which is what the
+end-of-file hook keeps: a formatter and a drift check that disagree about the same
+bytes would fail each other forever. The file is committed as the build's copy of
+`/openapi.json`, so reading it needs no running server; it is not deployed to a
+documentation site, and the schemas are described as FastAPI renders them — summaries,
+descriptions and field types, no prose of their own.
+
+### D-055 — Score columns are fixed-precision, severity is checked, and the migration was applied to a server (T-321) (2026-10-05)
+
+**Decision.** `alerts.score` and `thresholds.value` are `numeric(5, 4)` and
+`alerts.severity` carries a check constraint, added by migration `0002_typed_scores`
+(R-38, R-39). The Python `Severity` enum moved to `app.db.models` — beside the column
+that stores and checks it — and `app.services.correlator` re-exports it, so the bands
+are defined once and the constraint is built from the same members: a band cannot be
+added without the column accepting it. The migration's constraint text is a literal
+rather than an import, because an applied migration must not change when the enum
+does; `backend/tests/test_schema_conformance.py` parses the migration and asserts the
+literal equals the model's, so the three copies (enum, constraint, migration) cannot
+drift apart without a failing test.
+
+**Checked without a server, then with one.** Alembic's `--sql` mode emits the DDL it
+would run, so CI asserts that the upgrade types both columns, adds the constraint and
+that the downgrade reverses all three — the migration is not merely compiled, it is
+compared. T-321's acceptance criterion, that 0.90 round-trips without drift, cannot be
+decided by DDL, so it is asserted against a server, and on 2026-10-05 the live suite
+was run against a server in this sandbox: pgserver's PostgreSQL 16.2, psycopg 3.3.6
+installed into the sandbox only, all **13 live tests passed** — upgrade, downgrade to
+base, re-upgrade, both partitioned tables, the composite primary keys, the absence of a
+default partition, partition pruning, the audit table's missing foreign key, and the
+typed columns' round trip with the severity check refusing `urgent`. D-030 recorded the gap -- the DDL
+compiled and checked rather than exercised -- and this run is the one that exercises it
+here, from a sandbox install: evidence about the migration, not CI coverage, since the
+tests still skip in CI, where there is no server. The offline claims are held by **51 injected
+defects, each of which failed its target tests**: the types, the enum members and
+their ranks, the constraint's name and text, the re-export, and every statement
+in both directions of the migration.
+
+**The driver is a gap, not an assumption.** Nothing in `backend/pyproject.toml`
+installs a PostgreSQL driver, and the compose stack's DSN names `asyncpg`, which no
+dependency provides, so `alembic upgrade head` cannot run from a plain install. Raised
+as **T-323** rather than fixed here: which driver the deployment uses is a decision
+(the compose DSN says asyncpg; the verification used psycopg), and the DSN, the
+dependency and the live tests should agree on one answer.
+
+### D-056 — The recalibration job fits benign labels in the window the score happened, and the guardrail is T-207's (T-322) (2026-10-05)
+
+**Decision.** FR-18's weekly job is a backend service over an injected store, feedback
+source and calibrator, with two routes: `GET /api/v1/thresholds` (the values in force
+plus FR-13's documented defaults, R-69) and `POST /api/v1/thresholds/recalibrate`
+(admin, one audit row per moved threshold). Four decisions make the acceptance
+criteria structural rather than remembered.
+
+**The window is when the score was alerted, not when it was labelled.** Architecture
+§7.4 says "a rolling 14-day window of scores that analysts labelled
+benign/false-positive"; the score's own time is what describes the traffic the
+threshold is applied to next, and a labelling backlog must not re-shape the sample
+around stale alerts. The label must exist *as of the run*, so a run replayed for a
+past instant sees the verdicts that were in force then — `test_a_verdict_recorded_after_the_run_is_not_visible`.
+
+**Only `benign` and `false_positive` are evidence.** A `true_positive` is evidence
+about an attack, and the threshold is a statement about the benign distribution;
+mixing the two moves the bar towards the attack scores, which is the
+recall-for-quietness trade FR-18 exists to avoid. A family whose labels are all
+`true_positive` still appears in the report, refused, so a run says it saw the
+family and could not use it — `test_a_true_positive_label_is_not_benign_evidence`.
+
+**Too little feedback means no fit, and the floor is derived, not chosen.** The
+calibrator fits the 0.99 quantile (T-207's number, read from the ML package, never
+restated here). Below `1/(1-0.99) = 100` samples that quantile *is* the top one or two
+order statistics, so a "fit" from twenty scores is a fit from the two loudest
+windows. `MIN_FEEDBACK` is asserted to equal that inverse, so the floor and the
+quantile cannot drift apart — `test_the_minimum_sample_is_the_inverse_of_the_target_rate`.
+
+**The guardrail is not reachable from the request.** `Calibrator` carries no
+guardrail argument, `MlCalibrator` calls T-207's `calibrate` without one (leaving the
+0.10 as that function's default), and the request schema forbids extra fields, so
+neither a caller nor the backend can widen the movement an acceptance criterion is
+about. A clamped move is applied and recorded with both the requested and the applied
+value; the requested value is the interesting audit entry, exactly as T-207 argued.
+
+**Two phases, so a refusal is not a partial write.** Every fit runs before any row is
+written: a sample the calibrator refuses leaves the store as it was. A fit that lands
+on the current value writes nothing and audits nothing — `changed` is what the route
+records, and a fit that moved nothing is not a change (D-041).
+
+**The tenant is where the schema is, and the gap is named.** `thresholds` is keyed by
+`(tenant_id, family, band)` and so are the store, the report and the audit target.
+`alerts` has no tenant column, so `AlertVerdictFeedback` cannot attribute a score to
+a tenant and answers `()` for any tenant but the one the deployment was wired with —
+a refusal to fit, which is visible, rather than another tenant's traffic in the
+sample, which is not. **Gaps:** the run is a route, not a scheduler (no CronJob
+exists in `k8s/`), and the store is in-memory while no session is wired (D-030), so
+the `thresholds` table's adapter, like every other one, is unwritten.
+
+### D-057 — The PostgreSQL driver is psycopg 3, declared as a runtime dependency, and every DSN names it (T-323) (2026-10-06)
+
+**Decision.** `backend/pyproject.toml` declares `psycopg[binary]>=3.2`, the
+application's default URL, `.env.example` and the compose stack all name
+`postgresql+psycopg://`, and two guards keep the pair honest: rule 8 of
+`scripts/check_compose.py` fails the build when a PostgreSQL URL in the compose file
+or in `Settings.database_url` names a driver the backend does not declare, and
+`backend/tests/test_database_driver.py` checks every DSN in the repository, the
+declared set, and -- in a subprocess -- that the installed driver actually opens each
+URL and reports the expected name.
+
+**Why psycopg 3 and not asyncpg.** The DSN names a dialect, and the same URL is
+opened by two engines: Alembic's *synchronous* engine at deploy time, and whatever
+the request path uses later. `asyncpg` cannot serve the first at all. This was
+measured, not assumed: with `asyncpg` installed, `alembic upgrade head` still fails,
+because SQLAlchemy routes it through the asyncio shim -- `ImportError: ... requires
+that the Python 'greenlet' library is installed`, plus un-awaited coroutine warnings
+as the sync engine tries to use an async driver. psycopg 3 serves both halves
+(synchronously through `engine_from_config`, and asynchronously through
+`create_async_engine` when R-18's session arrives), so one driver is declared, one
+dialect is deployed, and no second library can drift in unnoticed. `psycopg[binary]`
+carries its own libpq, so `pip install ./backend` needs no system package.
+
+**A URL that names no driver is refused too.** SQLAlchemy's fallback for a bare
+`postgresql://` is psycopg2, which nothing here declares: a DSN without a driver is a
+driver choice made by a library rather than by this repository, so both guards report
+it.
+
+**Verification.** On 2026-10-06, a venv holding nothing but `pip install ./backend`
+ran `alembic upgrade head` against pgserver's PostgreSQL 16.2 and reached
+`0002_typed_scores (head)` -- the first time the repository's own migration has been
+applied from a plain install rather than from a developer venv with hand-installed
+extras (D-055 covers the earlier application of the DDL). The 13 live migration tests
+passed with the same `postgresql+psycopg://` DSN. Twelve injected defects each failed
+their target command: every DSN reverted to `asyncpg` or stripped of its driver, the
+dependency removed or swapped, and each branch of the checker including its
+invocation.
+
+**Gaps.** The compose stack is not started here -- there is no Docker daemon, so the
+criterion is met against the server version the compose file pins (`postgres:16-alpine`)
+rather than against its container, and T-005's compose smoke test remains written and
+never executed. The request path still has no database session (D-030); when it gets
+one it must use `create_async_engine` for R-18, which needs `sqlalchemy[asyncio]`
+(greenlet), and nothing declares that yet -- recorded rather than papered over, and
+`test_the_installed_driver_opens_every_shipped_url` will keep the sync half honest in
+the meantime.
+
+### D-058 — The token layer is a closed system: an off-token colour or an off-scale step compiles to nothing (T-401) (2026-10-06)
+
+**Decision.** design.md §5's tokens live in `src/index.css` (the values, both
+themes) and `tailwind.config.js` (the hooks), and the Tailwind scales that
+design.md enumerates **replace** Tailwind's defaults rather than extending them:
+`colors`, `spacing`, `fontSize` and `fontFamily` are exactly the documented sets,
+so `bg-red-500`, `p-5`, `text-lg` and `font-serif` emit no CSS at all. Extend is
+used only for the four scales design.md adds to and Tailwind has no default worth
+keeping — density rows, icon sizes, the 3 px severity rail, the one overlay shadow.
+
+**Why replace rather than extend.** "Every colour in use resolves to a token" is
+not enforceable by review: a stray `bg-slate-700` in a component looks exactly
+like a token class, and a review that misses it produces a colour that no theme
+switches and no contrast test sees. Closing the scale moves that from a rule
+someone remembers to a build failure at the *utility* level: the class names that
+could express an off-token value do not exist, and `src/theme/tailwind.test.ts`
+compiles the real config and asserts they emit nothing. The same argument closes
+spacing (the doc's eight steps and 0), the type scale (the six steps, so the 12 px
+floor cannot be undercut by `text-sm`) and the families (two stacks).
+
+**Tailwind's own defaults had to be brought back on-token, and three of them were
+off-palette.** A replaced palette leaves preflight and the plugin defaults pointing
+at colours that no longer exist: the ring default was blue-300/50 %, the
+placeholder default gray-400, and the focus-ring offset white. `borderColor`,
+`ringColor`, `ringOffsetColor` and `placeholderColor` therefore carry a token
+`DEFAULT` *plus* the colour scale (overriding a scale to change its DEFAULT also
+deletes the scale — that mistake cost a passing test in this task: `border-line`
+stopped existing). `future.respectDefaultRingColorOpacity` is on because Tailwind
+otherwise composites the DEFAULT with an opacity, and a `var()` cannot be
+composited: it silently writes the blue fallback instead. Two literals still reach
+the stylesheet — Tailwind's `#0000` inside its shadow resets, which is
+`transparent`, and preflight's `#9ca3af` placeholder fallback, which
+`src/index.css` overrides with the muted token at equal specificity and later
+order. Both are asserted, not assumed.
+
+**The document is the specification, so the tests read it.** `tokens.test.ts`
+parses design.md §5's tables — colour values, the contrast ratio printed in each
+Contrast cell, the badge rule's six ratios, the focus-ring ratios, the type steps,
+the spacing and radius steps, the density and icon numbers — and recomputes every
+one against the shipped tokens with the WCAG formula. The ratios written as
+comments beside each token are checked too, because a stale comment is how a
+contrast claim rots. `tailwind.test.ts` then compiles the real config *and* the
+real `src/index.css` through PostCSS and asserts on the emitted stylesheet: every
+colour utility is a `var(--…)` a theme declares, no colour literal survives
+outside the token definitions except the two above, and the numbers compiled for
+rows, icons, rail, radii and type are the numbers the document publishes.
+
+**R-27's CSS half is stylelint, as rules.md says.** `color-no-hex`,
+`color-named: never` and a ban on `rgb()`/`hsl()` are enabled repo-wide with an
+override for `src/index.css` — the token layer is the one file where a literal is
+the value rather than a bypass, and its shadow token is an alpha colour that no hex
+can express.
+
+**Verification.** 33 new tests (10 more in `tokens.test.ts`, which grew 15 → 25,
+18 Tailwind-compile and 5 density) taking the dashboard from 34 to 67, `tsc`, eslint, stylelint and the vite
+build green, and `./scripts/check_all.sh all` 26 checks, 0 failed. **29 injected
+defects each failed their target command**: every token pushed below AA in either
+theme, a token deleted from one theme, a restated ratio comment, both halves of the
+placeholder override, a palette colour added to the scale, a token turned into a
+literal, an off-scale spacing step, drifted row/icon/rail numbers, a caption under
+the floor, a third font family, the ring default back to blue, a build that scans
+nothing, the density threshold moved and made inclusive, and three component-level
+smuggles (a palette class, a literal, an inline `rgb()`).
+
+**Gaps, recorded rather than implied.** The shadow's blur and spread are the one
+pair of numbers in the token layer design.md does not publish — it fixes the policy
+("elevation is reserved for overlays") and this file says so in place. Duration and
+easing tokens (§8.2's 120/200/300 ms, `ease-out`/`ease-in`) belong to the task that
+first animates something, not here; the "nothing over 300 ms" rule is therefore
+documented and not yet closed. Density is *persisted per user* per §5.5 — the
+`defaultDensity` helper decides the default, and persisting a choice is T-410's.
+The theme toggle exists (T-004) but nothing yet verifies the two themes *render*
+identically-clean beyond the axe assertions in the existing component tests.
+
+### D-059 — A primitive owns its states, so a caller cannot render a blank one (T-402) (2026-10-06)
+
+**Decision.** design.md §6's component table is implemented in
+`dashboard/src/components/ui` and exported through one barrel (`index.ts`). The
+task.md row names ten components; §6 also lists `SeverityPill` and `ScoreMeter`,
+which no other task owns, so they are here too, and `Panel` is exported as the
+alias §6 asks for. The four §6 components that belong to other tasks —
+`Timeline`, `TimeSeriesChart`, `EntityGraph` (T-406) and `CommandPalette` (T-411)
+— are deliberately *not* exported, so no screen can import a stub.
+
+**The state is a prop, not a convention.** R-29 requires every surface to be able
+to say loading, empty and error, so `Card` takes a `state` discriminator
+(`ready|loading|empty|error`) and renders `children` only in `ready`. A panel that
+merely *forgot* one of the three would be a blank rectangle that reads as a working
+widget with no data — the failure §8.1 exists to prevent.
+
+**The rules with ratios behind them are the rules the primitives enforce.** §5.3's
+badge rule is a class and not a comment: every severity fill pairs its base hue with
+`onSeverity` (near-black) and never with light text, and `Button`'s `danger` variant
+wears the same pair. `SeverityPill` is the density counterpart — the AA *text*
+variant with the base hue as the 3 px rail — so an alert row can carry severity
+without a block of fill. Both carry the §5.3 glyph with `aria-hidden`, because
+colour is never the only encoding (NFR-09).
+
+**DataTable is virtualised by the density module's own number.** `ROW_HEIGHT_PX`
+now sits beside `ROW_HEIGHT_CLASS` in `src/theme/density.ts`, and the test reads
+both out of design.md §5.5, so the arithmetic that positions row `n` and the CSS
+that draws it cannot drift apart. The viewport height is a prop rather than
+`clientHeight`, so the window is the same in a test as in a browser. Sorting is
+announced with `aria-sort`, the column picker is a native `<details>`, selection is
+controlled-or-uncontrolled with a `mixed` select-all, and the empty state renders
+under the real headers, where the columns still mean something.
+
+**Motion is declared here because T-402 is the first task that moves anything.**
+§8.2's three durations are tokens in `src/index.css`
+(`--duration-micro|panel|page` — 120/200/300 ms) with `transitionDuration`
+utilities in the Tailwind config; the ceiling is asserted against the document, and
+the `prefers-reduced-motion: reduce` guard shrinks animations and transitions to a
+single frame. The nav rail was the visible offender: `AppShell` set its width with
+an inline `style={{ width: collapsed ? 56 : 240 }}` which overrode two off-scale
+classes, so the width was both off-token and unreadable from the class list. Both
+widths are now §3's `w-rail` and `w-rail-collapsed`.
+
+**Verification.** 92 new dashboard tests in 12 files — 18 files, 159 tests, from
+6 and 67 — every primitive with a state test and an axe-clean render.
+`./scripts/check_all.sh dashboard` 6 checks, 0 failed; `all` 26 checks, 0 failed.
+**34 injected defects each failed the suite**: a button that stays live while
+loading, one that loses its accessible name to the spinner, light text on both
+severity fills, an exposed glyph, the score band made exclusive at the boundary, a
+meter that stops clamping or prints more precision than R-38 stores, a card that
+renders through its loading state or blanks its empty sentence, each R-29 state
+mis-roled, the modal's `Esc`, focus trap, focus return and type-the-name gate, an
+auto-dismissed error, an uncleaned toast timer, the table's column hiding, sort
+direction, virtualisation, select-all toggle, empty state and header action, a
+drifted row height, the motion ceiling, the reduced-motion guard, a motion utility
+that stops resolving to its variable, and a §6 component dropped from the barrel
+(`/tmp/t402_mutations.py`, no file left changed afterwards).
+
+**Gaps, recorded rather than implied.** `DataTable` assumes the uniform row height
+§5.5 defines; a variable-height row would break its arithmetic and is not
+supported. `Toast` has no stacking limit and does not pause its timer on focus. The
+primitives are tested standalone — T-404's triage loop is where they get composed —
+and §8.3's responsive behaviour is T-412's. Verified in the browser by rendering
+each state in a test, not by eye.
+
+### D-060 — The overview reads the scrape for its health and the alert window for everything else — and says what it cannot measure (T-403) (2026-10-06)
+
+**Decision.** The overview has two data sources and no third one: the alert window
+(`GET /api/v1/alerts`, T-305) behind the tiles, the chart, the entity list and the
+family mix, and the Prometheus scrape (`/metrics`) plus `/readyz` behind the
+pipeline strip. The strip parses the *exposition format* in the browser rather
+than asking for a bespoke JSON endpoint, because `/metrics` already carries the
+counters, the score histogram and the Kafka lag gauge (D-050), and a second
+endpoint would be a second source of truth for the same numbers. A test asserts
+every budget in the strip equals the one architecture.md §5 or NFR-01 publishes.
+
+**The page reports absences as measurements.** Three things design.md §4.1 draws
+cannot be filled in this build, and each one says so on screen instead of showing
+a number nobody measured: the *mean time to verdict* tile (no endpoint aggregates
+verdict lag — "0 s" would claim instant triage), the *correlate* and *notify*
+latencies (nothing times those stages, so they render "latency not measured" with
+their budgets still shown), and the entity *names* (the query API returns
+`entity_id` only). This is R-74 applied to a UI: a number on a dashboard is a claim
+about the system, and the gaps are filed as **T-416** rather than papered over.
+
+**Counting is bounded, and the bound is visible.** There is no aggregate endpoint,
+so the page walks keyset pages and stops at five of them (5,000 alerts). Hitting
+the cap renders "only the first 5 pages were read, so every count below is
+partial", marks each counted tile `partial coverage`, and suppresses the previous
+-period delta entirely — a delta against a truncated window is a confident, wrong
+arrow. Two refreshes without an answer (30 s) marks the header stale, which is
+§8.1's "rather than silently showing old numbers".
+
+**Auto-refresh follows the numbers that move.** §4.1 asks for 5 s on the tiles and
+15 s on the charts. The tiles and the charts read the same alert window, so polling
+it at both cadences would fetch the same pages twice: the window polls at the
+charts' 15 s and the 5 s cadence goes to the scrape, which is one small text
+document and is where the fast-moving numbers actually are. Both stop when the tab
+is hidden, as the design requires. Deviation recorded here rather than silently
+implemented.
+
+**The chart alternative is a control, not a footnote.** §9 wants "a data-table
+alternative toggled by a 'view as table' control": the control is a real button
+with `aria-expanded`, the table carries `scope`d headers and a caption that names
+the window, and the chart configs themselves are pure data in `charts.ts` so a
+node test can assert §7's rules — stacking, "y-axis starts at 0 — never truncate a
+count axis", descending family order, counts labelled at the bar end — none of
+which a canvas can be asked about.
+
+**Verification.** 121 new dashboard tests across 8 files (27 files, 298 tests, from
+18 and 159), `tsc`, eslint, stylelint, prettier and the vite build green;
+`./scripts/check_all.sh all` 26 checks, 0 failed; the frontend boundary check
+learned the new `api` layer (R-23) and reports 68 files, 148 imports. **43 injected
+defects each failed the suite** (`/tmp/t403_mutations.py`, no file left changed):
+an invented origin, a leaked URL in an error, a request that never times out, a
+`+Inf` bucket parsed as NaN, a silently skipped exposition line, a quantile of zero
+for an unobserved histogram, a negative rate after a counter reset, a dropped
+severity and a dropped out-of-window row, a gap between series buckets, ties
+broken by input order, a delta against a partial window, drifted budgets, an
+inclusive budget boundary, a stage called `ok` with nothing measuring it, averaged
+Kafka lag, an un-narrowed route label, a page cap removed, a not-ready answer
+discarded, an unstacked chart, a truncated count axis, unsorted bars, a chart
+ignoring `prefers-reduced-motion`, a live-looking failure, and a stale screen
+without its marker. Two mutants survived the first run and are now killed; a third
+turned out to be *equivalent* — `formatAge`'s clamp cannot be observed at the
+current bands, so the mutation targets the band ordering instead, and the code says
+so.
+
+**Gaps, recorded rather than implied.** The chart is not brushable (§4.1 asks for
+it; brushing is T-406's task, and a control that does nothing would be worse than
+none). Chart.js and its datalabels plugin add ~350 kB to the bundle (~110 kB gzip)
+and are imported eagerly — code-splitting them belongs with T-412's responsive work
+or a later build task. `Toast` and the WebSocket layer are not wired to the
+overview yet: T-405 owns the live channel, so the page polls. The metric queries
+read the scrape directly, so the strip reflects the browser's view of the backend
+rather than the server's own view of its dependencies beyond `/readyz` — which is
+empty in this build because no probe has registered.
+
+### D-061 — The triage screen renders what it was given: reasons or the reason there are none, evidence or the date it expired, and the history that warns (T-404) (2026-10-06)
+
+**Decision.** The alert detail is one bounded read (`GET /api/v1/alerts/{id}
+?created_at=…`, FR-51) rather than four panel-sized requests. An analyst opens an
+alert and every zone must already have something true to say; a screen that
+assembles itself from four round trips is a screen that is half-empty for a
+second and, on a slow link, for much longer. The read is addressed by *both*
+halves of the key — `(id, created_at)` is the primary key (D-030), so an id alone
+addresses a row in every month.
+
+**R-70 is the read model's first rule.** `explanation_payload` writes either
+reasons or the explicit marker, and the decoder keeps that shape all the way to
+the DOM: a blank payload, an unreadable one, or one carrying only whitespace
+becomes `explanation_unavailable` *with a reason naming what was found*. The panel
+cannot render an empty success because no code path produces one. The same
+stricter-than-obvious reading applies to the numbers: a JSON `true` is **not** a
+score of 1.0, a score outside [0, 1] is not a score, and a naive timestamp is not
+an instant — each is counted in `unreadable` instead of being rendered as data.
+
+**Evidence expiry is a fact about the data, not a guess by the client.** Each
+occurrence carries `expires_at = at + raw_records_days`, read from the retention
+policy the deployment runs, so §4.3's `evidence expired at <date>` is the moment
+the *last* raw record went. `expired` is true only when every occurrence is past
+that date: a partly expired trail is partial evidence, which is a different claim,
+and the panel keeps rendering the pointers that survive.
+
+**The family hint counts prior alerts, strictly.** "Marked FP twice in 30 d" is a
+claim about decisions already taken, so the filter is `(created_at, id) <` the
+alert's own key — the alert on screen is never its own history, and two alerts at
+one instant are ordered by id exactly as the queue orders them. `labelled` is what
+makes the counts readable: two false positives out of three reviewed is a
+different sentence from two out of two hundred, and the panel prints both numbers.
+
+**The screen's acceptance criterion is a property of the pair.** The queue is a
+list of *links*, so picking an alert is native keyboard behaviour rather than a
+click handler on a table row; the verdict bar is `sticky top-0`; `1`/`2`/`3` come
+out of the same table the buttons render from; and the write's result is announced
+in a live region — `recorded` as a write, `unchanged` as the server saying what was
+*already* current. A route without `created_at` is told what is missing instead of
+sending a request that must 400.
+
+**Where the design draws more than this build has, the panel says so.** §4.3 draws
+a contribution weight beside each reason and a flow-rate series behind the
+timeline; this payload carries neither, so the reasons render with a sentence
+naming what is missing and the timeline plots the windows the alert kept, naming
+T-406 for the chart. R-74 applies to a UI the same way it applies to a document.
+
+**Gaps, recorded rather than papered over.** The explanation payload carries no
+weights (the model service would have to publish them); raw flows and log lines
+behind the trail are not shown, only the pointers — the virtualised raw-record
+viewer is not this task's; `Toast` and the WebSocket channel are still unwired
+(T-405); the timeline's series and brushing are T-406; and the queue is one page
+of the last 24 h, which is a scope decision, not a bound the API imposes.
+
+### D-063 — The traffic explorer brushes one model, counts alerted records rather than traffic, and says which graph it is drawing (T-406) (2026-10-06)
+
+**Decision.** design.md §4.4's promise is "brushing filters everything below", and the
+only way to keep it is structural: `dashboard/src/features/traffic/view.ts` folds the
+brush, the entity controls and the pinned entity into **one** row set — brush first,
+then the fold, then `minRecords`/`openOnly`, then the pin — and the series, the table
+and the graph are all derived from that one set. Three panels each remembering to
+apply the brush is three chances for one of them to keep showing what the analyst just
+excluded. The series alone is drawn from the **whole window**, because it is the axis
+the brush is drawn on: a series derived from its own selection could never be
+re-brushed and the reference position the analyst is dragging against would vanish.
+
+**The brush is half-open, commits on release, and a click clears it.** `[from, to)`
+matches the store's own window rule (R-34) so the two ends cannot disagree. A drag
+below one bucket is a click rather than a selection — a selection the series cannot
+draw is a worse answer than no selection — and a click on the plot clears the brush,
+because otherwise the only way out of a narrow selection is to drag back over the
+whole axis. Both handles are keyboard-moveable sliders, the range is printed in words
+beside the chart as well as shaded on it, and the buckets are also a real table
+("View as table"), since a shaded area chart is not a reading experience for everyone.
+
+**What this build cannot draw, it says.** FR-52's own vocabulary asks for traffic
+volume and entity relationships, and the alert API offers neither: the only volume in
+reach is `occurrence_count`, the number of raw records the alert carried, so the
+series counts **records that raised alerts** and the panel says so in a permanent
+note; the only relationship in reach is a shared `trace_id`, so an edge is a **shared
+correlation trace** rather than a flow count; and every entity is an **id** because
+the alert API returns no host or user value. Those two gaps are filed as **T-418**
+(no read API for ingested flows) and **T-416** (names, raised by T-403), not papered
+over with a label that implies traffic. The notes live in the model, not in a
+component, so a panel cannot render the numbers without the sentence that qualifies
+them (R-70/R-74).
+
+**The mode is data, not a rendering detail.** `buildGraph` decides between `force`
+and `adjacency` at **2,000 nodes** and returns the `reason` string with the mode, so
+the panel has no code path that draws the matrix without labelling the switch — the
+acceptance criterion is a shape of the data rather than a thing a component must
+remember. The matrix draws the top **40** entities by volume on each axis (a
+3,000-column matrix is a wall of pixels) and reports how many of N it drew and how
+many it only counted.
+
+**A seed that cannot be observed is not kept.** The first version ticked d3 with a
+mulberry32 `randomSource` and offered the caller a `seed`. Reading d3-force showed
+that its jitter source reaches the tick loop in exactly one place — `forceLink`'s
+`jiggle`, for a *linked pair occupying the same coordinates* — and d3 already seeds
+its own LCG, so the parameter could not change any picture this panel draws. Measured
+rather than argued: four graphs (3, 12, 40 and 200 nodes) laid out under seed 1,
+seed 99 and `Math.random` landed on identical coordinates, byte for byte, so the
+option and the PRNG were removed. Determinism is a property of the whole call —
+d3's deterministic initial placement, a fixed tick count and `.stop()`, with no timer
+— and that is what the test asserts.
+
+**The battery found a contradiction between a docstring and its code.** Pinning was
+documented as *widening* ("a pinned entity keeps its neighbours in view") while the
+code replaced the controlled set with the pin and the neighbours **that had survived
+the controls** — so a pin whose neighbour was filtered out showed nothing, which is
+the one question a pin exists to answer. The code now does what the module says: the
+pin leads, its neighbours come back from the *unfiltered* brushed set, and everything
+already on screen stays on screen (deduplicated).
+
+**Evidence.** 71 injected defects, **70 killed, 1 demonstrated equivalence, 0 bad
+anchors** (`/tmp/t406_mutations.py`; the first run killed 43 of 70 with 9 stale
+anchors, and its survivors became the tests below). The equivalence is honest and
+narrow: `BrushSeries`'s 4 px click branch is a second spelling of the one-bucket rule
+at this panel's geometry — 608 px of plot for 60 buckets is ~10.13 px per bucket, so
+every drag that reaches the click branch is already below a bucket and returns `null`
+either way. The new suites are the gap the survivors named: `palette.test.tsx` runs in
+jsdom where the overview's node-environment suite cannot reach the stylesheet-reading
+half of `readPalette` (and covers the `data-theme` observer the hook exists for);
+`hooks.test.tsx` covers the `enabled` gate and the pushed-alert invalidation;
+`BrushSeries.test.tsx` covers both axes' labels, the score line's breaks, the table
+alternative, both arrows on both handles and the sub-bucket drag. The dashboard went
+**500 → 605 tests in 51 files**; total **2402 passing, 29 skipped**; `check_all.sh
+all`: **26 checks, 0 failed**.
+
+**Gaps, recorded.** The flow read API (T-418) and entity names (T-416) are the two
+reasons the explorer's numbers are not FR-52's numbers. The charting bundle is still
+eager (T-412). The realtime layer beneath the screen keeps T-405's gaps: the hub is
+in-process and the socket needs uvicorn's `ws` extra.
+
+### D-062 — The live channel degrades into the same frames, and a refusal stops the retry but not the screen (T-405) (2026-10-06)
+
+**Decision.** The browser holds **one** alert stream, and it has three transports
+behind one interface: the WebSocket (pushed), the REST poll at architecture.md
+§14's 15 s cadence (the fallback), and nothing else. The poll's answer is converted
+into the *same frames* the socket sends — `ready`, then one `alert` per item — so no
+consumer above the client can tell which transport delivered an alert, and the
+cursor (`after=` on every request, and on the socket URL) is the one resume position
+for both. "Reconnecting replays missed alerts" is a claim about continuity, and
+continuity is only testable when the two transports are indistinguishable above the
+seam.
+
+**A pushed alert re-reads; it does not accumulate.** React Query keeps the only copy
+of the alert data (R-24). A frame — pushed, replayed after a reconnect, or delivered
+by the fallback — invalidates the keys the screen named (`useAlertSync`), coalesced
+so a fifty-alert replay is one read rather than fifty. The client also re-reads when
+the connection comes back and when the server says `resync_required`, because those
+are exactly the two moments when the frames *are not* the whole story.
+
+**A refusal is terminal; a broken pipe is not.** 4401 and 4403 are the server saying
+the credential (or the role) is the problem, so the client stops reconnecting and
+the banner says which it was — while the fallback keeps the screen current, since a
+session that cannot open a socket is not necessarily a session that cannot read.
+Every other close, including 1013 (the hub dropping a slow reader *with its resume
+cursor*), backs off with equal jitter from 500 ms to 30 s and resumes from the
+cursor; the same watchdog abandons a socket that has said nothing for three
+heartbeats, because a TCP connection that is open while the peer is gone reports
+nothing on its own.
+
+**The credential lives in `sessionStorage` and is broadcast.** The dashboard had no
+token store at all, and a browser cannot set a header on a WebSocket handshake —
+only `Sec-WebSocket-Protocol: aegis.bearer.<jwt>`. One module owns it; a change
+reopens the socket; a 401 clears it and a 403 does not, because a valid credential
+without the required role is a permissions message rather than a logout. No token is
+a valid state: the client opens without one, the server refuses with 4401, and the
+banner says the session is not authenticated — the sign-in screen is T-417.
+
+**Gaps, recorded.** The hub is in-process and the socket needs uvicorn's `ws` extra
+(T-310's gaps, unchanged). The fallback poll pauses in a hidden tab (§4.1) and polls
+at once on show. And the browser half of resume is proven against a fake socket,
+a driven clock and a stubbed API — the server's own WS transport is not installed
+here, so the two halves are verified against the same contract rather than against
+each other.
+
+### D-064 — The log tail is a window with an end, and every read carries the sentence that says so (T-407) (2026-10-06)
+
+**Decision.** design.md §4.5 asks for a clustered, pausable log tail, and this build
+has nowhere to read logs from: lines stop at `POST /api/v1/ingest/logs`, and there is
+no log table, no consumer and no read model. The choice was between building the
+storage layer first — T-301's schema, a migration, a writer, a query service, a task
+of its own — or building the screen §4.5 describes against the one thing the backend
+can honestly produce: a **bounded, in-process tail of accepted lines**, with the
+persistent read model filed as **T-419**. The tail was chosen because the acceptance
+criterion is about the *fold*, not about storage — 10,000 identical lines collapsing
+to one row with a count, and a pause that freezes the view — and a screen that says
+what its source is can ship before its source exists. `LogTail` holds the most recent
+**20,000** lines or **900 s**, whichever comes first, and both of its read routes
+return the deployment's own caveats, which the screen renders verbatim rather than
+paraphrasing: "not a store" is a claim about the deployment, and a screen that
+reworded it would eventually word it wrong.
+
+**The fold is arithmetic in two places, and both are asserted.** `clusters()` groups
+on `cluster_key(record)` — the miner's `template_id` when there is one, otherwise
+`message:{sha256(message)[:12]}`, so an untemplated line still clusters without its
+message text entering a query string or an access log (R-58) — and returns `count`,
+`first_seen`, `last_seen`, the level histogram, the hosts, the services and a sample.
+A batch of 10,000 lines sharing a template id is one row whose count is 10,000,
+asserted through the ingest route and again through the read route, so the fold
+cannot pass by drawing a table no assertion ever read; the expansion behind a row is
+reconciled with its count by a test that reads both endpoints, and one ordering,
+`(-count, key)`, is pinned so two runs over the same tail agree.
+
+**Time order is not arrival order.** The first version returned lines in the order the
+collector's batches arrived, which is not the order they happened: a retried line
+appended after a later one read out of sequence. `lines()` sorts by `record.timestamp`
+(stable) before it truncates, and the service tests pin it — a window's raw lines come
+back oldest first even when the batches that carried them did not. The age bound is
+measured from the clock rather than from the newest retained line, so a future-dated
+line cannot extend the buffer.
+
+**"No results" is not one fact, and the screen says which one it is.** Five empty
+screens are distinguishable and four have their own sentence: nothing retained at all
+("No lines are retained"), nothing arrived in the window ("Nothing has arrived"),
+the window falls between the oldest and newest retained line ("falls between them"),
+filters matched nothing ("Nothing matched these filters"), and a filter that has
+never seen a matching line. `_caveats()` takes `present`, `retained_lines` and
+`dropped` separately so it can tell a window-only emptiness from a post-filter one;
+collapsing `present` back into `matched` is how a quiet screen gets misread as a quiet
+system. The page reads the specific sentence through `view.emptyReason`, which is why
+the *index* of that array is a contract both the service tests and the page test hold.
+
+**Pause is a freeze, and the window is state because of it.** A live expression
+computed from the clock would keep moving while "paused", which is the one thing
+pause exists to prevent, so the window is React state: the pause handler sets the
+label's instant and the read's window to the same moment, and the poll is switched off
+(`refetchInterval: enabled ? 2000 : false`) while it is held. Resuming starts a fresh
+window rather than replaying the frozen one, and a span change moves the window at
+once — unless the tail is paused, where the window is the thing being held.
+
+**The halves of §4.5 this build cannot deliver are named on the screen.** A level is
+the level the sender declared, not a model's anomaly score, and the caveat says so; a
+cluster cannot jump to the alert that referenced it, because an alert's evidence
+(`alerts.window_ref["evidence"]`) names a window identity rather than a set of lines,
+so there is no join key and the panel says "not available in this build" instead of
+offering a dead link. Both sentences come from the API, and one of them names T-419 —
+so the task row exists before the string does.
+
+**Evidence.** 59 backend tests (`test_log_tail.py`'s 34 service tests and
+`test_logs_api.py`'s 25 route tests) and 58 dashboard tests (the cluster vocabulary 14,
+the view model 11, the page 16, the hooks 4, the cluster table 3, and the shell's 10
+re-pointed rather than deleted). Running the service tests found **three real defects
+rather than three wrong expectations**: batch-order reads, the misattributed empty
+sentence, and an age bound measured from the wrong clock — only the age test's own
+arithmetic was wrong. Backend **1266 → 1325** tests (13 skipped); dashboard **605 →
+654** tests in **51 → 56** files; total **2510 passing, 29 skipped**.
+
+**The battery found a fourth defect, and it was in the code rather than the tests.**
+**56 injected defects: 53 killed, 0 survivors left as gaps, 3 demonstrated
+equivalences, 0 bad anchors** (the first run killed 40 of 54 with 2 stale anchors and
+12 survivors, and each of those became a test below or an argument). The fourth defect
+was the histogram: `levels` was sorted by *key*, which publishes `critical, debug,
+error, info, warning` — a level listing in no order at all — so the fold now orders it
+by `level_rank` and a test asserts the order rather than the fact that a dict was
+built. The new tests are the gaps the survivors named: two messages differing only in
+case must not share a digest cluster; two templates with equal counts must order by key
+so a retry cannot make the same tail read differently; a line exactly at the age bound
+is held and one second past it is evicted; a zero-width window is refused like an
+inverted one; a host or service filter must narrow both the cluster read and its
+expansion (a swap between the two is the defect that test pins); both reads need a
+credential; a line whose hand-off to the pipeline failed is not in the tail; the tail's
+histogram order; on the dashboard, `keepPreviousData` keeps the last window visible
+when the window *moves*, a disabled tail issues no request and reads no raw lines
+before a row is opened, a span change while paused re-reads nothing, and the severity
+rail is on the error row and off the quiet one. The three equivalences are recorded
+with their arguments rather than papered over: the oldest-retained comparison cannot
+differ inside the branch that guards it, `_Folded._last` starts at the first record's
+own timestamp so `>` and `>=` compute the same maximum, and a disabled React Query
+never fires its interval. `check_all.sh all`: **26 checks, 0 failed**. The two read
+routes are in `ROUTE_MATRIX` (a missing entry fails `test_rbac.py`), the reference is
+regenerated rather than hand-edited, and `start`/`end` are required route parameters —
+a missing window is FastAPI's own 422, and an unparseable, naive, inverted or over-wide
+one is a 400 that never echoes log content.
+
+**Gaps, recorded.** The tail is in-process: it dies with the process, a second replica
+reads its own copy, and a restart loses everything — which is why "not a store" is
+the API's sentence rather than a note the UI invented (T-419). The 900 s / 20,000-line
+caps are configuration, not a retention policy. No alert links to a cluster. And the
+raw-lines panel is deliberately a snapshot rather than a poll, so an expansion does
+not move while it is being read.
+
+### D-065 — A hunt is a structured question with one canonical echo, and an export that is a recorded egress (T-408) (2026-10-06)
+
+**Decision.** design.md §4.6 lists four autocomplete fields — `src_ip`, `dst_port`,
+`template_id`, `family` — and this build can filter on exactly one of them. The choice
+was between accepting the other three and quietly ignoring them, or refusing them by
+name. The console refuses them. A hunt that dropped `src_ip:10.0.0.7` and returned the
+whole window would be the worst answer available: the analyst believes they searched by
+source address and every row they read says nothing about it. So `UNSEARCHABLE_TERMS`
+carries the fields §4.6 asks for *with the reason each is missing* (`src_ip`/`dst_port`:
+raw flows have no read API, **T-418**; `template_id`/`message`: the log read is a bounded
+in-process tail, **T-419**; `trace`: the alert query has no trace-id filter), and the
+autocomplete offers them as refusals rather than leaving an analyst to conclude they
+misspelled a field. The vocabulary is the alert read model's own — `severity`, `status`,
+`family`, `entity`, `min_score`, `order`, `limit` — and an unknown field is an error, not
+a no-op. A field set twice is refused too, and the message names the fix (`severity:high
+severity:low` → `severity:high,low`), because the API takes one value per filter and
+merging two intents silently is how a search means something other than what was typed.
+
+**The echo is canonical, and it is the reason the empty state is trustworthy.** §4.6's
+acceptance criterion is that empty results render the executed query and the time range,
+so `describeHunt` re-serialises the *parse* — normalised to the API's spelling, with the
+order and the row cap always shown even when they were defaulted — rather than echoing
+the analyst's keystrokes. An analyst looking at an empty table is asking "what did I
+actually search", and the answer includes the parts they did not type. The window is
+snapshotted when the hunt runs (`huntWindow(key, Date.now())`) rather than recomputed at
+render, because a window that kept moving would make the sentence false by the time it
+was read; changing the window re-runs the hunt with the same query, since a result set
+that disagreed with the selector above it would be the screen lying about what was
+searched.
+
+**The export is a POST because it is an egress, and its body is the query.** The trail
+records changes, not requests (D-041); a read does not belong in it — but an export is
+not only a read. It is data leaving the system, and "who took what out" is exactly what
+the trail is for, so the route is a `POST` whose body *is* the query definition, the
+audit entry records that definition verbatim, and the coverage walk in `test_audit.py`
+finds it without being told about exports. `HuntExportRequest` re-uses `AlertQuery`
+rather than restating its fields — two copies of a filter set drift, and the failure
+would be an export whose rows no longer match the view that launched it, with both
+halves looking correct in isolation — and it refuses a cursor **by type** (`Annotated[None,
+...]`), because an export mirrors the first page of the query the analyst ran and a
+cursor would let a caller export a page nobody saw while the trail described a read that
+never happened. `Capability.EXPORT` is held by `responder` and `admin` and checked twice
+on purpose: the route declares it and `ROUTE_MATRIX` names the roles, and `test_rbac.py`
+fails if the two disagree. API keys are not accepted at all — a key is a machine
+credential for ingestion (FR-44), and an audited egress should carry a human actor. The
+audit row is written **after** the rows render and only then: a refused export produced no
+file, so recording one would put a fiction in the trail. It records the definition, the
+exported row count, whether the query held more than the limit, and the format — never a
+row's content (R-58), since the trail is readable by every role and a hunt may be scoped
+to one.
+
+**A CSV is a wire format, and a cell can be a program.** The file writes the *wire* shape
+(ISO-8601 instants, numbers as numbers), not the screen's formatting: a spreadsheet column
+of `06 Oct 2026, 10:04:59Z` sorts and filters as text, which for a security export is a
+file nobody can compute over. Every field of the row is present, including the columns the
+table hides by default — the column picker is a reading aid, and dropping a field from an
+export would be data loss nobody asked for. `family` and `trace_id` carry collector data,
+and a trace id is an *attacker-supplied header* (`traceparent`) that the alert row keeps, so
+a cell beginning `=`, `+`, `-`, `@`, tab or carriage return is prefixed with an apostrophe
+(OWASP's defence, and the least destructive one): the value stays legible and every other
+cell is untouched. No numeric column here can begin with `-` — ids, counts and scores are
+non-negative by schema — so the rule never mangles a number. RFC-4180 CRLF is pinned by a
+test because Excel is the consumer an export is most likely to meet. The parsed document
+never lands in one file's first row: the filter definition goes to the trail (where a
+reviewer looks and where the record is append-only) and the window goes into the filename,
+colon-free because a colon is illegal in a Windows path element and a download that
+silently renames itself is a small lie about what it contains.
+
+**"Per user" is per browser here, and the screen says so.** §4.6 asks for saved queries per
+user and recent queries in a dropdown; there is no sign-in yet (**T-417**) and no
+server-side store for a named query, so the honest place for one is `localStorage`, keyed by
+the token's unverified `sub` — a *label*, not a boundary, since two analysts sharing a
+browser profile without signing in share each other's hunts. That is why the menu says the
+list lives "in this browser only" instead of calling it a saved view: a saved hunt that
+silently belonged to somebody else would be a quiet data leak. Recent hunts record the
+canonical echo on a *run*, not on a keystroke, and deduplicate by text so re-running a hunt
+moves it up rather than filling the list. Storage that refuses to work (private mode, a full
+quota) does not take the screen with it: the functions return the list the caller should
+render and never throw, so an unwritable store means the hunt is not *remembered*, not that
+the analyst watches their own save fail with no explanation.
+
+**What this build cannot do, said rather than omitted.** §4.6's "create alert from this
+filter" action is not available: alerts are written by the detection pipeline and no API
+creates one by hand, so the console says so in a sentence beside the export. A hunt reads
+**one bounded page** — no cursor walk — so a window holding more rows than the cap shows
+the newest ones and says that it stopped at the cap; the export exists for taking more.
+
+**Evidence.** Backend 45 route and service tests (`test_hunt_export.py`) plus the RBAC and
+audit-coverage suites; dashboard 96 tests across the query language, the storage, the view
+model, the data wiring, the query box and the page. **50 injected defects: 50 killed, 0
+survivors, 0 bad anchors** (`/home/user/t408_mutations.py`: 24 backend, 26 dashboard). Four
+of the survivors the first run produced turned out to be missing tests rather than
+equivalences, and each became one: a falsy-but-set filter (`entity_id=0`, `min_score=0.0`)
+must still be recorded in the definition or the trail describes a *wider* read than the one
+that ran; an empty filter set (`severity: []`) narrows nothing, so the definition must not
+claim it did; and a completion must read the token at the **caret**, not the last token in
+the box — the mutant that read `text.lastIndexOf(' ')` survived until a test parked the
+caret inside an earlier term. One candidate was removed rather than counted: adding `void
+seen;` is not a mutation. Backend **1325 → 1370** tests (13 skipped); dashboard **654 → 751**
+tests in **56 → 62** files. **A defect outside this task's files was found by the full suite rather than by review**: `tests/test_logs_api.py` pinned a fixed `START` while the log tail measures age against the real clock, so ten of its tests passed until the wall clock walked 20 minutes past the fixture and then failed forever — the fixture now drives the tail's own clock seam (`LogTail(clock=...)`, which the service already had for exactly this), so the file is deterministic instead of racing the clock. The two seams this task shares with the rest of the app are
+`src/lib/routes.ts`, where the alert deep link now lives so two features can link to an
+alert without one importing the other (the boundary checker enforces that), and
+`ToastProvider`, mounted in `App.tsx` because the export's result has to be reportable in
+every environment the app renders in — tests included.
+
+**Gaps, recorded.** Saved hunts are per browser until T-417 lands; `src_ip`/`dst_port` need
+T-418 and `template_id`/`message` need T-419; there is no server-side saved-query store and
+no "create alert from filter"; and the CSV is explicitly the query's first page, so a hunt
+that truncates is a copy of the newest rows rather than of the whole match.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-06 | 1.53 | **T-408 done — a hunt is a structured question with one canonical echo, and an export that is a recorded egress.** `backend/app/schemas/hunt.py` (`HUNT_CSV_COLUMNS`, `HuntExportRequest`), `backend/app/services/hunt_export.py` (the CSV renderer, the defused cell, the audit definition, the filename), `backend/app/api/v1/endpoints/hunt.py` (`POST /api/v1/hunt/export`), `backend/app/auth/rbac.py` (`Capability.EXPORT` on the route matrix), `backend/app/services/audit_log.py` (`hunt.export`), `backend/app/main.py`, `backend/tests/test_hunt_export.py`, `dashboard/src/features/hunt/` (the query language, the saved/recent store, the view model, the hooks, the query box with its combobox listbox, the results table, the saved-hunts menu, the page and six test files), `dashboard/src/api/hunt.ts`, `dashboard/src/api/alerts.ts` (`fetchAlertPage`, shared with the window walk), `dashboard/src/lib/routes.ts`, `dashboard/src/features/triage/links.ts`, `dashboard/src/api/client.ts` (`postText`), `dashboard/src/App.tsx` (`/hunt` and the `ToastProvider`), `dashboard/src/test/query.tsx` and `api-reference.md` (regenerated). Policy recorded as **D-065**. **The acceptance criterion is a refusal that names the role and a file that matches the view**: export returns 403 below `responder` *before* any capability is consulted, writes no audit row when it refuses and exactly one when it succeeds, and a parity test compares the CSV's ids against a `GET /api/v1/alerts` read of the same query rather than trusting two code paths to agree. **An unknown field is an error, not a no-op** — `src_ip`, `dst_port`, `template_id`, `message` and `trace` are offered as refusals with the task that would fix each (T-418, T-419), because a hunt that silently dropped a term would be the one answer an analyst must not get. **A cell is a program until proven otherwise**: a leading `= + - @ \t \r` is defused with an apostrophe (a trace id is an attacker-supplied `traceparent`, and the alert row keeps it), while every other cell is untouched. **The window is snapshotted when the hunt runs** and the echo re-serialises the parse — the empty state names the query *and* the window, including the order and row cap the analyst never typed. **50 injected defects, 50 killed, 0 survivors, 0 bad anchors** (24 backend, 26 dashboard); the three survivors of the first run were missing tests rather than equivalences and each became one (a falsy-but-set filter must still be recorded, an empty filter set must not be, and a completion reads the token at the caret rather than the last token in the box). Backend 1325 → 1370 tests (13 skipped); dashboard 654 → 751 in 56 → 62 files; `check_all.sh all`: 26 checks, 0 failed. **One defect outside this task's files, found by the full suite rather than by review:** `tests/test_logs_api.py` pinned a fixed `START` while the log tail measures a line's age against the real clock, so ten of its tests passed until 10:15 UTC and failed forever after; the fixture now drives the tail's clock seam, and the file is deterministic rather than racing the clock. **Gaps:** saved hunts are per browser until T-417; there is no server-side saved-query store and no "create alert from filter" action; and the export is the query's first page, so a truncated hunt exports the newest rows rather than the whole match. |
+| 2026-10-06 | 1.52 | **T-407 done — the log tail is a window with an end, and every read carries the sentence that says so.** `backend/app/services/log_tail.py` (the bounded in-process tail: append, retention, clustering, filtered reads), `backend/app/schemas/logs.py`, `backend/app/api/v1/endpoints/logs.py` (`GET /api/v1/logs`, `GET /api/v1/logs/lines`), `backend/app/api/v1/deps.py`, `backend/app/core/config.py` (20,000 lines / 900 s), `backend/app/main.py`, `backend/app/api/v1/endpoints/ingest.py` (the hook that feeds the tail *after* a line is accepted), `backend/app/auth/rbac.py`, `dashboard/src/api/logs.ts`, `dashboard/src/features/logs/` (the cluster fold, the hooks, the view model, three components, the page and three test files) and `dashboard/src/App.tsx` (`/logs`). Policy recorded as **D-064**. **The acceptance criterion is arithmetic, not a screenshot**: 10,000 lines sharing a template id come back as one row whose count is 10,000, asserted through both the ingest and the read route, and the expansion behind a row is reconciled with that count by a second test — the fold cannot pass by drawing a table no assertion read. **Pause freezes rather than buffers**: the window is state, so pausing stops the clock the read is measured against *and* switches the poll off, and resuming starts a fresh window instead of replaying the frozen one. **Four empty screens have four sentences**, because "no results" is not one fact — nothing retained, a window falling between two retained lines, a window whose filters matched nothing, and a filter that has never matched — and that index is pinned by the service tests and the page. **Every read carries the API's caveats verbatim**, including the two this build cannot deliver: a declared level is not an anomaly score, and the `index` half of §4.5 is **T-419**, filed rather than faked. **Four defects the tests and the battery found rather than review**: the tail returned a collector's batch order instead of time order (now sorted by timestamp before the row limit), the histogram's keys were sorted alphabetically so `critical` preceded `debug` (now ordered by level rank), a window with no lines inherited the "nothing has arrived" sentence, and the age bound was measured from the wrong clock (the battery then found a fourth: the histogram was sorted alphabetically, so `critical` came before `debug`). **56 injected defects, 53 killed, 3 demonstrated equivalences, 0 bad anchors** -- the survivors became tests (case-only messages, equal-count ordering, the age boundary, a zero-width window, both filters on both routes, both reads credentialed, a failed hand-off, and five dashboard gaps) rather than being written off. Backend 1266 → 1325 tests (13 skipped); dashboard 605 → 654 in 56 files; total 2510 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the tail is in-process and dies with the process (T-419), the 15-minute cap is configuration rather than retention, and no cluster links to the alert that referenced it, because an alert's evidence names a window rather than the lines in it. |
+| 2026-10-06 | 1.51 | **T-406 done — the traffic explorer brushes one model and says what it cannot draw.** `dashboard/src/features/traffic/` (`aggregate.ts` for the series, the entity fold and the edge fold; `graph.ts` for the mode, the layout and the matrix; `view.ts` for the one pipeline; `api.ts`/`hooks.ts`; `BrushSeries`, `EntityTable`, `EntityGraph`, the page and six test files), `dashboard/src/components/charts/palette.ts` (moved down a layer so two features can read it — R-15), `dashboard/src/api/alerts.ts` (the shared window walk, so the overview and the explorer cannot drift apart), `dashboard/src/App.tsx` (`/traffic`). Policy recorded as **D-063**. **"Brushing filters everything below" is structural, not an instruction repeated in three panels**: the brush, the entity controls and the pin fold into one row set, and the series alone is drawn from the whole window because it is the axis the brush is drawn on. **The two numbers FR-52 asks for that this build cannot produce are named on the screen and filed rather than invented** — volume is the raw-record count alerts carried (not traffic; **T-418**, no read API for ingested flows) and entities are ids (not hosts; **T-416**) — and the notes live in the model, so no panel can render the numbers without the sentence that qualifies them. **The ≥ 2,000-node fallback is data, not a rendering detail**: the mode and its `reason` are returned together, so the matrix cannot be drawn without labelling the switch, and the matrix says how many of N entities it drew. **Two things the work changed after they were built:** a pin was documented as *widening* while the code narrowed, which the battery caught and the code now matches (the pin leads, its neighbours return from the unfiltered set, everything already on screen stays); and the mulberry32 `randomSource`/`seed` was removed rather than kept as decoration — reading d3-force showed its jitter source only reaches the tick loop for exactly-coincident linked pairs, and four measured graphs laid out identically under seed 1, seed 99 and `Math.random`. **71 injected defects, 70 killed, 1 demonstrated equivalence, 0 bad anchors** (`/tmp/t406_mutations.py`; run 1 killed 43 and its survivors became the six new suites plus that removal — the equivalence is the 4 px click branch, a second spelling of the one-bucket rule at 608 px of plot for 60 buckets). Dashboard 500 → 605 tests in 51 files; total 2402 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the flow read API (T-418) and entity names (T-416) are why the explorer's numbers are not FR-52's numbers; the charting bundle is still eager (T-412); and the realtime layer keeps T-405's gaps. |
+| 2026-10-06 | 1.50 | **T-405 done — the stream degrades instead of stopping.** `dashboard/src/lib/realtime.ts` (the frame vocabulary, the resume cursor, the backoff schedule, the close-code policy), `dashboard/src/api/realtime.ts` (the transport client: one socket, the 15 s REST fallback, backoff with jitter, the silence watchdog), `dashboard/src/api/session.ts` (the credential the dashboard never had), `dashboard/src/components/realtime/` (`RealtimeProvider` + `useAlertFeed` pub/sub, `useAlertSync`, `useConnectionView`, `ConnectionBanner`), `dashboard/src/components/layout/AppShell.tsx` (the real connection state and §8.1's `last update 2 m ago`), `dashboard/src/api/client.ts` (the bearer header; a 401 ends the session and a 403 does not), `dashboard/vite.config.ts` (`ws: true` on `/api`, or the handshake is proxied as a plain request). Policy recorded as **D-062**. **The fallback is a transport, not a feature**: a poll answer becomes the same `ready`/`alert` frames the socket sends, so the cursor (`after=`) is the one resume position and nothing above the client knows which transport it is on — which is what makes the acceptance criterion testable as a union. **One test is the acceptance criterion itself**: alerts 1–2 arrive on the socket, the socket is killed, alert 3 arrives on the fallback, the reconnect resumes `after=3` and replays 4–6, and the assertion is that the sequence a subscriber saw is exactly 1…6 with no duplicates. **A pushed alert re-reads rather than accumulating** (React Query stays the only copy of the data, R-24), coalesced so a fifty-alert replay is one read. **4401/4403 stop the retrying and keep the screen live-with-caveats**: the banner names the reason and the fallback keeps polling, and a new credential reopens the socket. **The test suite found a real ordering defect**: the silence watchdog was armed *before* the frame that carries the server's heartbeat interval, so a 2 s deployment would have been watched at 45 s — arming after the frame is applied is what the test now pins. **61 injected defects, 58 killed, 3 demonstrated equivalences, 0 bad anchors** (`/tmp/t405_mutations.py`; run 1 killed 53 and its survivors became three tests — the server's ahead-of-ours resume cursor, the fallback stopping when the stream returns, and the deferred refresh in a hidden tab — plus the removal of a redundant condition that could never be true). Dashboard 420 → 500 tests in 44 files; total 2297 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the socket needs uvicorn's `ws` extra and the hub is in-process (T-310's, unchanged); sign-in is T-417, so a refused handshake is the honest state until it lands; and the fallback's pause in a hidden tab is §4.1's rule applied to a channel the design section never named. |
+| 2026-10-06 | 1.49 | **T-404 done — the triage loop closes without a mouse.** `backend/app/services/alert_detail.py`, `backend/app/schemas/alert_detail.py` (the read model), `backend/app/api/v1/endpoints/alerts.py` (the detail route), `backend/app/services/alert_store.py` (`get` by partition key), `dashboard/src/features/triage/` (api, hooks, links, verdicts, view, six components, the page, fixtures and eleven test files), `dashboard/src/api/alerts.ts` (the shared wire shapes and path builders), `dashboard/src/api/client.ts` (`postJson`), `dashboard/src/components/hooks/polling.ts` (the polling hooks the two screens now share), `dashboard/src/lib/format.ts` (instant formats pinned to UTC). Policy recorded as **D-061**. **R-70 is enforced by construction**: a blank, unreadable or whitespace-only explanation payload becomes `explanation_unavailable` with a reason naming what was found, so the panel has no code path that renders an empty success — and a JSON `true`, a score outside [0, 1] or a naive timestamp is counted in `unreadable` rather than rendered as data. **Evidence expiry is computed, not guessed**: each occurrence carries `expires_at` from the deployment's retention policy, and a partly expired trail is *partial*, not expired. **The family hint counts strictly prior alerts** on `(created_at, id)`, because the claim is about decisions already taken. **The screen is one bounded read** addressed by both halves of the key (D-030), and the keyboard loop is structural: the queue is links, the bar is sticky, `1`/`2`/`3` come from the same table the buttons do, and the write is announced (`recorded` vs `unchanged`). The parameterised path moved `stream` ahead of `alerts` in the router table, or `/alerts/stream` would be read as an alert id. **53 injected defects each failed the suite** (`/tmp/t404_mutations.py`, 53/53; run 1 killed 48, and of the four survivors three were test gaps now closed and one was an *equivalent* mutant — the prior-alerts filter was unreachable behind the store's half-open window, so the rule moved into the service where it is testable). Dashboard 298 → 420 tests in 39 files; total 2215 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the explanation payload carries no contribution weights and the timeline has no series until T-406, so both panels name what they are missing; raw records are pointers only; the queue is one page of a 24 h window; and the live channel is T-405. |
+| 2026-10-06 | 1.48 | **T-403 done — the overview answers "is anything happening, and is AEGIS itself healthy?".** `dashboard/src/api/client.ts`, `dashboard/src/lib/prometheus.ts`, `dashboard/src/lib/format.ts`, `dashboard/src/features/overview/` (api, aggregate, pipeline, charts, palette, view, hooks, four components, the page and eight test files), `dashboard/vite.config.ts`, `dashboard/.eslintrc.cjs`, `scripts/check_frontend_boundaries.py`. Policy recorded as **D-060**. **The rules gap is closed by writing them down where the code is**: the page has no aggregate endpoint to call, so it walks keyset pages, stops at five, and says "only the first 5 pages were read, so every count below is partial", marking each tile and suppressing the previous-period delta rather than printing a confident wrong arrow. **Three numbers design.md §4.1 draws cannot be filled in this build and each says so** — the mean-time-to-verdict tile, the correlate and notify latencies (no timer exists; the strip shows the budget and calls the number unmeasured), and the entity names (the API returns ids) — filed as **T-416** instead of shown as zeroes. **The pipeline strip reads the Prometheus scrape** through a parser in `lib/prometheus.ts` (a `+Inf` bucket must become `Infinity`, not `NaN`, or every quantile is wrong), and a test asserts each budget equals the one architecture.md §5 or NFR-01 publishes; a degraded stage renders red *and* names the budget it exceeded. **Charts are pure configuration**: `charts.ts` returns plain data so a node test can assert stacking, "never truncate a count axis", descending bar order and the bar-end labels, and the palette is read from the live CSS variables so the theme switch carries into the canvas. **R-23 found a home**: the typed client moved to `src/api/` where the lint rule says it belongs, and the boundary checker learned the layer. **43 injected defects each failed the suite** (`/tmp/t403_mutations.py`); two survivors from the first run are now killed and one equivalent mutant is documented as such. Dashboard 159 → 298 tests in 27 files; total 2056 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the chart is not brushable (T-406), the charting bundle is eager (~110 kB gzip) and code-splitting is filed with T-412, and the live WebSocket channel is T-405. |
+| 2026-10-06 | 1.47 | **T-402 done — the UI primitives, each with a test for its states and an axe-clean render.** `dashboard/src/components/ui/` (14 source files, 11 test files), `dashboard/src/theme/motion.test.ts`, `dashboard/src/theme/density.ts` + `.test.ts`, `dashboard/src/index.css`, `dashboard/tailwind.config.js`, `dashboard/src/components/layout/AppShell.tsx`, `dashboard/package.json` (`lucide-react`, §5.6's icon set). Policy recorded as **D-059**. **A primitive owns its states**: `Card` takes a `state` discriminator so R-29's loading/empty/error cannot be forgotten, `ConfirmDialog` keeps the destructive gate in React state so a cleared field re-arms nothing, `Toast` auto-dismisses everything except errors, and a modal returns focus to its trigger. **The rules with ratios behind them became classes**: §5.3's badge rule is `text-onSeverity` on every severity fill and on `Button`'s danger variant, `SeverityPill` is the AA text variant with the base-hue rail, and both carry the glyph because colour is never the only encoding. **Two hooks the token layer had not exported** — `onAccent` and `onSeverity` — were added, and `AppShell`'s inline `style={{ width: collapsed ? 56 : 240 }}` became `w-rail`/`w-rail-collapsed`, closing the R-27 gap T-401 recorded. **`DataTable` is virtualised by the density module's own row height** (`ROW_HEIGHT_PX` beside `ROW_HEIGHT_CLASS`, both read out of §5.5 by the test): sorting announced through `aria-sort`, a native column picker, controlled-or-uncontrolled selection, sticky header, and the empty state under the real headers. **§8.2's motion tokens are declared now** because this is the first task that animates: 120/200/300 ms in CSS with `transitionDuration` utilities, the ceiling asserted against the document, and a `prefers-reduced-motion` guard over animations and transitions alike. **34 injected defects each failed the suite** (`/tmp/t402_mutations.py`; no file left changed). Dashboard 67 → 159 tests in 18 files; total 1917 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** DataTable assumes §5.5's uniform row height, `Toast` has no stacking limit, and the D3 visualisations plus `CommandPalette` stay unexported until T-406 and T-411. |
+| 2026-10-06 | 1.46 | **T-401 done — the design tokens are a closed system, and the tests read design.md rather than restating it.** `dashboard/tailwind.config.js`, `dashboard/src/index.css`, `dashboard/src/theme/tokens.test.ts`, `dashboard/src/theme/tailwind.test.ts`, `dashboard/src/theme/density.ts`, `dashboard/.stylelintrc.cjs`. Policy recorded as **D-058**. **Tailwind's colour, spacing, type and family scales now *replace* the defaults instead of extending them**, so `bg-red-500`, `p-5`, `text-lg` and `font-serif` compile to nothing: "every colour in use resolves to a token" becomes a property of the build rather than of a review that misses things. **Three of Tailwind's own defaults were off-palette once the palette was replaced** — the ring was blue-300/50 %, the placeholder gray-400, the ring offset white — and all three now name tokens; overriding a scale to change its DEFAULT also deletes the rest of the scale, which cost a test during the task when `border-line` vanished, so the colour map is defined once and shared. Two literals still reach the stylesheet and are asserted rather than assumed: Tailwind's `#0000` in its shadow resets (`transparent`) and preflight's `#9ca3af` placeholder fallback, which `src/index.css` overrides at equal specificity and later order. **The suite parses design.md §5** — every colour value, every published contrast ratio, the badge rule's six ratios, the focus-ring pair, the type steps, the spacing and radius steps, the density and icon numbers — and recomputes each against the shipped tokens, including the ratios written as comments beside them, because a stale comment is how a contrast claim rots. Then it compiles the real config and the real `src/index.css` through PostCSS and asserts on the emitted stylesheet. **R-27's CSS half is stylelint as rules.md lists it**: hex, named colours and `rgb()`/`hsl()` are banned repo-wide with one override for the token file. **29 injected defects each failed their target command** — both halves of the placeholder override, every token below AA in either theme, a token deleted from one theme, a restated ratio comment, a palette colour added to the scale, a token turned into a literal, an off-scale spacing step, drifted row/icon/rail numbers, a caption under the 12 px floor, a third font family, the ring default back to blue, a build that scans nothing, and three component-level smuggles. Dashboard 34 → 67 tests; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the overlay shadow's blur and spread are the one pair design.md does not publish (the policy is what it fixes); §8.2's duration and easing tokens belong to the task that first animates something, so "nothing over 300 ms" is documented and not yet closed; and per-user density persistence is T-410's. |
+| 2026-10-06 | 1.45 | **T-323 done — the deployment now names a driver it installs.** `backend/pyproject.toml` declares `psycopg[binary]>=3.2`; the `Settings.database_url` default, `backend/.env.example` and `docker/docker-compose.yml` all moved from `postgresql+asyncpg://` to `postgresql+psycopg://`; `scripts/check_compose.py` gained rule 8 and `backend/tests/test_database_driver.py` 14 tests. Policy recorded as **D-057**. **The task's premise was only half the defect.** Nothing installed a driver, yes -- but installing `asyncpg` would not have fixed the compose DSN either: Alembic's `env.py` builds a *synchronous* engine, and SQLAlchemy refuses an async-only driver there whatever is installed beside it, failing with `greenlet` missing and then un-awaited coroutines. Measured with `asyncpg` installed, before writing any fix. So the driver is psycopg 3: one library for the synchronous engine Alembic uses and for the async engine R-18 will require, shipped as `[binary]` so a plain install needs no system libpq. **A bare `postgresql://` is refused as well** -- SQLAlchemy would silently reach for psycopg2 -- and the guards are two: the compose checker's rule 8 compares the compose URL and the application default against the dependencies the backend declares, and the new test file scans every DSN in the repository and then, in a subprocess, opens an engine on each and asserts the driver the install loaded. The subprocess is not ceremony: importing psycopg in process would leave it in `sys.modules`, where `test_golden.py` asserts the golden path never needs a database client. **`alembic upgrade head` was then run for real from a venv containing nothing but `pip install ./backend`**, reaching `0002_typed_scores (head)` on pgserver's PostgreSQL 16.2 -- the first application of the repository's own migration from a plain install rather than a developer venv -- and the 13 live migration tests passed under the same `postgresql+psycopg://` DSN (D-055 covers the earlier DDL run). **12 injected defects each failed their target command**, including the checker's own invocation, so an unwired rule could not survive. One process finding worth carrying: the battery's first restore rewrote a file from an empty replacement and corrupted two of them -- a mutation that deletes a line must be restored from a snapshot of the bytes, and the second run verified all five mutated files by hash afterwards. Backend 1213 -> 1227 tests (13 skipped), coverage 98.56% -> 98.63%. **Gaps:** the compose stack is still not started here (no Docker daemon), and the request path's session will need `sqlalchemy[asyncio]` when D-030 is closed -- nothing declares it yet. |
+| 2026-10-05 | 1.44 | **T-322 done — analyst verdicts now move the thresholds, one guarded step at a time.** `backend/app/services/recalibration.py`, `backend/app/services/ml_calibration.py`, `backend/app/schemas/thresholds.py`, five `ROUTE_MATRIX`/`AUDITED_ROUTES` rows in total across two routes, and 81 new tests (49 service, 32 API). Policy recorded as **D-056**. **The window is the score's, not the label's**: architecture §7.4's rolling fortnight is read over when each alert fired, so a labelling backlog cannot re-shape the sample around stale traffic, and a run replayed for a past instant sees the verdicts that were then in force. **`true_positive` is not benign evidence** — it is evidence about an attack, and a threshold is a statement about the benign distribution — so a family whose labels are all true positives is reported as refused rather than fitted, and never silently dropped from the report. **The sample floor is derived**: below `1/(1-0.99) = 100` scores the fitted 0.99 quantile *is* the top one or two order statistics, so a fit from twenty windows is a fit from its loudest two, and the floor is asserted equal to that inverse so it cannot drift from the quantile. **The guardrail is not reachable from a request**: the injected `Calibrator` has no guardrail parameter, `MlCalibrator` calls T-207's `calibrate` without one, and the request schema forbids extra fields — a caller who could pass 0.5 could remove the criterion. Clamped moves are applied and recorded with both the requested and the applied value, because the requested-and-refused entry is the record of the data disagreeing with the bar. **Fits happen before writes**: a sample the calibrator refuses leaves the store untouched, and a fit that lands on the current value writes and audits nothing (D-041). Both routes are exercised through the real seams — the alert store the query API reads and the ledger the verdict route writes, wired once in the composition root so the job cannot fit on feedback that never arrives. One `AuditAction` was added (`threshold.recalibrate`) and one existing file carried a defect found by the full suite rather than by its own module: `tests/test_schema_conformance.py`'s offline DSN tripped detect-secrets, which the T-321 commit had not seen because the hook only failed once the whole run was clean; it carries the repository's inline allowlist pragma now, and the `MlCalibrator` import moved to `importlib.import_module` so the two mypy configurations (backend-only and scripts) agree without a suppression comment. A third failure was the calendar's: `tests/test_privacy.py` asserted that a hard-coded month lay inside a 400-day retention window, and on 2026-10-06 the window's first day moved from 2025-08-31 to 2025-09-01, leaving the asserted gap outside it -- the month is now derived from today, which is what the window is measured against. **69 injected defects each failed their target tests**, covering the label filter, the sample floor both ways, the window's direction, the stored versus default value, the clamp, the two-phase write, the tenant and band scoping, the page loop and its cap, the audit row per change, the role matrix, the band refusal and the wiring. Two real gaps in the tests were found by that battery rather than by review: a refused family's `previous_was_default` and the *contents* of the missing-package message were both unasserted, and two mutants that looked equivalent turned out to be caught only once another tenant's row and another band's row were given families of their own. Backend 1131 → 1213 tests (13 skipped), coverage 98.52% → 98.56%; 26 checks, 0 failed. **Gaps:** the run is a route, not a scheduler (no CronJob in `k8s/`); the store is in-memory (D-030); and per-tenant feedback needs a tenant on the alert row. |
+| 2026-10-05 | 1.43 | **T-321 done — the score columns are fixed-precision, severity is checked, and the migration was applied to a real server.** `backend/alembic/versions/0002_typed_scores_and_severity_check.py`, the `Severity` enum moved to `app.db.models` with the constraint built from it, `alerts.score`/`thresholds.value` typed `Numeric(5, 4)`, a check constraint on `alerts.severity`, and two test modules (10 offline, 13 live). Policy recorded as **D-055**. **The enum is defined once**: the column's check is built from the same members the correlator bands by, so a new band cannot be stored unless the column is migrated with it; the migration keeps a literal — an applied migration must not change when the enum does — and a test parses the migration and asserts the literal equals the model's, so the copies cannot drift apart silently. **The criterion is not DDL**: Alembic's `--sql` mode is asserted for the upgrade (both columns typed, the constraint added) and the downgrade (all three reversed), and the round trip is asserted against a server. That server is a sandbox one -- pgserver's PostgreSQL 16.2 with psycopg 3.3.6 installed there -- against which **all 13 live migration tests passed** — including the ones T-301 wrote and could never run — covering the two partitioned tables, the composite primary keys, the refused default partition, partition pruning, the missing foreign key on `audit_log`, a 0.9 score reading back as exactly 0.9000 with `numeric(5, 4)` declared, and `urgent` refused by `ck_alerts_severity`. Two defects in the new tests were found by running them rather than reading them: `numeric_precision(score)` is not a PostgreSQL function (the declared type comes from `information_schema`), and the round-trip query assumed an empty table, so a repeat run found many rows — it is now keyed on the entity it inserts. Backend 1121 → 1131 tests (13 skipped in CI), coverage 98.52% unchanged, and the check suite stays 26. **51 injected defects each failed their target tests** -- the column types and their decimal behaviour, the enum's members, values and ranks, the constraint's name, table and text, the correlator's re-export, and every statement and cast in both directions of the migration. **Gaps:** nothing in the repository installs a PostgreSQL driver and the compose DSN names one that is not declared, so `alembic upgrade head` cannot run from a plain install — filed as **T-323**; the live tests still skip in CI; and no database session is wired into the request path (D-030), so the stores remain in-memory. |
+| 2026-10-05 | 1.42 | **T-320 done — the API reference is rendered from the schemas and the build fails when the committed file drifts.** `backend/app/api/openapi_docs.py` (the coverage rule and the renderer), `scripts/generate_api_reference.py` (the generator the build runs, with `--check`), the committed root `api-reference.md`, a `docs: api reference` check in `check_all.sh`, `openapi_extra` bodies on both ingest routes, the true media types on the SSE and scrape responses, and `declare_components` for the models those bodies reference; 38 tests. Policy recorded as **D-054**. **The rule is over the built application, not over a list someone maintains**: every registered route has an operation or a *reasoned* exemption, every operation has a summary and a success response, every response is a schema, a no-content status or a declared media type that carries no JSON model, every body method documents a body unless it is on `BODYLESS_POSTS`, and every `$ref` resolves — and the exemptions are asserted to still be *needed*, because an exemption nobody removes is how a coverage rule rots (the pattern T-316 set for R-56). **An empty JSON schema is not documentation**: FastAPI emits `{}` for a route that declares no response model, so `-> Response` is told apart from a modelled response rather than passing as "any JSON", and each rule is proved to bite by building applications that break exactly one of them. **The published file cannot drift**: `render_reference` is deterministic (sorted paths, methods and components, no timestamp) and the file ends with exactly one newline, because the end-of-file hook strips a trailing blank line; it is excluded from prettier for the same reason, since a formatter and a drift check that disagree about the same bytes would fail each other forever. **48 injected defects each failed their target tests**, covering every rule and every exemption branch, the declared bodies and their components, the media types, the renderer's ordering, escaping, roles, status filter and trailing newline, and the generator's check, write and default paths; one survivor was a *vacuous* test — it asserted on the first `name` row in the document, which belongs to another schema — and is now scoped to the section it means. Backend 1083 → 1121 tests, coverage 98.43% → 98.52% (`openapi_docs.py` at 100%), and the check suite 25 → 26. **Gaps:** the reference is the repository's copy of `/openapi.json`, nothing publishes it to a documentation site, and the schema is described as FastAPI generates it. |
+| 2026-10-05 | 1.41 | **T-319 done — the golden path, and the four seams it needed to exist.** `backend/app/pipeline.py` (in-process bus, `flow@1` consumer, entity ids, the score→detection adapter, the case→row writer), `backend/app/services/alert_store.py` (the `AlertStore` seam and its in-memory implementation), the ingest route publishing what it accepted, the alerts route reading the store, `alert_row_of` shared with the stream, per-record broker headers on the producer, and `closed_at` on the score sink; `backend/tests/test_golden.py`, 11 tests. Policy recorded as **D-053**. **The fakes are at the external system's boundary, not above it:** a broker-shaped log per topic and partition with offsets assigned on append, and the consumer parses the payload the real producer sent, so `partition_for` still decides placement and the worker still decides windows — asserted per partition, not taken from the producer's return value. The alert row is keyed by the correlator's case id, so an absorbed repeat refreshes one row (id and `created_at` stable, count and `last_seen` move) rather than appending a second one for the same incident; the `alerts` table has no case-id column, which is recorded as schema work rather than worked around. **Detection times are the data's**: the sink is handed the window's close time (`Window.end`) and refuses to date a detection from the worker's clock, since a replay would move an incident's start. **The trace context rides the record's headers** — D-035's "batch-per-source needs a shape change" gap landed here — so the id the ingest response returned is the id on every alert that request opened, read back through `GET /api/v1/alerts`. The route now returns 400 rather than 500 for a window it cannot bound, and a missing store is a loud error rather than an empty page. **43 injected defects each failed their target tests**, across the pipeline, the store, both routes, the middleware seam, the producer and the worker; one candidate mutation turned out to be *equivalent* (keying the row on the case's first evidence id behaves identically, because that id is stable for the case) and was replaced with one that keys on the *newest* window, because an equivalent mutant is not a survivor. Backend 1072 → 1083 tests, coverage 98.47% → 98.43% (a 116-line module at 99% and a store at 96%). **Gaps:** the log topic has no publisher or consumer; the scorer, the fusion rule and the family labeler are injected (no scoring endpoint, no attributed classifier); entity ids are allocated in memory because ingest does not write `entities`; a persistent alert store needs a case-id column; and the golden test asserts the path that is built, with the broker and the store faked as R-88 prescribes. |
+| 2026-10-05 | 1.40 | **T-318 done — structured logs that cannot carry a username, and one line per request that joins the trace.** `backend/app/core/logging.py` (rewritten around R-54), the request observer's access line, the trace id bound per request, `route_template` made public; 50 tests. Policy recorded as **D-052**. **The rule is enforced, not requested**: a field allowlist drops anything not written down — including a *key* that is itself the identifier, which is why nothing reports a dropped field — identifier fields are salted-hashed under an HKDF key derived from `AEGIS_SECRET_KEY` with a purpose no other subsystem uses, secret fields are `[redacted]`, and every remaining string (the event name, the values, the formatted exception) is scrubbed for e-mail addresses — with the TLD optional, because an internal login is `alice@corp` — addresses, bearer tokens, JWTs and `user=...` assignments. Before a secret is configured an identifier is `[redacted]` rather than hashed with a constant key, which would be a lookup table away from the value. The same scrub is the last step of the stdlib formatter, so uvicorn's own access line is covered as well; the acceptance criterion is asserted by planting the username in a token subject, a query string, a header and an exception message and reading the bytes the process actually wrote — not `structlog.testing.capture_logs`, which replaces the processor chain and would pass with every redaction deleted. **One structured line per request** carries method, the route *template*, status, duration and both correlation ids, at a level that follows the outcome, so a refusal the limiter produced before routing is still logged with its status. **Three defects were found by the tests rather than by reading:** the IPv6 pattern matched clock times, so a loose `two or more hex groups` rule was mangling every ISO timestamp (including the timestamp of the log line itself) and now requires the standard's `::` or all eight groups; `detail` was missing from the allowlist, so a nested mapping was dropped whole; and a test asserting that ids do not leak after a request was **vacuous**, because `asyncio.run` hands its coroutine a copy of the context — a leak is only observable inside the task that made the binding, so the check moved there and the tracing middleware now has its own test driven without the request-id middleware above it. **37 injected defects each failed their target tests**, in a battery that also separates an invalid mutant (a deletion that is a `SyntaxError`) from a survivor. Backend 1022 → 1072 tests, coverage 98.40% → 98.47%. **Gaps:** logs go to stdout and shipping/rotation is the deployment's decision; alert content is never logged (the allowlist makes that structural); a hostname or a bare username in prose has no shape to match, so the allowlist and the hashed `host`/`user` fields are the control, and the boundary is a test rather than an assumption. |
+| 2026-10-05 | 1.39 | **T-317 done — the metrics the architecture names and a trace id that survives from ingest to the alert row.** `backend/app/observability/{metrics,tracing}.py`, `GET /metrics`, `MetricsMiddleware`/`TracingMiddleware`, the `otel_exporter_endpoint` setting, `ConsumedRecord.traceparent` and the score sink, the correlator's span and `AlertCase.trace_id`, `window_ref.trace_id` read back as `AlertRow.trace_id`; 60 tests. Policy recorded as **D-050** (metric names, the closed label vocabulary, the unauthenticated scrape) and **D-051** (one server span per request, the traceparent that rides the record, the collector as configuration). **Every name is the architecture's and every label is finite**: the four §13 names plus the golden signals are asserted against the registry, a request that matched no route collapses into one `unmatched` series so a client cannot grow the process by choosing paths, zero counts create no series, the rejection counter's unit is the record rather than the pydantic error, and a scrape is asserted to carry no address, token or alert content (R-58). `/metrics` is unauthenticated **by decision** — a scraper is a process — and is therefore covered by R-56 and skipped by its own measurement. **Tracing is W3C `traceparent`**: the ingest response returns `traceparent` and `x-trace-id`, the context rides the consumed record into the scoring worker and the correlator, and the id a case was opened on is written into the alert's `window_ref` and read back by the query API — the acceptance criterion is asserted end to end through the real components. `traceparent_for` passes the span's flag byte through (masking it to the sampled bit made the header disagree with the span), and a malformed inbound header starts a fresh trace rather than failing the request, because refusing telemetry over telemetry is the wrong trade. **Two real defects were found by driving the framework rather than by reading it:** FastAPI 0.142 traces, measures and logs every request natively, so a request produced two identically named server spans and — the reason it matters — a mutation that removed our own trace-continuation still passed, because the framework was continuing it for us; the application now disables the framework's native telemetry explicitly and a test asserts exactly one server span per request. The second was a zero-count series: `.labels(...)` creates a child even when the count is zero, so "a stage that never refused anything has no series" needed a series assertion, not a value assertion (an absent series reads as zero). **65 injected defects each failed their target tests**, in a battery that first reported a clean sweep while every "kill" was the interpreter refusing to run a script named `-q` — the pytest invocation is now checked against a baseline before any mutation is applied. Backend 966 → 1022 tests, coverage 98.13% → 98.40%. **Gaps:** no collector is configured here (ids propagate, export is unexercised, the OTLP exporter is an opt-in extra), Kafka's per-record trace headers need the producer's batch signature to change (D-035), there is no `NOTIFY` span, and drift PSI has no caller yet (T-409). |
+| 2026-10-05 | 1.38 | **T-316 done — limits that refuse before work is done, and a buffer that refuses whole batches.** `backend/app/services/limits.py`, `backend/app/api/middleware.py`, the three limit settings, `app.state.rate_limit_policy`/`max_request_bytes`/`admission` in `create_app`, the `admission` seam and the ingest gate; 75 tests. Policy recorded as **D-048** (R-56 is a coverage rule; identity and bucket semantics) and **D-049** (413 before parsing, 503 with `Retry-After` for a full buffer). **R-56 is read as coverage, not as a rate**: every write method and every unauthenticated route, with `EXEMPT_ROUTES` empty and asserted empty, checked three ways -- the literals equal the union of `UNAUTHENTICATED_ROUTES` and `DOC_ROUTES`, every write and unauthenticated route on the *built* application is in scope, and a planted write route is limited the moment it exists, while an authenticated read is asserted out of scope so "everything is limited" cannot pass. **Identity is an HKDF fingerprint or the peer address**: the fingerprint uses a purpose distinct from the api-key digest's (D-042) so the two can never be cross-matched, the raw credential is never stored or echoed, and `X-Forwarded-For` is deliberately **not** consulted because a spoofable identity is worse than none. Buckets start full, refill at a minute's rate, charge nothing for a refusal, and `Retry-After` is rounded **up** and never zero; buckets idle past 600 s are pruned and the table is capped so rotating identities cannot leak memory. The limiter is pure ASGI and sits inside `RequestIdMiddleware` (a 429 carries the id), never `BaseHTTPMiddleware`, which buffers and would stall T-310's SSE stream. **`max_request_bytes` was configuration nothing read**: it is now enforced before any parser runs -- a declared oversize length is answered 413 without reading the body, and a body with no length or a lying one is counted as it streams -- with `connection: close` because the rest of the body was never read, and kept distinct from `BatchTooLarge`, which is the *record-count* 413. **Back-pressure refuses whole batches**: the ingest route charges an `AdmissionController` for the accepted records and answers 503 with `Retry-After` when they do not fit, because admitting the part that fits and failing the request is the silent partial write the audit trail exists to prevent; only accepted records are charged and the budget is released in a `finally`; the seam raises when unwired rather than defaulting to a budget that accepts everything. **59 injected defects each failed their target tests.** The first run left six alive and the two categories are worth separating: two were *battery* defects (a replacement that is not valid Python inside a list comprehension -- on which the battery reports "error" and counts it as a survivor rather than as a kill -- and a mutation neutralised by the guard above it), and four were real gaps that are now tested (a GET carrying a body, two credentials alternating so neither can reset the other's bucket, a running total that spans chunks, and the configured cap reaching the middleware rather than only `app.state`). **Two mistakes of mine were found by tests rather than by review:** the unauthenticated set was written `/docs/oauth-redirect` where the framework mounts `/docs/oauth2-redirect`, caught by the equality test that exists for exactly that; and the ingest fixture used in the back-pressure tests was a record the API *rejected*, so `accepted` was 0, the gate admitted zero, and four tests passed without exercising it -- the fixture is now valid and the accepted count is asserted, so the gate cannot go unexercised again. Backend 891 → 966 tests, coverage 98.00% → 98.13%; 25 checks, 0 failed. **Gaps:** limits are per-process (a multi-worker deployment gets one allowance per worker; a shared store is not chosen here), the anonymous bucket is shared behind NAT by design, and the budget is held for the request rather than released on delivery to Kafka while the producer does not exist (D-039). |
+| 2026-10-05 | 1.37 | **T-315 done — model ops, where promotion is one call and a rollback is the reversal of one.** `backend/app/services/model_ops.py`, `backend/app/schemas/model.py`, `backend/app/api/v1/endpoints/models.py`, four `ROUTE_MATRIX` entries, two `AUDITED_ROUTES` rows and the `model_ops` seam; 74 tests. Policy recorded as **D-046** (promotion, rollback, authority) and **D-047** (the registry authority and R-74 at the edge). **Promotion retires the incumbent in the same call**, because two calls leave a window with either two active versions of a kind or none; **a rollback is not a promotion** -- `model_status` has no path back from `retired` (R-68 keeps the set of versions that have served traffic append-only), so rollback is modelled as the *reversal* of a promotion: it re-activates the version the current one displaced and retires the current one, both in one call. The caller names the **kind**, not a version, so an operator cannot roll back to something that never served, and the predecessor comes from the service's own history. The reversal is recorded by marking the promotion it reversed -- the schema's own `rolled_back_at` -- rather than by appending a second transition, so a second rollback moves one promotion further back instead of bouncing the same two versions, and a kind whose active version displaced nothing answers 409 rather than guessing. Authorisation needed no new capability: R-53 already names a `models` capability and gives it to `admin` alone, so promote and rollback use it while reads only need `READ` (which model is serving is what an analyst interprets an alert with), and a machine credential cannot promote anything because T-313's route table does not accept keys here. **The trail records ids, kind and status only**: the promotion justification and the rollback reason are required by the request, stored on the version and returned, and deliberately absent from the widest-read table (R-58, T-309's precedent); a no-op promotion returns `changed=false` and writes no row, so a retrying client cannot fill the trail. Refusals are shaped by their remedy: 400 for a floating id (naming R-68, since "forbidden" and "not found" have different fixes) and for a blank note or unknown kind, 404 for an unknown version, 409 for a retired version or one without a training manifest (R-63 gates promotion, not registration), 422 for an unknown filter. **R-74 is enforced structurally**: the registry starts empty, a metric cannot be built from a value alone (each names its artifact and field), a set missing any of FR-31's five metrics or naming no split is refused, a value outside [0, 1] is refused as a units bug or a fabrication, and a version with no recorded evaluation renders as a gap -- the metrics route says the version is registered but unmeasured rather than showing a zero. **45 injected defects each failed their target tests**, covering every R-68 refusal, the manifest gate, the incumbent retirement, no-op promotions, the rollback's predecessor and marking, the wrong-actor record, the two audit rows and their absent notes, the 400/404/409/422 mapping, the role matrix, and the seam that must refuse rather than answer with an empty registry. One survivor was real and is now closed: a seam that returned an empty `ModelOpsService` instead of raising would have answered "no models are registered" for a deployment that has some -- a confident wrong answer -- and a test now asserts the refusal. Backend 817 → 891 tests, coverage 97.83% → 98.00%; 25 checks, 0 failed. **Gaps:** shadow mode is design.md's default promotion target and is not modelled (`model_status` has no `shadow`; architecture.md §9's staging → shadow-score → active step is T-213's harness with no scheduling decision yet), the promotion modal's type-the-id confirmation is T-409's, no client to the model service exists (so `model_ops` is in-memory), and the `models`/`model_versions_history` tables are unadapted while no session is wired (D-030). |
+| 2026-10-05 | 1.36 | **T-314 done — retention that drops only the months the policy has finished with, and an erasure that says what it did not touch.** `backend/app/services/retention.py`, `backend/app/services/erasure.py`, `backend/app/schemas/privacy.py`, `backend/app/api/v1/endpoints/privacy.py`, the retention settings, `Capability.RETENTION`, four `ROUTE_MATRIX` entries and two `AUDITED_ROUTES` rows; 111 new tests (32 retention, 43 erasure, 31 API, plus the audit-table enumeration). Policy recorded as **D-044** (retention) and **D-045** (erasure). **The boundary is the whole task**: a month may be dropped only when its *end* is at or before the cutoff, so a month that straddles it keeps the rows the policy promised; the equality case (a 399-day window ending exactly on a partition's last day) is asserted on its own, because an implementation using `<` passes every other test while retaining a day more than it claims. Windows are configuration -- 30 days for raw records per FR-05, 400 for alerts and ingest stats -- and an inverted pair (alerts kept shorter than the raw records they came from) fails at startup, not at the first run. The plan is a pure function of policy, today and the catalog, which is what lets the admin preview and the run build it the same way; `missing` months are reported because there is no default partition, and `audit_log` is reported unevictable with its reason (R-31) in every plan rather than omitted. Kafka and Elasticsearch retention are reported as mechanisms, not executed. **Erasure redacts entities and deletes accounts**: a host row stays with a tombstone because alerts reference it, a user row goes because the row *is* the account, and the `api_keys` rows go with it (the schema's own `ON DELETE CASCADE`). The tombstone is an HKDF-keyed HMAC truncated to 32 hex, prefixed `erased:`, kind-separated -- and explicitly a pseudonym rather than anonymisation, since whoever holds the secret can test candidates. `audit_log` and `verdicts` are named as preserved with reasons and never rewritten. **Idempotence comes from the ledger**: a repeat request appends nothing and writes no second audit row, so a client that retries cannot fill the trail; the identifier is in the process for one call and appears in no response, store, ledger entry or audit detail -- asserted by scanning all four. **46 injected defects each failed their target tests**, covering the boundary rule both ways, the cutoff arithmetic, per-table window mapping, the equality and range validations, unevictable reporting, swallowed drop failures, an already-absent partition counted as dropped, unkeyed and kind-blind tombstones, a ledger that ignores its cursor or its own history, a row-deleting entity store, kept API-key rows, a repeat erasure audited twice, the identifier copied into the audit detail or echoed back in the report, an unknown kind guessed instead of refused, a cursor that skips a page, widened matrix rows, a runner seam that reports a clean run, and both audit-table rows. Two survivors in the first run were *equivalent* rather than missed -- stats and alerts shared a window of 400, so mapping one to the other changed nothing, and the matrix's role lists are intent while `require` is the gate -- and were closed by adding the tests that make the difference observable instead of counting them. One battery bug matters more than any mutation: the first run invoked pytest without `-m`, every run exited 2 in milliseconds, and a battery that read a collection error as "the tests failed, so the mutation was killed" reported a 45/45 sweep while proving nothing; it now checks a baseline first and treats a collection error as infrastructure. The pre-commit detect-secrets scan was failing on two pre-existing false positives (the public `aegis_sk_` prefix constant and a JWT-shaped test string); both carry the repository's inline allowlist pragma now. Backend 706 → 817 tests, coverage 97.39% → 97.83%; 25 checks, 0 failed. **Gaps:** the catalog query and the statement runner are seams with no session behind them (D-030), the ledger table has no adapter, and erasure of the raw records that live in Kafka and Elasticsearch is reported, not performed. |
+| 2026-10-05 | 1.35 | **T-313 done — scoped API keys, hashed with a key the database does not hold.** `backend/app/auth/api_keys.py`, `backend/app/schemas/api_key.py`, `backend/app/api/v1/endpoints/api_keys.py`, three `ROUTE_MATRIX` entries, `Capability.API_KEYS`, and the `Principal` extension that lets a key authenticate; 110 tests. Policy recorded as **D-042** (storage) and **D-043** (authorisation). **The hashing decision is the interesting one:** `key_hash` is `String(64)` and an Argon2id encoding is far longer, so the task's own bar -- "hashing" -- had to be settled rather than assumed. Argon2id is right for passwords because they are low-entropy and human-chosen; a 256-bit `secrets` key has nothing to guess, and memory-hard verification on every ingest request would be a self-inflicted denial-of-service. So the stored value is **HMAC-SHA256 over the whole presented key under an HKDF-derived key from `AEGIS_SECRET_KEY`** -- 64 hex characters, no migration, and a stolen database is not an offline oracle because the digest key is not in it. The consequence is named: rotating the application secret invalidates every key at once, as it already does for sealed webhook secrets. **The secret is exposed exactly once and this is asserted as an absence**: `ApiKeyOut` has no field for it, the record dataclass has none, the module exposes no name that returns a plaintext, issuing twice yields different strings, and a scan of the store and the audit trail after a create finds neither the key nor its digest. The only recoverable display value is the prefix `aegis_sk_<id>_`. **Only a prefix is stored**, and the MAC covers the id half too, so a key with its id rewritten fails the digest rather than merely missing a lookup; an unknown id is compared against a dummy so "no such key" and "wrong secret" cost the same work (the residual -- which ids exist -- is metadata and is named). **Revocation is a column, never a delete, and it lands on the next request**: verification reads the store every time, there is no cache, and a second revoke keeps the first timestamp. **Authorisation is by scope, not by role:** `API_KEY_ROUTES` is a default-deny table of three routes, and for each one the scope's capabilities must be a subset of the **intersection** of the capabilities of every role the matrix allows there -- so a key cannot outrank the least-privileged human on its own route, and that is asserted rather than intended. Presenting an `Authorization` header *and* an `X-API-Key` is a 401 rather than a precedence rule, since guessing authorises the request with the credential the operator did not mean. **38 injections each failed their target tests** -- including a digest over only the id, a short-circuit that skips the dummy comparison, a revoked key that still resolves, a revoked key that still grants, a second revoke that moves the timestamp, a store that deletes instead of revoking, both SQL guards dropped, a widened `alerts:read`, a key principal that borrows its owner's subject, a listing served with the create schema, a repeated revoke audited again, and an endpoint that silently drops an unknown scope. Two survivors in the first run were equivalent mutants (a no-op `int(int(...))`) and one was a mis-targeted battery entry; the equivalent ones were replaced with real defects rather than counted. **Gaps:** the store is in-memory while no database session is wired into the request path (`api_keys` has its table and index in migration 0001, so this is the same adapter gap D-030 names, not a schema one); `owner_id` wants the numeric `users.id` the opaque subject cannot supply (D-038); per-key rate limiting is T-316; and the `/admin/keys` screen is T-410's. Backend 596 → 706 tests, coverage 96.89% → 97.39%. |
+| 2026-10-05 | 1.34 | **Environment reset, and the tree re-verified rather than assumed.** The sandbox was recreated between sessions: `.venv`, `dashboard/node_modules` and the local git history were gone, and `.git` was the initial shallow clone at `04aeb71` again. **The working tree was intact** — every E3 file, test and documentation edit unchanged — but `a2c29e1` (T-308), `b6975f4` (T-309), `c6eacd4` (T-310) and `34dc7ff` (T-311) no longer exist here and were never pushed (the branch has no upstream), so **`415a5b1`** re-establishes their content: one commit standing in for four, and the per-task commit boundaries are gone with them. No file content changed, so every recorded measurement still describes what is on disk. The Python environment was then rebuilt from `backend/pyproject.toml` (which is also what proves `cryptography>=44` is declared rather than hand-installed) and the dashboard dependencies from `package.json`, and the full suite re-run to 25 checks / 0 failed before T-312 began. |
+| 2026-10-05 | 1.33 | **T-312 done — the audit trail, append-only and complete over mutating routes.** `backend/app/services/audit_log.py`, `backend/app/schemas/audit.py`, `backend/app/api/v1/endpoints/audit.py`, `backend/app/api/v1/deps.py`, one `ROUTE_MATRIX` entry, 72 tests. Policy recorded as **D-041**. **R-31 is asserted three ways** — the mapper, the trail object and the protocol are each walked for a mutating name, and the record handed back is frozen with its `detail` in a read-only view, because freezing the field alone leaves the dict it points at editable; a source-level test asserts no `update(AuditLog)`, `delete(AuditLog)` or `on_conflict_do_update` exists in the module, which is the strongest form available without a server. **FR-42's completeness clause is a table plus a walk of the built app**: every `POST`/`PUT`/`PATCH`/`DELETE` route must be in `AUDITED_ROUTES` or the deliberately-empty `AUDIT_EXEMPT_ROUTES`, proved non-vacuous and proved by planting an uncovered route. **The trail records changes, not requests** — a 4xx writes nothing, an ingest batch that accepted zero records writes nothing, and a verdict re-sent unchanged writes nothing, while a partly-bad batch records both counts and is the only trace of what was refused. **The trail is the widest-read thing in the system and carries the least**: a webhook's URL or host, an analyst's note, a signing secret and any record content are each asserted absent by planting them, and the actor column is documented as needing the `users.id` mapping D-038 names. The source IP is `request.client`, never `X-Forwarded-For`, with the proxy caveat named as deployment configuration. Reads require `start`/`end`, are capped at the repository's own `MAX_QUERY_SPAN_DAYS`, page on an exclusive id cursor, and the *compiled SQL* — not just the Python guard — is asserted to carry both bounds. **35 injections each failed their target tests**, including the SQL losing its time bound (which survived the first battery and added the compiled-statement test), a trail that grows `update`, a re-sent verdict audited, the webhook host or the analyst note mirrored in, and a header-read client IP. **Gaps:** the persistent trail is unwritten and un-migrated, the in-memory one dies with the process, and the admin screen and audited export (FR-43) are later work. Backend 524 → 596 tests, coverage 96.41% → 96.89%. |
+| 2026-10-05 | 1.32 | **T-311 done — outbound webhooks, signed over the bytes that were sent and re-checked per attempt.** `backend/app/services/webhook_targets.py`, `backend/app/services/webhook_delivery.py`, `backend/app/schemas/webhook.py`, `backend/app/api/v1/endpoints/webhooks.py`, three `ROUTE_MATRIX` entries, 149 tests. Policy recorded as **D-040**: the signature is `t=<unix>,v1=<hmac-sha256 hex>` over `"<timestamp>.<body>"` with the body canonicalised once and the exact bytes sent; one timestamp, signature and delivery id per delivery so a retry is not re-signed into a second event; the default 15 s retry budget sits inside the 300 s replay window and a test asserts that; full jitter; 5xx/408/425/429/3xx retried and other 4xx not, because the receiver already refused those bytes; and **the destination is validated before every attempt and the transport is given the pinned address**, since a host that resolved public at registration is what a rebinding attack waits for. **The smoke matrix found what reading would not: CPython reports IPv4 multicast (224/4) as globally routable**, so `224.0.0.1` passed the first verdict function — the multicast refusal now precedes the `is_global` accept and a test names it. Secrets are 32 random bytes sealed with Fernet under an HKDF-SHA256 key from `AEGIS_SECRET_KEY`, returned once and never readable again; the allowlist is empty by default (fail-closed) and parsed at startup; and the log carries the target id, attempt, outcome and status and **never the URL, the operator note or the alert body** (R-58 asserted by planting all three). 30 injections each failed their target tests — including the multicast/private/CGNAT accepts, a rebinding target sent anyway, an unreadable secret returning `""`, 5xx not retried, a refusal retried as an overload, the replay window unchecked, the timestamp out of the MAC, a per-attempt delivery id, the hostname dialled instead of the pinned address, an exclusive floor, every delivery counted as delivered, the URL/description/body logged, jitter ignored and the retry bound off by one. **Gaps:** no HTTP client ships (a protocol, not an implementation); retries are inline, so a delivery queue is what a busy pipeline needs; the store is in-memory; and nothing calls `dispatch()` yet — the correlator is not wired to T-310's hub either. Backend 375 → 524 tests, coverage 95.67% → 96.41%. **One earlier verification claim corrected by this run:** `hooks: pre-commit` reported green at T-310 does not reproduce on this tree — `detect-secrets` flags a test-only settings literal in `backend/tests/test_alert_stream.py:334`, a file **byte-identical to `c6eacd4`**, plus three test-only fixtures added here (two application-secret constants and two `user:pass@` URLs that exist to be refused). Each is marked inline with `pragma: allowlist secret` at the line rather than added to `.secrets.baseline`, so a reviewer sees the claim where the literal is. Bandit's B311 on the delivery id was a real finding about the wrong tool: the id is now drawn from `secrets` rather than `random`. |
+| 2026-10-05 | 1.31 | **T-310 done — the alert stream, with the gap made visible.** `backend/app/services/alert_stream.py`, `backend/app/schemas/stream.py`, `backend/app/api/v1/endpoints/stream.py`, three `ROUTE_MATRIX` entries, 50 tests. Notification sequences give the fallback something to resume from: `WS /alerts/ws`, SSE with `Last-Event-ID`, and the REST polling endpoint at architecture.md §14's 15 s cadence. Policy recorded as **D-039** — a cursor out of step in either direction gets `resync_required` plus the whole retained window, a slow consumer is dropped with its resume cursor, cursor 0 means "no position yet", the cursor is per-process and comes with an epoch, and `publish()` is thread-safe because the producer is the scoring worker rather than the event loop. **Two defects were found by tests, not by reading.** The reader task must check for `websocket.disconnect` explicitly, because a server that hands the message back turns the reader into a busy loop; and `RequestIdMiddleware` had to become **pure ASGI**, since `BaseHTTPMiddleware` holds response chunks in a task group and an endless SSE response therefore never reaches the client. **Harness facts recorded for the next stream task:** Starlette's `TestClient` runs the app to completion before returning a response, so an endless stream cannot be read through it — the SSE tests drive the ASGI app directly — and a `receive` that returns immediately starves the event loop (that is how the first version hung rather than failed). 15 injections each failed their target tests: inline (non-loop) delivery, either half of the resync rule, a tail instead of the window on resync, an undetected full queue, no drop check before waiting, delivery to one subscriber, an ignored disconnect, SSE frames without ids, the resume header ignored or tolerated when malformed, header-only socket auth, 4401/4403 swapped, an accepted unauthorised handshake, accept-before-authenticate, and shutdown that leaves the hub open. **Gaps:** the in-process buffer does not survive a restart, so multi-replica needs a shared bus; uvicorn needs the new `ws` extra to serve the socket, and it is not installed here. Backend 325 → 375 tests, coverage 95.67%. |
+| 2026-10-05 | 1.30 | **T-309 done — analyst feedback is an append-only ledger, not a mutable field.** `backend/app/services/verdict_service.py`, `backend/app/schemas/verdict.py`, `POST /api/v1/alerts/{alert_id}/verdict` + `GET .../verdicts`, two `ROUTE_MATRIX` entries, 42 tests. The acceptance criterion is tested against the store rather than the return value: the first record still reads exactly as written after a supersession, and the interface is asserted to expose `current`/`history`/`append` and nothing else -- no update, no delete -- the way R-31 is asserted for `audit_log`. **A repeat is not a supersession** (D-038): the same verdict by the same analyst returns `unchanged` and appends nothing, so a client retry cannot manufacture a reconsideration; a different verdict, or the same verdict from a different analyst, appends and links `supersedes` to the previous record; `alert_verdict_update` returns `None` for `unchanged`, because writing `verdict_at` forward on a re-send would make a repeat look like a fresh decision. Alerts are addressed by `(id, created_at)` -- D-030's partition key, required rather than defaulted -- and a test proves `12:00+02:00` and `10:00Z` address the same alert. `require()` now returns a `Principal` (role + token subject) so the route records **who** decided without decoding the bearer token twice; viewer is refused by capability and absent from the matrix entry, with a parity test over all four roles. **Nine injections each failed their target tests:** an actor-blind repeat check, a removed unchanged short-circuit, a dropped `supersedes` link, off-by-one ids, an unstripped note, a write on `unchanged`, a viewer in the matrix, a placeholder actor, and a route that ignored the body's partition key. **Gaps named:** the durable half needs a new append-only table and a migration (the schema's `alerts.verdict` holds only the current decision) and a mapping from the token's opaque `sub` to `alerts.verdict_by`'s numeric `users.id`; audit rows for mutating routes are T-312's. Backend 283 → 325 tests, coverage 96.03%. FR-18's weekly recalibration job is filed as **T-322** — this task persists what it consumes. |
+| 2026-10-05 | 1.29 | **T-308 done — the alert path now runs from detection to row.** `backend/app/services/correlator.py` + 71 tests. The acceptance criterion is verified by counting rows in the store rather than reading the returned action, because an implementation that reports `absorbed` and inserts anyway passes the weaker test. Banding treats published thresholds as inclusive boundaries and refuses an out-of-range score instead of clamping it; the bounds are data (R-69). The composite is fused from the best score per modality through the **injected** real `aegis_ml.scoring.fusion` rule — one implementation of the arithmetic, wired at the composition root, since the backend image does not install the ML package. Policy recorded as **D-037**: cool-down measured from `last_seen` and inclusive at the boundary, a case that never de-escalates, grouping by entity + opposite modality ±60 s which clears `partial_evidence`, closed cases that absorb nothing, and replay safety keyed on the window's evidence id with an evidence index that outlives display retention. **One clause was vacuous until injection proved it** — `max(case.score, fused.score)` could be replaced by `fused.score` and the original de-escalation tests still passed, because the best per modality only falls when retention evicts the loudest occurrence; that test was added, and four other injections (zero-width cool-down, removed replay check, same-modality grouping, exclusive band boundary) each failed their target tests. `CaseStore` is the persistence boundary and `alert_row()` pins the encoding; the SQL adapter is the named gap. Also found while writing the row mapping and raised as **T-321**, not fixed here: `alerts.score`/`thresholds.value` are `Float` and `severity` is an unconstrained `String(20)`, against R-39 and R-38. Backend 212 → 283 tests, coverage 95.81%. |
+| 2026-10-05 | 1.28 | **T-307 done.** `backend/app/workers/scoring_worker.py`. Loss and duplicates pull in opposite directions — commit before the work is at-most-once and loses records on a crash, commit after is at-least-once and replays them — so the worker commits **after** emitting and gets "no duplicates" from the other end: emission is idempotent per window identity. Two bugs, both found by tests rather than by reading. Windowing each batch independently restarted the numbering, so batch two's first window silently **overwrote** batch one's — the idempotent sink that makes replay safe became the thing hiding the loss — and batch sizes 3/7/50 produced 1, 2 and 4 windows from the same 20 records. A window counter held in worker memory then collided across restarts, passing every test that stays inside one process lifetime. Identity is now the entity plus the **log offset of the window's first record**: a property of the data, not of the process (D-036). My own test asserted the opposite and had to be reversed. The windower is shared with `aegis_ml` rather than reimplemented, so the two cannot number windows differently. **Gap:** ml-service still exposes only `/healthz`, so the model call behind `Scorer` is injected and untested. 16 tests. |
+| 2026-10-05 | 1.27 | **T-306 done.** `backend/app/messaging/{partitioner,producer,lag}.py`. Ordering is a **partition-assignment** property, not a broker guarantee: two flows from one source on different partitions have no ordering however correct the broker is. The partitioner therefore delegates to Kafka's own `DefaultPartitioner` rather than reimplementing a hash that would agree in tests and disagree in production, and keys on `src_ip` alone — a port or timestamp in the key would split one entity and lose exactly what this exists to provide. Resume is `committed + 1`; the committed offset reprocesses and the log end skips. Lag is per `(group, topic, partition)`, because one stuck partition averages away into a healthy-looking total, and clamps at zero since retention can delete records a consumer never reached (D-035). **No broker exists here**, so the arithmetic is tested and the broker call is a one-line injection point that is not. 26 tests. |
+| 2026-10-05 | 1.26 | **T-305 done.** Q-02 recorded before the work, as the row required — D-034 chooses partitioned PostgreSQL and defers Elasticsearch, on the asymmetry that being wrong about Postgres costs a later migration while being wrong about Elasticsearch costs a second store from day one. Pagination is keyset on `(created_at, id)`, because offset pagination cannot be stable under concurrent inserts and `id` alone is not unique across partitions (D-030); the cursor compares as a **row value**, since `created_at < a AND id < b` silently drops rows that share the cursor's timestamp. `start`/`end` are required with no default, because a generous default is how an unbounded partitioned scan ships, and a malformed cursor is a 400 rather than a silent restart from page one. 23 tests. |
+| 2026-10-05 | 1.25 | **T-304 done.** `backend/app/schemas/ingest.py`, `services/ingest_service.py`, `api/v1/endpoints/ingest.py`. "No partial batch is silently dropped" is arithmetic rather than a promise: `received == accepted + rejected` with one error entry per rejected record, both halves asserted. An unparseable NDJSON line is a per-record `parse` error, not a whole-batch 415 — my first version failed the batch, which is exactly what FR-04 forbids — and line numbers are carried through the parse rather than recomputed, so "record 7 is bad" still points at record 7. Every pydantic error becomes an entry, so a record with three bad fields explains all three. R-53 does not name ingest, so `Capability.INGEST` was added for analyst/responder/admin and not viewer; recorded as a judgement call, not a reading of the rule (D-033). 34 tests (27 ingest, 7 contract). |
+| 2026-10-05 | 1.24 | **T-303 done.** RBAC dependency plus a route × role matrix test. **The first completeness check enforced nothing:** it read `app.routes`, and FastAPI's `include_router` does not flatten — the parent holds a container whose `original_router` holds the real routes — so the walk found four documentation endpoints, concluded the matrix was complete and passed. Two rules follow (D-032): a completeness check that introspects a framework carries a test asserting it sees the things it claims to count, and the "adding a route is detected" test runs against the real app factory rather than a toy `FastAPI()`. RBAC is default-deny from a written-out capability table; a 403 names the caller's role but never the missing capability, and an unknown role string is refused rather than defaulted. 25 tests. |
+| 2026-10-05 | 1.23 | **T-302 done.** `backend/app/auth/{passwords,tokens}.py`. R-51 is enforced where verification happens: `verify_password` **raises** on MD5, SHA-1, bcrypt and Argon2i rather than returning False, because False reads as "wrong password" and would turn a migration into an endless stream of login failures instead of a rehash on next login. Refresh rotation is single-use, and replaying a spent token revokes the whole family — two holders of one single-use credential means at least one is not the user. **A test of mine was wrong and the code was right:** I forged a token by editing the payload *and re-signing with the correct key*, which is issuing, not tampering; that a re-signed forgery is accepted is now its own test, because HS256 is a symmetric MAC and the secret is the entire boundary (D-031). `RefreshStore` is a protocol; the in-memory default is explicitly not for production. 28 tests. |
 | 2026-10-05 | 1.22 | **T-301 — R-34 clause done and verified; the migration clause is NOT verified here and says so.** `backend/app/db/{models,partitions,repository}.py` + `backend/alembic/`. R-34 is enforced by two layers because either alone has a hole: `query_partitioned` takes the `TimeRange` positionally so no call shape omits it, and `assert_time_bounded` inspects hand-built statements and refuses any partitioned table whose partition column is unconstrained — catching `select(func.count()).select_from(Alert)`, which `column_descriptions` would have missed since it reports `None` for aggregates. Partitioned primary keys must include the partition key, so `id` is not globally unique on `alerts`/`ingest_stats`; no default partition, because one accumulates silently until retention is meaningless. **Honest gap: no PostgreSQL is reachable in this sandbox (no `psql`, 5432 refused, no container runtime) and partitioning is PostgreSQL-only, so "migration up and down apply cleanly" is unverified.** What is verified: all 9 tables compile for the postgres dialect, both partitioned tables emit `PARTITION BY RANGE`, the migration imports with both hooks and `down_revision = None`, and the pure partition builders are unit-tested including December rollover. `audit_log.actor_id` has no foreign key on purpose — a cascade would give an append-only table a delete path. 40 new backend tests, 60 total. |
 | 2026-10-05 | 1.21 | **T-215 done.** `training/search.py`. **`search()` has no test-split parameter at all** — train and valid only, with the omission pinned by a test on `inspect.signature`, because a discipline note holds only until someone is in a hurry. R-71's second half is a separately named `final_test_evaluation` so the one permitted look cannot be reached by accident. Selection defaults to ROC-AUC since it is threshold-independent; selecting on F1 at a fixed cut would reward a fortunate threshold rather than better ranking. Every trial logs the complete config, and a test asserts the logged key set equals `TrainingConfig.model_fields` so a new knob cannot go unlogged by default. **A gap recorded rather than hidden:** `TrainingConfig` does not validate `d_model` divisibility by `nhead`, so an incompatible pair passes expansion and fails later at model build. **A bug mypy caught that my tests shared:** both entry points were annotated flat rows where `train` needs windows of timesteps; now a named `Windows` alias. 25 tests. |
 | 2026-10-05 | 1.20 | **T-214 done.** `registry/model_card.py` + `scripts/model_card.py`. **A number cannot reach a card without a recorded run behind it:** `SourcedMetric` requires `artifact` and `field` beside the value, `load_metric` reads the value from the file itself, and the CLI's `--metric` takes `NAME=ARTIFACT:FIELD.PATH` with no way to pass a value. Citing an absent field raises `MetricNotFound`, an unrecorded run raises `FileNotFoundError`, both exit 1 — verified end to end. `bool` is refused explicitly since `isinstance(True, int)` is True in Python. A card with no limitations or no adversarial caveat is refused; the default caveat is concrete (padding, rate-limiting below the detection window, splitting across hosts) because a vague one tells an operator nothing. **The card is generated at release, not committed**, since it cites gitignored run artifacts and a committed copy would eventually cite numbers nothing in the repository reproduces. Built a real card from regenerated runs: recall 0.795472, precision 0.590382, ROC-AUC 0.746354 — reproducing D-022 exactly — p95 20.9889 ms, 2562 attack windows, five metrics all cited. 31 tests. |

@@ -14,6 +14,9 @@ application code:
   5. Every healthcheck URL corresponds to a route the app really serves.
   6. Every Dockerfile CMD references an importable module and app attribute.
   7. Every build context directory exists.
+  8. Every PostgreSQL URL in the file, and the application's own default, names a
+     driver the backend declares as a dependency (T-323). A DSN whose driver
+     nothing installs is a stack that cannot run its migrations.
 
 It does NOT verify that the images build or that the stack starts. Those need a
 Docker daemon; see task.md T-005.
@@ -25,12 +28,23 @@ import importlib
 import os
 import re
 import sys
+import tomllib
 from typing import Any, cast
 
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPOSE = os.path.join(ROOT, "docker", "docker-compose.yml")
+BACKEND_PYPROJECT = os.path.join(ROOT, "backend", "pyproject.toml")
+
+#: Dialect prefix of a PostgreSQL URL, capturing the driver segment: for
+#: ``postgresql+psycopg://`` the driver is ``psycopg``, and for a bare
+#: ``postgresql://`` it is empty (SQLAlchemy then picks psycopg2, which is also
+#: a decision rather than a default).
+POSTGRES_URL_RE = re.compile(r"\bpostgresql(?:\+([a-z0-9_]+))?://")
+
+#: Which distribution provides each SQLAlchemy driver name.
+DRIVER_PACKAGES = {"psycopg": "psycopg", "psycopg2": "psycopg2", "asyncpg": "asyncpg"}
 
 EXPECTED_SERVICES = {
     "postgres",
@@ -126,6 +140,74 @@ def check_env_vars(services: dict[str, Any], problems: list[str]) -> None:
             fail(problems, f"compose sets {var}, which is not a field on Settings")
     if not used:
         fail(problems, "compose sets no AEGIS_* variables at all")
+
+
+def declared_driver_packages() -> set[str]:
+    """The PostgreSQL driver distributions the backend declares, by import name."""
+    with open(BACKEND_PYPROJECT, "rb") as handle:
+        project = cast(dict[str, Any], tomllib.load(handle)["project"])
+    declared: set[str] = set()
+    for requirement in cast(list[str], project.get("dependencies", [])):
+        # "psycopg[binary]>=3.2" -> "psycopg"
+        name = re.split(r"[\[<>=!; ]", requirement.strip(), maxsplit=1)[0].lower()
+        if name in DRIVER_PACKAGES.values():
+            declared.add(name)
+    return declared
+
+
+def database_urls(services: dict[str, Any]) -> list[str]:
+    """Every configured URL: the compose file's, and the application's own default."""
+    environment = cast(
+        dict[str, Any], services.get("backend", {}).get("environment", {})
+    )
+    urls = [
+        str(value)
+        for value in environment.values()
+        if isinstance(value, str) and POSTGRES_URL_RE.search(value)
+    ]
+    sys.path.insert(0, os.path.join(ROOT, "backend"))
+    from app.core.config import Settings  # noqa: PLC0415 - path set up above
+
+    default = Settings.model_fields["database_url"].default
+    if isinstance(default, str) and POSTGRES_URL_RE.search(default):
+        urls.append(default)
+    return urls
+
+
+def check_database_driver(services: dict[str, Any], problems: list[str]) -> None:
+    """Every PostgreSQL URL must name a driver the backend declares (T-323)."""
+    declared = declared_driver_packages()
+    if not declared:
+        fail(
+            problems,
+            "the backend declares no PostgreSQL driver, so no DSN can be opened",
+        )
+    urls = database_urls(services)
+    if not urls:
+        fail(problems, "no PostgreSQL URL found in compose or in Settings' default")
+        return
+    for url in urls:
+        match = POSTGRES_URL_RE.search(url)
+        driver = match.group(1) if match else None
+        if not driver:
+            fail(
+                problems,
+                f"{url} names no driver, so SQLAlchemy would default to psycopg2",
+            )
+            continue
+        package = DRIVER_PACKAGES.get(driver)
+        if package is None:
+            fail(
+                problems,
+                f"{url} names driver {driver!r}, which this check does not know",
+            )
+            continue
+        if package not in declared:
+            fail(
+                problems,
+                f"{url} names driver {driver!r}, but backend/pyproject.toml declares "
+                f"{sorted(declared) or 'no driver'}: alembic would fail with ModuleNotFoundError",
+            )
 
 
 def check_secret(services: dict[str, Any], problems: list[str]) -> None:
@@ -299,6 +381,7 @@ def main() -> int:
     compose = load_compose()
     services = check_services(compose, problems)
     check_env_vars(services, problems)
+    check_database_driver(services, problems)
     check_secret(services, problems)
     check_ports(services, problems)
     check_healthchecks(services, problems)

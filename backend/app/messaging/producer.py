@@ -20,7 +20,7 @@ differently and one entity's flows interleave with another's.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -39,8 +39,19 @@ __all__ = [
 class Producer(Protocol):
     """The broker client, narrowed to the one call this module makes."""
 
-    def send(self, topic: str, value: bytes, partition: int, key: bytes) -> None:
-        """Hand one record to the broker."""
+    def send(
+        self,
+        topic: str,
+        value: bytes,
+        partition: int,
+        key: bytes,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
+        """Hand one record to the broker, with its headers.
+
+        Headers are where a trace context travels: Kafka carries them per record,
+        and a consumer rebuilds the parent span from them (T-317, T-319).
+        """
         ...
 
 
@@ -79,19 +90,29 @@ class FlowProducer:
         """How many partitions the topic is configured with."""
         return self._num_partitions
 
-    def send(self, src_ip: str, payload: bytes) -> SentRecord:
+    def send(
+        self, src_ip: str, payload: bytes, *, headers: Mapping[str, str] | None = None
+    ) -> SentRecord:
         """Send one record, keyed so this source keeps its ordering."""
         partition = partition_for(src_ip, self._num_partitions)
-        self._client.send(self._topic, payload, partition, src_ip.encode())
+        self._client.send(self._topic, payload, partition, src_ip.encode(), headers)
         return SentRecord(partition=partition, key=src_ip, topic=self._topic)
 
-    def send_batch(self, records: Iterable[tuple[str, bytes]]) -> list[SentRecord]:
-        """Send a batch.
+    def send_batch(
+        self, records: Iterable[tuple[str, bytes]], *, headers: Mapping[str, str] | None = None
+    ) -> list[SentRecord]:
+        """Send a batch with one header set.
+
+        One header set per call is the right shape for this pipeline: the records
+        in a batch were ingested under one request, so they carry one trace
+        context. A caller that ever needs per-record headers sends record by
+        record -- the alternative, a tuple of headers and payloads, would make the
+        common case carry a header mapping that is always the same.
 
         Records for one source keep their relative order because they keep their
         partition. Ordering *between* sources is not promised, and never was.
         """
-        return [self.send(src_ip, payload) for src_ip, payload in records]
+        return [self.send(src_ip, payload, headers=headers) for src_ip, payload in records]
 
 
 @dataclass(slots=True)

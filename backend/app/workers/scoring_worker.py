@@ -29,13 +29,17 @@ hidden: the HTTP call is the untested part.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from aegis_ml.data.records import FlowRecord  # type: ignore[import-not-found]
 from aegis_ml.data.windowing import Window, window_flows  # type: ignore[import-not-found]
 
+from app.observability import metrics
+from app.observability.tracing import duration_seconds, span
 from app.schemas.ingest import FlowRecordIn
 
 __all__ = [
@@ -53,11 +57,19 @@ __all__ = [
 
 @dataclass(frozen=True, slots=True)
 class ConsumedRecord:
-    """One record as it came off the topic, with the offset it arrived at."""
+    """One record as it came off the topic, with the offset it arrived at.
+
+    ``traceparent`` is the W3C trace context the record carried in its Kafka
+    headers, if the ingest side put one there. It is not part of the window's
+    identity -- identity is what makes replay idempotent, and tracing must never
+    be able to change it -- it is carried alongside so the score a window
+    produces can be attributed to the request that ingested it (T-317).
+    """
 
     offset: int
     partition: int
     flow: FlowRecordIn
+    traceparent: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,25 +117,65 @@ class Scorer(Protocol):
 class ScoreSink(Protocol):
     """Where scores land. Implementations must be idempotent per identity."""
 
-    def put(self, identity: WindowIdentity, score: float, records: int) -> None:
-        """Store one scored window, replacing any earlier score for it."""
+    def put(
+        self,
+        identity: WindowIdentity,
+        score: float,
+        records: int,
+        *,
+        traceparent: str | None = None,
+        closed_at: datetime | None = None,
+    ) -> None:
+        """Store one scored window, replacing any earlier score for it.
+
+        ``closed_at`` is the timestamp of the window's last record. It travels
+        with the score because a sink that turns a score into an alert has to date
+        the occurrence from the data; the worker's own clock is when the window
+        was *processed*, which on a replay is not when the traffic happened.
+        """
         ...
 
 
 class InMemoryScoreSink:
     """A ScoreSink that overwrites, which is what makes replay safe."""
 
-    __slots__ = ("_scores", "puts")
+    __slots__ = ("_closed_at", "_scores", "_traceparents", "puts")
 
     def __init__(self) -> None:
         """Start empty, counting puts so replays are observable."""
         self._scores: dict[str, tuple[float, int]] = {}
+        self._traceparents: dict[str, str] = {}
+        self._closed_at: dict[str, datetime] = {}
         self.puts = 0
 
-    def put(self, identity: WindowIdentity, score: float, records: int) -> None:
-        """Store or replace one window's score."""
+    def put(
+        self,
+        identity: WindowIdentity,
+        score: float,
+        records: int,
+        *,
+        traceparent: str | None = None,
+        closed_at: datetime | None = None,
+    ) -> None:
+        """Store or replace one window's score, with what came with it."""
         self.puts += 1
         self._scores[identity.as_string()] = (score, records)
+        if traceparent is not None:
+            self._traceparents[identity.as_string()] = traceparent
+        if closed_at is not None:
+            self._closed_at[identity.as_string()] = closed_at
+
+    def traceparent_for(self, identity: WindowIdentity) -> str | None:
+        """The trace context stored with one window's score, if it had one.
+
+        This is what an adapter carries into the detection it builds from the
+        score, and so on to the alert record.
+        """
+        return self._traceparents.get(identity.as_string())
+
+    def closed_at_for(self, identity: WindowIdentity) -> datetime | None:
+        """The close time stored with one window's score, if it had one."""
+        return self._closed_at.get(identity.as_string())
 
     def scores(self) -> dict[str, tuple[float, int]]:
         """Every stored score, keyed by window identity."""
@@ -184,7 +236,7 @@ class ScoringWorker:
         self._batch = batch_size
         # Per-entity state carried across batches, so window indices stay
         # continuous with what has already been emitted.
-        self._pending: dict[str, list[tuple[int, FlowRecord]]] = {}
+        self._pending: dict[str, list[tuple[int, FlowRecord, str | None]]] = {}
 
     def _to_flow_record(self, wire: FlowRecordIn) -> FlowRecord:
         """Convert a wire record to the record the windower expects.
@@ -212,7 +264,7 @@ class ScoringWorker:
                 break
             total += len(records)
             batches += 1
-            self._emit((r.offset, self._to_flow_record(r.flow)) for r in records)
+            self._emit((r.offset, self._to_flow_record(r.flow), r.traceparent) for r in records)
             # After emitting, never before. Committing first would drop the
             # batch on a crash between the commit and the emit.
             self._committer.commit(partition, records[-1].offset)
@@ -223,7 +275,12 @@ class ScoringWorker:
         self._emit((), flush=True)
         return total
 
-    def _emit(self, batch: Iterable[tuple[int, FlowRecord]], *, flush: bool = False) -> None:
+    def _emit(
+        self,
+        batch: Iterable[tuple[int, FlowRecord, str | None]],
+        *,
+        flush: bool = False,
+    ) -> None:
         """Window a batch and score each complete window.
 
         Records are buffered per entity across batches rather than windowed per
@@ -233,8 +290,8 @@ class ScoringWorker:
         becomes the thing that hides the loss. Carrying the remainder keeps the
         windows continuous with what was already emitted.
         """
-        for offset, flow in batch:
-            self._pending.setdefault(str(flow.src_ip), []).append((offset, flow))
+        for offset, flow, traceparent in batch:
+            self._pending.setdefault(str(flow.src_ip), []).append((offset, flow, traceparent))
 
         for key, buffered in self._pending.items():
             count = (
@@ -244,13 +301,35 @@ class ScoringWorker:
                 continue
             chunk = buffered[:count]
             self._pending[key] = buffered[count:]
-            flows = tuple(flow for _, flow in chunk)
+            flows = tuple(flow for _, flow, _traceparent in chunk)
             for window in window_flows(flows, size=self._window_size):
                 position = window.index * self._window_size
+                first_offset, _first_flow, traceparent = chunk[position]
                 identity = WindowIdentity(
-                    key=window.key, key_kind=window.key_kind, first_offset=chunk[position][0]
+                    key=window.key, key_kind=window.key_kind, first_offset=first_offset
                 )
-                self._sink.put(identity, self._scorer.score(window), len(window.records))
+                # The span is a child of the ingest request that produced the
+                # window's first record, so a slow score can be read against the
+                # request that waited for it (NFR-01, T-317). Time is measured
+                # around the call itself: the histogram is the model's latency,
+                # not the worker's throughput.
+                started = time.perf_counter()
+                with span(
+                    "score window",
+                    parent_traceparent=traceparent,
+                    attributes={"aegis.window.records": len(window.records)},
+                ) as active:
+                    score = self._scorer.score(window)
+                    active.set_attribute("aegis.score", score)
+                metrics.observe_score_latency(duration_seconds(started))
+                self._sink.put(
+                    identity,
+                    score,
+                    len(window.records),
+                    traceparent=traceparent,
+                    # The window's own close time, not the worker's clock (T-319).
+                    closed_at=window.end,
+                )
 
 
 def drain(consumer: Consumer, partitions: Sequence[int], worker: ScoringWorker) -> dict[int, int]:

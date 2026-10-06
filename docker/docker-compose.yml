@@ -115,7 +115,7 @@ services:
       AEGIS_ENV: development
       AEGIS_SERVICE_NAME: aegis-backend
       AEGIS_SECRET_KEY: ${AEGIS_SECRET_KEY:?set AEGIS_SECRET_KEY to a random value of at least 32 characters}
-      AEGIS_DATABASE_URL: postgresql+asyncpg://aegis:aegis@postgres:5432/aegis
+      AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
       AEGIS_HOST: 0.0.0.0
       AEGIS_PORT: '8000'

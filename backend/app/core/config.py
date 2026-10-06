@@ -53,7 +53,14 @@ class Settings(BaseSettings):
     # Required in every environment. There is no safe default for a secret.
     secret_key: str = Field(min_length=32)
 
-    database_url: str = Field(default="postgresql+asyncpg://aegis:aegis@localhost:5432/aegis")
+    # T-323. The dialect is part of the contract with the deployment: the driver
+    # named here is the one backend/pyproject.toml declares, so a plain install
+    # can open the URL it ships with -- checked statically by
+    # scripts/check_compose.py and through a subprocess by
+    # tests/test_database_driver.py. Alembic opens the same URL with a
+    # *synchronous* engine at deploy time, which is why the driver is psycopg 3
+    # rather than an async-only one.
+    database_url: str = Field(default="postgresql+psycopg://aegis:aegis@localhost:5432/aegis")
 
     # Binding to all interfaces is required for containerised deployment (NFR-08);
     # the container network is the trust boundary, not the loopback device.
@@ -66,9 +73,56 @@ class Settings(BaseSettings):
     # Ingest limits (FR-01, FR-02, R-56).
     max_flow_batch: int = Field(default=1000, ge=1)
     max_log_batch: int = Field(default=5000, ge=1)
+    # Enforced before parsing by app.api.middleware.BodySizeLimitMiddleware: a
+    # declared length over the cap is answered without reading the body, and a
+    # streamed body is counted as it arrives.
     max_request_bytes: int = Field(default=8 * 1024 * 1024, ge=1024)
 
+    # Rate limiting (R-56, T-316). Ten per second sustained per credential, which
+    # is far above a collector's rate and far below what it takes to make the
+    # service spend its time refusing. Anonymous requests get a lower limit
+    # because they are the unauthenticated flood the rule names.
+    rate_limit_requests_per_minute: int = Field(default=600, ge=1)
+    rate_limit_anonymous_per_minute: int = Field(default=120, ge=1)
+    # Back-pressure (architecture.md §12): the number of records allowed in flight
+    # before the ingest API answers 503 with Retry-After instead of queueing
+    # without limit and dropping something later.
+    ingest_max_in_flight_records: int = Field(default=20_000, ge=1)
+
+    # Tracing (NFR-07, T-317). Empty means no exporter: spans are still created
+    # and their ids still propagate to the alert record, and nothing leaves the
+    # process. Set it to an OTLP/HTTP endpoint to ship spans to a collector.
+    otel_exporter_endpoint: str = Field(default="")
+
     ml_service_url: str = Field(default="http://localhost:8001")
+
+    # Alert stream (FR-20). The interval is both how often a quiet stream says
+    # "still here" and, per architecture.md §14, how often a dashboard whose
+    # socket dropped polls instead -- 15 s by default.
+    alert_stream_heartbeat_seconds: float = Field(default=15.0, gt=0)
+
+    # T-407. The log tail is bounded in both directions and both bounds come from
+    # here: a deployment that wants an hour of lines or half a minute can say so,
+    # and neither can be set to "unbounded". 20,000 lines is enough for the screen's
+    # own promise -- ten thousand identical lines collapse into one row with a
+    # count -- because the fold sees the whole tail rather than a page of it.
+    log_tail_lines: int = Field(default=20_000, ge=1)
+    log_tail_max_age_seconds: float = Field(default=900.0, gt=0)
+
+    # Outbound webhooks (FR-21, R-55). The allowlist is empty by default, which
+    # means no host is permitted: an empty allowlist is a fail-closed
+    # configuration, not a disabled check. Entries are hostnames, optionally
+    # prefixed '*.', comma-separated.
+    webhook_allowlist: str = Field(default="")
+
+    # Retention (FR-05, NFR-05). Raw records default to 30 days; alerts live
+    # longer because they are the analyst-facing record, and the validator in
+    # app.services.retention refuses a deployment that inverts the two. Same
+    # ceiling as the policy (ten years), so a units mistake fails at startup
+    # rather than at the first retention run.
+    retention_raw_records_days: int = Field(default=30, ge=1, le=3650)
+    retention_alerts_days: int = Field(default=400, ge=1, le=3650)
+    retention_stats_days: int = Field(default=400, ge=1, le=3650)
 
     @field_validator("log_level")
     @classmethod
