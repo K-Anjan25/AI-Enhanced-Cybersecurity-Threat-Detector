@@ -33,6 +33,7 @@ from app.api.v1.endpoints import (
     models,
     privacy,
     stream,
+    thresholds,
     webhooks,
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
@@ -55,8 +56,18 @@ from app.services.erasure import (
 )
 from app.services.health_service import ReadinessRegistry
 from app.services.limits import AdmissionController, RateLimitPolicy
+from app.services.ml_calibration import MlCalibrator
 from app.services.model_ops import ModelOpsService
+from app.services.recalibration import (
+    DEFAULT_TENANT_ID,
+    AlertVerdictFeedback,
+    InMemoryThresholdStore,
+    RecalibrationService,
+)
 from app.services.retention import RetentionPolicy
+from app.services.verdict_service import (
+    InMemoryVerdictLedger,
+)
 from app.services.webhook_targets import (
     InMemoryWebhookStore,
     SecretVault,
@@ -264,6 +275,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.entity_store = InMemoryEntityStore()
     app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
     app.state.erasure_ledger = InMemoryErasureLedger()
+    # Verdicts (T-309) live on app.state rather than being created on first use by
+    # the route, so the recalibration job (T-322) reads the same ledger the verdict
+    # route writes. Two instances would mean a weekly job fitting on feedback that
+    # never arrives, and nothing would look wrong.
+    app.state.verdict_ledger = InMemoryVerdictLedger()
+    # Thresholds (T-322, FR-18). The store holds the values in force, starting
+    # empty: R-69's documented initial values are FR-13's band edges, which the
+    # job falls back to per family and the listing returns as `defaults`, so no
+    # family is invented before there is feedback for it. The feedback is the
+    # verdict ledger joined to the alert store through the query API's own paging,
+    # and the calibrator is T-207's, reached through the ML package this image
+    # does not install (MlCalibrator names that dependency when it is called). The
+    # tenant is a stand-in for attribution the alert row cannot supply yet: it has
+    # no tenant column, so the source refuses to serve any tenant but this one
+    # rather than mixing two.
+    app.state.threshold_store = InMemoryThresholdStore()
+    app.state.recalibration = RecalibrationService(
+        store=app.state.threshold_store,
+        feedback=AlertVerdictFeedback(
+            app.state.alert_store,
+            app.state.verdict_ledger,
+            tenant_id=DEFAULT_TENANT_ID,
+        ),
+        calibrator=MlCalibrator(),
+    )
     # Model ops (T-315). Empty on purpose: R-74 forbids inventing a metric, so
     # nothing is registered until the model service registers a version, and the
     # endpoints are the contract the model service will be called through. The
@@ -327,6 +363,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api_keys.router)
     app.include_router(privacy.router)
     app.include_router(models.router)
+    app.include_router(thresholds.router)
     return app
 
 

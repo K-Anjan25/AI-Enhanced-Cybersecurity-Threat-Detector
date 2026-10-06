@@ -260,7 +260,10 @@ def test_the_catalog_seam_accepts_a_plain_collection(client: TestClient) -> None
     # is, and that gap is the point of reporting it -- there is no default
     # partition, so a month with no partition holds no rows.
     assert "alerts_2026_01" not in body["missing"]
-    assert "alerts_2025_08" in body["missing"]
+    # A month relative to today, not a frozen literal: the window is 400 days
+    # wide, so a hard-coded month drops out of it the day the calendar moves on.
+    recent = date.today() - timedelta(days=60)
+    assert f"alerts_{recent.year}_{recent.month:02d}" in body["missing"]
 
 
 def test_a_failing_drop_is_a_loud_failure_not_a_clean_run(client: TestClient) -> None:

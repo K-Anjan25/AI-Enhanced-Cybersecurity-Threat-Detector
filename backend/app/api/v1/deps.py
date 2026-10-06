@@ -27,6 +27,7 @@ from app.services.audit_log import AuditTrail
 from app.services.erasure import ErasureService
 from app.services.limits import AdmissionController
 from app.services.model_ops import ModelOpsService
+from app.services.recalibration import RecalibrationService
 from app.services.retention import RetentionPolicy, StatementRunner
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "model_ops",
     "parse_instant",
     "partition_runner",
+    "recalibration_service",
     "retention_policy",
 ]
 
@@ -204,6 +206,22 @@ def admission(request: Request) -> AdmissionController:
         msg = "admission is not configured on app.state"
         raise RuntimeError(msg)
     return controller
+
+
+def recalibration_service(request: Request) -> RecalibrationService:
+    """The threshold job: the store in force, the feedback and the calibrator.
+
+    Raises:
+        RuntimeError: if none is installed. The alternative -- a service built per
+            request over an empty store -- would report a clean run that read no
+            feedback and moved nothing, which is indistinguishable from a quiet
+            fortnight.
+    """
+    service: RecalibrationService | None = getattr(request.app.state, "recalibration", None)
+    if service is None:
+        msg = "recalibration is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
 
 
 def client_ip(request: Request) -> str | None:
