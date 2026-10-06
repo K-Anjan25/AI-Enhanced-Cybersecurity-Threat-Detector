@@ -38,7 +38,7 @@ export function ServingMetrics({
   return (
     <Card title={`Serving now — ${kindLabel}`}>
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 lg:grid-cols-5">
           {[0, 1, 2, 3, 4].map((index) => (
             <Skeleton key={index} lines={2} />
           ))}
@@ -49,7 +49,7 @@ export function ServingMetrics({
         <p className="p-4 text-body text-muted">{absenceNote}</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 lg:grid-cols-5">
             {panel.cards.map((card) => (
               <div key={card.name} className="rounded-card border border-line px-3 py-2">
                 <p className="text-caption text-muted">{card.label}</p>

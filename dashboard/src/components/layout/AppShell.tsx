@@ -11,6 +11,15 @@
  * prop stays as an override for a story or a test that wants a state without a
  * socket; nothing in the app passes it.
  *
+ * **The rail follows §8.3, and so does whether it is there at all.** Between 1024 and
+ * 1439 px it *starts* collapsed to icons ("nav rail collapses to icons by default"),
+ * with the toggle still available — an operator on a laptop gets the width back for
+ * the table and can ask for the labels. Below 768 px it is not rendered at all: the
+ * triage loop is the whole offered console, and a rail listing screens that would
+ * answer with a notice is worse than no rail. Both come from the same viewport answer
+ * the routes and the palette read, so the chrome and the pages cannot disagree about
+ * which side of a boundary the window is on.
+ *
  * The top bar carries global search (§3), which is the palette's visible affordance:
  * a keyboard-only feature that nothing points at is a feature only its author uses.
  * Both the rail's header row and the top bar are `h-topbar` — §3's 56 px — so they
@@ -22,6 +31,8 @@ import { Search } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
+import { useViewportClass } from '../hooks/viewport';
+import { NarrowNotice } from './NarrowNotice';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ConnectionBanner } from '../realtime/ConnectionBanner';
 import { useConnectionView } from '../realtime/useConnectionView';
@@ -44,61 +55,70 @@ interface AppShellProps {
 }
 
 export function AppShell({ connection, onOpenPalette, children }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  // `null` is "nobody has said", which is what lets the default follow the window:
+  // §8.3's icon rail on a laptop, labels on a large monitor. Once the operator
+  // toggles it their choice sticks, including across a resize — a rail that sprang
+  // back to its default under the cursor would be the shell arguing with them.
+  const [collapsedByHand, setCollapsedByHand] = useState<boolean | null>(null);
   const { theme, toggleTheme } = useTheme();
   const view = useConnectionView(connection);
+  const viewport = useViewportClass();
+  const narrow = viewport === 'narrow';
+  const collapsed = collapsedByHand ?? viewport === 'medium';
 
   const sections = [...new Set(NAV_ITEMS.map((item) => item.section))];
 
   return (
     <div className="flex min-h-screen bg-base text-ink">
-      <nav
-        aria-label="Primary"
-        // The widths are design.md §3's 240 px rail and 56 px icon rail, now
-        // tokens (`w-rail`, `w-rail-collapsed`, T-402) instead of a class the
-        // inline style then overrode.
-        className={`flex flex-col border-r border-line bg-surface transition-[width] duration-panel ${
-          collapsed ? 'w-rail-collapsed' : 'w-rail'
-        }`}
-      >
-        <div className="flex h-topbar items-center justify-between px-4">
-          {!collapsed ? <span className="text-h2">AEGIS</span> : null}
-          <button
-            type="button"
-            onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className="rounded-input p-1 text-muted hover:text-ink"
-          >
-            {collapsed ? '\u00BB' : '\u00AB'}
-          </button>
-        </div>
-
-        {sections.map((section) => (
-          <div key={section} className="mt-4">
-            {!collapsed ? (
-              <p className="px-4 text-caption uppercase tracking-wide text-muted">{section}</p>
-            ) : null}
-            <ul>
-              {NAV_ITEMS.filter((item) => item.section === section).map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.to === '/'}
-                    title={item.label}
-                    className={({ isActive }) =>
-                      `block px-4 py-2 text-body ${
-                        isActive ? 'border-l-2 border-accent text-ink' : 'text-muted'
-                      } hover:text-ink`
-                    }
-                  >
-                    {collapsed ? item.label.slice(0, 1) : item.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
+      {narrow ? null : (
+        <nav
+          aria-label="Primary"
+          // The widths are design.md §3's 240 px rail and 56 px icon rail, now
+          // tokens (`w-rail`, `w-rail-collapsed`, T-402) instead of a class the
+          // inline style then overrode.
+          className={`flex flex-col border-r border-line bg-surface transition-[width] duration-panel ${
+            collapsed ? 'w-rail-collapsed' : 'w-rail'
+          }`}
+        >
+          <div className="flex h-topbar items-center justify-between px-4">
+            {!collapsed ? <span className="text-h2">AEGIS</span> : null}
+            <button
+              type="button"
+              onClick={() => setCollapsedByHand(!collapsed)}
+              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              className="rounded-input p-1 text-muted hover:text-ink"
+            >
+              {collapsed ? '\u00BB' : '\u00AB'}
+            </button>
           </div>
-        ))}
-      </nav>
+
+          {sections.map((section) => (
+            <div key={section} className="mt-4">
+              {!collapsed ? (
+                <p className="px-4 text-caption uppercase tracking-wide text-muted">{section}</p>
+              ) : null}
+              <ul>
+                {NAV_ITEMS.filter((item) => item.section === section).map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      end={item.to === '/'}
+                      title={item.label}
+                      className={({ isActive }) =>
+                        `block px-4 py-2 text-body ${
+                          isActive ? 'border-l-2 border-accent text-ink' : 'text-muted'
+                        } hover:text-ink`
+                      }
+                    >
+                      {collapsed ? item.label.slice(0, 1) : item.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-topbar items-center justify-between border-b border-line bg-surface px-6">
@@ -125,6 +145,10 @@ export function AppShell({ connection, onOpenPalette, children }: AppShellProps)
             </button>
           </div>
         </header>
+
+        {/* §8.3's banner. Above the connection banner, because it describes the whole
+            window rather than a stream that is down. */}
+        {narrow ? <NarrowNotice showQueueLink /> : null}
 
         {view.banner === null ? null : (
           <ConnectionBanner

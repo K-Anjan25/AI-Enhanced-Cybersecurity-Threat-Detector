@@ -161,7 +161,7 @@ export function RetentionPanel() {
             Erases one subject across every store and records a tombstone in the ledger. The
             identifier is sent, never echoed: the report says the hash, not the person.
           </p>
-          <div className="grid gap-2 sm:grid-cols-4">
+          <div className="grid gap-2 md:grid-cols-4">
             <label className="flex flex-col gap-1 text-body-sm">
               Kind
               <select

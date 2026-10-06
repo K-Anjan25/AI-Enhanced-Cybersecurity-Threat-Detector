@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,6 +9,7 @@ import { App } from './App';
 import { NAV_ITEMS } from './components/layout/nav';
 import { expectAccessible } from './test/axe';
 import { jsonResponse, stubFetch, testQueryClient, textResponse } from './test/query';
+import { stubViewport } from './test/viewport';
 import { ThemeProvider } from './theme/ThemeProvider';
 
 /**
@@ -16,7 +18,7 @@ import { ThemeProvider } from './theme/ThemeProvider';
  * and the shell; the page's own behaviour is OverviewPage.test.tsx.
  */
 function renderAt(path: string) {
-  stubFetch([
+  const seen = stubFetch([
     {
       match: '/api/v1/alerts',
       respond: (request) =>
@@ -66,7 +68,7 @@ function renderAt(path: string) {
         jsonResponse({ status: 'ready', service: 'aegis', version: '0.1.0', checks: [] }),
     },
   ]);
-  return render(
+  const view = render(
     <ThemeProvider>
       <QueryClientProvider client={testQueryClient()}>
         <MemoryRouter initialEntries={[path]}>
@@ -75,9 +77,14 @@ function renderAt(path: string) {
       </QueryClientProvider>
     </ThemeProvider>,
   );
+  // The requests, for the one claim that is about the network rather than the DOM: a
+  // screen the viewport refuses must not be fetched (T-412).
+  return Object.assign(seen, view);
 }
 
 afterEach(() => {
+  // Removes the `fetch` stub and the viewport stub (T-412) together, so no test
+  // inherits a window width.
   vi.unstubAllGlobals();
 });
 
@@ -244,6 +251,120 @@ describe('routing and shell', () => {
 
   it('has no serious accessibility violations on the overview screen', async () => {
     const { container } = renderAt('/');
+
+    await expectAccessible(container as HTMLElement);
+  });
+});
+
+describe('below 768 px the console is the triage loop (T-412)', () => {
+  it('offers the queue, and says why the rest of the console is absent', async () => {
+    stubViewport(500);
+    renderAt('/alerts');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Alert triage' }),
+    ).toBeInTheDocument();
+    // §8.3's banner: the statement, the number that makes it checkable, and what to do
+    // about it.
+    const banner = await screen.findByRole('status', { name: 'Screen size' });
+    expect(banner).toHaveTextContent('Only alert triage is offered at this window size.');
+    expect(banner).toHaveTextContent('at least 768 px wide');
+    expect(screen.getByRole('link', { name: 'Go to the alert queue' })).toBeInTheDocument();
+  });
+
+  it('does not render a nav rail whose entries would refuse to open', () => {
+    stubViewport(500);
+    renderAt('/alerts');
+
+    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Traffic' })).not.toBeInTheDocument();
+  });
+
+  it('replaces a screen the window cannot show, and fetches nothing for it', () => {
+    stubViewport(500);
+    const seen = renderAt('/');
+
+    // The whole page is absent rather than hidden, which is what makes the criterion
+    // checkable by request count: a phone must not load a dashboard nobody can read.
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Not offered at this window size' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Alert volume by severity' }),
+    ).not.toBeInTheDocument();
+    expect(seen, 'a narrow window still fetched a hidden screen').toHaveLength(0);
+  });
+
+  it('refuses every area the design keeps for a larger screen', () => {
+    stubViewport(500);
+    for (const path of ['/traffic', '/logs', '/hunt', '/models', '/models/drift', '/admin']) {
+      const first = renderAt(path);
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Not offered at this window size' }),
+        `${path} was offered below 768 px`,
+      ).toBeInTheDocument();
+      first.unmount();
+    }
+  });
+
+  it('offers only the queue in the palette', async () => {
+    stubViewport(500);
+    const user = userEvent.setup();
+    renderAt('/alerts');
+
+    await user.keyboard('{Control>}k{/Control}');
+
+    expect(await screen.findByRole('option', { name: /Alerts/ })).toBeInTheDocument();
+    for (const label of ['Traffic', 'Logs', 'Hunt', 'Model ops', 'Admin']) {
+      expect(screen.queryByRole('option', { name: new RegExp(label) })).not.toBeInTheDocument();
+    }
+  });
+
+  it('offers the full console again once the window is wide enough', async () => {
+    // The guard is reactive, not a decision taken once at start-up: resizing has to
+    // bring the screens back, or an operator who rotates a tablet is stuck.
+    const viewport = stubViewport(500);
+    renderAt('/');
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Not offered at this window size' }),
+    ).toBeInTheDocument();
+
+    act(() => {
+      viewport.setWidth(1280);
+    });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Screen size' })).not.toBeInTheDocument();
+  });
+
+  it('starts the rail collapsed to icons between 1024 and 1439 px', async () => {
+    // §8.3's second row. The labels are the thing that disappears, so the wordmark is
+    // what this asserts on: a rail that is present, 56 px wide and showing letters is
+    // not the icon rail the design asks for.
+    stubViewport(1200);
+    renderAt('/');
+    const rail = screen.getByRole('navigation', { name: 'Primary' });
+    expect(rail).toBeInTheDocument();
+    expect(rail).not.toHaveTextContent('AEGIS');
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument();
+
+    // And the operator's own choice wins over the default.
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Expand navigation' }));
+    expect(rail).toHaveTextContent('AEGIS');
+  });
+
+  it('starts the rail expanded on a large monitor', () => {
+    stubViewport(1600);
+    renderAt('/');
+
+    expect(screen.getByRole('navigation', { name: 'Primary' })).toHaveTextContent('AEGIS');
+    expect(screen.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument();
+  });
+
+  it('has no serious accessibility violations on the narrow screen', async () => {
+    stubViewport(500);
+    const { container } = renderAt('/alerts');
 
     await expectAccessible(container as HTMLElement);
   });

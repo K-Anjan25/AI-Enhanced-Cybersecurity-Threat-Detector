@@ -10,6 +10,12 @@
  * both the nav model and the hunt store is the app shell, and it hands the result in
  * as a prop.
  *
+ * **Below 768 px the palette offers the triage loop and the actions** (T-412). A
+ * command that navigates to a screen the viewport refuses would be a command that
+ * navigates to a notice — the same reason T-422's `/admin/connectors` has no palette
+ * entry — so the destination list is filtered by the same viewport answer the shell
+ * and the routes use.
+ *
  * **The saved hunts are read when the palette opens**, not when the provider mounts:
  * an operator who saves a hunt and immediately presses `⌘K` must find it, and a list
  * read once at start-up would offer the hunts of a previous session.
@@ -24,6 +30,8 @@ import {
   type Command,
 } from '../../components/command';
 import { navDestinations } from '../../components/layout/nav';
+import { useViewportClass } from '../../components/hooks/viewport';
+import { ALERTS_PATH } from '../../lib/routes';
 import { isMacPlatform } from '../../lib/keyboard';
 import { huntHref } from '../../lib/routes';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -71,6 +79,7 @@ export function CommandProvider({ listSavedHunts, children }: CommandProviderPro
   const [dialog, setDialog] = useState<Dialog>(null);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const viewport = useViewportClass();
   const mac = useMemo(() => isMacPlatform(), []);
 
   const openPalette = useCallback(() => {
@@ -89,7 +98,16 @@ export function CommandProvider({ listSavedHunts, children }: CommandProviderPro
   );
 
   const commands = useMemo<Command[]>(() => {
-    const navigation: Command[] = navDestinations().map((destination) => ({
+    // §8.3's last row: the queue is what a narrow window offers. `/alerts` is the only
+    // destination whose screen is not wrapped in `Offered` (App.tsx), and it is also
+    // the only one §8.3 names, so the filter is written as the path rather than as a
+    // class test that would have to be kept in step with the route table.
+    const destinations =
+      viewport === 'narrow'
+        ? navDestinations().filter((destination) => destination.to === ALERTS_PATH)
+        : navDestinations();
+
+    const navigation: Command[] = destinations.map((destination) => ({
       id: `nav:${destination.to}`,
       label: destination.label,
       hint: destination.to,
@@ -98,7 +116,7 @@ export function CommandProvider({ listSavedHunts, children }: CommandProviderPro
       run: () => navigate(destination.to),
     }));
 
-    const hunts: Command[] = saved.map((hunt) => ({
+    const hunts: Command[] = (viewport === 'narrow' ? [] : saved).map((hunt) => ({
       id: `hunt:${hunt.name}`,
       label: hunt.name,
       hint: hunt.text,
@@ -127,7 +145,7 @@ export function CommandProvider({ listSavedHunts, children }: CommandProviderPro
     ];
 
     return [...navigation, ...hunts, ...actions];
-  }, [navigate, openShortcuts, saved, theme, toggleTheme]);
+  }, [navigate, openShortcuts, saved, theme, toggleTheme, viewport]);
 
   const value = useMemo<CommandsValue>(
     () => ({ openPalette, openShortcuts }),
