@@ -12,19 +12,26 @@ testing about verdicts -- immutability, supersession, the repeat rule -- lives i
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from app.api.v1.deps import alert_store, audit_trail, client_ip
+from app.api.v1.deps import alert_store, audit_trail, client_ip, retention_policy
 from app.auth.rbac import Capability, Principal, require
-from app.schemas.query import AlertPage, AlertQuery, CursorError
+from app.schemas.alert_detail import AlertDetailOut
+from app.schemas.query import MAX_PAGE_SIZE, AlertPage, AlertQuery, CursorError
 from app.schemas.verdict import (
     VerdictHistoryOut,
     VerdictOutcomeOut,
     VerdictRecordOut,
     VerdictRequest,
+)
+from app.services.alert_detail import (
+    FAMILY_HISTORY_DAYS,
+    RELATED_LIMIT,
+    detail_of,
+    related_window,
 )
 from app.services.audit_log import AuditAction, record_action
 from app.services.query_service import paginate
@@ -87,6 +94,62 @@ def _parse_created_at(value: str) -> datetime:
             "different instant than the one the alert was stored with",
         )
     return parsed
+
+
+@router.get(
+    "/alerts/{alert_id}",
+    response_model=AlertDetailOut,
+    summary="Read one alert with its explanation, evidence, verdict and context (FR-51)",
+    dependencies=[require(Capability.READ)],
+)
+def get_alert(
+    alert_id: int,
+    request: Request,
+    created_at: str = Query(
+        description="The alert's created_at, which addresses its partition (D-030)."
+    ),
+) -> AlertDetailOut:
+    """Return everything the triage screen's four zones render.
+
+    Four bounded reads, one response: the alert itself, alerts on the same entity
+    around it, alerts on the same entity and family before it, and the verdict
+    ledger. The triage screen is where a second round trip is most expensive, and
+    each window is small enough to answer from one partition.
+
+    A missing row is a 404, and it is the *pair* that is missing: the same id in
+    another month is a different alert, so the lookup uses both halves of the key.
+    """
+    partition_key = _parse_created_at(created_at)
+    store = alert_store(request)
+    alert = store.get(alert_id, partition_key)
+    if alert is None:
+        raise HTTPException(status_code=404, detail=f"no alert {alert_id} at that created_at")
+
+    start, end = related_window(alert)
+    # The store returns up to ``limit + 1`` rows by contract, which is how the
+    # caller learns that a next page exists; asking for one more again would be a
+    # second copy of a rule the store already owns.
+    related_rows = store.fetch(
+        AlertQuery(start=start, end=end, entity_id=alert.entity_id, limit=RELATED_LIMIT)
+    )
+    history_start = alert.created_at - timedelta(days=FAMILY_HISTORY_DAYS)
+    family_rows = store.fetch(
+        AlertQuery(
+            start=history_start,
+            end=alert.created_at,
+            entity_id=alert.entity_id,
+            limit=MAX_PAGE_SIZE,
+        )
+    )
+    return detail_of(
+        alert,
+        ledger=_ledger(request),
+        related_rows=related_rows,
+        family_rows=family_rows,
+        now=datetime.now(UTC),
+        policy=retention_policy(request),
+        related_truncated=len(related_rows) > RELATED_LIMIT,
+    )
 
 
 @router.post(

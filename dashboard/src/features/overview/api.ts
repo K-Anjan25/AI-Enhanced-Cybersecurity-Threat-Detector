@@ -5,7 +5,10 @@
  *
  *   * **`GET /api/v1/alerts`** (T-305) is the only alert source. Its `start`/`end`
  *     are mandatory because R-34 forbids an unbounded scan of a partitioned table,
- *     so every call here carries the window the operator selected.
+ *     so every call here carries the window the operator selected. The row shape
+ *     and the path are imported from `src/api/alerts.ts`: the triage screen reads
+ *     the same endpoint (T-404), and two copies of a wire field name is one copy
+ *     too many.
  *   * **Paging is explicit and bounded.** There is no aggregate endpoint yet (that
  *     gap is filed as T-416), so the overview counts rows client-side — and once
  *     the page cap is reached it reports `complete: false` rather than presenting
@@ -16,31 +19,12 @@
  *   * **`/readyz`** answers the one question metrics cannot: whether a dependency
  *     the process needs is currently refused.
  */
-import { getJson, getText, query } from '../../api/client';
+import { alertListPath, type AlertPage, type AlertRow } from '../../api/alerts';
+import { getJson, getText } from '../../api/client';
 import type { MetricsSnapshot } from './pipeline';
 import { parseExposition } from '../../lib/prometheus';
 
-/** One alert as `GET /api/v1/alerts` returns it (T-305's `AlertRow`). */
-export interface AlertRow {
-  id: number;
-  created_at: string;
-  entity_id: number;
-  family: string;
-  severity: string;
-  score: number;
-  status: string;
-  first_seen: string;
-  last_seen: string;
-  occurrence_count: number;
-  trace_id: string | null;
-}
-
-export interface AlertPage {
-  items: AlertRow[];
-  next_cursor: string | null;
-  limit: number;
-  order: 'asc' | 'desc';
-}
+export type { AlertPage, AlertRow };
 
 /** The largest page the API will serve (T-305's `MAX_PAGE_SIZE`). */
 export const PAGE_SIZE = 1_000;
@@ -87,12 +71,12 @@ export async function fetchAlertWindow(request: WindowRequest): Promise<AlertWin
   let pagesFetched = 0;
 
   while (pagesFetched < maxPages) {
-    const path: string = `/api/v1/alerts${query({
-      start: start.toISOString(),
-      end: end.toISOString(),
+    const path: string = alertListPath({
+      start,
+      end,
       limit: PAGE_SIZE,
       cursor: cursor ?? undefined,
-    })}`;
+    });
     const page: AlertPage = await getJson<AlertPage>(path, { signal });
     rows.push(...page.items);
     pagesFetched += 1;

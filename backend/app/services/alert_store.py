@@ -68,6 +68,17 @@ class AlertStore(Protocol):
         """
         ...
 
+    def get(self, alert_id: int, created_at: datetime) -> Alert | None:
+        """Return one alert addressed by its partition key, or ``None``.
+
+        Both halves of the key are required, per D-030: ``id`` alone is not unique
+        across partitions, so an id-only lookup can address a different row in a
+        different month. A point lookup on the partition key is not an R-34
+        concern -- the key constrains ``created_at`` exactly -- which is why this
+        is a method rather than a window query the caller has to guess at.
+        """
+        ...
+
 
 class InMemoryAlertStore:
     """An :class:`AlertStore` in a list, for tests and single-process runs.
@@ -104,6 +115,13 @@ class InMemoryAlertStore:
         self._case_ids[case_id] = row.id
         self._rows.append(row)
         return row
+
+    def get(self, alert_id: int, created_at: datetime) -> Alert | None:
+        """Return the stored row with this ``(id, created_at)``, or ``None``."""
+        for row in self._rows:
+            if row.id == alert_id and row.created_at == created_at:
+                return row
+        return None
 
     def fetch(self, query: AlertQuery) -> list[Alert]:
         """Apply the query's predicates, order and cursor to the stored rows."""

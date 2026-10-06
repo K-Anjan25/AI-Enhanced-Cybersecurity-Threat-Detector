@@ -64,17 +64,39 @@ export function testQueryClient(): QueryClient {
   });
 }
 
-export function Providers({ children, client }: { children: ReactNode; client?: QueryClient }) {
+export function Providers({
+  children,
+  client,
+  initialEntries,
+}: {
+  children: ReactNode;
+  client?: QueryClient;
+  /** Where the router starts. Needed by any test that renders a *route*. */
+  initialEntries?: string[];
+}) {
   return (
     <ThemeProvider>
       <QueryClientProvider client={client ?? testQueryClient()}>
-        <MemoryRouter>{children}</MemoryRouter>
+        <MemoryRouter {...(initialEntries === undefined ? {} : { initialEntries })}>
+          {children}
+        </MemoryRouter>
       </QueryClientProvider>
     </ThemeProvider>
   );
 }
 
 /** Render inside the providers every screen expects. */
-export function renderWithProviders(ui: ReactElement, client?: QueryClient): RenderResult {
-  return render(<Providers {...(client === undefined ? {} : { client })}>{ui}</Providers>);
+export function renderWithProviders(
+  ui: ReactElement,
+  client?: QueryClient,
+  initialEntries?: string[],
+): RenderResult {
+  return render(
+    <Providers
+      {...(client === undefined ? {} : { client })}
+      {...(initialEntries === undefined ? {} : { initialEntries })}
+    >
+      {ui}
+    </Providers>,
+  );
 }

@@ -356,8 +356,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(metrics.router)
     app.include_router(ingest.router)
-    app.include_router(alerts.router)
+    # ``stream`` comes first because its paths are literal where ``alerts`` now has
+    # a parameterised one (``/alerts/{alert_id}``, T-404): Starlette matches in
+    # registration order and a literal path never falls through a converter that
+    # failed on it, so ``/alerts/stream`` would otherwise be read as an alert id.
     app.include_router(stream.router)
+    app.include_router(alerts.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)
     app.include_router(api_keys.router)
