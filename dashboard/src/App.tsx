@@ -14,11 +14,20 @@
  * hunt's export, T-408) has to have somewhere to report it in every environment the
  * app is rendered in, tests included. It renders an empty notifications region
  * until something is raised, so mounting it costs a screen nothing.
+ *
+ * The command palette (T-411) is wired here too, and for the same compositional
+ * reason: it navigates every route and runs the hunt console's saved queries, and
+ * those two sources live on opposite sides of the feature boundary. This is the only
+ * layer allowed to read both, so this is where the provider is mounted and where the
+ * saved hunts are handed in as a function.
  */
 import { Route, Routes } from 'react-router-dom';
 
+import { sessionToken } from './api/session';
 import { AppShell } from './components/layout/AppShell';
 import { ToastProvider } from './components/ui';
+import { CommandProvider, useCommands } from './features/command/provider';
+import { huntStoreSubject, savedHunts } from './features/hunt/saved';
 import { AdminPage } from './features/admin/pages/AdminPage';
 import { HuntPage } from './features/hunt/pages/HuntPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
@@ -46,38 +55,55 @@ function NotYetBuilt({ path }: { path: string }) {
   );
 }
 
+/**
+ * The routes, plus the shell — inside the provider, because the top bar's search
+ * control opens the palette and so needs the handle the provider publishes.
+ */
+function Shell() {
+  const { openPalette } = useCommands();
+  return (
+    <Routes>
+      <Route element={<AppShell onOpenPalette={openPalette} />}>
+        <Route index element={<OverviewPage />} />
+        <Route path="/alerts" element={<TriagePage />} />
+        <Route path="/alerts/:alertId" element={<TriagePage />} />
+        <Route path="/traffic" element={<TrafficPage />} />
+        <Route path="/logs" element={<LogsPage />} />
+        <Route path="/hunt" element={<HuntPage />} />
+        <Route path="/models" element={<ModelsPage />} />
+        <Route path="/models/drift" element={<DriftPage />} />
+        {/* One route for `/admin` and its children: the section nav is inside the
+              page, and the child paths match relative to it. */}
+        <Route path="/admin/*" element={<AdminPage />} />
+        {Object.keys(PENDING).map((path) => (
+          <Route key={path} path={path} element={<NotYetBuilt path={path} />} />
+        ))}
+        <Route
+          path="*"
+          element={
+            <div>
+              <h1 className="text-h1">Page not found</h1>
+              <p className="mt-2 text-body text-muted">
+                No route matches this address. Check the navigation for available screens.
+              </p>
+            </div>
+          }
+        />
+      </Route>
+    </Routes>
+  );
+}
+
 export function App() {
   return (
     <ToastProvider>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route index element={<OverviewPage />} />
-          <Route path="/alerts" element={<TriagePage />} />
-          <Route path="/alerts/:alertId" element={<TriagePage />} />
-          <Route path="/traffic" element={<TrafficPage />} />
-          <Route path="/logs" element={<LogsPage />} />
-          <Route path="/hunt" element={<HuntPage />} />
-          <Route path="/models" element={<ModelsPage />} />
-          <Route path="/models/drift" element={<DriftPage />} />
-          {/* One route for `/admin` and its children: the section nav is inside the
-              page, and the child paths match relative to it. */}
-          <Route path="/admin/*" element={<AdminPage />} />
-          {Object.keys(PENDING).map((path) => (
-            <Route key={path} path={path} element={<NotYetBuilt path={path} />} />
-          ))}
-          <Route
-            path="*"
-            element={
-              <div>
-                <h1 className="text-h1">Page not found</h1>
-                <p className="mt-2 text-body text-muted">
-                  No route matches this address. Check the navigation for available screens.
-                </p>
-              </div>
-            }
-          />
-        </Route>
-      </Routes>
+      <CommandProvider
+        // Read on the open edge: the palette offers whatever this browser has saved
+        // by the time it is asked, not what was saved when the app started.
+        listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}
+      >
+        <Shell />
+      </CommandProvider>
     </ToastProvider>
   );
 }

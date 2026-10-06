@@ -29,6 +29,13 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { RealtimeProvider, useAlertFeed } from './RealtimeProvider';
 import { useAlertSync } from './useAlertSync';
 
+/**
+ * The shell now renders the palette's search control, which opens a dialog this
+ * file does not test: it is a stub here so the shell can be rendered without the
+ * command provider.
+ */
+const openPalette = vi.fn();
+
 const QUEUE_PATH = '/api/v1/alerts';
 const NOTIFICATIONS_PATH = '/api/v1/alerts/notifications';
 
@@ -98,7 +105,7 @@ function renderShell(options: { pollIntervalMs?: number } = {}) {
           options={{ clock, random: () => 0, pollIntervalMs: options.pollIntervalMs ?? 15_000 }}
         >
           <MemoryRouter>
-            <AppShell>
+            <AppShell onOpenPalette={openPalette}>
               <AlertList />
             </AppShell>
           </MemoryRouter>
@@ -458,7 +465,7 @@ describe('the stale age in the header', () => {
         <QueryClientProvider client={testQueryClient()}>
           <RealtimeProvider socketFactory={sockets.factory} options={{ random: () => 0 }}>
             <MemoryRouter>
-              <AppShell>
+              <AppShell onOpenPalette={openPalette}>
                 <AlertList />
               </AppShell>
             </MemoryRouter>

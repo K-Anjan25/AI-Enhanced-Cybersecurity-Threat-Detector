@@ -30,6 +30,7 @@ import {
   Skeleton,
   type Column,
 } from '../../../components/ui';
+import { FILTER_MARK } from '../../../lib/keyboard';
 import {
   AUDIT_ACTION_CHOICES,
   DEFAULT_AUDIT_HOURS,
@@ -190,6 +191,7 @@ export function AuditPanel() {
           <label className="flex flex-col gap-1 text-body-sm">
             Actor
             <input
+              {...FILTER_MARK}
               value={actor}
               onChange={(event) => {
                 setActor(event.target.value);

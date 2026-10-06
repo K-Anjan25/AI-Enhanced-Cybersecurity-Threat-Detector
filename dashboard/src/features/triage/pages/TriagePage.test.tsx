@@ -32,6 +32,9 @@ import { TriagePage } from './TriagePage';
 import type { AlertDetail } from '../types';
 
 const ENTRY = '/alerts/42?created_at=2026-03-15T10%3A00%3A00Z';
+const SECOND_ENTRY = '/alerts/41?created_at=2026-03-15T09%3A20%3A00Z';
+const SECOND_ROW_CREATED_AT = '2026-03-15T09:20:00Z';
+const FIRST_ROW_CREATED_AT = '2026-03-15T10:00:00Z';
 
 /**
  * The three routes these tests need, registered most-specific first.
@@ -45,13 +48,15 @@ const ENTRY = '/alerts/42?created_at=2026-03-15T10%3A00%3A00Z';
 interface RouteSet {
   verdict?: StubRoute['respond'];
   detail?: StubRoute['respond'];
+  /** The second queue row's detail, so a `j` step has somewhere to land. */
+  neighbour?: StubRoute['respond'];
   queue?: StubRoute['respond'];
 }
 
 function routes(detail: AlertDetail, overrides: RouteSet = {}): StubRoute[] {
   const queue: StubRoute['respond'] = () =>
     jsonResponse({
-      items: [alertRow({ id: 42 }), alertRow({ id: 41, created_at: '2026-03-15T09:20:00Z' })],
+      items: [alertRow({ id: 42 }), alertRow({ id: 41, created_at: SECOND_ROW_CREATED_AT })],
       next_cursor: null,
       limit: 100,
       order: 'desc',
@@ -66,6 +71,15 @@ function routes(detail: AlertDetail, overrides: RouteSet = {}): StubRoute[] {
     {
       match: '/api/v1/alerts/42',
       respond: overrides.detail ?? (() => jsonResponse(detail)),
+    },
+    {
+      match: '/api/v1/alerts/41',
+      respond:
+        overrides.neighbour ??
+        (() =>
+          jsonResponse(
+            alertDetail({ alert: alertRow({ id: 41, created_at: SECOND_ROW_CREATED_AT }) }),
+          )),
     },
     { match: '/api/v1/alerts', respond: overrides.queue ?? queue },
   ];
@@ -222,6 +236,96 @@ describe('TriagePage', () => {
     expect(
       requests.some((request) => new URL(request.url).pathname.startsWith('/api/v1/alerts/')),
     ).toBe(false);
+  });
+
+  it('walks the queue with j and k, opening the neighbour instead of moving focus (T-411)', async () => {
+    // The acceptance criterion is "the full triage loop is completable without a
+    // mouse"; `j`/`k` are how the analyst moves between alerts without going back
+    // to the queue. Each step is a route change, so the detail, the URL and the
+    // queue's `aria-current` all have to agree.
+    const { requests } = renderPage(alertDetail(), '/alerts');
+    const queue = await screen.findByRole('list', { name: 'Alerts' });
+    const openHref = () =>
+      within(queue)
+        .getAllByRole('link')
+        .find((link) => link.getAttribute('aria-current') === 'true')
+        ?.getAttribute('href');
+
+    // `j` on the bare queue opens the top alert...
+    await userEvent.keyboard('j');
+    await waitFor(() =>
+      expect(openHref()).toBe(`/alerts/42?created_at=${encodeURIComponent(FIRST_ROW_CREATED_AT)}`),
+    );
+    // ...and again steps to the next one.
+    await userEvent.keyboard('j');
+    await waitFor(() => expect(openHref()).toBe(SECOND_ENTRY));
+    await waitFor(() =>
+      expect(
+        requests.map((request) => new URL(request.url).pathname).includes('/api/v1/alerts/41'),
+      ).toBe(true),
+    );
+
+    // `k` comes back.
+    await userEvent.keyboard('k');
+    await waitFor(() =>
+      expect(openHref()).toBe(`/alerts/42?created_at=${encodeURIComponent(FIRST_ROW_CREATED_AT)}`),
+    );
+  });
+
+  it('treats the ends of the queue as ends rather than a carousel (T-411)', async () => {
+    const { requests } = renderPage(alertDetail(), ENTRY);
+
+    // Already at the top: `k` has nowhere to go and must not jump to the bottom.
+    await screen.findByRole('heading', { name: 'Why we flagged this' });
+    await userEvent.keyboard('k');
+    expect(requests.some((request) => new URL(request.url).pathname === '/api/v1/alerts/41')).toBe(
+      false,
+    );
+    expect(screen.getByRole('heading', { name: 'Why we flagged this' })).toBeInTheDocument();
+  });
+
+  it('does not step past the last row, and does not wrap to the top (T-411)', async () => {
+    renderPage(alertDetail(), ENTRY);
+    const queue = await screen.findByRole('list', { name: 'Alerts' });
+    const openHref = () =>
+      within(queue)
+        .getAllByRole('link')
+        .find((link) => link.getAttribute('aria-current') === 'true')
+        ?.getAttribute('href');
+
+    await userEvent.keyboard('j');
+    await waitFor(() => expect(openHref()).toBe(SECOND_ENTRY));
+
+    await userEvent.keyboard('j');
+
+    // 41 is the bottom of this queue: the key is a no-op, not a carousel back to 42.
+    expect(openHref()).toBe(SECOND_ENTRY);
+  });
+
+  it('steps nothing when the queue has no rows to step to (T-411)', async () => {
+    // A key that navigates to a row the screen does not have is a bug, not a
+    // shortcut; with an empty queue it does nothing at all.
+    const { requests } = renderPage(alertDetail(), '/alerts', {
+      queue: () => jsonResponse({ items: [], next_cursor: null, limit: 100, order: 'desc' }),
+    });
+    await screen.findByText('Select an alert from the queue');
+
+    await userEvent.keyboard('j');
+    await userEvent.keyboard('k');
+
+    expect(screen.getByText('Select an alert from the queue')).toBeInTheDocument();
+    expect(
+      requests.some((request) => new URL(request.url).pathname.startsWith('/api/v1/alerts/')),
+    ).toBe(false);
+  });
+
+  it('steps nothing when the queue could not be read (T-411)', async () => {
+    renderPage(alertDetail(), ENTRY, { queue: () => jsonResponse({ detail: 'boom' }, 500) });
+    await screen.findByText('The queue could not be loaded');
+
+    await userEvent.keyboard('j');
+
+    expect(screen.getByRole('heading', { name: 'Why we flagged this' })).toBeInTheDocument();
   });
 
   it('keeps the open alert on screen when the queue read fails', async () => {

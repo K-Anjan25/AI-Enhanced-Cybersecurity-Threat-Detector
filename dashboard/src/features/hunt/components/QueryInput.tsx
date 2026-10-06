@@ -24,6 +24,7 @@
  */
 import { useId, useRef, useState } from 'react';
 
+import { FILTER_MARK } from '../../../lib/keyboard';
 import { huntCompletions, type HuntError, type HuntSuggestion } from '../query';
 
 export interface QueryInputProps {
@@ -67,6 +68,9 @@ export function QueryInput({ value, onChange, onRun, errors, disabled = false }:
       <div className="relative flex flex-wrap items-center gap-2">
         <input
           id={`${listId}-input`}
+          // `/` focuses this field: it is the screen's filter, and the marker is how
+          // the global shortcut finds it (T-411).
+          {...FILTER_MARK}
           ref={input}
           role="combobox"
           aria-expanded={open && suggestions.length > 0}

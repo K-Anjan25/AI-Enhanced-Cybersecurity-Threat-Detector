@@ -21,11 +21,13 @@
  *     pipeline. A control that is absent with a reason beats one that looks as if it
  *     worked.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { Button, EmptyState, ErrorState, Panel, Skeleton, useToast } from '../../../components/ui';
 import { ApiError } from '../../../api/client';
 import { sessionToken } from '../../../api/session';
+import { HUNT_QUERY_PARAM } from '../../../lib/routes';
 import { QueryInput } from '../components/QueryInput';
 import { ResultsTable } from '../components/ResultsTable';
 import { SavedHunts } from '../components/SavedHunts';
@@ -93,19 +95,46 @@ export function HuntPage() {
   const toast = useToast();
   const refusal = exportRefusalMessage(exportation.error);
 
-  const start = (parse: HuntParse, key: HuntSpan['key']): void => {
-    setRun({ parse, window: huntWindow(key, Date.now()), spanKey: key });
-    if (parse.errors.length === 0) {
-      // Recent hunts record the *canonical* echo, so re-running one from the dropdown
-      // is the query that actually executed rather than the keystrokes that led to it.
-      setRecent(rememberHunt(subject, describeHunt(parse), new Date()));
-    }
-  };
+  const start = useCallback(
+    (parse: HuntParse, key: HuntSpan['key']): void => {
+      setRun({ parse, window: huntWindow(key, Date.now()), spanKey: key });
+      if (parse.errors.length === 0) {
+        // Recent hunts record the *canonical* echo, so re-running one from the
+        // dropdown is the query that actually executed rather than the keystrokes
+        // that led to it.
+        setRecent(rememberHunt(subject, describeHunt(parse), new Date()));
+      }
+    },
+    [subject],
+  );
 
   const runHunt = (): void => {
     if (liveParse.errors.length > 0) return;
     start(liveParse, spanKey);
   };
+
+  // A query in the URL is a hunt the operator asked for by name: the command
+  // palette's saved hunts navigate to `/hunt?q=...` (T-411). It runs through the
+  // same `start` the Run button uses, so the echo, the export and the recent list
+  // cannot disagree with a hand-typed run.
+  //
+  // Three details are deliberate. The guard is on the *text that was already
+  // started*, not on the parameter, so editing the box afterwards does not re-run
+  // anything. An unparseable query sets the box and runs nothing, which leaves the
+  // input's own error list to explain why rather than firing a request that must
+  // fail. And the window stays the analyst's own choice: a saved hunt is a query,
+  // not a window (T-408's store keeps only the text).
+  const [search] = useSearchParams();
+  const requested = search.get(HUNT_QUERY_PARAM);
+  const startedFromUrl = useRef<string | null>(null);
+  useEffect(() => {
+    if (requested === null || startedFromUrl.current === requested) return;
+    startedFromUrl.current = requested;
+    setText(requested);
+    const parsed = parseHuntQuery(requested);
+    if (parsed.errors.length > 0) return;
+    start(parsed, spanKey);
+  }, [requested, spanKey, start]);
 
   // Changing the window while a hunt is on screen re-runs it: the window control is
   // what the table is about, and a result set that disagreed with the selector above

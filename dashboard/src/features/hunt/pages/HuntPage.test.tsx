@@ -337,6 +337,41 @@ describe('the hunt console', () => {
     expect(screen.getByText(/The API refused the query/)).toBeInTheDocument();
   });
 
+  it('runs a hunt named in the URL, which is how the palette opens a saved one (T-411)', async () => {
+    // A saved hunt is a query, not a window: the console reads the text from the URL
+    // and applies its own default window, exactly as if it had been typed.
+    const seen = stubHunt(() => jsonResponse(page([row({ id: 1 })])));
+    renderHunt(['/hunt?q=severity%3Ahigh']);
+
+    expect(await screen.findByRole('cell', { name: 'exfiltration' })).toBeInTheDocument();
+    expect(screen.getByTestId('hunt-echo')).toHaveTextContent('Searched severity:high');
+    expect(seen).toHaveLength(1);
+  });
+
+  it('puts an unreadable URL query in the box and asks for nothing', async () => {
+    // The refusal is the input's own: firing a request the API must reject would
+    // report a server error for what is a typo.
+    const seen = stubHunt(() => jsonResponse(page([])));
+    renderHunt(['/hunt?q=src_ip%3A10.0.0.1']);
+
+    expect(screen.getByRole('combobox', { name: 'Query' })).toHaveValue('src_ip:10.0.0.1');
+    expect(screen.getByText(/is not a field this build can search/i)).toBeInTheDocument();
+    expect(seen).toEqual([]);
+  });
+
+  it('searches once for a URL query, even after the box is edited', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const seen = stubHunt(() => jsonResponse(page([row({ id: 1 })])));
+    renderHunt(['/hunt?q=severity%3Ahigh']);
+    await screen.findByRole('cell', { name: 'exfiltration' });
+
+    await user.type(screen.getByRole('combobox', { name: 'Query' }), 'x');
+
+    // Editing the box must not re-run the hunt from the URL: the table answers the
+    // question that was asked, not the one being typed.
+    expect(seen).toHaveLength(1);
+  });
+
   it('has no critical accessibility violations in the idle and empty states', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     stubHunt(() => jsonResponse(page([])));

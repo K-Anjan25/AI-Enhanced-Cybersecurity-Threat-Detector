@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
+import { NAV_ITEMS } from './components/layout/nav';
 import { expectAccessible } from './test/axe';
 import { jsonResponse, stubFetch, testQueryClient, textResponse } from './test/query';
 import { ThemeProvider } from './theme/ThemeProvider';
@@ -91,9 +92,54 @@ describe('routing and shell', () => {
     renderAt('/');
 
     const nav = screen.getByRole('navigation', { name: 'Primary' });
-    for (const label of ['Overview', 'Alerts', 'Traffic', 'Logs', 'Hunt', 'Models', 'Admin']) {
-      expect(nav).toHaveTextContent(label);
+    // Read from the model the rail is built from (T-411), so renaming a screen
+    // cannot leave this test asserting the old information architecture.
+    for (const item of NAV_ITEMS) expect(nav).toHaveTextContent(item.label);
+    for (const section of new Set(NAV_ITEMS.map((item) => item.section))) {
+      expect(nav).toHaveTextContent(section);
     }
+  });
+
+  it('opens the palette from anywhere in the shell and runs what it names (T-411)', async () => {
+    // The acceptance criterion at the level an operator meets it: the key opens the
+    // palette over the screen they are on, the palette filters, and Enter goes there.
+    const user = userEvent.setup();
+    renderAt('/');
+
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(await screen.findByRole('combobox', { name: 'Search' }), 'hunt');
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
+    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+    // The dialog closed behind the navigation rather than staying over the screen
+    // it just opened.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('offers the admin sections the rail keeps behind one entry (T-411)', async () => {
+    // design.md §3 gives Admin one rail entry and the page its own section nav; the
+    // palette lists the children anyway, which is the point of a command palette.
+    const user = userEvent.setup();
+    renderAt('/');
+
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(await screen.findByRole('combobox', { name: 'Search' }), 'audit');
+
+    expect(await screen.findByRole('option', { name: /Audit log/ })).toBeInTheDocument();
+  });
+
+  it('opens the in-app shortcut reference from the shell (T-411)', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
+
+    await user.keyboard('?');
+
+    const dialog = await screen.findByRole('dialog', { name: 'Keyboard shortcuts' });
+    // The reference documents the set design.md §9 fixes, not a subset of it.
+    expect(dialog).toHaveTextContent('Open the command palette');
+    expect(dialog).toHaveTextContent('Open the next or previous alert');
+    expect(dialog).toHaveTextContent('Record a verdict on the open alert');
   });
 
   it('navigates to the traffic explorer, which is built now', async () => {

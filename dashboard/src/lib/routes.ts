@@ -17,6 +17,29 @@
 /** The alert list route. */
 export const ALERTS_PATH = '/alerts';
 
+/** The hunt console route. */
+export const HUNT_PATH = '/hunt';
+
+/**
+ * The query parameter the hunt console reads.
+ *
+ * Exported with the href below so the writer and the reader share one spelling: a
+ * link that says `?query=` to a screen that reads `q` is a link to a blank console,
+ * and nothing would fail — it would just quietly search nothing.
+ */
+export const HUNT_QUERY_PARAM = 'q';
+
+/**
+ * The hunt console with a query to run, e.g. `/hunt?q=severity%3Ahigh`.
+ *
+ * A saved hunt is a query, not a window: the store keeps the text, so the deep link
+ * carries the text and the console applies its own default window (T-408's own
+ * decision, and the reason this encodes one parameter rather than two).
+ */
+export function huntHref(text: string): string {
+  return `${HUNT_PATH}?${HUNT_QUERY_PARAM}=${encodeURIComponent(text)}`;
+}
+
 /** The detail route for one alert, partition key included. */
 export function alertHref(row: { id: number; created_at: string }): string {
   return alertHrefFor(row.id, row.created_at);
