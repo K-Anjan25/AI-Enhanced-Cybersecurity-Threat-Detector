@@ -37,6 +37,7 @@ import { Card, EmptyState, ErrorState, Skeleton } from '../../../components/ui';
 import { formatSince } from '../../../lib/format';
 import { useNow } from '../../../components/hooks/polling';
 import { AlertQueue } from '../components/AlertQueue';
+import { ExportControls } from '../components/ExportControls';
 import { ContextPanel } from '../components/ContextPanel';
 import { EvidencePanel } from '../components/EvidencePanel';
 import { TimelinePanel } from '../components/TimelinePanel';
@@ -130,6 +131,7 @@ export function TriagePage() {
           windowHours={QUEUE_WINDOW_HOURS}
           selectedId={selectedId}
           now={now}
+          actions={<ExportControls />}
           onRetry={() => {
             void queue.refetch();
           }}

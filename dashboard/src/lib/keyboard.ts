@@ -66,11 +66,14 @@ export const FILTER_ATTRIBUTE = 'data-shortcut';
 export const FILTER_SELECTOR = '[data-shortcut="filter"]';
 
 /**
- * The marker a screen spreads onto its primary filter: `{...FILTER_MARK}`.
+ * The marker a screen spreads onto its primary filter: `<input {...FILTER_MARK} />`.
  *
  * An object rather than an attribute written out at each call site, because the
  * marker and the selector above have to agree and nothing would fail if they did
- * not — the shortcut would simply stop finding the field.
+ * not — `/` would simply stop finding the field. The screens that have a filter name
+ * it this way (the hunt console's query box, the audit log's actor field); a screen
+ * with none has no marked field, and `/` does nothing there, which is what the
+ * in-app reference's "where" column says.
  */
 export const FILTER_MARK = { [FILTER_ATTRIBUTE]: 'filter' } as const;
 

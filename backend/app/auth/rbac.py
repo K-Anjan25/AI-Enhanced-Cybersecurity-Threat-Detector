@@ -190,6 +190,11 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # the system, so viewer and analyst are deliberately absent: reading is the
     # viewer's job, taking a copy is not.
     "/api/v1/hunt/export": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # The triage queue's batch export (T-415, FR-23). The same capability and the
+    # same two roles as the hunt export, because it is the same act -- a window's
+    # worth of alert rows leaving the system -- and two exports with two role rules
+    # would be a way around the stricter one.
+    "/api/v1/alerts/export": frozenset({Role.RESPONDER, Role.ADMIN}),
     # User and role administration (T-410). R-53 reserves it for admin alone, and
     # the capability is `users` rather than `read`: the directory names every
     # account and what it may do, which is reconnaissance for anyone planning an

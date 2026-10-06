@@ -257,6 +257,60 @@ export async function postText(
   return readText(await request(path, { ...options, method: 'POST', body, accept: 'text/csv' }));
 }
 
+/**
+ * One exported document: its bytes, the name the server gave it, and its row count.
+ *
+ * The name comes from `Content-Disposition` rather than from the client, because
+ * the server's filename carries the window (T-408's rule: a saved file should say
+ * when it covers) and a client-side copy of that rule would drift silently.
+ * `rows` comes from a header for the same kind of reason: a CSV could be re-parsed
+ * here, a PDF could not, and two counts that can disagree are worse than one that
+ * is stated.
+ */
+export interface ExportDocument {
+  content: Blob;
+  /** The server's filename, or `null` when it sent none. */
+  filename: string | null;
+  /** How many rows the file carries, or `null` when the server did not say. */
+  rows: number | null;
+  /** Whether the query held more rows than the file does. */
+  truncated: boolean;
+}
+
+/**
+ * `POST` a JSON body and read a document back (T-415).
+ *
+ * The triage queue's export is the caller: it answers with CSV or a PDF and it is a
+ * POST for the same reason the hunt export is -- it writes an audit row, so it is
+ * not a read the trail has no business knowing about (D-041). A download is fetched
+ * rather than followed, so the bearer token rides a header and a refusal is a status
+ * the screen can explain instead of a browser error page.
+ */
+export async function postExport(
+  path: string,
+  body: unknown,
+  accept: string,
+  options: RequestOptions = {},
+): Promise<ExportDocument> {
+  const response = await request(path, { ...options, method: 'POST', body, accept });
+  let content: Blob;
+  try {
+    content = await response.blob();
+  } catch {
+    throw new ApiError('malformed', response.status, 'the response body could not be read');
+  }
+  const disposition = response.headers.get('content-disposition');
+  const match = disposition?.match(/filename="([^"]+)"/);
+  const stated = response.headers.get('x-export-rows');
+  const rows = stated === null ? Number.NaN : Number.parseInt(stated, 10);
+  return {
+    content,
+    filename: match?.[1] ?? null,
+    rows: Number.isFinite(rows) ? rows : null,
+    truncated: response.headers.get('x-export-truncated') === 'true',
+  };
+}
+
 async function readText(response: Response): Promise<string> {
   try {
     return await response.text();
