@@ -15,6 +15,11 @@ export default defineConfig({
       // proxies relative /api and /ws URLs to it.
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
       '/ws': { target: 'ws://localhost:8000', ws: true },
+      // The overview's pipeline strip reads the scrape directly (T-403), and
+      // /readyz tells it which dependency is down. Both are same-origin paths in
+      // the browser; this is what makes them reach the backend in development.
+      '/metrics': { target: 'http://localhost:8000', changeOrigin: true },
+      '/readyz': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
   preview: {
