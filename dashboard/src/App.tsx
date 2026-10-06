@@ -2,9 +2,12 @@
  * Route table (design.md §3 information architecture).
  *
  * Overview (T-403, §4.1), Alert triage (T-404, §4.3), Traffic (T-406, §4.4), Logs
- * (T-407, §4.5), Hunt (T-408, §4.6) and Model ops with its drift page (T-409, §4.7)
- * exist. Every other route renders an explicit "not built" state rather than a blank
- * panel or a dead link, so the navigation reflects reality (design.md §8.1).
+ * (T-407, §4.5), Hunt (T-408, §4.6), Model ops with its drift page (T-409, §4.7) and
+ * Admin (T-410, §4.8) exist. Every other route renders an explicit "not built" state
+ * rather than a blank panel or a dead link, so the navigation reflects reality
+ * (design.md §8.1) — `/admin/connectors` is the one left, and it names T-422, the task
+ * that will build it, because design.md §3 gives it a route and the backlog had no row
+ * for the screen.
  *
  * The toast provider is mounted here rather than at the entry point because it is
  * part of the app's own tree: a route that reports the result of an action (the
@@ -16,6 +19,7 @@ import { Route, Routes } from 'react-router-dom';
 
 import { AppShell } from './components/layout/AppShell';
 import { ToastProvider } from './components/ui';
+import { AdminPage } from './features/admin/pages/AdminPage';
 import { HuntPage } from './features/hunt/pages/HuntPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
 import { DriftPage } from './features/models/pages/DriftPage';
@@ -25,7 +29,7 @@ import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 
 const PENDING: Record<string, string> = {
-  '/admin': 'T-410',
+  '/admin/connectors': 'T-422',
 };
 
 function NotYetBuilt({ path }: { path: string }) {
@@ -55,6 +59,9 @@ export function App() {
           <Route path="/hunt" element={<HuntPage />} />
           <Route path="/models" element={<ModelsPage />} />
           <Route path="/models/drift" element={<DriftPage />} />
+          {/* One route for `/admin` and its children: the section nav is inside the
+              page, and the child paths match relative to it. */}
+          <Route path="/admin/*" element={<AdminPage />} />
           {Object.keys(PENDING).map((path) => (
             <Route key={path} path={path} element={<NotYetBuilt path={path} />} />
           ))}

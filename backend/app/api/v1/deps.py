@@ -30,6 +30,8 @@ from app.services.log_tail import LogTail
 from app.services.model_ops import ModelOpsService
 from app.services.recalibration import RecalibrationService
 from app.services.retention import RetentionPolicy, StatementRunner
+from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
+from app.services.user_directory import UserAdminService
 
 __all__ = [
     "admission",
@@ -46,6 +48,9 @@ __all__ = [
     "partition_runner",
     "recalibration_service",
     "retention_policy",
+    "threshold_admin",
+    "threshold_impact",
+    "user_admin",
 ]
 
 
@@ -207,6 +212,51 @@ def model_ops(request: Request) -> ModelOpsService:
     service: ModelOpsService | None = getattr(request.app.state, "model_ops", None)
     if service is None:
         msg = "model_ops is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
+
+
+def threshold_admin(request: Request) -> ThresholdAdminService:
+    """The hand-set threshold panel's write path (T-410).
+
+    Raises:
+        RuntimeError: if none is installed. A service built per request would hold a
+            store of its own, so a value set here would vanish from the listing and
+            the recalibration job would overwrite it with a fitted one.
+    """
+    service: ThresholdAdminService | None = getattr(request.app.state, "threshold_admin", None)
+    if service is None:
+        msg = "threshold_admin is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
+
+
+def threshold_impact(request: Request) -> ThresholdImpactReader:
+    """The impact preview: a proposed value counted against recorded alerts.
+
+    Raises:
+        RuntimeError: if none is installed. An unwired reader must fail loudly rather
+            than answer zero alerts, which reads as "this value changes nothing".
+    """
+    reader: ThresholdImpactReader | None = getattr(request.app.state, "threshold_impact", None)
+    if reader is None:
+        msg = "threshold_impact is not configured on app.state"
+        raise RuntimeError(msg)
+    return reader
+
+
+def user_admin(request: Request) -> UserAdminService:
+    """The user directory and the rules that guard a role change (T-410).
+
+    Raises:
+        RuntimeError: if none is installed. An empty service built per request would
+            answer "nobody is registered" for a deployment whose users exist, and --
+            worse -- would decide the last-admin rule against an empty directory, so
+            every demotion would be refused as if it were the last admin.
+    """
+    service: UserAdminService | None = getattr(request.app.state, "user_admin", None)
+    if service is None:
+        msg = "user_admin is not configured on app.state"
         raise RuntimeError(msg)
     return service
 

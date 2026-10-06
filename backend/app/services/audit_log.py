@@ -110,6 +110,8 @@ class AuditAction(StrEnum):
     model_promote = "model.promote"
     model_rollback = "model.rollback"
     threshold_recalibrate = "threshold.recalibrate"
+    threshold_set = "threshold.set"
+    user_role = "user.role"
     #: The one *read* in this table: an export is data leaving the system, which is
     #: the question the trail answers (T-408, D-065).
     hunt_export = "hunt.export"
@@ -131,6 +133,8 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/models/{model_id}/promote"): AuditAction.model_promote,
         ("POST", "/api/v1/models/{kind}/rollback"): AuditAction.model_rollback,
         ("POST", "/api/v1/thresholds/recalibrate"): AuditAction.threshold_recalibrate,
+        ("PUT", "/api/v1/thresholds/{family}/{band}"): AuditAction.threshold_set,
+        ("POST", "/api/v1/users/{user_id}/role"): AuditAction.user_role,
         # The export (T-408). A POST because it writes a trail row -- see the
         # module docstring of ``app.api.v1.endpoints.hunt``.
         ("POST", "/api/v1/hunt/export"): AuditAction.hunt_export,

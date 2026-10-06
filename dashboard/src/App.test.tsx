@@ -47,6 +47,17 @@ function renderAt(path: string) {
       match: '/api/v1/models',
       respond: () => jsonResponse({ items: [], count: 0 }),
     },
+    // The admin page's index is a menu, so these four reads are what its panels
+    // would issue; the one that runs on mount at `/admin` is none of them.
+    {
+      match: '/api/v1/users',
+      respond: () => jsonResponse({ items: [], count: 0, active_admins: 0 }),
+    },
+    { match: '/api/v1/keys', respond: () => jsonResponse({ items: [] }) },
+    {
+      match: '/api/v1/thresholds',
+      respond: () => jsonResponse({ tenant_id: 't1', defaults: {}, items: [] }),
+    },
     { match: '/metrics', respond: () => textResponse('') },
     {
       match: '/readyz',
@@ -131,11 +142,25 @@ describe('routing and shell', () => {
     expect(await screen.findByText('No model versions are registered')).toBeInTheDocument();
   });
 
-  it('navigates to a screen that is not built and names the task that owns it', () => {
+  it('mounts the admin screen at /admin, which is built now', async () => {
     renderAt('/admin');
 
+    expect(screen.getByRole('heading', { level: 1, name: 'Admin' })).toBeInTheDocument();
+    // The index is a map of the sections, and the one section with no task says so.
+    // Twice by design: the section rail and the index map both list it.
+    expect(await screen.findAllByRole('link', { name: 'Audit log' })).toHaveLength(2);
+    expect(screen.getByText(/until T-422/)).toBeInTheDocument();
+    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
+  });
+
+  it('navigates to a screen that is not built and names the task that owns it', () => {
+    // `/admin/connectors` is design.md §3's sixth admin route and the only one left
+    // with no task row (T-422). At least one pending path must stay stubbed, or the
+    // not-built state would be an untested claim.
+    renderAt('/admin/connectors');
+
     expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-410')).toBeInTheDocument();
+    expect(screen.getByText('T-422')).toBeInTheDocument();
   });
 
   it('mounts the triage screen at /alerts, which is built now', async () => {

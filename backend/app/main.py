@@ -36,6 +36,7 @@ from app.api.v1.endpoints import (
     privacy,
     stream,
     thresholds,
+    users,
     webhooks,
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
@@ -68,6 +69,8 @@ from app.services.recalibration import (
     RecalibrationService,
 )
 from app.services.retention import RetentionPolicy
+from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
+from app.services.user_directory import InMemoryUserDirectory, UserAdminService
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
 )
@@ -318,6 +321,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # authority for the lifecycle rules is ml-service's registry (T-212); this
     # restates them at the edge, which is a named gap, not a hidden duplicate.
     app.state.model_ops = ModelOpsService()
+    # The user directory (T-410). Empty, like the model registry and for the same
+    # reason (D-047): a deployment's users are its own, and seeding an identity from
+    # code would put a name nobody chose into the table that decides who can
+    # administer the system. The screen says the directory is empty rather than
+    # inventing a bootstrap account.
+    app.state.user_admin = UserAdminService(directory=InMemoryUserDirectory())
+    # The hand-set threshold panel (T-410). It reads and writes the same store the
+    # recalibration job does, so a value a person set and a value the job fitted
+    # cannot live in two places -- and the preview counts against the alert store
+    # the query API reads.
+    app.state.threshold_admin = ThresholdAdminService(
+        store=app.state.threshold_store, tenant_id=DEFAULT_TENANT_ID
+    )
+    app.state.threshold_impact = ThresholdImpactReader(
+        alerts=app.state.alert_store, admin=app.state.threshold_admin
+    )
     app.state.erasure_service = ErasureService(
         [
             EntityRedactionTarget(app.state.entity_store),
@@ -382,6 +401,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(privacy.router)
     app.include_router(models.router)
     app.include_router(thresholds.router)
+    app.include_router(users.router)
     return app
 
 

@@ -47,7 +47,12 @@ or body do not match the schema below.
 | `GET` | `/api/v1/retention` | Retention policy and the plan a run would execute (NFR-05) | admin | `200` `RetentionPlanOut` | — |
 | `POST` | `/api/v1/retention/run` | Apply the retention plan (NFR-05) | admin | `200` `RetentionRunOut` | — |
 | `GET` | `/api/v1/thresholds` | Thresholds in force, and the FR-13 defaults behind them (R-69) | admin, analyst, responder, viewer | `200` `ThresholdListOut` | — |
+| `GET` | `/api/v1/thresholds/preview` | What a proposed threshold would have produced over the last 7 days (design.md §4.8) | admin, analyst, responder, viewer | `200` `ThresholdImpactOut` | — |
 | `POST` | `/api/v1/thresholds/recalibrate` | Recalibrate a band from analyst verdicts, under T-207's guardrail (FR-18) | admin | `200` `RecalibrationOut` | `RecalibrationRequest` |
+| `PUT` | `/api/v1/thresholds/{family}/{band}` | Set one threshold by hand, or refuse a band set it would invert (T-410) | admin | `200` `ThresholdSetOut` | `ThresholdSetRequest` |
+| `GET` | `/api/v1/users` | The user directory and how many admins are active (T-410, R-53) | admin | `200` `UserListOut` | — |
+| `GET` | `/api/v1/users/roles` | R-53's roles and what each may do | admin | `200` `RoleListOut` | — |
+| `POST` | `/api/v1/users/{user_id}/role` | Set one user's role, refusing to empty the admin role (T-410, R-53) | admin | `200` `RoleChangeOut` | `RoleChangeRequest` |
 | `GET` | `/api/v1/webhooks` | List registered webhooks, without secrets | admin, responder | `200` `WebhookListOut` | — |
 | `POST` | `/api/v1/webhooks` | Register an outbound webhook (FR-21) | admin, responder | `201` `WebhookCreatedOut` | `WebhookCreate` |
 | `DELETE` | `/api/v1/webhooks/{webhook_id}` | Delete a webhook | admin, responder | `204` | — |
@@ -191,7 +196,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `hunt.export`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export`.
 
 ### `AuditEntryOut`
 
@@ -703,6 +708,44 @@ What a retention run did, including how much of it was already done.
 | `already_absent` | list of `string` | yes | — |
 | `changed_anything` | `boolean` | yes | — |
 
+### `RoleChangeOut`
+
+What a role change did, including when it did nothing.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | `integer` | yes | — |
+| `previous` | `string` | yes | — |
+| `applied` | `string` | yes | — |
+| `changed` | `boolean` | yes | False when the user already held the role: nothing was written or audited. |
+| `at` | `string (date-time)` | yes | — |
+| `actor` | `string` | yes | — |
+
+### `RoleChangeRequest`
+
+A request to set one user's role.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `role` | `string` | yes | One of R-53's four roles. |
+
+### `RoleListOut`
+
+R-53's four roles and their capabilities, read from the matrix itself.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `items` | `RoleNameOut` | yes | — |
+
+### `RoleNameOut`
+
+One role, with what it may do, so the screen can explain the choice.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `role` | `string` | yes | — |
+| `capabilities` | list of `string` | yes | — |
+
 ### `RollbackRequest`
 
 A request to reverse the most recent promotion of a kind.
@@ -728,6 +771,26 @@ One scope, with the capabilities it grants.
 | `name` | `string` | yes | — |
 | `capabilities` | list of `string` | yes | — |
 
+### `ThresholdImpactOut`
+
+What a proposed threshold would have produced over the preview window.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tenant_id` | `string` | yes | — |
+| `family` | `string` | yes | — |
+| `band` | `string` | yes | — |
+| `proposed` | `number` | yes | — |
+| `current` | `number` | yes | — |
+| `current_source` | `string` | yes | — |
+| `window_start` | `string (date-time)` | yes | — |
+| `window_end` | `string (date-time)` | yes | — |
+| `alerts_read` | `integer` | yes | — |
+| `would_fire` | `integer` | yes | — |
+| `would_stop_firing` | `integer` | yes | — |
+| `would_start_firing` | `integer` | yes | — |
+| `complete` | `boolean` | yes | False when the page cap stopped the walk: the counts are a floor, not a total. |
+
 ### `ThresholdListOut`
 
 The values in force for this deployment, and the defaults behind them.
@@ -748,8 +811,10 @@ One ``thresholds`` row, as the API returns it.
 | `family` | `string` | yes | — |
 | `band` | `string` | yes | — |
 | `value` | `number` | yes | — |
-| `source` | `string` | yes | — |
+| `source` | `string` | yes | Stored provenance, as written: `recalculation` for a fitted value, `manual` for one a person set. |
+| `source_label` | `string` | no | design.md §4.8's vocabulary: `calibrated` or `manual`. A family with no row at all is `default`, which the listing reports as a documented value rather than as a row. |
 | `updated_at` | `string (date-time)` | yes | — |
+| `changed_by` | `string` or `null` | no | Who last moved this value, read from the audit trail. Null when the trail holds no record at the row's write instant, which is a fact rather than a reason to guess. |
 
 ### `ThresholdOutcomeOut`
 
@@ -768,6 +833,30 @@ What the run decided about one threshold.
 | `sample_size` | `integer` | yes | — |
 | `reason` | `string` | yes | `fitted` or `insufficient_feedback`. |
 
+### `ThresholdSetOut`
+
+What a hand-set threshold did, including when it changed nothing.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tenant_id` | `string` | yes | — |
+| `family` | `string` | yes | — |
+| `band` | `string` | yes | — |
+| `previous` | `number` | yes | — |
+| `previous_label` | `string` | yes | — |
+| `applied` | `number` | yes | — |
+| `source` | `string` | yes | — |
+| `changed` | `boolean` | yes | False when the same hand had already set this value: nothing was written. |
+| `at` | `string (date-time)` | yes | — |
+
+### `ThresholdSetRequest`
+
+A hand-set threshold (design.md §4.8's manual edit).
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `value` | `number` | yes | The new lower bound, strictly inside (0, 1). |
+
 ### `UnevictableOut`
 
 A table retention will not touch, and the reason in one sentence.
@@ -776,6 +865,28 @@ A table retention will not touch, and the reason in one sentence.
 | --- | --- | --- | --- |
 | `table` | `string` | yes | — |
 | `reason` | `string` | yes | — |
+
+### `UserListOut`
+
+The directory, in the order the screen renders it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `items` | `UserOut` | yes | — |
+| `count` | `integer` | yes | — |
+| `active_admins` | `integer` | yes | How many accounts can currently administer the deployment. The same number the last-admin refusal is decided by. |
+
+### `UserOut`
+
+One user, as the admin screen needs them. Never a credential.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `integer` | yes | — |
+| `email` | `string` | yes | — |
+| `role` | `string` | yes | — |
+| `created_at` | `string (date-time)` | yes | — |
+| `disabled_at` | `string (date-time)` or `null` | no | When the account stopped being usable. A disabled admin is not an admin in force, so it neither holds the floor up nor counts towards it. |
 
 ### `ValidationError`
 

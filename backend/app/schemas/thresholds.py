@@ -31,9 +31,12 @@ from pydantic import BaseModel, ConfigDict, Field
 __all__ = [
     "RecalibrationOut",
     "RecalibrationRequest",
+    "ThresholdImpactOut",
     "ThresholdListOut",
     "ThresholdOut",
     "ThresholdOutcomeOut",
+    "ThresholdSetOut",
+    "ThresholdSetRequest",
 ]
 
 
@@ -46,8 +49,89 @@ class ThresholdOut(BaseModel):
     family: str
     band: str
     value: float
-    source: str
+    source: str = Field(
+        description=(
+            "Stored provenance, as written: `recalculation` for a fitted value, "
+            "`manual` for one a person set."
+        )
+    )
+    source_label: str = Field(
+        default="",
+        description=(
+            "design.md §4.8's vocabulary: `calibrated` or `manual`. A family with no "
+            "row at all is `default`, which the listing reports as a documented value "
+            "rather than as a row."
+        ),
+    )
     updated_at: datetime
+    changed_by: str | None = Field(
+        default=None,
+        description=(
+            "Who last moved this value, read from the audit trail. Null when the "
+            "trail holds no record at the row's write instant, which is a fact "
+            "rather than a reason to guess."
+        ),
+    )
+
+
+class ThresholdSetRequest(BaseModel):
+    """A hand-set threshold (design.md §4.8's manual edit).
+
+    ``value`` is a proportion, so it is bounded here as well as in the service: a
+    request carrying 70 for 0.70 is refused at the edge with a schema error rather
+    than reaching a service that would refuse it as out of range.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    value: float = Field(gt=0.0, lt=1.0, description="The new lower bound, strictly inside (0, 1).")
+
+
+class ThresholdSetOut(BaseModel):
+    """What a hand-set threshold did, including when it changed nothing."""
+
+    model_config = ConfigDict(frozen=True)
+
+    tenant_id: str
+    family: str
+    band: str
+    previous: float
+    previous_label: str
+    applied: float
+    source: str
+    changed: bool = Field(
+        description="False when the same hand had already set this value: nothing was written."
+    )
+    at: datetime
+
+
+class ThresholdImpactOut(BaseModel):
+    """What a proposed threshold would have produced over the preview window.
+
+    ``would_fire`` counts recorded alerts whose score is at or above the proposed
+    bound -- the cases the correlator already stored, whatever severity they were
+    banded at (T-308 bands after the case exists). The unit is *alerts*, not raw
+    events: a row stands for a case, and its ``occurrence_count`` says how many
+    occurrences went into it.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    tenant_id: str
+    family: str
+    band: str
+    proposed: float
+    current: float
+    current_source: str
+    window_start: datetime
+    window_end: datetime
+    alerts_read: int
+    would_fire: int
+    would_stop_firing: int
+    would_start_firing: int
+    complete: bool = Field(
+        description="False when the page cap stopped the walk: the counts are a floor, not a total."
+    )
 
 
 class ThresholdListOut(BaseModel):
