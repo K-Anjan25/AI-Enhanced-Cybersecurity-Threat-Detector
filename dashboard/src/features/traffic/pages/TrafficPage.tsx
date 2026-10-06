@@ -188,7 +188,7 @@ export function TrafficPage() {
         </label>
 
         {view === null ? null : (
-          <p className="text-caption text-muted" data-testid="traffic-filter-summary">
+          <p className="text-caption text-muted">
             {String(view.entities.length)} entities shown
             {view.hiddenByControls === 0
               ? ''

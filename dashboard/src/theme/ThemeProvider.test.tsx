@@ -8,7 +8,7 @@ function Probe() {
   const { theme, toggleTheme } = useTheme();
   return (
     <div>
-      <span data-testid="theme">{theme}</span>
+      <p role="status">{theme}</p>
       <button type="button" onClick={toggleTheme}>
         toggle
       </button>
@@ -29,7 +29,7 @@ describe('ThemeProvider', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+    expect(screen.getByRole('status')).toHaveTextContent('dark');
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
   });
 
@@ -42,7 +42,7 @@ describe('ThemeProvider', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('light');
+    expect(screen.getByRole('status')).toHaveTextContent('light');
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
   });
 
@@ -56,7 +56,7 @@ describe('ThemeProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'toggle' }));
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('light');
+    expect(screen.getByRole('status')).toHaveTextContent('light');
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
     expect(window.localStorage.getItem('aegis.theme')).toBe('light');
   });
@@ -70,7 +70,7 @@ describe('ThemeProvider', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+    expect(screen.getByRole('status')).toHaveTextContent('dark');
   });
 
   it('throws when useTheme is used outside a provider', () => {

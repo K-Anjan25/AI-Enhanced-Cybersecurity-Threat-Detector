@@ -65,7 +65,7 @@ function routes(): Parameters<typeof stubFetch>[0] {
  * sitting in.
  */
 function secretOnScreen(): boolean {
-  const fields = [...document.querySelectorAll<HTMLInputElement>('input, textarea')];
+  const fields = screen.queryAllByRole('textbox') as HTMLInputElement[];
   return (
     document.body.textContent?.includes(SECRET) === true ||
     fields.some((field) => field.value === SECRET)
@@ -79,7 +79,7 @@ function issueAKey(user: ReturnType<typeof userEvent.setup>): Promise<void> {
     await user.type(within(dialog).getByLabelText('Name'), 'collector-01');
     await user.click(within(dialog).getByLabelText('ingest:write'));
     await user.click(within(dialog).getByRole('button', { name: 'Issue' }));
-    await screen.findByTestId('secret-once');
+    await screen.findByLabelText('The new key');
   })();
 }
 
@@ -195,6 +195,8 @@ describe('KeysPanel', () => {
         <KeysPanel />
       </ToastProvider>,
     );
-    expect(await screen.findByTestId('keys-empty')).toHaveTextContent('No keys have been issued');
+    expect(
+      await screen.findByText(/issuing one\s+is the only way to obtain a credential/),
+    ).toBeInTheDocument();
   });
 });

@@ -8,6 +8,7 @@
  * The rest of the file is asserted through the object URL and the anchor, because
  * those are what the browser actually reads.
  */
+import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { saveFile } from './download';
@@ -87,7 +88,8 @@ describe('saveFile', () => {
     expect(browser.anchors[0]?.href).toContain(URL_STUB);
     expect(browser.revoked).toEqual([URL_STUB]);
     // The anchor is not left in the document: a link to a revoked blob URL would be
-    // a dead control the next time anything looked for one.
-    expect(document.querySelector('a')).toBeNull();
+    // a dead control the next time anything looked for one, and a leaked anchor is a
+    // link, so the role query finds it.
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 });

@@ -260,7 +260,7 @@ export function HuntPage() {
         title="Results"
         actions={
           view.executed === null ? null : (
-            <p className="text-caption text-muted" data-testid="hunt-echo">
+            <p className="text-caption text-muted">
               {`Searched ${view.executed} · ${view.windowLabel ?? ''}`}
             </p>
           )

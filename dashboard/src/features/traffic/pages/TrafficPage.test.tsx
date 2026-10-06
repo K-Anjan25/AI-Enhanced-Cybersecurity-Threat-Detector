@@ -92,7 +92,7 @@ describe('TrafficPage', () => {
     expect(
       screen.getByRole('table', { name: /Entities in the brushed window/ }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('graph-mode')).toHaveTextContent('Force layout');
+    expect(screen.getByText(/Force layout/)).toBeInTheDocument();
     expect(requests.filter((request) => request.url.includes('/alerts')).length).toBe(1);
   });
 
@@ -135,11 +135,7 @@ describe('TrafficPage', () => {
 
     await userEvent.type(screen.getByLabelText('Min records'), '10');
 
-    await waitFor(() =>
-      expect(screen.getByTestId('traffic-filter-summary')).toHaveTextContent(
-        '2 hidden by the controls',
-      ),
-    );
+    await waitFor(() => expect(screen.getByText(/2 hidden by the controls/)).toBeInTheDocument());
     expect(
       within(screen.getByRole('table', { name: /Entities in the brushed window/ })).queryByRole(
         'button',
@@ -155,11 +151,7 @@ describe('TrafficPage', () => {
 
     await userEvent.click(screen.getByLabelText(/Only entities with an open alert/));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('traffic-filter-summary')).toHaveTextContent(
-        '1 hidden by the controls',
-      ),
-    );
+    await waitFor(() => expect(screen.getByText(/1 hidden by the controls/)).toBeInTheDocument());
   });
 
   it('lets a table stand in for the chart, which is what §9 requires', async () => {
@@ -182,11 +174,7 @@ describe('TrafficPage', () => {
     const node = within(graph).getByRole('button', { name: /Entity 1,/ });
     await userEvent.click(node);
 
-    await waitFor(() =>
-      expect(screen.getByTestId('traffic-filter-summary')).toHaveTextContent(
-        'pinned to one entity',
-      ),
-    );
+    await waitFor(() => expect(screen.getByText(/pinned to one entity/)).toBeInTheDocument());
     expect(screen.getByText(/Entity 1 and its neighbours are shown/)).toBeInTheDocument();
   });
 
@@ -197,11 +185,7 @@ describe('TrafficPage', () => {
 
     await userEvent.click(within(table).getByRole('button', { name: '3' }));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('traffic-filter-summary')).toHaveTextContent(
-        'pinned to one entity',
-      ),
-    );
+    await waitFor(() => expect(screen.getByText(/pinned to one entity/)).toBeInTheDocument());
   });
 
   it('says what the numbers are not, on the screen that shows them', async () => {

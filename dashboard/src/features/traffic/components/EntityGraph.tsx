@@ -62,9 +62,7 @@ export function EntityGraph({
 
   return (
     <div>
-      <p className="mb-2 text-caption text-muted" data-testid="graph-mode">
-        {model.reason}
-      </p>
+      <p className="mb-2 text-caption text-muted">{model.reason}</p>
 
       {/* `group`, not `img`: the nodes are buttons, and a presentational `img` role
           would hide every one of them from assistive technology. */}

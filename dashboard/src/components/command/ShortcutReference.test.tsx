@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { expectAccessible } from '../../test/axe';
@@ -12,13 +12,13 @@ describe('the shortcut reference', () => {
       <ShortcutReference open shortcuts={shortcutTable(false)} onClose={vi.fn()} />,
     );
 
-    const table = screen.getByTestId('shortcut-table');
+    const table = screen.getByRole('table', { name: /Keyboard shortcuts, what each does/ });
     for (const heading of ['Keys', 'Action', 'Where']) {
       expect(screen.getByRole('columnheader', { name: heading })).toBeInTheDocument();
     }
     // Every documented shortcut is a row: the dialog is the table, so a shortcut
     // cannot be documented without being rendered.
-    expect(table.querySelectorAll('tbody tr')).toHaveLength(7);
+    expect(within(table).getAllByRole('row')).toHaveLength(shortcutTable(false).length + 1);
   });
 
   it('prints the palette key for the platform it was given', () => {

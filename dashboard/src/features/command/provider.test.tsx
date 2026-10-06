@@ -137,7 +137,9 @@ describe('the command provider', () => {
     await user.type(screen.getByRole('combobox'), 'keyboard shortcuts');
     await user.keyboard('{Enter}');
 
-    expect(await screen.findByTestId('shortcut-table')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('table', { name: /Keyboard shortcuts, what each does/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
   });
 
@@ -147,7 +149,9 @@ describe('the command provider', () => {
 
     await user.keyboard('?');
 
-    expect(await screen.findByTestId('shortcut-table')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('table', { name: /Keyboard shortcuts, what each does/ }),
+    ).toBeInTheDocument();
   });
 
   it('focuses the marked filter on /', async () => {
@@ -171,7 +175,9 @@ describe('the command provider', () => {
     // `/` and `?` are text here, and `j` is not a queue step: the field owns all
     // three, which is the rule that keeps a shortcut from eating a query.
     expect(field).toHaveValue('?/j');
-    expect(screen.queryByTestId('shortcut-table')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('table', { name: /Keyboard shortcuts, what each does/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('switches the theme from the palette', async () => {

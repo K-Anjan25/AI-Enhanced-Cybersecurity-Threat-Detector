@@ -26,6 +26,20 @@ export function textResponse(body: string, status = 200): Response {
   return new Response(body, { status, headers: { 'content-type': 'text/plain' } });
 }
 
+/**
+ * A response that never arrives.
+ *
+ * A screen's loading state is not a component's business — it is a claim about what the
+ * *screen* says while a read is in flight, and the only way to hold a read there for the
+ * length of a test is to answer it never. The promise is deliberately never settled and
+ * the request is abandoned with the render at the end of the test (T-414).
+ */
+export function neverResponds(): Promise<Response> {
+  return new Promise<Response>(() => {
+    // Never settles, on purpose: see above.
+  });
+}
+
 export interface StubRoute {
   /** A path prefix the route answers. */
   match: string;

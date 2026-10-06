@@ -45,20 +45,15 @@ describe('RetentionPanel', () => {
     stubFetch([{ match: PLAN, respond: () => jsonResponse(PLAN_BODY) }]);
     const { container } = renderWithProviders(<RetentionPanel />);
 
-    expect(await screen.findByTestId('retention-drop')).toHaveTextContent(
-      '1 partition would be dropped.',
-    );
-    expect(screen.getByTestId('retention-policy')).toHaveTextContent(
-      'Raw records 365 days, alerts 400 days, stats 730 days.',
-    );
-    const warnings = screen
-      .getAllByTestId('retention-warning')
-      .map((node) => node.textContent ?? '');
-    expect(warnings.join(' ')).toContain('2025-02 has no partition');
-    expect(warnings.join(' ')).toContain('object_store (raw flow archives, 365 days)');
-    expect(screen.getByTestId('retention-unevictable')).toHaveTextContent(
-      'not monthly, so a retention window does not bound them',
-    );
+    expect(await screen.findByText(/1 partition would be dropped\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Raw records 365 days, alerts 400 days, stats 730 days\./),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2025-02 has no partition/)).toBeInTheDocument();
+    expect(screen.getByText(/object_store \(raw flow archives, 365 days\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/not monthly, so a retention window does not bound them/),
+    ).toBeInTheDocument();
     await expectAccessible(container);
   });
 
@@ -87,7 +82,7 @@ describe('RetentionPanel', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Drop the partitions' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('retention-run')).toHaveTextContent('found nothing to drop');
+      expect(screen.getByText(/found nothing to drop/)).toBeInTheDocument();
     });
   });
 
@@ -110,11 +105,9 @@ describe('RetentionPanel', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('retention-refusal')).toHaveTextContent(
-        'no database session wired to drop partitions',
-      );
+      expect(screen.getByText(/no database session wired to drop partitions/)).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('retention-run')).toBeNull();
+    expect(screen.queryByText(/found nothing to drop/)).toBeNull();
   });
 
   it('offers no run when the plan has nothing to drop', async () => {
@@ -128,9 +121,7 @@ describe('RetentionPanel', () => {
     renderWithProviders(<RetentionPanel />);
     // The action bar renders with the card, so the assertion waits for the plan
     // itself rather than for the button.
-    expect(await screen.findByTestId('retention-nothing')).toHaveTextContent(
-      'Nothing is past its window',
-    );
+    expect(await screen.findByText(/would still be\s+recorded in the trail/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Run retention' })).toBeDisabled();
   });
 
@@ -168,9 +159,9 @@ describe('RetentionPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Erase' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('erasure-report')).toHaveTextContent('sha256:6f1c');
+      expect(screen.getByText(/Tombstone/)).toHaveTextContent('sha256:6f1c');
     });
-    const report = screen.getByTestId('erasure-report');
+    const report = screen.getByText(/Tombstone/);
     expect(report).toHaveTextContent('3 rows across 1 store');
     expect(report).toHaveTextContent('Kept: audit_log (legal hold)');
     // The identifier went out and did not come back to the screen.

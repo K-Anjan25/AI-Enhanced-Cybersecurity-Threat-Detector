@@ -97,36 +97,23 @@ export function RetentionPanel() {
       }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted" data-testid="retention-policy">
+        <p className="text-body-sm text-muted">
           {reading.policy} Planned at {reading.plannedAt}.
         </p>
-        <p className="text-body" data-testid="retention-drop">
+        <p className="text-body">
           {reading.drop} {reading.kept}
         </p>
         {reading.warnings.map((warning) => (
-          <p
-            key={warning}
-            className="text-body-sm text-severityText-critical"
-            role="status"
-            data-testid="retention-warning"
-          >
+          <p key={warning} className="text-body-sm text-severityText-critical" role="status">
             {warning}
           </p>
         ))}
         {retentionRefusalMessage(run.error) === null ? null : (
-          <p
-            className="text-body-sm text-severityText-critical"
-            role="alert"
-            data-testid="retention-refusal"
-          >
+          <p className="text-body-sm text-severityText-critical" role="alert">
             {retentionRefusalMessage(run.error)}
           </p>
         )}
-        {run.isSuccess ? (
-          <p className="text-body-sm text-muted" data-testid="retention-run">
-            {readRun(run.data)}
-          </p>
-        ) : null}
+        {run.isSuccess ? <p className="text-body-sm text-muted">{readRun(run.data)}</p> : null}
         <DataTable
           caption="Partitions a retention run would drop"
           columns={columns}
@@ -135,14 +122,14 @@ export function RetentionPanel() {
           rowLabel={(row) => row.name}
           height={200}
           empty={
-            <p className="text-body" data-testid="retention-nothing">
+            <p className="text-body">
               Nothing is past its window. A run now would drop no partition and would still be
               recorded in the trail.
             </p>
           }
         />
         {unevictable.length === 0 ? null : (
-          <div className="flex flex-col gap-1" data-testid="retention-unevictable">
+          <div className="flex flex-col gap-1">
             <h3 className="text-h2">Storage a run cannot reach</h3>
             <ul className="flex flex-col gap-1">
               {unevictable.map((row) => (
@@ -213,7 +200,7 @@ export function RetentionPanel() {
             </p>
           ) : null}
           {erase.isSuccess ? (
-            <p className="text-body-sm" data-testid="erasure-report">
+            <p className="text-body-sm">
               Tombstone <code className="font-mono">{erase.data.tombstone}</code> at {erase.data.at}
               : {String(erase.data.affected)} row{erase.data.affected === 1 ? '' : 's'} across{' '}
               {String(erase.data.targets.length)} store{erase.data.targets.length === 1 ? '' : 's'}

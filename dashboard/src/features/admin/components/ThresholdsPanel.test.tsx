@@ -71,7 +71,7 @@ describe('ThresholdsPanel', () => {
     stubFetch(routes());
     const { container } = panel();
 
-    const table = await screen.findByTestId('threshold-table');
+    const table = await screen.findByRole('table', { name: /Bands, the value in force/ });
     expect(table).toHaveTextContent('calibrated');
     expect(table).toHaveTextContent('ops@example.test');
     // The three bands with no stored row read as FR-13's defaults, not as absent.
@@ -92,9 +92,9 @@ describe('ThresholdsPanel', () => {
     await user.type(input, '0.8');
 
     await waitFor(() => {
-      expect(screen.getByTestId('preview-headline')).toHaveTextContent(
-        '98 of the 412 recorded alerts would have been banded high or worse.',
-      );
+      expect(
+        screen.getByText(/98 of the 412 recorded alerts would have been banded high or worse\./),
+      ).toBeInTheDocument();
     });
     const preview = seen.find((request) => new URL(request.url).pathname === `${BASE}/preview`);
     const url = new URL(preview?.url ?? '');
@@ -120,7 +120,7 @@ describe('ThresholdsPanel', () => {
     await user.type(within(dialog).getByLabelText('Proposed high lower bound'), '0.8');
 
     await waitFor(() => {
-      expect(screen.getByTestId('preview-headline')).toHaveTextContent('at least 98');
+      expect(screen.getByText(/at least 98/)).toBeInTheDocument();
     });
     expect(screen.getByText(/floored counts rather than totals/)).toBeInTheDocument();
   });
@@ -128,13 +128,13 @@ describe('ThresholdsPanel', () => {
   it('lists the four bands that have a bound, and says where info begins', async () => {
     stubFetch(routes());
     panel();
-    const table = await screen.findByTestId('threshold-table');
+    const table = await screen.findByRole('table', { name: /Bands, the value in force/ });
     // `info` is not a row with a settable value: it is the bucket everything below
     // the lowest band falls into, and the sentence under the table says so.
     expect(table).not.toHaveTextContent('info');
-    expect(await screen.findByTestId('info-note')).toHaveTextContent(
-      'Everything below the 0.20 info bound is info',
-    );
+    expect(
+      await screen.findByText(/Everything below the 0\.20 info bound is info/),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Preview a new info value/ })).toBeNull();
   });
 
@@ -182,13 +182,12 @@ describe('ThresholdsPanel', () => {
     const dialog = await screen.findByRole('dialog');
     await user.clear(within(dialog).getByLabelText('Proposed high lower bound'));
     await user.type(within(dialog).getByLabelText('Proposed high lower bound'), '0.8');
-    await screen.findByTestId('preview-headline');
+    // Wait for the preview before saving: the refusal is the answer to the save.
+    await screen.findByText(/98 of the 412 recorded alerts/);
     await user.click(within(dialog).getByRole('button', { name: 'Save the value' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('threshold-refusal')).toHaveTextContent(
-        'leave the bands out of order',
-      );
+      expect(screen.getByText(/leave the bands out of order/)).toBeInTheDocument();
     });
   });
 
@@ -201,10 +200,8 @@ describe('ThresholdsPanel', () => {
       },
     ]);
     panel();
-    const table = await screen.findByTestId('threshold-table');
+    const table = await screen.findByRole('table', { name: /Bands, the value in force/ });
     expect(table).toHaveTextContent('0.70');
-    expect(screen.getByTestId('threshold-source-note')).toHaveTextContent(
-      'no band has been moved on this deployment',
-    );
+    expect(screen.getByText(/no band has been moved on this deployment/)).toBeInTheDocument();
   });
 });

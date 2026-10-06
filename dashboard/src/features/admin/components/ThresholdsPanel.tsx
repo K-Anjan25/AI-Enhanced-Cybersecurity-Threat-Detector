@@ -127,7 +127,7 @@ export function ThresholdsPanel() {
             The recalibration could not run. No threshold was moved.
           </p>
         ) : null}
-        <table className="w-full text-body-sm" data-testid="threshold-table">
+        <table className="w-full text-body-sm">
           <caption className="sr-only">
             Bands, the value in force, its source, and who last moved it
           </caption>
@@ -178,10 +178,10 @@ export function ThresholdsPanel() {
             ))}
           </tbody>
         </table>
-        <p className="text-body-sm text-muted" data-testid="info-note">
+        <p className="text-body-sm text-muted">
           {`Everything below the ${formatThreshold(rows[rows.length - 1]?.value ?? 0)} ${BAND_WITHOUT_BOUND} bound is ${BAND_WITHOUT_BOUND}: it has no lower bound of its own, so there is nothing there to set.`}
         </p>
-        <p className="text-body-sm text-muted" data-testid="threshold-source-note">
+        <p className="text-body-sm text-muted">
           Sources:{' '}
           {rows.filter((row) => row.moved).length > 0
             ? 'a row exists for the bands that were moved'
@@ -291,11 +291,7 @@ function ThresholdEditor({ family, row, onClose, onSave, refusal, saving }: Edit
           <p className="text-body-sm text-muted">{readiness.reason}</p>
         )}
         {refusal === null ? null : (
-          <p
-            className="text-body-sm text-severityText-critical"
-            role="alert"
-            data-testid="threshold-refusal"
-          >
+          <p className="text-body-sm text-severityText-critical" role="alert">
             {refusal}
           </p>
         )}
@@ -306,13 +302,8 @@ function ThresholdEditor({ family, row, onClose, onSave, refusal, saving }: Edit
           </p>
         ) : null}
         {reading === null ? null : (
-          <div
-            className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3"
-            data-testid="threshold-preview"
-          >
-            <p className="text-body" data-testid="preview-headline">
-              {reading.headline}
-            </p>
+          <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3">
+            <p className="text-body">{reading.headline}</p>
             <p className="text-body-sm text-muted">{reading.change}</p>
             <p className="text-body-sm text-muted">{reading.basis}</p>
             {reading.caveat === null ? null : (

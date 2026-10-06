@@ -236,9 +236,7 @@ export function AuditPanel() {
           <Skeleton lines={6} label="Audit trail is loading" />
         ) : null}
         {audit.isPending || audit.isError ? null : (
-          <p className="text-body-sm text-muted" data-testid="audit-note">
-            {auditNote(rows.length, nextBefore !== null)}
-          </p>
+          <p className="text-body-sm text-muted">{auditNote(rows.length, nextBefore !== null)}</p>
         )}
         {audit.isSuccess && nextBefore !== null ? (
           <Button
@@ -260,7 +258,7 @@ export function AuditPanel() {
             rowLabel={(row) => `${row.action} at ${row.at}`}
             height={420}
             empty={
-              <p className="text-body" data-testid="audit-empty">
+              <p className="text-body">
                 No recorded action falls in this window with these filters. That is an answer about
                 the filters as much as about the system: widen the window before concluding nothing
                 happened.
