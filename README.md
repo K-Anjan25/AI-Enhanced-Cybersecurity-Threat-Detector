@@ -38,7 +38,8 @@ backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, str
               recalibration and the declared database
               driver                                   (T-301…T-323)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
-dashboard/    React + TypeScript dashboard — the shell only; E4 has not started
+dashboard/    React + TypeScript dashboard — the shell, routing, theming
+              and the design tokens                        (T-401)
 data/         datasets, gitignored                              (R-40 — never committed)
 docker/       compose stack, written but never run here         (no Docker in this sandbox)
 k8s/          manifests, statically checked but never applied
