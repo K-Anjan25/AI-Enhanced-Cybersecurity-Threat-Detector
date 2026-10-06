@@ -23,13 +23,8 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
-import {
-  fetchAlertWindow,
-  fetchMetrics,
-  fetchReadiness,
-  type AlertWindow,
-  type Readiness,
-} from './api';
+import { fetchAlertWindow, type AlertWindow } from '../../api/alerts';
+import { fetchMetrics, fetchReadiness, type Readiness } from './api';
 import { useAlertSync } from '../../components/realtime/useAlertSync';
 import type { MetricsSnapshot } from './pipeline';
 

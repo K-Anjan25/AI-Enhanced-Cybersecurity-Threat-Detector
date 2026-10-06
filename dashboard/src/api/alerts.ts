@@ -21,7 +21,7 @@
  *   * **Nothing absolute.** Paths are relative to the dashboard's own origin;
  *     `src/api/client.ts` is what turns them into URLs (R-23).
  */
-import { query } from './client';
+import { getJson, query } from './client';
 
 /** One alert as `GET /api/v1/alerts` returns it (T-305's `AlertRow`). */
 export interface AlertRow {
@@ -90,4 +90,70 @@ export function alertDetailPath(alertId: number, createdAt: Date | string): stri
 /** `POST /api/v1/alerts/{id}/verdict` — where an analyst's decision is written. */
 export function alertVerdictPath(alertId: number): string {
   return `/api/v1/alerts/${String(alertId)}/verdict`;
+}
+
+/** The largest page the API will serve (T-305's `MAX_PAGE_SIZE`). */
+export const PAGE_SIZE = 1_000;
+
+/**
+ * How many pages a screen walks before it stops.
+ *
+ * Five thousand alerts in a window is far past the point where a single screen is
+ * the right instrument — that is what the alert list and the hunt console are for.
+ * The cap is what keeps a 7-day window from becoming an unbounded crawl; hitting it
+ * is reported, never hidden.
+ */
+export const MAX_PAGES = 5;
+
+export interface AlertWindow {
+  rows: AlertRow[];
+  /** False when the page cap stopped the walk and rows remain unread. */
+  complete: boolean;
+  pagesFetched: number;
+  /**
+   * The window actually read.
+   *
+   * Carried with the rows rather than recomputed at render time: a screen buckets
+   * its series against these bounds, and a window recomputed from a later `now`
+   * would put a bucket boundary at a time no query ever asked for — bars that drift
+   * as the clock advances.
+   */
+  start: Date;
+  end: Date;
+}
+
+export interface WindowRequest {
+  /** Inclusive lower bound (R-34). */
+  start: Date;
+  /** Exclusive upper bound (R-34). */
+  end: Date;
+  signal?: AbortSignal | undefined;
+  maxPages?: number;
+  /** Narrow the read server-side; the brush never widens a query. */
+  severity?: string | undefined;
+}
+
+/** Walk one page at a time until the window is exhausted or the cap is reached. */
+export async function fetchAlertWindow(request: WindowRequest): Promise<AlertWindow> {
+  const { start, end, signal, maxPages = MAX_PAGES, severity } = request;
+  const rows: AlertRow[] = [];
+  let cursor: string | null = null;
+  let pagesFetched = 0;
+
+  while (pagesFetched < maxPages) {
+    const path: string = alertListPath({
+      start,
+      end,
+      severity,
+      limit: PAGE_SIZE,
+      cursor: cursor ?? undefined,
+    });
+    const page: AlertPage = await getJson<AlertPage>(path, { signal });
+    rows.push(...page.items);
+    pagesFetched += 1;
+    cursor = page.next_cursor;
+    if (cursor === null) return { rows, complete: true, pagesFetched, start, end };
+  }
+
+  return { rows, complete: false, pagesFetched, start, end };
 }
