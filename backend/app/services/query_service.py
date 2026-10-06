@@ -33,7 +33,7 @@ from app.schemas.query import (
     encode_cursor,
 )
 
-__all__ = ["build_alert_select", "paginate", "time_range_of"]
+__all__ = ["alert_row_of", "build_alert_select", "paginate", "time_range_of"]
 
 
 def time_range_of(query: AlertQuery) -> TimeRange:
@@ -82,6 +82,45 @@ def build_alert_select(query: AlertQuery) -> sa.Select[tuple[object, ...]]:
     return statement.order_by(*ordering).limit(query.limit + 1)
 
 
+def _trace_id_of(row: Alert) -> str | None:
+    """The trace id recorded for an alert row, if it has one.
+
+    It lives inside ``window_ref`` -- the pointer to the window the case opened
+    on -- rather than in a column of its own: the trace is part of that window's
+    provenance, and ``window_ref`` is specified as opaque JSONB for exactly this
+    kind of bounded addition. Anything that is not the shape this wrote is
+    reported as absent rather than guessed at.
+    """
+    window_ref = row.window_ref
+    if not isinstance(window_ref, dict):
+        return None
+    trace_id = window_ref.get("trace_id")
+    return trace_id if isinstance(trace_id, str) and trace_id else None
+
+
+def alert_row_of(row: Alert) -> AlertRow:
+    """One stored alert in the shape the API returns.
+
+    Shared with the pipeline's writer, which publishes the same shape to the
+    stream (T-310, T-319). Two mappings would drift, and a notification that
+    disagreed with the query API about what an alert looks like is a defect a
+    subscriber sees and the API's own tests never would.
+    """
+    return AlertRow(
+        id=row.id,
+        created_at=row.created_at,
+        entity_id=row.entity_id,
+        family=row.family,
+        severity=row.severity,
+        score=row.score,
+        status=row.status,
+        first_seen=row.first_seen,
+        last_seen=row.last_seen,
+        occurrence_count=row.occurrence_count,
+        trace_id=_trace_id_of(row),
+    )
+
+
 def paginate(rows: list[Alert], query: AlertQuery) -> AlertPage:
     """Turn fetched rows into a page, setting a cursor only if there is more."""
     has_more = len(rows) > query.limit
@@ -92,21 +131,7 @@ def paginate(rows: list[Alert], query: AlertQuery) -> AlertPage:
         else None
     )
     return AlertPage(
-        items=[
-            AlertRow(
-                id=row.id,
-                created_at=row.created_at,
-                entity_id=row.entity_id,
-                family=row.family,
-                severity=row.severity,
-                score=row.score,
-                status=row.status,
-                first_seen=row.first_seen,
-                last_seen=row.last_seen,
-                occurrence_count=row.occurrence_count,
-            )
-            for row in page_rows
-        ],
+        items=[alert_row_of(row) for row in page_rows],
         next_cursor=next_cursor,
         limit=query.limit,
         order=query.order,

@@ -44,6 +44,16 @@
   --color-on-severity: #0b0e14;
 
   --focus-ring: #8b72ff; /* 5.47:1 against base, above the 3:1 requirement */
+
+  /* Elevation (design.md §5.5). Exactly one shadow token exists, because
+     "elevation is reserved for overlays — dropdowns, modals, toasts, command
+     palette": a card cannot acquire a shadow from the token layer, it gets
+     border.default. The blur and spread are implementation values; design.md
+     fixes the policy, not the numbers, and says so here rather than implying a
+     documented value. --shadow-overlay is the only #hex-free colour in this
+     file: a shadow is black at an alpha, and the light theme uses a blue-grey
+     so it does not read as a smudge. */
+  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 45%);
 }
 
 [data-theme='light'] {
@@ -71,6 +81,35 @@
 
   --color-on-severity: #0b0e14;
   --focus-ring: #6c4fe0; /* 5.48:1 against base */
+  --shadow-overlay: 0 6px 16px rgb(16 24 40 / 12%);
+}
+
+/*
+ * Motion — design.md §8.2.
+ *
+ * Theme-independent, so they live outside the two theme blocks. Three durations,
+ * published as a ceiling ("nothing over 300 ms"), and the guard that makes "all
+ * motion respects prefers-reduced-motion: reduce" true of every primitive at once
+ * rather than of each one that remembered.
+ */
+:root {
+  --duration-micro: 120ms;
+  --duration-panel: 200ms;
+  --duration-page: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not `animation: none`: a state change that ends in a different appearance
+     still has to arrive, it just must not travel. Shrinking both durations to
+     the first frame keeps the end state and drops the motion. */
+  *,
+  ::before,
+  ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
@@ -84,6 +123,17 @@
 
   body {
     @apply bg-base font-sans text-body text-ink antialiased;
+  }
+
+  /* Tailwind's preflight falls back to `#9ca3af` for `::placeholder` when the
+     default palette is replaced — which it deliberately is (tailwind.config.js).
+     Placeholders are secondary copy, so the system's colour is stated here
+     instead of leaving one from a palette this app does not have. The selectors
+     match preflight's (`input::placeholder` beats a bare `::placeholder` on
+     specificity) so this rule is the one that applies. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-muted);
   }
 
   /* Visible focus ring on every interactive element (design.md §5.3, NFR-09). */
@@ -102,6 +152,18 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@layer components {
+  /* The overlay scrim (design.md §5.5: elevation is reserved for overlays, which
+     this is the backdrop of). The document publishes no scrim colour, so it is
+     stated here in the token layer rather than invented in a component: the page
+     behind must stay legible — an opaque backdrop would hide the context the
+     analyst is working in — and it is *not* a hex, because a scrim is a colour at
+     an alpha and the light theme's surfaces need the same treatment. */
+  .scrim {
+    background-color: rgb(11 14 20 / 60%);
   }
 }
 

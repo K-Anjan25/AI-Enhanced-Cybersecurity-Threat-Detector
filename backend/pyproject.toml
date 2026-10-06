@@ -14,6 +14,16 @@ dependencies = [
     # run at deploy time, not at test time.
     "sqlalchemy>=2.1",
     "alembic>=1.20",
+    # T-323. The PostgreSQL driver, declared rather than left to the environment:
+    # `alembic upgrade head` dials this URL at deploy time, so installing the
+    # backend alone has to provide it. It is psycopg 3 because one driver serves
+    # both halves -- Alembic's synchronous engine and, when the request path gets
+    # a session (D-030), an async engine for R-18 -- so the deployed URL names a
+    # dialect the deployment can actually open. The [binary] extra ships libpq,
+    # so no system package is needed, and asyncpg is not an alternative here:
+    # SQLAlchemy refuses it on a synchronous engine whatever is installed beside
+    # it.
+    "psycopg[binary]>=3.2",
     # T-302. Argon2id password hashing and JWT issue/refresh. Both are runtime
     # dependencies: the auth module imports them on every request.
     "argon2-cffi>=23.1",
@@ -23,9 +33,29 @@ dependencies = [
     # Prometheus client exports consumer-group lag.
     "kafka-python-ng>=2.2",
     "prometheus-client>=0.21",
+    # T-311. Webhook signing secrets are stored sealed with Fernet, whose key is
+    # derived from the application secret; R-51's Argon2id is for passwords and
+    # cannot encrypt. A runtime dependency, not a dev one.
+    "cryptography>=44",
+    # T-317. Trace creation and W3C trace-context propagation. The SDK is a
+    # runtime dependency because spans are recorded in the request path; the
+    # *exporter* is not -- see the otlp extra.
+    "opentelemetry-api>=1.45",
+    "opentelemetry-sdk>=1.45",
 ]
 
 [project.optional-dependencies]
+# T-310. uvicorn needs a WebSocket protocol implementation to serve /alerts/ws
+# in production; it is not needed for the tests, which drive the ASGI contract
+# directly, and it is not installed in the sandbox -- recorded, not implied.
+ws = ["websockets>=15"]
+
+# T-317. Shipping spans to a collector is opt-in: the process records and
+# propagates trace ids without it, and a deployment that sets
+# AEGIS_OTEL_EXPORTER_ENDPOINT without installing this extra gets a named error
+# at startup rather than a service that silently exports nothing.
+otlp = ["opentelemetry-exporter-otlp-proto-http>=1.45"]
+
 dev = [
     "pytest>=9.1",
     # check_all.sh and CI run `pytest --cov=app` and `lint-imports` for this
@@ -37,6 +67,12 @@ dev = [
     "black>=26.5",
     "mypy>=2.4",
     "bandit>=1.9",
+    # T-323. tests/test_database_driver.py loads scripts/check_compose.py the way
+    # tests/test_openapi_docs.py loads the reference generator, and that script
+    # parses the compose file -- so the backend's own test environment needs the
+    # YAML parser. Without it the rule that guards the DSN could only be exercised
+    # in the job that installs requirements-dev.txt.
+    "pyyaml>=6.0",
 ]
 
 [build-system]

@@ -13,8 +13,17 @@ export default defineConfig({
     proxy: {
       // The browser must never call the backend directly; the dev server
       // proxies relative /api and /ws URLs to it.
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      // `ws: true` because the alert stream's socket is `/api/v1/alerts/ws`: an
+      // entry without it proxies the handshake as a plain request, and the browser
+      // sees a connection that opens and dies — the failure mode that looks like a
+      // flaky network for a whole afternoon.
+      '/api': { target: 'http://localhost:8000', changeOrigin: true, ws: true },
       '/ws': { target: 'ws://localhost:8000', ws: true },
+      // The overview's pipeline strip reads the scrape directly (T-403), and
+      // /readyz tells it which dependency is down. Both are same-origin paths in
+      // the browser; this is what makes them reach the backend in development.
+      '/metrics': { target: 'http://localhost:8000', changeOrigin: true },
+      '/readyz': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
   preview: {

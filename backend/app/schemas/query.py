@@ -112,6 +112,10 @@ class AlertRow(BaseModel):
     first_seen: datetime
     last_seen: datetime
     occurrence_count: int
+    #: The trace id of the ingest request that opened the alert, when one was
+    #: recorded (T-317). ``None`` for an alert whose detection arrived without a
+    #: trace context -- an honest gap, not a placeholder id.
+    trace_id: str | None = None
 
 
 class AlertPage(BaseModel):
