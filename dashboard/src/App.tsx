@@ -1,20 +1,20 @@
 /**
  * Route table (design.md §3 information architecture).
  *
- * Overview (T-403), Alert triage (T-404, §4.3) and Traffic (T-406, §4.4) exist. Every
- * other route renders
- * an explicit "not built" state rather than a blank panel or a dead link, so the
- * navigation reflects reality (design.md §8.1).
+ * Overview (T-403, §4.1), Alert triage (T-404, §4.3), Traffic (T-406, §4.4) and Logs
+ * (T-407, §4.5) exist. Every other route renders an explicit "not built" state rather
+ * than a blank panel or a dead link, so the navigation reflects reality
+ * (design.md §8.1).
  */
 import { Route, Routes } from 'react-router-dom';
 
 import { AppShell } from './components/layout/AppShell';
+import { LogsPage } from './features/logs/pages/LogsPage';
 import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 
 const PENDING: Record<string, string> = {
-  '/logs': 'T-407',
   '/hunt': 'T-408',
   '/models': 'T-409',
   '/admin': 'T-410',
@@ -42,6 +42,7 @@ export function App() {
         <Route path="/alerts" element={<TriagePage />} />
         <Route path="/alerts/:alertId" element={<TriagePage />} />
         <Route path="/traffic" element={<TrafficPage />} />
+        <Route path="/logs" element={<LogsPage />} />
         {Object.keys(PENDING).map((path) => (
           <Route key={path} path={path} element={<NotYetBuilt path={path} />} />
         ))}

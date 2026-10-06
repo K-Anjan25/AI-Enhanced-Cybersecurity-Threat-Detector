@@ -13,7 +13,8 @@ predict cybersecurity threats before they become confirmed incidents.
 > database connection (T-319). The dashboard has the shell, the closed token layer,
 > the UI primitives, a working overview that reads the alert API and the metrics scrape, and the
 > triage screen with its keyboard loop, the live alert stream with its reconnect banner and REST
-> fallback, and the traffic explorer with its brushable series and entity graph (T-401…T-406). See
+> fallback, the traffic explorer with its brushable series and entity graph, and the log explorer with
+> its template clustering and pausable tail (T-401…T-407). See
 > [memory.md](memory.md) for the authoritative current state, and [task.md](task.md) for
 > per-task status.
 
@@ -38,12 +39,13 @@ prd.md architecture.md rules.md design.md task.md memory.md api-reference.md
 backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, stream,
               webhooks, the audit trail, API keys, the golden
               pipeline, the API reference and threshold
-              recalibration and the declared database
-              driver                                   (T-301…T-323)
+              recalibration, the declared database
+              driver and the bounded log tail          (T-301…T-323, T-407)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
 dashboard/    React + TypeScript dashboard — the shell, routing, theming,
               design tokens, UI primitives, overview, triage,
-              live stream, traffic explorer            (T-401…T-406)
+              live stream, traffic explorer,
+              log explorer                             (T-401…T-407)
 data/         datasets, gitignored                              (R-40 — never committed)
 docker/       compose stack, written but never run here         (no Docker in this sandbox)
 k8s/          manifests, statically checked but never applied
@@ -62,7 +64,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 1227 tests, 13 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 1325 tests, 13 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -85,6 +87,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   POST /api/v1/retention/run       drop the months the plan names; the run is audited (admin)
 #   POST /api/v1/privacy/erasure     erase one data subject across every store (admin)
 #   GET  /api/v1/privacy/erasures    the erasure ledger: tombstones, counts, who asked (admin)
+#   GET  /api/v1/logs                a window's log lines folded into clusters; ?start=&end= required
+#   GET  /api/v1/logs/lines          the raw lines behind one cluster (or one window), oldest first
 
 # ml-service
 cd ../ml-service
@@ -167,7 +171,13 @@ process; the admin screens and the audited export (FR-43) are later tasks. The r
 in-memory too: buckets do not survive a restart, and each worker process counts its own, so a
 multi-worker deployment gets the configured rate per worker until a shared store exists (D-048). The
 ingest buffer is the same shape of limitation -- it is held for the duration of a request, not
-released on delivery to Kafka, because the producer does not exist yet (D-039).
+released on delivery to Kafka, because the producer does not exist yet (D-039). The log explorer
+reads the same kind of buffer: the tail holds the most recent 20,000 accepted lines or 15 minutes
+whichever comes first, it is in-process so a restart loses it and a second replica reads its own, and
+there is no log read model behind it -- the API's own read caveats say so, and the story that would
+replace them (T-419) is filed rather than implied. Cluster-to-alert linking is the one thing design.md
+§4.5 asks of the screen that this build cannot do at all: an alert's evidence names a window, not the
+lines in it, so the panel says so instead of offering a dead link.
 
 Datasets (UNSW-NB15, CIC-IDS2017) are large and are **never committed** (R-40). The fetched
 copies are hash-verified by `scripts/fetch_datasets.py` and recorded in

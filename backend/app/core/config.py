@@ -101,6 +101,14 @@ class Settings(BaseSettings):
     # socket dropped polls instead -- 15 s by default.
     alert_stream_heartbeat_seconds: float = Field(default=15.0, gt=0)
 
+    # T-407. The log tail is bounded in both directions and both bounds come from
+    # here: a deployment that wants an hour of lines or half a minute can say so,
+    # and neither can be set to "unbounded". 20,000 lines is enough for the screen's
+    # own promise -- ten thousand identical lines collapse into one row with a
+    # count -- because the fold sees the whole tail rather than a page of it.
+    log_tail_lines: int = Field(default=20_000, ge=1)
+    log_tail_max_age_seconds: float = Field(default=900.0, gt=0)
+
     # Outbound webhooks (FR-21, R-55). The allowlist is empty by default, which
     # means no host is permitted: an empty allowlist is a fail-closed
     # configuration, not a disabled check. Entries are hostnames, optionally

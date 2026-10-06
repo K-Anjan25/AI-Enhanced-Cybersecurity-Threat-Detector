@@ -234,7 +234,7 @@ Goal: the triage loop, finished properly. Screens in priority order.
 | T-404 | Alert triage screen: list + detail with the four zones and keyboard verdicts (FR-51) | 4 | T-402, T-308 | Full triage loop completable without a mouse; `explanation_unavailable` and `evidence expired` states render explicitly — **DONE 2026-10-06, see [D-061](memory.md#d-061--the-triage-screen-renders-what-it-was-given-reasons-or-the-reason-there-are-none-evidence-or-the-date-it-expired-and-the-history-that-warns-t-404-2026-10-06)** |
 | T-405 | Real-time layer: single WebSocket at the app shell, pub/sub hook, reconnect with backoff, disconnected banner | 1.5 | T-310 | Killing the connection shows the banner and falls back to polling; reconnecting replays missed alerts — **DONE 2026-10-06, see [D-062](memory.md#d-062--the-live-channel-degrades-into-the-same-frames-and-a-refusal-stops-the-retry-but-not-the-screen-t-405-2026-10-06)** |
 | T-406 | Traffic explorer: D3 time-series with brushing + entity graph with the ≥ 2,000-node fallback (FR-52) | 3.5 | T-402, T-305 | Brushing filters all dependent panels; the graph switches to adjacency mode and labels the switch — **DONE 2026-10-06, see [D-063](memory.md#d-063--the-traffic-explorer-brushes-one-model-counts-alerted-records-rather-than-traffic-and-says-which-graph-it-is-drawing-t-406-2026-10-06)** |
-| T-407 | Log explorer with template clustering and pausable live tail | 2.5 | T-402, T-305 | 10,000 identical lines collapse to one row with a count; pause freezes the view |
+| T-407 | Log explorer with template clustering and pausable live tail | 2.5 | T-402, T-305 | 10,000 identical lines collapse to one row with a count; pause freezes the view — **DONE 2026-10-06, see [D-064](memory.md#d-064--the-log-tail-is-a-window-with-an-end-and-every-read-carries-the-sentence-that-says-so-t-407-2026-10-06)** |
 | T-408 | Hunt console: query input, autocomplete, saved queries, results table, audited CSV export | 3 | T-305 | Export is blocked below `responder` and writes an audit entry; empty results show the executed query |
 | T-409 | Model ops + drift screens (FR-53) | 2.5 | T-315 | Promotion requires typing the model ID; drift bars mark the 0.25 threshold |
 | T-410 | Admin screens: users/roles, API keys, thresholds with the 7-day impact preview, retention, audit | 3 | T-313, T-314, T-315 | The last `admin` cannot self-demote; the API key secret renders exactly once |
@@ -247,8 +247,9 @@ Goal: the triage loop, finished properly. Screens in priority order.
 
 | T-417 | Dashboard sign-in and session handling: the login form, the token store the realtime layer reads, and the refused/expired state | 2 | T-302, T-405 | A refused socket and a 401 both lead to a sign-in that reopens the stream; the credential never outlives the tab and is never logged — raised 2026-10-06 while building T-405, which had no token to open a socket with |
 | T-418 | Flow read API: the ingested-flow read model behind the explorer's volume and relationships (FR-52), so the series stops counting alerted records and an edge stops being a correlation trace | 2.5 | T-304, T-305 | The explorer's volume is traffic and its edges are flow relationships; counts are complete for the window rather than the alerted subset; the panel's permanent caveat drops the T-418 half — raised 2026-10-06 while building T-406, whose panels can only count what the alert API returns |
+| T-419 | Persistent log read model: accepted log lines written to a queryable store, so the log explorer stops reading a bounded in-process buffer | 3 | T-301, T-304, T-407 | A read is served from storage rather than from the last 20,000 lines in memory — it survives a restart, spans more than the retention window, and answers a filter the tail cannot (a time range older than 15 minutes, or a host that has logged nothing since); the caveat that says this build has no such store — and the `index` half of §4.5 — drop when it lands; raised 2026-10-06 while building T-407, whose API is the bounded tail by construction |
 
-**E4 total ≈ 41.5 days** (35 planned plus T-416, T-417 and T-418, raised while building T-403, T-405 and T-406). T-407 is the critical path now that T-406 has landed; the log explorer and the hunt console are what the rest of Explore is built on.
+**E4 total ≈ 43.5 days** (35 planned plus T-416, T-417, T-418 and T-419, raised while building T-403, T-405, T-406 and T-407). T-408 is the critical path now that T-407 has landed; the hunt console is what the rest of Explore is built on.
 
 ## 8. Epic E5 — Platform, QA, and release (M5)
 
@@ -281,7 +282,7 @@ Goal: the triage loop, finished properly. Screens in priority order.
 
 ### 9.1 Capacity — read this before committing to the dates
 
-Total estimate ≈ **136 ideal engineer-days** (8.5 + 18 + 25.5 + 31.5 + 35 + 17.5).
+Total estimate ≈ **138 ideal engineer-days** (8.5 + 18 + 25.5 + 31.5 + 37 + 17.5).
 
 The window from 2026-10-05 to the last working day before the 2027-01-15 ship date contains **74 working days**. At a realistic 65–70% utilisation, one engineer delivers 48–52 of those days. Therefore:
 
@@ -293,11 +294,11 @@ The window from 2026-10-05 to the last working day before the 2027-01-15 ship da
 
 **The milestone dates in §2 are only achievable with three engineers.** With two, either move v1.0 to late February 2027 or cut scope. That is a decision to make now, not in December.
 
-If capacity is fixed at two engineers, defer in this order: T-415 (1.5) → T-408 (3) → T-410 (3) → T-411 (1.5) → T-412 (1.5) → T-213 (1.5) → T-215 (2) → T-210 (1.5) → T-320 (1) → T-409 (2.5) → T-507 (1.5) → T-407 (2.5) → T-214 (1). That removes **24 days, leaving 112** — still 8–16 days above two-engineer capacity, so the balance must come from the ship date. These cuts leave the triage loop, both models, and the API intact.
+If capacity is fixed at two engineers, defer in this order: T-415 (1.5) → T-408 (3) → T-410 (3) → T-411 (1.5) → T-412 (1.5) → T-213 (1.5) → T-215 (2) → T-210 (1.5) → T-320 (1) → T-409 (2.5) → T-507 (1.5) → T-407 (2.5) → T-214 (1). That removes **24 days, leaving 114** — still 8–16 days above two-engineer capacity, so the balance must come from the ship date. These cuts leave the triage loop, both models, and the API intact.
 
 **Never cut** T-203, T-111, or T-413. Those are the leakage audits and the accessibility pass — the controls that stop the project lying to itself and to its users. A smaller honest product beats a larger unverifiable one.
 
-The schedule risk is **E4 (35 days), not the models**: it is the largest epic, it depends on the API contract being stable, and it is where "almost done" hides.
+The schedule risk is **E4 (37 days), not the models**: it is the largest epic, it depends on the API contract being stable, and it is where "almost done" hides.
 
 ## 10. Critical path
 

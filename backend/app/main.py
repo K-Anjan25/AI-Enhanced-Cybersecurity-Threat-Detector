@@ -29,6 +29,7 @@ from app.api.v1.endpoints import (
     audit,
     health,
     ingest,
+    logs,
     metrics,
     models,
     privacy,
@@ -56,6 +57,7 @@ from app.services.erasure import (
 )
 from app.services.health_service import ReadinessRegistry
 from app.services.limits import AdmissionController, RateLimitPolicy
+from app.services.log_tail import LogTail
 from app.services.ml_calibration import MlCalibrator
 from app.services.model_ops import ModelOpsService
 from app.services.recalibration import (
@@ -236,6 +238,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # here, like every other store in this environment; D-053 records the
     # PostgreSQL adapter as unwired and the case-id column it would need.
     app.state.alert_store = InMemoryAlertStore()
+    # The log tail (T-407). Logs are validated and handed to the broker, but nothing
+    # consumes or stores them: the worker scores flows only and there is no
+    # `log_events` table, so the explorer's tail is the process's own bounded copy.
+    # In memory and per process, like the alert hub above; the persistent read path
+    # is T-419, and the module docstring names the gap rather than implying a store.
+    app.state.log_tail = LogTail(
+        max_lines=resolved.log_tail_lines,
+        max_age_seconds=resolved.log_tail_max_age_seconds,
+    )
     # Webhook configuration (T-311). The allowlist is parsed here, at startup,
     # so a malformed entry stops the process with a clear message instead of
     # failing the first alert delivery of the day (R-55).
@@ -361,6 +372,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # registration order and a literal path never falls through a converter that
     # failed on it, so ``/alerts/stream`` would otherwise be read as an alert id.
     app.include_router(stream.router)
+    app.include_router(logs.router)
     app.include_router(alerts.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)

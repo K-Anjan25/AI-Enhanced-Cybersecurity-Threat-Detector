@@ -157,6 +157,11 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/alerts/{alert_id}/verdict": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     # Reading the verdict history is reading.
     "/api/v1/alerts/{alert_id}/verdicts": frozenset(Role),
+    # The log tail and the raw lines behind one cluster (T-407). Reading logs is
+    # reading: R-53 gives viewer the read capability, and a log line is the same
+    # class of data the alert list already shows a viewer.
+    "/api/v1/logs": frozenset(Role),
+    "/api/v1/logs/lines": frozenset(Role),
     # Webhook configuration is responder-and-above (R-53). Reading the list is
     # as sensitive as writing it: a target's URL names internal infrastructure.
     "/api/v1/webhooks": frozenset({Role.RESPONDER, Role.ADMIN}),
