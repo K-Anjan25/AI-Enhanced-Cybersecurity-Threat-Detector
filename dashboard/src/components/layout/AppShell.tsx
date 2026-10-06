@@ -43,10 +43,12 @@ export function AppShell({ connection = 'live', children }: AppShellProps) {
     <div className="flex min-h-screen bg-base text-ink">
       <nav
         aria-label="Primary"
-        className={`flex flex-col border-r border-line bg-surface transition-[width] duration-200 ${
-          collapsed ? 'w-12' : 'w-16'
+        // The widths are design.md §3's 240 px rail and 56 px icon rail, now
+        // tokens (`w-rail`, `w-rail-collapsed`, T-402) instead of a class the
+        // inline style then overrode.
+        className={`flex flex-col border-r border-line bg-surface transition-[width] duration-panel ${
+          collapsed ? 'w-rail-collapsed' : 'w-rail'
         }`}
-        style={{ width: collapsed ? 56 : 240 }}
       >
         <div className="flex h-8 items-center justify-between px-4">
           {!collapsed ? <span className="text-h2">AEGIS</span> : null}

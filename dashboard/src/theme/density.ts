@@ -18,6 +18,25 @@ export const ROW_HEIGHT_CLASS = {
 
 export type Density = keyof typeof ROW_HEIGHT_CLASS;
 
+/**
+ * The same two heights in pixels.
+ *
+ * A virtualised table has to *compute* with the row height — it positions row `n`
+ * at `n * height` — and a class name is not a number. Keeping both here, next to
+ * each other and asserted against the same published figure, is what stops the
+ * arithmetic and the CSS from disagreeing: if they drift the rows overlap or the
+ * list jitters, and neither failure looks like a density bug from the outside.
+ */
+export const ROW_HEIGHT_PX = {
+  comfortable: 44,
+  compact: 32,
+} as const;
+
+/** The row height in pixels, for layout arithmetic. */
+export function rowHeightPx(density: Density): number {
+  return ROW_HEIGHT_PX[density];
+}
+
 /** Above this many rows, a table is compact by default (design.md §5.5). */
 export const COMPACT_ROW_THRESHOLD = 50;
 

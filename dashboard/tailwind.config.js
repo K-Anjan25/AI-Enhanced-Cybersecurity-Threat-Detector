@@ -34,6 +34,12 @@ const colors = {
   ink: 'var(--color-text-primary)',
   muted: 'var(--color-text-muted)',
   accent: 'var(--color-accent)',
+  // Text that sits *on* a fill rather than on a surface: the badge rule's
+  // near-black (§5.3) and the primary button's on-accent. Both variables existed
+  // in index.css from the start; without a utility here the badge rule had no way
+  // to be written (T-402 found that).
+  onAccent: 'var(--color-on-accent)',
+  onSeverity: 'var(--color-on-severity)',
   severity: {
     critical: 'var(--severity-critical)',
     high: 'var(--severity-high)',
@@ -147,12 +153,29 @@ export default {
       // Density modes (design.md §5.5). Row height is a table property, so it
       // belongs beside `spacing` rather than inside it: it is not a step.
       height: {
+        // §3's top bar, then §5.5's two density rows.
+        topbar: '56px',
         'row-comfortable': '44px',
         'row-compact': '32px',
       },
       // The 3px severity rail (design.md §5.3).
       borderWidth: {
         rail: '3px',
+      },
+      // Motion (design.md §8.2), authored in index.css so the reduced-motion guard
+      // sits beside the values it guards.
+      transitionDuration: {
+        micro: 'var(--duration-micro)',
+        panel: 'var(--duration-panel)',
+        page: 'var(--duration-page)',
+      },
+      // Layout widths from design.md §3: "persistent 240 px left rail (collapsible
+      // to a 56 px icon rail) + a 56 px top bar". They were inline styles in
+      // AppShell because §5's spacing scale has no step for them and should not
+      // grow one: these are layout dimensions, not spacing.
+      width: {
+        rail: '240px',
+        'rail-collapsed': '56px',
       },
     },
   },

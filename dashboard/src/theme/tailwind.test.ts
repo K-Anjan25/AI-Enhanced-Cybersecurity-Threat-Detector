@@ -69,6 +69,8 @@ const TOKEN_COLOUR_UTILITIES = [
   'text-ink',
   'text-muted',
   'text-accent',
+  'text-onAccent',
+  'text-onSeverity',
   ...SEVERITIES.map((severity) => `bg-severity-${severity}`),
   ...SEVERITIES.map((severity) => `text-severityText-${severity}`),
 ];
@@ -213,6 +215,8 @@ describe('compiled colour utilities', () => {
         'accent',
         'severity',
         'severityText',
+        'onAccent',
+        'onSeverity',
         'transparent',
         'current',
         'inherit',

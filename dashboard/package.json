@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "AEGIS \u2014 AI-Enhanced Cybersecurity Threat Detector dashboard",
+  "description": "AEGIS — AI-Enhanced Cybersecurity Threat Detector dashboard",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",
+    "lucide-react": "^1.52.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.0",

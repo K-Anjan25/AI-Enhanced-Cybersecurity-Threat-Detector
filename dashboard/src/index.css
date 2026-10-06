@@ -84,6 +84,34 @@
   --shadow-overlay: 0 6px 16px rgb(16 24 40 / 12%);
 }
 
+/*
+ * Motion — design.md §8.2.
+ *
+ * Theme-independent, so they live outside the two theme blocks. Three durations,
+ * published as a ceiling ("nothing over 300 ms"), and the guard that makes "all
+ * motion respects prefers-reduced-motion: reduce" true of every primitive at once
+ * rather than of each one that remembered.
+ */
+:root {
+  --duration-micro: 120ms;
+  --duration-panel: 200ms;
+  --duration-page: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Not `animation: none`: a state change that ends in a different appearance
+     still has to arrive, it just must not travel. Shrinking both durations to
+     the first frame keeps the end state and drops the motion. */
+  *,
+  ::before,
+  ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @layer base {
   html {
     color-scheme: dark;
@@ -124,6 +152,18 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@layer components {
+  /* The overlay scrim (design.md §5.5: elevation is reserved for overlays, which
+     this is the backdrop of). The document publishes no scrim colour, so it is
+     stated here in the token layer rather than invented in a component: the page
+     behind must stay legible — an opaque backdrop would hide the context the
+     analyst is working in — and it is *not* a hex, because a scrim is a colour at
+     an alpha and the light theme's surfaces need the same treatment. */
+  .scrim {
+    background-color: rgb(11 14 20 / 60%);
   }
 }
 
