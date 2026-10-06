@@ -103,6 +103,41 @@ class ResolvedAddress:
         return int(ipaddress.ip_address(self.address).version)
 
 
+#: The IPv6 prefixes that carry an IPv4 destination, and which are therefore
+#: judged by that destination rather than by the IPv6 address itself.
+#:
+#: ``::ffff:0:0/96`` is RFC 4291's IPv4-mapped range, the one a dual-stack
+#: resolver actually returns. ``::/96`` is RFC 4291's IPv4-compatible range and
+#: ``::ffff:0:0:0/96`` is RFC 2765's IPv4-translated range, both deprecated as
+#: address forms and both still parsed as IPv4 by some stacks. ``64:ff9b::/96``
+#: is RFC 6052's NAT64 well-known prefix, which a translator maps back to the
+#: IPv4 address it embeds. The local-use NAT64 prefix, ``64:ff9b:1::/48``, is
+#: deliberately not listed: ``is_private`` already refuses it whole.
+_IPV4_EMBEDDING_PREFIXES: tuple[ipaddress.IPv6Network, ...] = (
+    ipaddress.IPv6Network("::ffff:0:0/96"),
+    ipaddress.IPv6Network("::/96"),
+    ipaddress.IPv6Network("::ffff:0:0:0/96"),
+    ipaddress.IPv6Network("64:ff9b::/96"),
+)
+
+#: ``::`` and ``::1`` sit inside ``::/96`` but are not IPv4-compatible addresses:
+#: RFC 4291 defines those two as the unspecified and loopback addresses, and
+#: unwrapping them would judge ``::1`` as ``0.0.0.1``.
+_IPV4_COMPATIBLE_EXCEPTIONS: frozenset[int] = frozenset({0, 1})
+
+
+def _embedded_ipv4_address(
+    parsed: ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> ipaddress.IPv4Address | None:
+    """The IPv4 destination an IPv6 address names, if it names one."""
+    if parsed.version != 6 or int(parsed) in _IPV4_COMPATIBLE_EXCEPTIONS:
+        return None
+    for network in _IPV4_EMBEDDING_PREFIXES:
+        if parsed in network:
+            return ipaddress.IPv4Address(int(parsed) & 0xFFFFFFFF)
+    return None
+
+
 def security_verdict_of_address(address: str) -> tuple[bool, str]:
     """Whether a single resolved address may be connected to, and why not.
 
@@ -113,9 +148,23 @@ def security_verdict_of_address(address: str) -> tuple[bool, str]:
     ``is_global`` is the accept rather than a list of ranges, because the list is
     the thing that goes stale: it covers loopback, private, link-local, CGNAT,
     reserved and IPv6 site-local, and it also refuses the ranges a carefully
-    written list forgets -- IPv4-mapped IPv6 such as ``::ffff:127.0.0.1`` and the
-    documentation networks. It is not sufficient on its own: CPython reports
-    IPv4 multicast (224/4) as global, so the multicast class is refused before it.
+    written list forgets -- the documentation networks, for instance. It is not
+    sufficient on its own, for two measured reasons. CPython reports IPv4
+    multicast (224/4) as global, so the multicast class is refused before it.
+
+    And an IPv6 address that carries an IPv4 destination is judged by that
+    destination, because CPython's own properties for those addresses move with
+    the release. Measured across the tags: only ``is_private`` delegates to
+    ``ipv4_mapped`` in 3.11.9, ``is_private`` and ``is_loopback`` in 3.12.4 and
+    3.13.0, and all seven of ``is_loopback``, ``is_link_local``, ``is_multicast``,
+    ``is_unspecified``, ``is_private``, ``is_global`` and ``is_reserved`` in
+    3.11.11 and 3.13.7. A verdict that moves with a patch upgrade is not a
+    control -- ``::ffff:127.0.0.1`` was ``private`` on 3.11.2 here and
+    ``loopback`` on the CI interpreter, which is how this was found -- and the
+    missing delegations are the dangerous half: on 3.11.2 ``::ffff:224.0.0.1``,
+    ``::ffff:100.64.0.1``, ``::127.0.0.1`` and ``64:ff9b::127.0.0.1`` were all
+    *accepted*, and ``is_multicast`` delegating is the single property that
+    decides the first of those.
 
     Returns:
         ``(True, "")`` for an address that may be dialled, else ``(False, why)``
@@ -126,6 +175,9 @@ def security_verdict_of_address(address: str) -> tuple[bool, str]:
         parsed = ipaddress.ip_address(address)
     except ValueError:
         return False, "not_an_address"
+    embedded = _embedded_ipv4_address(parsed)
+    if embedded is not None:
+        parsed = embedded
     # The specific reason first, so a refusal names what is wrong; the multicast
     # check is not redundant with is_global, which reports multicast addresses as
     # globally routable -- they are, in the routing sense, and not somewhere an

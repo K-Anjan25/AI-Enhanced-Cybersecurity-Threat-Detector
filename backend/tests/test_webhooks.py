@@ -90,7 +90,6 @@ REFUSED_ADDRESSES: tuple[tuple[str, str], ...] = (
     ("10.0.0.5", "private"),
     ("172.16.9.9", "private"),
     ("192.168.1.10", "private"),
-    ("::ffff:127.0.0.1", "private"),
     ("fd00::1", "private"),
     ("169.254.169.254", "link_local"),
     ("fe80::1", "link_local"),
@@ -99,6 +98,44 @@ REFUSED_ADDRESSES: tuple[tuple[str, str], ...] = (
     ("0.0.0.0", "unspecified"),  # noqa: S104 -- refused on purpose, not bound
     ("::", "unspecified"),
     ("100.64.0.1", "not_globally_routable"),
+    # An IPv6 address that carries an IPv4 destination is judged by that
+    # destination, so each of these must name the IPv4 class it embeds. The
+    # loopback row is the one CI caught: CPython 3.11.10 and later call it
+    # loopback, 3.11.2 called it private, and a verdict that moves with a
+    # micro-release is not a control.
+    ("::ffff:127.0.0.1", "loopback"),
+    ("::ffff:169.254.169.254", "link_local"),
+    ("::ffff:224.0.0.1", "multicast"),
+    ("::ffff:100.64.0.1", "not_globally_routable"),
+    ("::ffff:10.0.0.5", "private"),
+    ("::127.0.0.1", "loopback"),
+    ("::10.0.0.5", "private"),
+    ("::224.0.0.1", "multicast"),
+    ("::ffff:0:127.0.0.1", "loopback"),
+    ("::ffff:0:10.0.0.5", "private"),
+    ("64:ff9b::127.0.0.1", "loopback"),
+    ("64:ff9b::10.0.0.5", "private"),
+    ("64:ff9b::224.0.0.1", "multicast"),
+)
+
+#: IPv4 addresses whose verdict must not change when the address is embedded in
+#: IPv6. Public addresses are in the table on purpose: unwrapping has to leave a
+#: legitimate destination permitted, not merely refuse more.
+EMBEDDED_PAIRS: tuple[tuple[str, str], ...] = (
+    ("127.0.0.1", "::ffff:127.0.0.1"),
+    ("127.0.0.1", "::127.0.0.1"),
+    ("10.0.0.5", "::ffff:10.0.0.5"),
+    ("169.254.169.254", "::ffff:169.254.169.254"),
+    ("224.0.0.1", "::ffff:224.0.0.1"),
+    ("100.64.0.1", "::ffff:100.64.0.1"),
+    ("192.0.2.1", "::ffff:192.0.2.1"),
+    ("93.184.216.34", "::ffff:93.184.216.34"),
+    ("127.0.0.1", "::ffff:0:127.0.0.1"),
+    ("10.0.0.5", "::ffff:0:10.0.0.5"),
+    ("127.0.0.1", "64:ff9b::127.0.0.1"),
+    ("10.0.0.5", "64:ff9b::10.0.0.5"),
+    ("224.0.0.1", "64:ff9b::224.0.0.1"),
+    ("93.184.216.34", "64:ff9b::93.184.216.34"),
 )
 
 
@@ -377,6 +414,23 @@ def test_ipv4_multicast_is_not_treated_as_globally_routable() -> None:
     """
     assert security_verdict_of_address("224.0.0.1") == (False, "multicast")
     assert security_verdict_of_address("239.255.255.250")[0] is False
+
+
+@pytest.mark.parametrize(("plain", "embedded"), EMBEDDED_PAIRS)
+def test_an_embedded_ipv4_address_is_judged_by_the_address_it_embeds(
+    plain: str, embedded: str
+) -> None:
+    """The rule rather than the rows: embedding must not move a verdict.
+
+    A property, because the table above can only fail for the forms someone
+    thought to list, and because this is the assertion that fails on *both*
+    interpreters: before the fix, 3.11.2 accepted ``::224.0.0.1`` outright and
+    3.11.11+ refused it, while 3.12.4 accepted ``::ffff:224.0.0.1`` -- so no
+    single row expectation would have held on every interpreter. The one that
+    did fail in CI, ``::ffff:127.0.0.1`` reading ``private`` locally and
+    ``loopback`` there, is how the defect was found.
+    """
+    assert security_verdict_of_address(embedded) == security_verdict_of_address(plain)
 
 
 def test_something_that_is_not_an_address_is_refused() -> None:
