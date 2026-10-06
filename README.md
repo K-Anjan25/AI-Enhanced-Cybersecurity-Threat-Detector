@@ -10,7 +10,8 @@ predict cybersecurity threats before they become confirmed incidents.
 > to registered webhooks as HMAC-signed events with bounded retries, with every mutating
 > action recorded in an append-only audit trail and scoped API keys for machine-to-machine
 > ingestion whose secret is stored only as a keyed digest; querying alerts still needs a
-> database connection (T-319). The dashboard is still the shell from T-004. See
+> database connection (T-319). The dashboard has the shell, the closed token layer
+> and the UI primitives the screens compose from (T-401, T-402); the screens are next. See
 > [memory.md](memory.md) for the authoritative current state, and [task.md](task.md) for
 > per-task status.
 
@@ -38,8 +39,8 @@ backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, str
               recalibration and the declared database
               driver                                   (T-301…T-323)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
-dashboard/    React + TypeScript dashboard — the shell, routing, theming
-              and the design tokens                        (T-401)
+dashboard/    React + TypeScript dashboard — the shell, routing, theming,
+              design tokens and UI primitives              (T-401, T-402)
 data/         datasets, gitignored                              (R-40 — never committed)
 docker/       compose stack, written but never run here         (no Docker in this sandbox)
 k8s/          manifests, statically checked but never applied
