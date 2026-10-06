@@ -18,7 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AlertRow } from '../../../api/alerts';
 import { ToastProvider } from '../../../components/ui';
-import { expectAccessible } from '../../../test/axe';
+import { auditKeyboard, auditStructure } from '../../../test/a11y';
+import { expectAccessible, expectAxeClean } from '../../../test/axe';
 import { jsonResponse, Providers, stubFetch, textResponse } from '../../../test/query';
 import { HuntPage } from './HuntPage';
 
@@ -370,6 +371,23 @@ describe('the hunt console', () => {
     // Editing the box must not re-run the hunt from the URL: the table answers the
     // question that was asked, not the one being typed.
     expect(seen).toHaveLength(1);
+  });
+
+  it('passes the accessibility audit: structure and keyboard reach (T-413)', async () => {
+    // The console's audit runs after a hunt, on the results table: that is the state
+    // with the most controls and the most structure (a table with scoped headers, the
+    // export button, the saved-hunt controls), so it is the state worth auditing.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    stubHunt(() => jsonResponse(page([row({ id: 1 })])));
+    const { container } = renderHunt();
+
+    await user.type(screen.getByRole('combobox', { name: 'Query' }), 'severity:high');
+    await user.click(screen.getByRole('button', { name: 'Run hunt' }));
+    await screen.findByRole('cell', { name: 'exfiltration' });
+
+    expect(auditStructure(container)).toEqual([]);
+    expect(await auditKeyboard(container, user)).toEqual([]);
+    await expectAxeClean(container);
   });
 
   it('has no critical accessibility violations in the idle and empty states', async () => {

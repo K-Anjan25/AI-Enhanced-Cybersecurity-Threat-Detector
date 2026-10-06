@@ -18,7 +18,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Route, Routes } from 'react-router-dom';
 
-import { expectAccessible } from '../../../test/axe';
+import { auditKeyboard, auditStructure } from '../../../test/a11y';
+import { expectAccessible, expectAxeClean } from '../../../test/axe';
 import { jsonResponse, Providers, stubFetch, type StubRoute } from '../../../test/query';
 import {
   alertDetail,
@@ -352,6 +353,25 @@ describe('TriagePage', () => {
       .getAllByRole('link')
       .find((link) => link.getAttribute('aria-current') === 'true');
     expect(current).toHaveAttribute('href', '/alerts/42?created_at=2026-03-15T10%3A00%3A00Z');
+  });
+
+  it('passes the accessibility audit: structure, landmarks and keyboard reach (T-413)', async () => {
+    // The screen §8.3 keeps at every window size, audited the same way as the others:
+    // one `h1`, no positive tabindex, a scoped header per table cell, no focusable
+    // element that is not operable — and every control reachable by tabbing.
+    const user = userEvent.setup();
+    const { container } = renderPage(alertDetail());
+    await screen.findByRole('heading', { name: 'Why we flagged this' });
+
+    expect(auditStructure(container)).toEqual([]);
+    expect(await auditKeyboard(container, user)).toEqual([]);
+  });
+
+  it('reports no axe violation at any impact level (T-413)', async () => {
+    const { container } = renderPage(alertDetail());
+    await screen.findByRole('heading', { name: 'Why we flagged this' });
+
+    await expectAxeClean(container);
   });
 
   it('has no serious accessibility violations', async () => {
