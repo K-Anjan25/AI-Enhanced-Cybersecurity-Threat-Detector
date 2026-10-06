@@ -149,6 +149,9 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     # Reading alerts is the viewer's whole job, so viewer is present here.
     "/api/v1/alerts": frozenset(Role),
+    # One alert and its explanation, evidence and context: the detail behind the
+    # list, so it is the same read the list is (FR-51, T-404).
+    "/api/v1/alerts/{alert_id}": frozenset(Role),
     # Setting a verdict is an analyst action; R-53 makes viewer read-only, so
     # viewer is deliberately absent from the POST.
     "/api/v1/alerts/{alert_id}/verdict": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),

@@ -15,6 +15,10 @@
  *     Resolving through `window.location.origin` keeps the *relative* form in the
  *     source while still producing a URL `fetch` accepts under jsdom, so a test
  *     exercises the same string a browser would.
+ *   * **`GET` and `POST` only, and `POST` sends JSON.** That is the whole of the
+ *     API this dashboard is allowed to write: a verdict (T-404). A body is
+ *     serialised before the request starts, so a body that cannot be serialised
+ *     fails as a bug rather than as an outage.
  *   * **Errors carry no URL and no body.** R-58 forbids putting secrets, URLs or
  *     content into messages that reach a log or a screen: a FastAPI error body
  *     echoes back part of the request, and a URL carries query parameters. The
@@ -49,6 +53,10 @@ interface RequestOptions {
   signal?: AbortSignal | undefined;
   timeoutMs?: number;
   accept?: string;
+  /** Defaults to `GET`. Nothing here needs a method the API does not serve. */
+  method?: 'GET' | 'POST';
+  /** Serialised as JSON. Only meaningful with `POST`. */
+  body?: unknown;
   /**
    * Statuses whose body is still the answer.
    *
@@ -83,7 +91,14 @@ function resolve(path: string): string {
  */
 async function request(path: string, options: RequestOptions): Promise<Response> {
   const controller = new AbortController();
-  const { signal, timeoutMs = REQUEST_TIMEOUT_MS, accept, okStatuses = [] } = options;
+  const {
+    signal,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+    accept,
+    okStatuses = [],
+    method = 'GET',
+    body,
+  } = options;
   let timedOut = false;
 
   const onAbort = () => controller.abort();
@@ -97,24 +112,29 @@ async function request(path: string, options: RequestOptions): Promise<Response>
   }, timeoutMs);
 
   let url: string;
+  let payload: string | undefined;
   try {
-    // Resolved before the network call and outside its error handling: a bad path
-    // is a programming error and must surface as one, not as an outage.
+    // Resolved and serialised before the network call and outside its error
+    // handling: a bad path or an unserialisable body is a programming error and
+    // must surface as one, not as an outage.
     url = resolve(path);
+    payload = body === undefined ? undefined : JSON.stringify(body);
   } catch (error) {
     clearTimeout(timer);
     throw error;
   }
+  const headers: Record<string, string> = { accept: accept ?? 'application/json' };
+  if (payload !== undefined) headers['content-type'] = 'application/json';
 
   let response: Response;
   try {
     response = await fetch(url, {
+      // The API answers JSON; asking for it stops an HTML error page being
+      // parsed as data and reported as a malformed response.
+      method,
       signal: controller.signal,
-      headers: {
-        accept: accept ?? 'application/json',
-        // The API answers JSON; asking for it stops an HTML error page being
-        // parsed as data and reported as a malformed response.
-      },
+      headers,
+      ...(payload === undefined ? {} : { body: payload }),
     });
   } catch {
     // Only a transport failure reaches here; a refusal by the API is handled
@@ -136,14 +156,33 @@ function statusError(response: Response): ApiError {
   return new ApiError('status', response.status, `the service answered ${response.status}`);
 }
 
-/** `GET` a JSON document. */
-export async function getJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const response = await request(path, options);
+/** Read a response as JSON, or report that it was not. */
+async function readJson<T>(response: Response): Promise<T> {
   try {
     return (await response.json()) as T;
   } catch {
     throw new ApiError('malformed', response.status, 'the response was not JSON');
   }
+}
+
+/** `GET` a JSON document. */
+export async function getJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return readJson<T>(await request(path, options));
+}
+
+/**
+ * `POST` a JSON body and read a JSON answer.
+ *
+ * The body is serialised in `request`, before the network call, so an object that
+ * cannot be serialised throws a programming error rather than being reported as
+ * "the service could not be reached".
+ */
+export async function postJson<T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  return readJson<T>(await request(path, { ...options, method: 'POST', body }));
 }
 
 /** `GET` a text document, for `/metrics`' exposition format. */

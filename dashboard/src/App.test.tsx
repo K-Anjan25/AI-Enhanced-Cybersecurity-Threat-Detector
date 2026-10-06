@@ -18,7 +18,13 @@ function renderAt(path: string) {
   stubFetch([
     {
       match: '/api/v1/alerts',
-      respond: () => jsonResponse({ items: [], next_cursor: null, limit: 1_000, order: 'desc' }),
+      respond: (request) =>
+        // The list answers an empty page; anything *below* the list (`/alerts/42`)
+        // is a detail this stub has no row for, so it says so rather than handing
+        // the detail read a page-shaped body.
+        new URL(request.url).pathname === '/api/v1/alerts'
+          ? jsonResponse({ items: [], next_cursor: null, limit: 1_000, order: 'desc' })
+          : jsonResponse({ detail: 'no alert at that address' }, 404),
     },
     { match: '/metrics', respond: () => textResponse('') },
     {
@@ -58,14 +64,31 @@ describe('routing and shell', () => {
     }
   });
 
-  it('navigates to a pending screen and names the task that owns it', async () => {
+  it('navigates to a screen that is not built and names the task that owns it', async () => {
     const user = userEvent.setup();
     renderAt('/');
 
-    await user.click(screen.getByRole('link', { name: 'Alerts' }));
+    await user.click(screen.getByRole('link', { name: 'Traffic' }));
 
     expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-404')).toBeInTheDocument();
+    expect(screen.getByText('T-406')).toBeInTheDocument();
+  });
+
+  it('mounts the triage screen at /alerts, which is built now', async () => {
+    renderAt('/alerts');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Alert triage' })).toBeInTheDocument();
+    // The queue is a real read: the stubbed empty window is described as empty.
+    expect(await screen.findByText('No alerts in the window')).toBeInTheDocument();
+  });
+
+  it('opens an alert detail route that carries a partition key', async () => {
+    renderAt('/alerts/42?created_at=2026-03-15T10%3A00%3A00Z');
+
+    // The stub answers every alert path with an empty queue, so the detail read
+    // fails; what is asserted here is that the route reaches the detail branch
+    // rather than the list — the zones belong to TriagePage.test.tsx.
+    expect(await screen.findByText('No alert was returned for this address')).toBeInTheDocument();
   });
 
   it('shows a 404 state rather than a blank page for an unknown route', () => {

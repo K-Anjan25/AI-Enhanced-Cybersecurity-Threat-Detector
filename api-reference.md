@@ -25,6 +25,7 @@ or body do not match the schema below.
 | `GET` | `/api/v1/alerts` | Query alerts within a time window | admin, analyst, responder, viewer | `200` `AlertPage` | — |
 | `GET` | `/api/v1/alerts/notifications` | Alerts published after a stream cursor (FR-20 fallback) | admin, analyst, responder, viewer | `200` `AlertNotificationsOut` | — |
 | `GET` | `/api/v1/alerts/stream` | Server-Sent Events alert stream (FR-20 fallback) | admin, analyst, responder, viewer | `200` `text/event-stream` | — |
+| `GET` | `/api/v1/alerts/{alert_id}` | Read one alert with its explanation, evidence, verdict and context (FR-51) | admin, analyst, responder, viewer | `200` `AlertDetailOut` | — |
 | `POST` | `/api/v1/alerts/{alert_id}/verdict` | Record an analyst verdict on an alert (FR-16) | admin, analyst, responder | `200` `VerdictOutcomeOut` | `VerdictRequest` |
 | `GET` | `/api/v1/alerts/{alert_id}/verdicts` | Read an alert's verdict history, oldest first (FR-16, FR-18) | admin, analyst, responder, viewer | `200` `VerdictHistoryOut` | — |
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
@@ -52,6 +53,29 @@ or body do not match the schema below.
 | `GET` | `/readyz` | Readiness probe | unauthenticated | `200` `ReadinessResponse` | — |
 
 ## Schemas
+
+### `AlertDetailOut`
+
+Everything design.md §4.3's four zones render, in one response.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `alert` | `AlertRow` | yes | — |
+| `models` | `AlertModelsOut` | no | — |
+| `explanation` | `ExplanationOut` | yes | — |
+| `evidence` | `EvidenceOut` | yes | — |
+| `verdict` | `AlertVerdictOut` | no | — |
+| `related` | `RelatedAlertsOut` | yes | — |
+| `family_history` | `FamilyHistoryOut` | yes | — |
+
+### `AlertModelsOut`
+
+The model versions that scored this alert, when the row recorded them.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `flow` | `string` or `null` | no | Pinned flow-model version, e.g. flownet@1.4.2. |
+| `log` | `string` or `null` | no | Pinned log-model version. |
 
 ### `AlertNotificationOut`
 
@@ -102,6 +126,15 @@ One alert as returned by the API.
 | `last_seen` | `string (date-time)` | yes | — |
 | `occurrence_count` | `integer` | yes | — |
 | `trace_id` | `string` or `null` | no | — |
+
+### `AlertVerdictOut`
+
+The alert's verdict history, oldest first, and the current one.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `current` | `VerdictRecordOut` or `null` | no | — |
+| `history` | `VerdictRecordOut` | no | — |
 
 ### `ApiKeyCreate`
 
@@ -257,6 +290,62 @@ What one store did.
 | --- | --- | --- | --- |
 | `name` | `string` | yes | — |
 | `affected` | `integer` | yes | — |
+
+### `EvidenceOccurrenceOut`
+
+One window in the evidence trail behind an alert.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | The window's stable identity, as T-307 emitted it. |
+| `modality` | `string` | yes | Which model scored the window: flow or log. |
+| `score` | `number` | yes | That model's score for the window, in [0, 1]. |
+| `at` | `string (date-time)` | yes | When the window closed, timezone-aware UTC. |
+| `model` | `string` or `null` | no | The version that scored it. |
+| `expires_at` | `string (date-time)` | yes | When FR-05's raw-record window takes this evidence away. |
+| `expired` | `boolean` | yes | True once the raw records behind it are gone. |
+
+### `EvidenceOut`
+
+design.md §4.3's zone 3: the raw records behind the alert.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `window_id` | `string` or `null` | no | The window the case opened on, when recorded. |
+| `trace_id` | `string` or `null` | no | Trace of the ingest request that opened the case (T-317). |
+| `grouped` | `boolean` | no | True when the correlator fused several detections into one case. |
+| `occurrences` | `EvidenceOccurrenceOut` | no | — |
+| `retention_days` | `integer` | yes | FR-05's raw-record window the expiry dates above are computed from. |
+| `expired` | `boolean` | no | True when every occurrence is past retention. |
+| `unreadable` | `integer` | no | Trail entries that could not be decoded, reported rather than dropped. |
+| `note` | `string` or `null` | no | Why the trail is incomplete, in the operator's words. |
+
+### `ExplanationOut`
+
+R-70's explanation contract, as the alert row stored it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `reasons` | list of `string` | no | Rendered reasons, most contributory first. |
+| `unavailable` | `boolean` | no | True when no explanation could be produced (R-70). |
+| `detail` | `string` or `null` | no | Why it is unavailable. Never a stack trace (R-58). |
+| `unavailable_modalities` | list of `string` | no | Modalities that contributed without reasons. |
+| `partial_evidence` | `boolean` | no | True while only one modality has contributed. |
+| `families` | list of `string` | no | Every family the case's occurrences named. |
+
+### `FamilyHistoryOut`
+
+The trust hint: what analysts decided about this entity and family before.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `family` | `string` | yes | — |
+| `window_days` | `integer` | yes | How far back the counts reach. |
+| `prior_alerts` | `integer` | no | Alerts on this entity and family before this one. |
+| `labelled` | `integer` | no | How many of them carry a verdict at all. |
+| `false_positive` | `integer` | no | — |
+| `benign` | `integer` | no | — |
+| `true_positive` | `integer` | no | — |
 
 ### `FlowRecordIn`
 
@@ -477,6 +566,16 @@ Why one record in a batch was rejected (FR-04).
 | `stage` | `parse` or `validation` | yes | — |
 | `message` | `string` | yes | — |
 | `field` | `string` or `null` | no | — |
+
+### `RelatedAlertsOut`
+
+Other alerts on the same entity around this one, for §4.3's "Related alerts".
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `window_minutes` | `integer` | yes | Half-width of the window searched, in minutes. |
+| `items` | `AlertRow` | no | — |
+| `truncated` | `boolean` | no | True when more related alerts exist than were returned. |
 
 ### `RetentionPlanOut`
 

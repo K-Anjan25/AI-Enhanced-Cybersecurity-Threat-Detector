@@ -10,6 +10,33 @@
  * at a screen that has been dead for days and needs the magnitude, not seconds.
  */
 
+/**
+ * The two instant formats, pinned to UTC.
+ *
+ * Pinned deliberately: an alert's evidence window is a fact about the data, and a
+ * timestamp rendered in the viewer's local zone would disagree with the same
+ * timestamp in the API's logs, in another analyst's browser and in a test. The
+ * trailing `Z` is what tells the reader which zone they are looking at.
+ */
+const TIME_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+const STAMP_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC',
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
 const SECOND = 1;
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
@@ -63,4 +90,25 @@ export function formatMilliseconds(ms: number): string {
 export function formatPercent(ratio: number): string {
   if (!Number.isFinite(ratio)) return '—';
   return `${String(Math.round(ratio * 100))}%`;
+}
+
+/** A time of day in UTC, as design.md §4.3 writes it ("14:02:11Z"). */
+export function formatInstant(iso: string): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return 'unknown time';
+  return `${TIME_FORMAT.format(new Date(at))}Z`;
+}
+
+/** A full instant in UTC, for "first seen", expiry dates and history rows. */
+export function formatStamp(iso: string): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return 'unknown time';
+  return `${STAMP_FORMAT.format(new Date(at))}Z`;
+}
+
+/** How long ago an instant was, from a millisecond clock. */
+export function formatSince(iso: string, now: number): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return 'unknown age';
+  return formatAge((now - at) / 1_000);
 }

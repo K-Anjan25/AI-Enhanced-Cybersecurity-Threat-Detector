@@ -3,7 +3,16 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { formatAge, formatCount, formatMilliseconds, formatPercent, formatRate } from './format';
+import {
+  formatAge,
+  formatCount,
+  formatInstant,
+  formatMilliseconds,
+  formatPercent,
+  formatRate,
+  formatSince,
+  formatStamp,
+} from './format';
 
 describe('formatAge', () => {
   it('says "just now" for a value that would round to zero', () => {
@@ -77,5 +86,30 @@ describe('formatPercent', () => {
 
   it('shows a dash for a value that is not a number', () => {
     expect(formatPercent(Number.POSITIVE_INFINITY)).toBe('—');
+  });
+});
+
+describe('instant formats', () => {
+  it('renders a time in UTC with its zone marked', () => {
+    // Pinned to UTC on purpose: the same instant has to read the same in the API's
+    // logs, in another analyst's browser and in this test.
+    expect(formatInstant('2026-03-15T14:02:11Z')).toBe('14:02:11Z');
+    expect(formatInstant('2026-03-15T14:02:11+02:00')).toBe('12:02:11Z');
+  });
+
+  it('renders a full instant for dates that are not today', () => {
+    expect(formatStamp('2026-04-14T10:00:00Z')).toBe('14 Apr 2026, 10:00:00Z');
+  });
+
+  it('states an unreadable instant instead of printing an invalid date', () => {
+    // 'Invalid Date' on screen is a bug the operator cannot distinguish from data.
+    expect(formatInstant('not a date')).toBe('unknown time');
+    expect(formatStamp('')).toBe('unknown time');
+    expect(formatSince('not a date', Date.now())).toBe('unknown age');
+  });
+
+  it("ages an instant against the caller's clock", () => {
+    const now = Date.parse('2026-03-15T10:05:00Z');
+    expect(formatSince('2026-03-15T10:04:50Z', now)).toBe('10 s ago');
   });
 });

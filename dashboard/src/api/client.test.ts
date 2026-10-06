@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiError, getJson, getText, query, REQUEST_TIMEOUT_MS } from './client';
+import { ApiError, getJson, getText, postJson, query, REQUEST_TIMEOUT_MS } from './client';
 import { jsonResponse, stubFetch, textResponse } from '../test/query';
 
 describe('api client', () => {
@@ -134,5 +134,58 @@ describe('api client', () => {
   it('builds a query string without absent parameters', () => {
     expect(query({ start: 'a', end: 'b', cursor: undefined })).toBe('?start=a&end=b');
     expect(query({})).toBe('');
+  });
+});
+
+describe('api client writes', () => {
+  it('POSTs a JSON body to a relative path', async () => {
+    const requests = stubFetch([
+      { match: '/api/v1/alerts', respond: () => jsonResponse({ action: 'recorded' }) },
+    ]);
+
+    const answer = await postJson<{ action: string }>('/api/v1/alerts/7/verdict', {
+      verdict: 'true_positive',
+      created_at: '2026-03-15T10:00:00Z',
+    });
+
+    expect(answer).toEqual({ action: 'recorded' });
+    const request = requests[0];
+    expect(request?.method).toBe('POST');
+    expect(request?.headers.get('content-type')).toBe('application/json');
+    await expect(request?.json()).resolves.toEqual({
+      verdict: 'true_positive',
+      created_at: '2026-03-15T10:00:00Z',
+    });
+  });
+
+  it('sends no body at all when there is nothing to send', async () => {
+    // `undefined` is not `null`: a body of "undefined" is a request the API would
+    // have to reject, and an empty object would be a different claim.
+    const requests = stubFetch([{ match: '/api/v1/x', respond: () => jsonResponse({ ok: true }) }]);
+
+    await postJson('/api/v1/x', undefined);
+
+    expect(requests[0]?.body).toBeNull();
+  });
+
+  it('still refuses a path that is not rooted on this origin', async () => {
+    await expect(postJson('https://example.test/api/v1/x', {})).rejects.toThrow(/absolute path/);
+  });
+
+  it('reports a refused write by status, without the body or the URL (R-58)', async () => {
+    stubFetch([
+      {
+        match: '/api/v1/alerts',
+        respond: () => jsonResponse({ detail: 'your role may not record verdicts' }, 403),
+      },
+    ]);
+
+    const error = (await postJson('/api/v1/alerts/7/verdict', {}).catch(
+      (caught: unknown) => caught,
+    )) as ApiError;
+
+    expect(error.failure).toBe('status');
+    expect(error.status).toBe(403);
+    expect(error.message).not.toMatch(/http|verdicts|role/);
   });
 });

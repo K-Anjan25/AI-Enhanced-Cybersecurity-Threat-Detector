@@ -26,6 +26,10 @@ import {
 } from './api';
 import type { MetricsSnapshot } from './pipeline';
 
+// The polling hooks are shared with the triage screen (T-404), so they live in the
+// components layer; re-exported here because this is where the overview reads them.
+export { useDocumentVisible, useNow } from '../../components/hooks/polling';
+
 /** design.md §4.1's KPI cadence. */
 export const KPI_REFRESH_MS = 5_000;
 
@@ -58,38 +62,6 @@ export function rangeSpec(key: RangeKey): RangeSpec {
   const spec = RANGES.find((candidate) => candidate.key === key);
   if (spec === undefined) throw new RangeError(`unknown range ${key}`);
   return spec;
-}
-
-/** Whether the tab is visible, for pausing the polls. */
-export function useDocumentVisible(): boolean {
-  const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden');
-
-  useEffect(() => {
-    const onChange = () => setVisible(document.visibilityState !== 'hidden');
-    document.addEventListener('visibilitychange', onChange);
-    return () => document.removeEventListener('visibilitychange', onChange);
-  }, []);
-
-  return visible;
-}
-
-/**
- * A clock that ticks, for the "last update" age.
- *
- * Without it the age would be computed once and then freeze — the exact failure
- * §8.1's stale state exists to prevent, since a frozen age looks like a live
- * screen that simply has not changed.
- */
-export function useNow(intervalMs = 1_000, enabled = true): number {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs, enabled]);
-
-  return now;
 }
 
 /** The previous value of something, for differencing two samples. */
