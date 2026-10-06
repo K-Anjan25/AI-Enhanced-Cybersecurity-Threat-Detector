@@ -1,13 +1,22 @@
 /**
- * Application shell: persistent left nav rail plus top bar (design.md §3).
+ * Application shell: persistent left nav rail plus top bar (design.md §3), and the
+ * one place the realtime connection is shown (T-405).
  *
  * The rail is 240px and collapses to a 56px icon rail. Route guards are cosmetic
  * here — the server enforces authorisation (rule R-52).
+ *
+ * The connection is read from the realtime provider, so there is one answer to
+ * "are we live?" for the whole app: the header indicator carries the label and
+ * §8.1's stale age, and the banner below it explains the fallback. The `connection`
+ * prop stays as an override for a story or a test that wants a state without a
+ * socket; nothing in the app passes it.
  */
 import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { useTheme } from '../../theme/ThemeProvider';
+import { ConnectionBanner } from '../realtime/ConnectionBanner';
+import { useConnectionView } from '../realtime/useConnectionView';
 import { ConnectionStatus, type ConnectionState } from '../ui/ConnectionStatus';
 
 interface NavItem {
@@ -33,9 +42,10 @@ interface AppShellProps {
   children?: ReactNode;
 }
 
-export function AppShell({ connection = 'live', children }: AppShellProps) {
+export function AppShell({ connection, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const view = useConnectionView(connection);
 
   const sections = [...new Set(NAV_ITEMS.map((item) => item.section))];
 
@@ -93,7 +103,7 @@ export function AppShell({ connection = 'live', children }: AppShellProps) {
         <header className="flex h-8 items-center justify-between border-b border-line bg-surface px-6">
           <span className="text-caption text-muted">AI-Enhanced Cybersecurity Threat Detector</span>
           <div className="flex items-center gap-4">
-            <ConnectionStatus state={connection} />
+            <ConnectionStatus state={view.state} detail={view.detail} />
             <button
               type="button"
               onClick={toggleTheme}
@@ -104,6 +114,15 @@ export function AppShell({ connection = 'live', children }: AppShellProps) {
             </button>
           </div>
         </header>
+
+        {view.banner === null ? null : (
+          <ConnectionBanner
+            state={view.state}
+            message={view.banner.message}
+            explanation={view.banner.explanation}
+            onRetry={view.retryNow}
+          />
+        )}
 
         <main className="flex-1 p-6">{children ?? <Outlet />}</main>
       </div>

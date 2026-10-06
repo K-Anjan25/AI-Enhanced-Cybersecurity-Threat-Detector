@@ -10,6 +10,12 @@
  *     the chart's cadence and the 5 s cadence belongs to the metrics scrape, which
  *     is one small text document — the pipeline's numbers are what changes fast
  *     enough for 5 s to matter. The deviation is recorded in D-060.
+ *   * **A pushed alert refreshes the window, and the window still polls.** T-405's
+ *     stream invalidates the alert series when a frame arrives — including the
+ *     frames the 15 s REST fallback delivers once the socket is down — so the
+ *     chart is never a whole interval behind an alert the header already knew
+ *     about. The polls stay: a stream can be down for reasons the browser cannot
+ *     see, and a screen must not go stale because a socket looks open.
  *   * **"Both pause when the tab is hidden."** `refetchInterval` is `false` while
  *     the document is hidden, so a dashboard left open overnight is not a client
  *     hammering the API from a background tab.
@@ -24,6 +30,7 @@ import {
   type AlertWindow,
   type Readiness,
 } from './api';
+import { useAlertSync } from '../../components/realtime/useAlertSync';
 import type { MetricsSnapshot } from './pipeline';
 
 // The polling hooks are shared with the triage screen (T-404), so they live in the
@@ -97,6 +104,8 @@ export function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
+const ALERT_WINDOW_ROOTS = [['overview', 'alerts']] as const;
+
 /**
  * The alert window the page aggregates.
  *
@@ -108,6 +117,10 @@ export function useAlertWindow(
   range: RangeSpec,
   enabled: boolean,
 ): UseQueryResult<AlertWindow, Error> {
+  // Pushed alerts refresh the window (T-405). Only the alert series: the metrics
+  // scrape and the readiness probes are about the pipeline, not about this data, so
+  // a new alert is not a reason to re-scrape them.
+  useAlertSync(ALERT_WINDOW_ROOTS);
   return useQuery({
     queryKey: ['overview', 'alerts', range.key],
     queryFn: ({ signal }) =>

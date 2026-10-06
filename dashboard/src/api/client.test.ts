@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError, getJson, getText, postJson, query, REQUEST_TIMEOUT_MS } from './client';
+import { resetSessionForTests, sessionToken, setSessionToken } from './session';
 import { jsonResponse, stubFetch, textResponse } from '../test/query';
 
 describe('api client', () => {
@@ -187,5 +188,59 @@ describe('api client writes', () => {
     expect(error.failure).toBe('status');
     expect(error.status).toBe(403);
     expect(error.message).not.toMatch(/http|verdicts|role/);
+  });
+});
+
+describe('the session credential', () => {
+  afterEach(() => {
+    resetSessionForTests();
+  });
+
+  it('attaches the session token as a bearer credential', async () => {
+    const requests = stubFetch([
+      { match: '/api/v1/alerts', respond: () => jsonResponse({ ok: true }) },
+    ]);
+    setSessionToken('t-1');
+
+    await getJson('/api/v1/alerts');
+
+    expect(requests[0]?.headers.get('authorization')).toBe('Bearer t-1');
+  });
+
+  it('sends no credential header at all when there is no session', async () => {
+    // `Authorization: Bearer ` is a credential-shaped string that reads in a log
+    // like an attempt rather than an absence.
+    const requests = stubFetch([
+      { match: '/api/v1/alerts', respond: () => jsonResponse({ ok: true }) },
+    ]);
+
+    await getJson('/api/v1/alerts');
+
+    expect(requests[0]?.headers.get('authorization')).toBeNull();
+  });
+
+  it('ends the session when the API says the credential is not valid', async () => {
+    stubFetch([
+      { match: '/api/v1/alerts', respond: () => jsonResponse({ detail: 'unauthorised' }, 401) },
+    ]);
+    setSessionToken('t-stale');
+
+    await getJson('/api/v1/alerts').catch(() => undefined);
+
+    expect(sessionToken()).toBeNull();
+  });
+
+  it('keeps the session when the API says the role is not enough', async () => {
+    // A 403 is an answer about a credential that is still good. Signing the
+    // operator out over it would turn "you may not record verdicts" into "you are
+    // not signed in", and would close a working stream because of one refusal.
+    stubFetch([
+      { match: '/api/v1/alerts', respond: () => jsonResponse({ detail: 'forbidden' }, 403) },
+    ]);
+    setSessionToken('t-fine');
+
+    await postJson('/api/v1/alerts/1/verdict', {}).catch(() => undefined);
+
+    expect(sessionToken()).toBe('t-fine');
   });
 });

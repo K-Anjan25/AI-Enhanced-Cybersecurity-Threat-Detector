@@ -12,6 +12,11 @@
  *     resolves, both the detail and the queue are invalidated: the bar has to show
  *     the new verdict, and the row in the list has to stop looking unjudged. A
  *     mutation that only updated local state would leave the two disagreeing.
+ *   * **A pushed alert is a reason to re-read, not a second list.** Both the queue
+ *     and the open detail subscribe to the stream (T-405) and invalidate on a
+ *     frame, so an alert that arrives over the socket — or over the 15 s REST
+ *     fallback once the socket is down — appears without waiting for the next
+ *     interval, and there is still exactly one copy of the data (the cache).
  *   * **`unchanged` is not an error.** The API answers `unchanged` when the same
  *     analyst re-sends the verdict already current, and the screen says so rather
  *     than claiming a write that did not happen.
@@ -24,9 +29,10 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import { useDocumentVisible } from '../../components/hooks/polling';
+import { useAlertSync } from '../../components/realtime/useAlertSync';
 import { ApiError } from '../../api/client';
 import { fetchAlertDetail, fetchQueue, recordVerdict, QUEUE_LIMIT, QUEUE_WINDOW_MS } from './api';
 import type { AlertDetail } from './types';
@@ -43,8 +49,14 @@ export function detailKey(alertId: number, createdAt: string) {
   return ['triage', 'detail', alertId, createdAt] as const;
 }
 
+// Module-level constants, not literals at the call site: `useAlertSync` takes its
+// roots as a dependency, and a fresh array every render would re-run its effect
+// for no reason on every render.
+const QUEUE_ROOTS = [queueKey] as const;
+
 /** The newest alerts in the window, refreshed while the tab is visible. */
 export function useQueue(enabled = true): UseQueryResult<AlertPage, Error> {
+  useAlertSync(QUEUE_ROOTS);
   return useQuery({
     queryKey: queueKey,
     queryFn: ({ signal }) =>
@@ -71,6 +83,15 @@ export function useAlertDetail(
   createdAt: string | null,
   enabled = true,
 ): UseQueryResult<AlertDetail, Error> {
+  // The root is this alert's own key, so a frame for *any* alert re-reads the open
+  // detail only when the screen is showing something related — and since the
+  // detail includes the family's history and the window around it, a neighbour's
+  // alert frequently is related.
+  const roots = useMemo<readonly (readonly unknown[])[]>(
+    () => [[...detailKey(alertId ?? 0, createdAt ?? '')]],
+    [alertId, createdAt],
+  );
+  useAlertSync(roots);
   return useQuery({
     queryKey: detailKey(alertId ?? 0, createdAt ?? ''),
     queryFn: ({ signal }) => {
