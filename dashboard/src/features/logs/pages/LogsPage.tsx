@@ -117,7 +117,7 @@ export function LogsPage() {
         state={view.state === 'rows' ? 'ready' : view.state === 'empty' ? 'empty' : 'ready'}
         loadingLines={5}
         actions={
-          <span className="text-caption text-muted" data-testid="log-tail-summary">
+          <span className="text-caption text-muted">
             {view.state === 'loading'
               ? 'Reading the tail…'
               : `${formatCount(view.clustersSeen)} clusters · ${formatCount(view.linesSeen)} lines · ${formatCount(view.notableCount)} with an error or worse`}

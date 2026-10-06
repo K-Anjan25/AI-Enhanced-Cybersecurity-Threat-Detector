@@ -78,7 +78,9 @@ export function AlertQueue({
         </div>
       ) : null}
 
-      {status === 'pending' && rows.length === 0 ? <Skeleton lines={6} /> : null}
+      {status === 'pending' && rows.length === 0 ? (
+        <Skeleton lines={6} label="Alert queue is loading" />
+      ) : null}
 
       {status !== 'pending' && rows.length === 0 ? (
         <EmptyState

@@ -20,7 +20,13 @@ import type { AlertRow } from '../../../api/alerts';
 import { ToastProvider } from '../../../components/ui';
 import { auditKeyboard, auditStructure } from '../../../test/a11y';
 import { expectAccessible, expectAxeClean } from '../../../test/axe';
-import { jsonResponse, Providers, stubFetch, textResponse } from '../../../test/query';
+import {
+  jsonResponse,
+  neverResponds,
+  Providers,
+  stubFetch,
+  textResponse,
+} from '../../../test/query';
 import { HuntPage } from './HuntPage';
 
 const START = Date.parse('2026-10-06T09:00:00Z');
@@ -153,10 +159,24 @@ describe('the hunt console', () => {
     await user.click(screen.getByRole('button', { name: 'Run hunt' }));
 
     expect(await screen.findByRole('cell', { name: 'exfiltration' })).toBeInTheDocument();
-    expect(screen.getByTestId('hunt-echo')).toHaveTextContent(
-      'Searched severity:high order:desc limit:100',
-    );
+    expect(screen.getByText(/Searched severity:high order:desc limit:100/)).toBeInTheDocument();
     expect(screen.getByText(/2 rows in/)).toBeInTheDocument();
+  });
+
+  it('says the hunt is running rather than showing an empty result (T-414)', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    stubHunt(() => neverResponds());
+    renderHunt();
+
+    await user.type(screen.getByRole('combobox', { name: 'Query' }), 'severity:high');
+    await user.click(screen.getByRole('button', { name: 'Run hunt' }));
+
+    // The control says what it is doing, and the results panel says whose answer it
+    // is waiting for.
+    expect(await screen.findByRole('button', { name: 'Searching…' })).toBeInTheDocument();
+    const announced = screen.getAllByRole('status').map((node) => node.textContent ?? '');
+    expect(announced.join(' | ')).toContain('Hunt results');
+    expect(screen.queryByText('No alert matched')).not.toBeInTheDocument();
   });
 
   it('renders the executed query and the time range when nothing matched (§4.6)', async () => {
@@ -175,7 +195,9 @@ describe('the hunt console', () => {
     // rendering it: an empty table alone cannot be told from a typo.
     const reason = screen.getByText(/family:lateral-movement order:desc limit:100 between/);
     expect(reason).toBeInTheDocument();
-    expect(screen.getByTestId('hunt-echo')).toHaveTextContent('order:desc limit:100');
+    expect(
+      screen.getByText(/Searched family:lateral-movement order:desc limit:100/),
+    ).toBeInTheDocument();
   });
 
   it('refuses a term it cannot read before searching anything', async () => {
@@ -345,7 +367,7 @@ describe('the hunt console', () => {
     renderHunt(['/hunt?q=severity%3Ahigh']);
 
     expect(await screen.findByRole('cell', { name: 'exfiltration' })).toBeInTheDocument();
-    expect(screen.getByTestId('hunt-echo')).toHaveTextContent('Searched severity:high');
+    expect(screen.getByText(/Searched severity:high/)).toBeInTheDocument();
     expect(seen).toHaveLength(1);
   });
 

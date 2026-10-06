@@ -20,7 +20,13 @@ import { Route, Routes } from 'react-router-dom';
 
 import { auditKeyboard, auditStructure } from '../../../test/a11y';
 import { expectAccessible, expectAxeClean } from '../../../test/axe';
-import { jsonResponse, Providers, stubFetch, type StubRoute } from '../../../test/query';
+import {
+  jsonResponse,
+  neverResponds,
+  Providers,
+  stubFetch,
+  type StubRoute,
+} from '../../../test/query';
 import {
   alertDetail,
   alertRow,
@@ -136,6 +142,24 @@ describe('TriagePage', () => {
       verdict: 'true_positive',
     });
     expect(await screen.findByText('Verdict recorded: true positive.')).toBeInTheDocument();
+  });
+
+  it('announces what it is waiting for rather than an empty queue (T-414)', async () => {
+    renderPage(alertDetail(), ENTRY, {
+      detail: () => neverResponds(),
+      queue: () => neverResponds(),
+    });
+
+    // The detail's own zone says so, and says it in a heading as well as in the status
+    // region: a reader who jumps by heading is not left on a blank panel.
+    expect(await screen.findByRole('heading', { name: 'Loading the alert' })).toBeInTheDocument();
+    const announced = screen.getAllByRole('status').map((node) => node.textContent ?? '');
+    const said = announced.join(' | ');
+    expect(said).toContain('Alert queue is loading');
+    expect(said).toContain('Loading the alert');
+
+    // The empty-window sentence is an answer, and nothing has answered.
+    expect(screen.queryByText('No alerts in the window')).not.toBeInTheDocument();
   });
 
   it('announces an unchanged verdict as no change rather than as a write', async () => {

@@ -74,7 +74,7 @@ export function UsersPanel() {
             // Neutral, not a severity: "the only way in" is a state, not a level on
             // the severity scale, and colouring it like one would put an alert's
             // palette on a governance fact (NFR-09, §5.3).
-            <span data-testid="last-admin-mark">
+            <span>
               <Badge tone="neutral">Last active admin</Badge>
             </span>
           ) : null}
@@ -173,31 +173,25 @@ export function UsersPanel() {
       }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted" data-testid="user-summary">
-          {summary.note}
-        </p>
+        <p className="text-body-sm text-muted">{summary.note}</p>
         {summary.stranded ? (
           <p className="text-body-sm text-severityText-critical" role="status">
             No active admin: every action on this screen will be refused until one exists.
           </p>
         ) : null}
         {refusal === null ? null : (
-          <p
-            className="text-body-sm text-severityText-critical"
-            role="alert"
-            data-testid="role-refusal"
-          >
+          <p className="text-body-sm text-severityText-critical" role="alert">
             {refusal}
           </p>
         )}
         {answered === null || answered.changed ? null : (
-          <p className="text-body-sm text-muted" data-testid="role-noop">
+          <p className="text-body-sm text-muted">
             {`Nothing changed: that account already holds the ${answered.applied} role, so no audit
             row was written (D-038).`}
           </p>
         )}
         {answered === null || !answered.changed ? null : (
-          <p className="text-body-sm text-muted" data-testid="role-applied">
+          <p className="text-body-sm text-muted">
             {`Account set to ${answered.applied} at ${answered.at} by ${answered.actor}. The change
             is in the audit trail.`}
           </p>
@@ -210,7 +204,7 @@ export function UsersPanel() {
           rowLabel={(row) => row.email}
           height={280}
           empty={
-            <p className="text-body" data-testid="users-empty">
+            <p className="text-body">
               The directory is empty. This build starts with no bootstrap account (D-047): the
               directory is populated by the deployment, not by the dashboard.
             </p>

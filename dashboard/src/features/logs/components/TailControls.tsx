@@ -49,7 +49,7 @@ export function TailControls({
         {paused ? 'Resume tail' : 'Pause tail'}
       </Button>
 
-      <p className="text-caption text-muted" data-testid="log-tail-state">
+      <p className="text-caption text-muted">
         {paused
           ? `Paused${pausedAt === null ? '' : ` at ${pausedAt.toISOString().slice(11, 19)}Z`} — the window below is frozen and nothing is being read.`
           : `Live · ${windowLabel}`}

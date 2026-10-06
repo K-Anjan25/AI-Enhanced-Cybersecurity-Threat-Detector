@@ -38,6 +38,9 @@ export function ClusterTable({ rows, openKey, onOpen, empty }: ClusterTableProps
       cell: (row) => (
         <span className={row.notable ? 'border-l-4 border-l-severity-high pl-2' : 'pl-2'}>
           <Badge tone={row.tone}>{row.level}</Badge>
+          {/* The rail is a second, non-colour affordance for the same fact; these are
+              the words that make it a third, for a reader who sees neither. */}
+          {row.notable ? <span className="sr-only"> (error or worse)</span> : null}
         </span>
       ),
     };

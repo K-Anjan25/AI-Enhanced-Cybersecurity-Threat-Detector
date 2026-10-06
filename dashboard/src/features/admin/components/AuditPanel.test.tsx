@@ -116,7 +116,7 @@ describe('AuditPanel', () => {
   it('says the window is bounded and the trail is append-only', async () => {
     stubFetch([{ match: AUDIT, respond: () => jsonResponse(ENTRIES) }]);
     renderWithProviders(<AuditPanel />);
-    const note = await screen.findByTestId('audit-note');
+    const note = await screen.findByText(/page cap was reached/);
     expect(note).toHaveTextContent('page cap was reached');
     expect(note).toHaveTextContent('no edit or delete anywhere, in any role');
   });
@@ -135,9 +135,7 @@ describe('AuditPanel', () => {
     renderWithProviders(<AuditPanel />);
 
     await user.click(await screen.findByRole('button', { name: 'Older entries in this window' }));
-    await waitFor(() => {
-      expect(screen.getByTestId('audit-note')).toHaveTextContent('fully read');
-    });
+    await screen.findByText(/fully read/);
     const paged = seen.filter((request) => new URL(request.url).searchParams.has('before'));
     expect(paged).toHaveLength(1);
     expect(new URL(paged[0]?.url ?? '').searchParams.get('before')).toBe('90');
@@ -201,9 +199,7 @@ describe('AuditPanel', () => {
   it('offers no export when there is nothing to export', async () => {
     stubFetch([{ match: AUDIT, respond: () => jsonResponse({ items: [], next_before: null }) }]);
     renderWithProviders(<AuditPanel />);
-    expect(await screen.findByTestId('audit-empty')).toHaveTextContent(
-      'No recorded action falls in this window',
-    );
+    expect(await screen.findByText(/No recorded action falls in this window/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled();
   });
 
@@ -211,6 +207,6 @@ describe('AuditPanel', () => {
     stubFetch([{ match: AUDIT, respond: () => jsonResponse({ detail: 'no' }, 500) }]);
     renderWithProviders(<AuditPanel />);
     expect(await screen.findByText('The audit trail could not be read')).toBeInTheDocument();
-    expect(screen.queryByTestId('audit-empty')).toBeNull();
+    expect(screen.queryByText(/No recorded action falls in this window/)).toBeNull();
   });
 });

@@ -57,6 +57,15 @@ describe('AlertQueue', () => {
     expect(first.textContent).toContain('5 m ago');
   });
 
+  it('says it is reading the queue rather than showing an empty window (T-414)', () => {
+    renderQueue({ status: 'pending', rows: [], selectedId: null });
+
+    // The wait has a name, so a reader is told what is coming rather than left with a
+    // blank panel — and the empty-window sentence, which is an answer, is not rendered.
+    expect(screen.getByRole('status')).toHaveTextContent('Alert queue is loading');
+    expect(screen.queryByText('No alerts in the window')).not.toBeInTheDocument();
+  });
+
   it('says how much of the queue it is showing', () => {
     renderQueue();
     expect(screen.getByText('2 alerts in the last 24 h.')).toBeInTheDocument();

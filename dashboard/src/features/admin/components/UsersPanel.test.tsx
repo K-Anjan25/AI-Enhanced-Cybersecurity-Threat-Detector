@@ -71,7 +71,7 @@ describe('UsersPanel', () => {
     stubFetch(routes({ activeAdmins: 1 }));
     const { container } = renderWithProviders(<UsersPanel />);
 
-    const mark = await screen.findByTestId('last-admin-mark');
+    const mark = await screen.findByText('Last active admin');
     expect(mark).toHaveTextContent('Last active admin');
     // The sentence names the rule, so the mark is not a bare adjective.
     expect(screen.getByText(/would leave nobody able to administer/)).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('UsersPanel', () => {
     stubFetch(routes({ activeAdmins: 2 }));
     renderWithProviders(<UsersPanel />);
     await screen.findByText('analyst@example.test');
-    expect(screen.queryByTestId('last-admin-mark')).toBeNull();
+    expect(screen.queryByText('Last active admin')).toBeNull();
   });
 
   it('offers the demotion and renders the refusal when the server refuses it', async () => {
@@ -111,9 +111,9 @@ describe('UsersPanel', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Change the role' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-refusal')).toHaveTextContent(
-        'this change would leave the deployment with no active admin',
-      );
+      expect(
+        screen.getByText(/this change would leave the deployment with no active admin/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -144,9 +144,9 @@ describe('UsersPanel', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Change the role' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-applied')).toHaveTextContent('Account set to viewer');
+      expect(screen.getByText(/Account set to viewer/)).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('role-noop')).toBeNull();
+    expect(screen.queryByText(/Nothing changed/)).toBeNull();
   });
 
   it('reports a no-op as nothing having changed, not as a successful change', async () => {
@@ -178,9 +178,9 @@ describe('UsersPanel', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Change the role' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-noop')).toHaveTextContent('Nothing changed');
+      expect(screen.getByText(/Nothing changed/)).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('role-applied')).toBeNull();
+    expect(screen.queryByText(/Account set to viewer/)).toBeNull();
   });
 
   it('disables the save control until a different role is picked', async () => {
@@ -212,7 +212,7 @@ describe('UsersPanel', () => {
       { match: USERS, respond: () => jsonResponse({ items: [], count: 0, active_admins: 0 }) },
     ]);
     renderWithProviders(<UsersPanel />);
-    expect(await screen.findByTestId('users-empty')).toHaveTextContent('no bootstrap account');
+    expect(await screen.findByText(/no bootstrap account/)).toBeInTheDocument();
   });
 
   it('refuses to render a roster it could not read', async () => {

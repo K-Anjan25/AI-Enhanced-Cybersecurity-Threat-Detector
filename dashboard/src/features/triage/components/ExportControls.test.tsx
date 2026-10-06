@@ -126,7 +126,7 @@ describe('the alert batch export', () => {
     expect(saved(created).blob?.type).toContain('text/csv');
     // The name is the server's, because it carries the window (T-408's rule); the
     // anchor's `download` is what a browser reads.
-    expect(document.querySelector('a')).toBeNull();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
   it('takes the row count from the server rather than counting the file', async () => {

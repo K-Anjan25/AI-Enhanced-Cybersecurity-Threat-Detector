@@ -208,7 +208,7 @@ export function KeysPanel() {
           rowLabel={(row) => row.name}
           height={280}
           empty={
-            <p className="text-body" data-testid="keys-empty">
+            <p className="text-body">
               No keys have been issued. A key is how a collector authenticates (FR-44); issuing one
               is the only way to obtain a credential, and it is shown once.
             </p>
@@ -234,7 +234,7 @@ export function KeysPanel() {
         }
       >
         {live && secret !== null ? (
-          <div className="flex flex-col gap-3" data-testid="secret-once">
+          <div className="flex flex-col gap-3">
             <p className="text-body-sm text-muted">{SECRET_ONCE_NOTE}</p>
             <div className="flex items-center gap-2">
               <label className="sr-only" htmlFor="issued-secret">

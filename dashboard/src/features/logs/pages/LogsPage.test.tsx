@@ -160,12 +160,12 @@ describe('LogsPage', () => {
     stubLogs();
     renderPage();
 
-    // `findByTestId` would match the loading text, so the assertion waits for the
-    // read rather than for the element.
+    // The counts are the read result: `Reading the tail…` cannot satisfy this,
+    // so the assertion waits for the read rather than for the element.
     await waitFor(() =>
-      expect(screen.getByTestId('log-tail-summary')).toHaveTextContent(
-        '2 clusters · 10,003 lines · 1 with an error or worse',
-      ),
+      expect(
+        screen.getByText(/2 clusters · 10,003 lines · 1 with an error or worse/),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -337,7 +337,7 @@ describe('LogsPage', () => {
     await waitFor(() =>
       expect(requests.filter((request) => request.url.includes('/logs/lines'))).toHaveLength(reads),
     );
-    expect(screen.getByTestId('log-tail-state')).toHaveTextContent(/Paused at/);
+    expect(screen.getByText(/Paused at/)).toBeInTheDocument();
   });
 
   it('has no serious accessibility violations once loaded', async () => {
@@ -368,7 +368,7 @@ describe('the tail under a frozen clock', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByTestId('log-tail-state')).toHaveTextContent(/Paused at \d\d:\d\d:\d\dZ/);
+    expect(screen.getByText(/Paused at \d\d:\d\d:\d\dZ/)).toBeInTheDocument();
     expect(screen.getByText(/nothing is being read/)).toBeInTheDocument();
 
     const afterPause = requests.length;

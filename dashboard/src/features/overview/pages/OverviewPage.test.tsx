@@ -12,7 +12,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { auditKeyboard, auditStructure } from '../../../test/a11y';
 import { expectAccessible, expectAxeClean } from '../../../test/axe';
-import { jsonResponse, renderWithProviders, stubFetch, textResponse } from '../../../test/query';
+import {
+  jsonResponse,
+  neverResponds,
+  renderWithProviders,
+  stubFetch,
+  textResponse,
+  type StubRoute,
+} from '../../../test/query';
 import type { AlertRow } from '../api';
 import { OverviewPage } from './OverviewPage';
 
@@ -53,7 +60,11 @@ aegis_score_latency_seconds_bucket{le="+Inf"} 100.0
 `;
 
 function routes(
-  overrides: { alerts?: () => Response; metrics?: () => Response; readz?: () => Response } = {},
+  overrides: {
+    alerts?: StubRoute['respond'];
+    metrics?: StubRoute['respond'];
+    readz?: StubRoute['respond'];
+  } = {},
 ) {
   return [
     {
@@ -91,6 +102,23 @@ describe('OverviewPage', () => {
     expect(
       await screen.findByRole('region', { name: 'Detection pipeline health' }),
     ).toBeInTheDocument();
+  });
+
+  it('says it is reading the window rather than drawing zeros (T-414)', async () => {
+    stubFetch(routes({ alerts: () => neverResponds(), metrics: () => neverResponds() }));
+    renderWithProviders(<OverviewPage />);
+
+    // Every panel that will hold a figure announces what it is waiting for, by name.
+    const announced = (await screen.findAllByRole('status')).map((node) => node.textContent ?? '');
+    const said = announced.join(' | ');
+    expect(said).toContain('Alert volume by severity is loading');
+    expect(said).toContain('Top attacked entities is loading');
+    expect(said).toContain('Threat family mix is loading');
+
+    // And none of them has answered: a zero, or an empty window, would be a claim about
+    // the last 24 hours that nothing has read yet.
+    expect(screen.queryByText(/alerts read/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No entity was attacked/)).not.toBeInTheDocument();
   });
 
   it('asks for a bounded window, because R-34 forbids an unbounded scan', async () => {
