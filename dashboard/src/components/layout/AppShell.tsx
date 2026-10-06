@@ -34,6 +34,9 @@ const NAV_ITEMS: readonly NavItem[] = [
   { to: '/hunt', label: 'Hunt', section: 'Explore' },
   { to: '/models', label: 'Model ops', section: 'Models' },
   { to: '/models/drift', label: 'Drift', section: 'Models' },
+  // One entry, because the design's Admin sub-tree is the page's own section nav:
+  // a rail with six admin children would bury the six screens the operator uses
+  // most (design.md §3 keeps the rail at one line per area).
   { to: '/admin', label: 'Admin', section: 'Admin' },
 ];
 

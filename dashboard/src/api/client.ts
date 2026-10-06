@@ -62,8 +62,15 @@ interface RequestOptions {
   signal?: AbortSignal | undefined;
   timeoutMs?: number;
   accept?: string;
-  /** Defaults to `GET`. Nothing here needs a method the API does not serve. */
-  method?: 'GET' | 'POST';
+  /**
+   * Defaults to `GET`.
+   *
+   * `PUT` and `DELETE` joined the set for the admin screens (T-410): a threshold
+   * is replaced in place, and revoking a key is a DELETE that keeps its row
+   * (T-313). Both are real methods on the API, and the alternative — tunnelling
+   * them through POST — would put a verb in a path where the protocol has one.
+   */
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /** Serialised as JSON. Only meaningful with `POST`. */
   body?: unknown;
   /**
@@ -201,6 +208,32 @@ export async function postJson<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   return readJson<T>(await request(path, { ...options, method: 'POST', body }));
+}
+
+/**
+ * `PUT` a JSON body and read a JSON answer.
+ *
+ * The threshold editor is the caller (T-410): one value replaces the one in force
+ * for a `(family, band)`, and a repeat is the same request rather than a second
+ * row. Nothing else in the dashboard replaces a resource in place.
+ */
+export async function putJson<T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  return readJson<T>(await request(path, { ...options, method: 'PUT', body }));
+}
+
+/**
+ * `DELETE`, for a route that answers 204.
+ *
+ * The API key revoke is the caller (T-313, T-410). There is no body to read, and
+ * reading one would turn a successful revocation into a "malformed response";
+ * what the caller needs is that the request succeeded.
+ */
+export async function deleteJson(path: string, options: RequestOptions = {}): Promise<void> {
+  await request(path, { ...options, method: 'DELETE' });
 }
 
 /** `GET` a text document, for `/metrics`' exposition format. */

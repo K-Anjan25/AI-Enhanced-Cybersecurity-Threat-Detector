@@ -932,6 +932,10 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # is data leaving the system, and a copy somebody took is a change to what
         # is knowable about the data, even though no row was written.
         "hunt.export",
+        # T-410: a hand-set threshold, beside the fitted one, and a role change --
+        # which is a change to who can act, like issuing a key.
+        "threshold.set",
+        "user.role",
     }
 
 
