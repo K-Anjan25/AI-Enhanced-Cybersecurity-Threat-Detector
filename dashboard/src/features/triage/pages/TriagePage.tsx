@@ -12,6 +12,12 @@
  *   4. The verdict is announced in the bar's live region, and "Next alert ▸" is a
  *      link, so Tab then Enter moves on.
  *
+ * `j` and `k` (T-411) are the same journey without the Tab: they open the next and
+ * previous alert from wherever the analyst's focus is, which is what makes a queue
+ * of two hundred alerts survivable. They step the *selection* rather than the focus,
+ * so the step is a route change through `stepHref` — the same rule the "Next alert"
+ * link uses.
+ *
  * Three states on this page are decisions rather than visual details:
  *
  *   * **A route without `created_at` cannot be answered.** The detail is addressed
@@ -24,8 +30,8 @@
  *     separate; an analyst looking at an open alert keeps looking at it while the
  *     list behind them is broken, and says so.
  */
-import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { Card, EmptyState, ErrorState, Skeleton } from '../../../components/ui';
 import { formatSince } from '../../../lib/format';
@@ -40,11 +46,12 @@ import { QUEUE_WINDOW_HOURS } from '../api';
 import {
   useAlertDetail,
   useQueue,
+  useQueueShortcuts,
   useRecordVerdict,
   verdictFailureMessage,
   verdictOutcomeMessage,
 } from '../hooks';
-import { ALERTS_PATH, nextHref } from '../links';
+import { ALERTS_PATH, nextHref, stepHref } from '../links';
 import type { VerdictName } from '../verdicts';
 
 /** The live verdict region, so a recorded verdict is announced after it is written. */
@@ -75,9 +82,24 @@ export function TriagePage() {
     setAnnouncement(null);
   }, [selectedId, createdAt]);
 
-  const rows = queue.data?.items ?? [];
+  // A stable identity for the queue's rows: `j`/`k` step through them, and a fresh
+  // array on every render would rebuild the step callback on each keystroke.
+  const rows = useMemo(() => queue.data?.items ?? [], [queue.data]);
   const hasMore = (queue.data?.next_cursor ?? null) !== null;
   const next = nextHref(rows, selectedId);
+
+  // `j`/`k` open the next and previous alert — the queue's step, not a list
+  // widget's focus move (T-411). Disabled while the queue has no rows, so the key
+  // does nothing rather than navigating to a row the screen does not have.
+  const navigate = useNavigate();
+  const stepBy = useCallback(
+    (delta: -1 | 1) => {
+      const href = stepHref(rows, selectedId, delta);
+      if (href !== null) navigate(href);
+    },
+    [navigate, rows, selectedId],
+  );
+  useQueueShortcuts(rows.length > 0, stepBy);
 
   const onVerdict = (verdict: VerdictName) => {
     if (selectedId === null || createdAt === null) return;

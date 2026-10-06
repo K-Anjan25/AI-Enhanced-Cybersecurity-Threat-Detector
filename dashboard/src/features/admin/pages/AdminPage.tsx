@@ -17,61 +17,58 @@
 import { type ReactNode } from 'react';
 import { NavLink, Route, Routes } from 'react-router-dom';
 
+import { ADMIN_SECTIONS, type AdminSectionPath } from '../../../components/layout/nav';
 import { AuditPanel } from '../components/AuditPanel';
 import { KeysPanel } from '../components/KeysPanel';
 import { RetentionPanel } from '../components/RetentionPanel';
 import { ThresholdsPanel } from '../components/ThresholdsPanel';
 import { RolesPanel, UsersPanel } from '../components/UsersPanel';
 
-interface Section {
-  /** The path relative to `/admin`, which is what `Routes` needs. */
-  path: string;
-  /** The absolute href, which is what the nav and the index list need. */
-  to: string;
-  label: string;
+interface Panel {
   /** What the panel answers, so the index page is a map rather than a menu. */
   summary: string;
   element: ReactNode;
 }
 
-const SECTIONS: readonly Section[] = [
-  {
-    path: 'users',
-    to: '/admin/users',
-    label: 'Users & roles',
+/**
+ * The addresses come from `nav.ts` and the panels from here.
+ *
+ * The addresses moved when the command palette needed the same list (T-411): a
+ * second copy is how the palette offers a section this page does not have. The
+ * record is keyed by the section union, so a section added without a panel — or a
+ * panel for a section that no longer exists — is a type error rather than a blank
+ * screen.
+ */
+const PANELS: Readonly<Record<AdminSectionPath, Panel>> = {
+  users: {
     summary: 'Who exists, what each may do, and the rule that keeps one admin in place.',
     element: <UsersPanel />,
   },
-  {
-    path: 'keys',
-    to: '/admin/keys',
-    label: 'API keys',
+  keys: {
     summary:
       'Machine credentials: issue one, read its prefix, revoke it. The secret is shown once.',
     element: <KeysPanel />,
   },
-  {
-    path: 'thresholds',
-    to: '/admin/thresholds',
-    label: 'Thresholds',
+  thresholds: {
     summary: 'The band edges in force, where each came from, and what a change would have done.',
     element: <ThresholdsPanel />,
   },
-  {
-    path: 'retention',
-    to: '/admin/retention',
-    label: 'Retention & GDPR',
+  retention: {
     summary: 'What a retention run would drop, what it cannot reach, and erasure with its ledger.',
     element: <RetentionPanel />,
   },
-  {
-    path: 'audit',
-    to: '/admin/audit',
-    label: 'Audit log',
+  audit: {
     summary: 'Every recorded change, filterable and exportable, with nothing that can edit it.',
     element: <AuditPanel />,
   },
-];
+};
+
+const SECTIONS = ADMIN_SECTIONS.map((section) => ({
+  path: section.path,
+  to: section.to,
+  label: section.label,
+  ...PANELS[section.path],
+}));
 
 export function AdminPage() {
   return (

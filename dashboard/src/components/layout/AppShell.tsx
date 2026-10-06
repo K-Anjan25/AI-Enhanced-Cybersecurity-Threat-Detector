@@ -10,43 +10,40 @@
  * §8.1's stale age, and the banner below it explains the fallback. The `connection`
  * prop stays as an override for a story or a test that wants a state without a
  * socket; nothing in the app passes it.
+ *
+ * The top bar carries global search (§3), which is the palette's visible affordance:
+ * a keyboard-only feature that nothing points at is a feature only its author uses.
+ * Both the rail's header row and the top bar are `h-topbar` — §3's 56 px — so they
+ * line up; they were `h-8` (32 px) until T-411 put a control in the bar and the
+ * height the design asks for became the height the bar needed.
  */
 import { useState, type ReactNode } from 'react';
+import { Search } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
+import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ConnectionBanner } from '../realtime/ConnectionBanner';
 import { useConnectionView } from '../realtime/useConnectionView';
 import { ConnectionStatus, type ConnectionState } from '../ui/ConnectionStatus';
-
-interface NavItem {
-  to: string;
-  label: string;
-  section: string;
-}
-
-/** Information architecture from design.md §3. */
-const NAV_ITEMS: readonly NavItem[] = [
-  { to: '/', label: 'Overview', section: 'Monitor' },
-  { to: '/alerts', label: 'Alerts', section: 'Threats' },
-  { to: '/traffic', label: 'Traffic', section: 'Explore' },
-  { to: '/logs', label: 'Logs', section: 'Explore' },
-  { to: '/hunt', label: 'Hunt', section: 'Explore' },
-  { to: '/models', label: 'Model ops', section: 'Models' },
-  { to: '/models/drift', label: 'Drift', section: 'Models' },
-  // One entry, because the design's Admin sub-tree is the page's own section nav:
-  // a rail with six admin children would bury the six screens the operator uses
-  // most (design.md §3 keeps the rail at one line per area).
-  { to: '/admin', label: 'Admin', section: 'Admin' },
-];
+import { NAV_ITEMS } from './nav';
 
 interface AppShellProps {
   /** Connection state for the top-bar indicator. */
   connection?: ConnectionState;
+  /**
+   * Opens the command palette.
+   *
+   * The shell does not own the palette: it renders the top bar's search control and
+   * says what that control does. Where the palette lives and which keys open it are
+   * the app's business, and a shell that imported the palette would be a shell that
+   * could not be rendered without one.
+   */
+  onOpenPalette: () => void;
   children?: ReactNode;
 }
 
-export function AppShell({ connection, children }: AppShellProps) {
+export function AppShell({ connection, onOpenPalette, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const view = useConnectionView(connection);
@@ -64,7 +61,7 @@ export function AppShell({ connection, children }: AppShellProps) {
           collapsed ? 'w-rail-collapsed' : 'w-rail'
         }`}
       >
-        <div className="flex h-8 items-center justify-between px-4">
+        <div className="flex h-topbar items-center justify-between px-4">
           {!collapsed ? <span className="text-h2">AEGIS</span> : null}
           <button
             type="button"
@@ -104,9 +101,19 @@ export function AppShell({ connection, children }: AppShellProps) {
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-8 items-center justify-between border-b border-line bg-surface px-6">
+        <header className="flex h-topbar items-center justify-between border-b border-line bg-surface px-6">
           <span className="text-caption text-muted">AI-Enhanced Cybersecurity Threat Detector</span>
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onOpenPalette}
+              aria-keyshortcuts={PALETTE_KEY_SHORTCUTS}
+              className="flex items-center gap-2 rounded-input border border-line bg-base px-3 py-1 text-caption text-muted hover:text-ink"
+            >
+              <Search aria-hidden="true" className="size-icon-sm" />
+              Search
+              <kbd className="font-mono">{paletteKeyLabel()}</kbd>
+            </button>
             <ConnectionStatus state={view.state} detail={view.detail} />
             <button
               type="button"
