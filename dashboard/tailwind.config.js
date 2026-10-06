@@ -102,6 +102,17 @@ export default {
       DEFAULT: colors.muted,
       ...colors,
     },
+    // design.md §8.3's three breakpoints and nothing else (T-412). Like the colour
+    // and spacing scales, this *replaces* Tailwind's defaults rather than extending
+    // them: `sm:` (640 px) and `2xl:` (1536 px) are not in the design, so they now
+    // compile to nothing instead of quietly defining a fourth and fifth breakpoint
+    // that no document mentions. The three numbers are asserted against §8.3's table
+    // by src/theme/tailwind.test.ts, which is what stops them drifting.
+    screens: {
+      md: '768px',
+      lg: '1024px',
+      xl: '1440px',
+    },
     // design.md §5.4's two stacks and nothing else. `font-serif` emits nothing:
     // a third stack would be a decision, and the document names two.
     fontFamily: {

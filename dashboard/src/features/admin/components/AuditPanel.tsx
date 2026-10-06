@@ -170,7 +170,7 @@ export function AuditPanel() {
       }
     >
       <div className="flex flex-col gap-3">
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-3">
           <label className="flex flex-col gap-1 text-body-sm">
             Action
             <select
