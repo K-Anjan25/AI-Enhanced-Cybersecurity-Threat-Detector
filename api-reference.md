@@ -43,6 +43,7 @@ or body do not match the schema below.
 | `POST` | `/api/v1/models/{kind}/rollback` | Reverse the most recent promotion of a kind (FR-33) | admin | `200` `ModelTransitionOut` | `RollbackRequest` |
 | `GET` | `/api/v1/models/{model_id}/metrics` | Held-out evaluation metrics for one version (FR-31) | admin, analyst, responder, viewer | `200` `ModelMetricsOut` | — |
 | `POST` | `/api/v1/models/{model_id}/promote` | Make a version active and retire the incumbent (FR-33) | admin | `200` `ModelTransitionOut` | `PromotionRequest` |
+| `GET` | `/api/v1/overview` | One window's counts, severity series and named entities (FR-50) | admin, analyst, responder, viewer | `200` `OverviewOut` | — |
 | `POST` | `/api/v1/privacy/erasure` | Erase one data subject across every store (NFR-05, R-37) | admin | `200` `ErasureReportOut` | `ErasureRequest` |
 | `GET` | `/api/v1/privacy/erasures` | The erasure ledger, newest first (NFR-05) | admin | `200` `ErasureLedgerPageOut` | — |
 | `GET` | `/api/v1/retention` | Retention policy and the plan a run would execute (NFR-05) | admin | `200` `RetentionPlanOut` | — |
@@ -605,6 +606,83 @@ What a promotion or rollback did.
 | `changed` | `boolean` | yes | — |
 | `at` | `string (date-time)` | yes | — |
 | `actor` | `string` | yes | — |
+
+### `OverviewBucket`
+
+One point of the severity series.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | — |
+| `total` | `integer` | yes | — |
+| `by_severity` | map of string to `integer` | yes | — |
+
+### `OverviewEntity`
+
+One entity in the window, named.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `entity_id` | `integer` | yes | — |
+| `kind` | `string` or `null` | yes | — |
+| `value` | `string` or `null` | yes | — |
+| `named` | `boolean` | yes | — |
+| `alerts` | `integer` | yes | — |
+| `occurrences` | `integer` | yes | — |
+| `open` | `integer` | yes | — |
+| `worst_severity` | `string` | yes | — |
+| `max_score` | `number` | yes | — |
+| `last_seen` | `string (date-time)` | yes | — |
+
+### `OverviewFamily`
+
+One threat family's share of the window.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `family` | `string` | yes | — |
+| `alerts` | `integer` | yes | — |
+| `worst_severity` | `string` | yes | — |
+
+### `OverviewOut`
+
+The overview's three panels, from one read of one window.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `window` | `OverviewWindow` | yes | — |
+| `bucket_minutes` | `integer` | yes | — |
+| `totals` | `OverviewTotals` | yes | — |
+| `series` | `OverviewBucket` | yes | — |
+| `entities` | `OverviewEntity` | yes | — |
+| `entities_capped` | `boolean` | yes | — |
+| `families` | `OverviewFamily` | yes | — |
+| `families_capped` | `boolean` | yes | — |
+
+### `OverviewTotals`
+
+The KPI tiles: the window's counts, complete rather than capped.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `alerts` | `integer` | yes | — |
+| `open` | `integer` | yes | — |
+| `by_severity` | map of string to `integer` | yes | — |
+| `unrecognised_severity` | `integer` | yes | — |
+| `verdicts` | map of string to `integer` | yes | — |
+| `unrecorded` | `integer` | yes | — |
+| `verdicts_measured` | `integer` | yes | — |
+| `mean_time_to_verdict_seconds` | `number` or `null` | yes | — |
+
+### `OverviewWindow`
+
+The window the figures describe, echoed so a client can label them.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | — |
+| `end` | `string (date-time)` | yes | — |
+| `hours` | `number` | yes | — |
 
 ### `PreservedLedgerOut`
 

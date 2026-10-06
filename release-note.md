@@ -17,9 +17,11 @@ reader might mistake for a pass. T-510 (v1.0) is the task that publishes this no
 
 Every screen design.md §3 names except `/admin/connectors` (T-422) is built: the overview, alert
 triage with its batch export, the traffic explorer, the log explorer, the hunt console, model ops
-with drift, and the admin screens. E4's remaining work is the accessibility and frontend-test
-polish (T-413, T-414) and the read models that make the built screens complete rather than capped
-(T-416, T-418, T-419). E5 — load, failure drills, Kubernetes, release engineering — is untouched.
+with drift, and the admin screens. E4's remaining work is the read models that make the built
+screens complete rather than capped (T-418, T-419) and the one screen design.md §3 still leaves
+unbuilt (T-422); the accessibility pass (T-413), the frontend-test rule (T-414) and the overview's
+aggregate (T-416) have landed. E5 — load, failure drills, Kubernetes, release engineering — is
+untouched.
 
 ## Accessibility (T-413, NFR-09)
 
@@ -68,6 +70,33 @@ cover:
   what it turns up as tasks. The checklist to walk: the triage loop end to end without a mouse;
   a `1`/`2`/`3` verdict announced; a new alert arriving while the queue is open; `⌘K` and `?`
   announcing their dialogs; and one table read with its headers.
+
+## Counts and completeness (T-416, FR-50)
+
+Measured 2026-10-06. The overview's figures — the KPI tiles, the severity series, the entity list and
+the family mix — come from **one request**, `GET /api/v1/overview`, which aggregates the selected
+window where the rows are.
+
+| Claim                                                       | Evidence                                                                                                             |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| One request fills the tiles, the series and the entity list | 1 `/api/v1/overview` request per window, 0 `/api/v1/alerts` requests, asserted on the wire in the page test          |
+| Counts are the window's, not a read of it                   | `counts_are_the_window_s_own_and_not_capped`: 5,050 rows counted in full against the 5,000-row cap the page walk had |
+| No partial-coverage language remains on the screen          | asserted absent (the half of the change a screenshot cannot show)                                                    |
+| Every entity renders its host or user value                 | `kind`/`value` from the entity registry; an id it has not seen renders as `entity <id>` and the panel says so        |
+| A capped list says it is one                                | `entities_capped`/`families_capped` are true only when the window held _more_ than the limit, boundary tested        |
+
+The arithmetic is defended by thirteen planted defects — an occurrence sum replaced by a row count
+in both the arithmetic and the SQL, a dropped blank family, a `min` where the fold needs `max`, an
+unknown band dropped from the tile and from the series, a cap flag off by one on each list, a
+hard-coded `families_capped`, the family statement's `LIMIT` removed, the in-memory store not
+forwarding its family limit, and an unnamed id rendered as named. Thirteen were killed; the two
+that survived the first pass were the cap boundary on each list, which is why that boundary now has
+its own test.
+
+What is **not** yet true: the aggregation SQL is written and tested but not executed — the overview
+still reads the in-process store until the database session D-030 records is wired (T-419's
+neighbour problem). Naming is per-process, so an id written by another process or before a restart
+renders as `entity <id>`. Both are stated on the screen rather than papered over.
 
 ## Not yet recorded
 

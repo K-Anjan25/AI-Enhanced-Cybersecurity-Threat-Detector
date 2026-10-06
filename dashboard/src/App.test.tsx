@@ -31,6 +31,32 @@ function renderAt(path: string) {
           : jsonResponse({ detail: 'no alert at that address' }, 404),
     },
     {
+      // The overview reads one aggregate (T-416). An empty window, so a screen
+      // under test says it is empty rather than rendering figures the shell's
+      // tests would have had to invent.
+      match: '/api/v1/overview',
+      respond: () =>
+        jsonResponse({
+          window: { start: '2026-10-05T12:00:00Z', end: '2026-10-06T12:00:00Z', hours: 24 },
+          bucket_minutes: 60,
+          totals: {
+            alerts: 0,
+            open: 0,
+            by_severity: {},
+            unrecognised_severity: 0,
+            verdicts: {},
+            unrecorded: 0,
+            verdicts_measured: 0,
+            mean_time_to_verdict_seconds: null,
+          },
+          series: [],
+          entities: [],
+          entities_capped: false,
+          families: [],
+          families_capped: false,
+        }),
+    },
+    {
       match: '/api/v1/logs',
       respond: () =>
         jsonResponse({

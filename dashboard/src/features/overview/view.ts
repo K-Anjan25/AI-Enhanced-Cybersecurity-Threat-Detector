@@ -112,8 +112,34 @@ export function bucketLabel(date: Date, spanMs: number): string {
   return `${hours}:${minutes}`;
 }
 
+/** What the verdict tile knows: the mean, and how many verdicts it covers. */
+export interface VerdictSummary {
+  meanSeconds: number | null;
+  measured: number;
+}
+
+/** No verdict recorded in the window — the mean has no basis, not a basis of zero. */
+export const NO_VERDICTS: VerdictSummary = { meanSeconds: null, measured: 0 };
+
+/**
+ * The mean time to verdict, in whole seconds.
+ *
+ * Whole seconds because that is the precision the tile is read at -- §4.1 draws
+ * "41 s" -- and because the server's milliseconds are an arithmetic detail, not a
+ * triage speed an operator can act on. `null` stays `null`: a mean over zero
+ * verdicts is not `0 s`.
+ */
+function meanSeconds(mean: number | null): number | null {
+  return mean === null ? null : Math.round(mean);
+}
+
 /** The five tiles §4.1 puts across the top, in reading order. */
-export function kpiTiles(tally: SeverityTally, open: number, windowLabel: string): Tile[] {
+export function kpiTiles(
+  tally: SeverityTally,
+  open: number,
+  windowLabel: string,
+  verdict: VerdictSummary = NO_VERDICTS,
+): Tile[] {
   const severityTile = (severity: Severity, label: string): Tile => ({
     label,
     value: tally[severity],
@@ -127,13 +153,18 @@ export function kpiTiles(tally: SeverityTally, open: number, windowLabel: string
     severityTile('medium', 'Medium'),
     { label: 'Open alerts', value: open, caption: windowLabel },
     {
-      // design.md §4.1 draws this tile. Nothing in this build can fill it: verdicts
-      // are stored per alert and no endpoint aggregates their lag. Showing `0 s`
-      // would claim instant triage; the tile says what is missing instead, and the
-      // endpoint is filed as T-416.
+      // design.md §4.1 draws this tile, and T-416 gave it a source: the aggregate
+      // returns the mean over the verdicts *with* a recorded time, plus how many
+      // those were. A mean of one verdict is not a trend and a window with none has
+      // no mean at all, so the count travels with the figure and the empty case
+      // says so instead of showing `0 s` — which would claim instant triage.
       label: 'Mean time to verdict',
-      value: null,
-      caption: 'target \u2264 60 s \u00b7 no verdict aggregation yet (T-416)',
+      value: meanSeconds(verdict.meanSeconds),
+      unit: 's',
+      caption:
+        verdict.meanSeconds === null
+          ? 'no verdict recorded in this window \u00b7 target \u2264 60 s'
+          : `${String(verdict.measured)} verdict${verdict.measured === 1 ? '' : 's'} measured \u00b7 target \u2264 60 s`,
     },
   ];
 }

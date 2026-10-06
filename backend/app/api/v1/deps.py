@@ -24,6 +24,7 @@ from fastapi import Request
 from app.auth.api_keys import ApiKeyStore, KeyDigest
 from app.services.alert_store import AlertStore
 from app.services.audit_log import AuditTrail
+from app.services.entity_registry import EntityRegistry
 from app.services.erasure import ErasureService
 from app.services.limits import AdmissionController
 from app.services.log_tail import LogTail
@@ -40,6 +41,7 @@ __all__ = [
     "api_key_store",
     "audit_trail",
     "client_ip",
+    "entity_registry",
     "erasure_service",
     "known_partitions",
     "log_tail",
@@ -83,6 +85,29 @@ def alert_store(request: Request) -> AlertStore:
         msg = "alert_store is not configured on app.state"
         raise RuntimeError(msg)
     return store
+
+
+def entity_registry(request: Request) -> EntityRegistry:
+    """The process's entity registry: the only source of an entity's name (T-416).
+
+    Alert rows carry ``entity_id`` and nothing else, so every screen that has to
+    render a host or a user value asks here. The persistent source is the
+    ``entities`` table, whose Identity column the ingest path does not write yet
+    (D-053); until it does, this is the same in-memory registry the pipeline
+    allocates ids from, so an alert rendered by the process that created it is
+    named.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, because
+            an unconfigured registry answers every lookup with ``None``, which is
+            indistinguishable from "this deployment has no named entities" -- the
+            overview would render ids and look like a screen that never had names.
+    """
+    registry: EntityRegistry | None = getattr(request.app.state, "entity_registry", None)
+    if registry is None:
+        msg = "entity_registry is not configured on app.state"
+        raise RuntimeError(msg)
+    return registry
 
 
 def log_tail(request: Request) -> LogTail:
