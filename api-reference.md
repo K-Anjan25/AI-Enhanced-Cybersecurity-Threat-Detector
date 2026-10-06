@@ -35,6 +35,8 @@ or body do not match the schema below.
 | `POST` | `/api/v1/keys` | Issue an API key (FR-44) | admin | `201` `ApiKeyIssuedOut` | `ApiKeyCreate` |
 | `GET` | `/api/v1/keys/scopes` | List the scopes a key may hold (FR-44) | admin | `200` `ScopeListOut` | — |
 | `DELETE` | `/api/v1/keys/{key_id}` | Revoke an API key (FR-44) | admin | `200` `ApiKeyOut` | — |
+| `GET` | `/api/v1/logs` | Clustered log tail (log@1) | admin, analyst, responder, viewer | `200` `LogTailOut` | — |
+| `GET` | `/api/v1/logs/lines` | Raw log lines behind a cluster (log@1) | admin, analyst, responder, viewer | `200` `LogLinesOut` | — |
 | `GET` | `/api/v1/models` | List registered model versions (FR-30) | admin, analyst, responder, viewer | `200` `ModelListOut` | — |
 | `POST` | `/api/v1/models/{kind}/rollback` | Reverse the most recent promotion of a kind (FR-33) | admin | `200` `ModelTransitionOut` | `RollbackRequest` |
 | `GET` | `/api/v1/models/{model_id}/metrics` | Held-out evaluation metrics for one version (FR-31) | admin, analyst, responder, viewer | `200` `ModelMetricsOut` | — |
@@ -405,11 +407,62 @@ The outcome of a batch. Nothing accepted or rejected goes unreported.
 | `rejected` | `integer` | yes | — |
 | `errors` | `RecordError` | no | — |
 
+### `LogClusterOut`
+
+One row of the fold: a template (or a repeated message) with its count.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `key` | `string` | yes | Stable id for this cluster; pass it back to expand the rows. |
+| `template_id` | `string` or `null` | no | The collector's template id, or null when the lines carried none. |
+| `count` | `integer` | yes | How many lines in the window folded into this row. |
+| `first_seen` | `string (date-time)` | yes | Oldest line in the cluster, UTC. |
+| `last_seen` | `string (date-time)` | yes | Newest line in the cluster, UTC. |
+| `worst_level` | `LogLevel` | yes | Most severe level among the cluster's lines. A level, not a score. |
+| `levels` | map of string to `integer` | no | How many lines of each level the cluster holds, keyed by level. |
+| `hosts` | list of `string` | no | Hosts that emitted the cluster. |
+| `services` | list of `string` | no | Services that emitted the cluster. |
+| `sample_message` | `string` | yes | The newest line in the cluster, verbatim. |
+| `parameters` | map of string to `string` | no | Parameters of the newest line in the cluster. |
+
 ### `LogLevel`
 
 Severity levels ``log@1`` recognises.
 
 Types: `debug` or `info` or `warning` or `error` or `critical`.
+
+### `LogLineOut`
+
+One raw log line, with the cluster key the server computed for it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `timestamp` | `string (date-time)` | yes | When the line was emitted, UTC. |
+| `host` | `string` | yes | Host that emitted the line. |
+| `service` | `string` | yes | Service or component that emitted it. |
+| `level` | `LogLevel` | yes | Level as log@1 defines it. |
+| `message` | `string` | yes | The raw line, parameters and all. |
+| `template_id` | `string` or `null` | no | Template the collector mined for this line, when it sent one. |
+| `parameters` | map of string to `string` | no | Named values the template was filled with, when the collector sent them. |
+| `key` | `string` | yes | Cluster this line folds into: a template id or a message digest. |
+
+### `LogLinesOut`
+
+The raw lines of one cluster (or one window), oldest first.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | Window start, inclusive, UTC. |
+| `end` | `string (date-time)` | yes | Window end, exclusive, UTC. |
+| `key` | `string` or `null` | no | Cluster the read was narrowed to, if any. |
+| `lines` | `LogLineOut` | no | — |
+| `lines_seen` | `integer` | yes | Matching lines, before the row limit. |
+| `lines_truncated` | `boolean` | yes | Whether the newest rows only are shown. |
+| `retained_from` | `string (date-time)` or `null` | no | — |
+| `retained_to` | `string (date-time)` or `null` | no | — |
+| `retained_lines` | `integer` | yes | Lines held after eviction, across all windows. |
+| `dropped_lines` | `integer` | yes | Lines evicted since the process started. |
+| `caveats` | list of `string` | no | — |
 
 ### `LogRecordIn`
 
@@ -426,6 +479,24 @@ One log line on the wire — the ``log@1`` contract.
 | `template_id` | `string` or `null` | no | — |
 | `parameters` | map of string to `string` | no | — |
 | `label` | `string` or `null` | no | — |
+
+### `LogTailOut`
+
+Clusters for one window, plus what the tail could and could not cover.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | Window start, inclusive, UTC. |
+| `end` | `string (date-time)` | yes | Window end, exclusive, UTC. |
+| `clusters` | `LogClusterOut` | no | — |
+| `lines_seen` | `integer` | yes | Matching lines folded, before any row limit. |
+| `clusters_seen` | `integer` | yes | Distinct clusters in the window, before any limit. |
+| `clusters_truncated` | `boolean` | yes | Whether the row limit cut the list. |
+| `retained_from` | `string (date-time)` or `null` | no | Oldest instant the tail still holds, or null when empty. |
+| `retained_to` | `string (date-time)` or `null` | no | Newest instant the tail still holds, or null when empty. |
+| `retained_lines` | `integer` | yes | Lines held after eviction, across all windows. |
+| `dropped_lines` | `integer` | yes | Lines evicted since the process started. |
+| `caveats` | list of `string` | no | What a reader must know to read the numbers above (R-70). |
 
 ### `MetricPointOut`
 

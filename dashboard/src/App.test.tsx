@@ -26,6 +26,23 @@ function renderAt(path: string) {
           ? jsonResponse({ items: [], next_cursor: null, limit: 1_000, order: 'desc' })
           : jsonResponse({ detail: 'no alert at that address' }, 404),
     },
+    {
+      match: '/api/v1/logs',
+      respond: () =>
+        jsonResponse({
+          start: '2026-10-06T10:00:00Z',
+          end: '2026-10-06T10:05:00Z',
+          clusters: [],
+          lines_seen: 0,
+          clusters_seen: 0,
+          clusters_truncated: false,
+          retained_from: null,
+          retained_to: null,
+          retained_lines: 0,
+          dropped_lines: 0,
+          caveats: ['Nothing has arrived in this window'],
+        }),
+    },
     { match: '/metrics', respond: () => textResponse('') },
     {
       match: '/readyz',
@@ -74,14 +91,27 @@ describe('routing and shell', () => {
     expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
   });
 
-  it('navigates to a screen that is not built and names the task that owns it', async () => {
+  it('navigates to the log explorer, which is built now', async () => {
     const user = userEvent.setup();
     renderAt('/');
 
     await user.click(screen.getByRole('link', { name: 'Logs' }));
 
+    expect(await screen.findByRole('heading', { level: 1, name: 'Logs' })).toBeInTheDocument();
+    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
+    // The stubbed tail is empty and says why, which is the log screen's own claim
+    // about a bounded buffer rather than a blank table.
+    expect(await screen.findByText('Nothing has arrived in this window')).toBeInTheDocument();
+  });
+
+  it('navigates to a screen that is not built and names the task that owns it', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
+
+    await user.click(screen.getByRole('link', { name: 'Hunt' }));
+
     expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-407')).toBeInTheDocument();
+    expect(screen.getByText('T-408')).toBeInTheDocument();
   });
 
   it('mounts the triage screen at /alerts, which is built now', async () => {

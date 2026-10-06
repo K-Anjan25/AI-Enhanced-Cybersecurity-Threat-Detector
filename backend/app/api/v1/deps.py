@@ -26,6 +26,7 @@ from app.services.alert_store import AlertStore
 from app.services.audit_log import AuditTrail
 from app.services.erasure import ErasureService
 from app.services.limits import AdmissionController
+from app.services.log_tail import LogTail
 from app.services.model_ops import ModelOpsService
 from app.services.recalibration import RecalibrationService
 from app.services.retention import RetentionPolicy, StatementRunner
@@ -39,6 +40,7 @@ __all__ = [
     "client_ip",
     "erasure_service",
     "known_partitions",
+    "log_tail",
     "model_ops",
     "parse_instant",
     "partition_runner",
@@ -76,6 +78,22 @@ def alert_store(request: Request) -> AlertStore:
         msg = "alert_store is not configured on app.state"
         raise RuntimeError(msg)
     return store
+
+
+def log_tail(request: Request) -> LogTail:
+    """The process's log tail (T-407).
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, because
+            a tail nobody filled answers every read with an empty screen, and
+            "no logs arrived" and "no tail exists" are different facts about the
+            deployment.
+    """
+    tail: LogTail | None = getattr(request.app.state, "log_tail", None)
+    if tail is None:
+        msg = "log_tail is not configured on app.state"
+        raise RuntimeError(msg)
+    return tail
 
 
 def api_key_store(request: Request) -> ApiKeyStore:

@@ -15,15 +15,15 @@ oversized batch has no record to attribute the problem to.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, TypeVar
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.api.openapi_docs import ndjson_batch_body
-from app.api.v1.deps import admission, audit_trail, client_ip
+from app.api.v1.deps import admission, audit_trail, client_ip, log_tail
 from app.auth.rbac import Capability, Principal, require
 from app.observability import metrics
 from app.schemas.ingest import (
@@ -39,6 +39,10 @@ from app.services.ingest_service import BatchTooLarge, UnsupportedMediaType, ing
 
 router = APIRouter(prefix="/api/v1/ingest", tags=["ingest"])
 
+#: The ingest routes are generic over the record model they validate (flow@1, log@1);
+#: ``keep`` is the one hook that receives them, and it is typed by the call site.
+_T = TypeVar("_T", bound=BaseModel)
+
 #: FR-01/FR-02 accept JSON or NDJSON. NDJSON is the streaming form and is what
 #: collectors send; JSON is what a human debugging with curl will send.
 _NDJSON = "application/x-ndjson"
@@ -48,14 +52,21 @@ def _ingest(
     request: Request,
     response: Response,
     body: bytes,
-    model: type[BaseModel],
+    model: type[_T],
     limit: int,
     *,
     caller: Principal,
     action: AuditAction,
     modality: str,
+    keep: Callable[[Sequence[_T]], int] | None = None,
 ) -> IngestResponse:
     """Run one ingest, translate batch-level failures into status codes, audit it.
+
+    ``keep`` is where accepted records go to be *shown* rather than scored -- the
+    log tail (T-407), which the explorer reads. It is a callable rather than a
+    store lookup so this helper keeps knowing nothing about what a deployment
+    hangs off an ingest, and it is called after the hand-off, beside the audit
+    row, so a request that failed on its way out kept nothing.
 
     These are the failures that have no record to attribute them to, so they
     cannot be expressed as entries in a per-record error list.
@@ -120,6 +131,11 @@ def _ingest(
             # Before the audit row, deliberately: a record is not audited as taken
             # in unless it was handed on.
             publisher.publish(accepted, traceparent=traceparent)
+        if keep is not None:
+            # Fed where the trail is fed, and after the hand-off for the same
+            # reason: a request that failed before publishing kept nothing, so the
+            # tail never shows a line the pipeline never saw.
+            keep(accepted)
         record_action(
             audit_trail(request),
             action=action,
@@ -211,6 +227,9 @@ async def ingest_logs(
         caller=caller,
         action=AuditAction.ingest_logs,
         modality="log",
+        # The tail the explorer reads (T-407). Only log batches are kept: a flow
+        # record has no line to show, and the traffic explorer reads its own set.
+        keep=log_tail(request).append,
     )
 
 

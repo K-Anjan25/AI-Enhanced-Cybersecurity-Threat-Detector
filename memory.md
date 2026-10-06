@@ -27,16 +27,16 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 | Aspect | State |
 |---|---|
 | Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9`, T-313 at `69b6b5e` and T-314 at `0814cc7` — see below) |
-| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), retention with GDPR erasure (T-314), the model ops endpoints (T-315), the request limits (T-316), the metrics and traces (T-317), the structured logging (T-318), the in-process golden pipeline (T-319), the generated API reference (T-320), the typed score columns with the checked severity (T-321), the weekly threshold recalibration (T-322), the declared PostgreSQL driver (T-323), the closed design-token layer (T-401), the UI primitives every screen composes from (T-402), the overview dashboard with its API client and Prometheus reader (T-403), and the triage screen with its alert-detail read model (T-404), the real-time layer at the shell with the polling fallback it degrades into (T-405), and the traffic explorer with its brushable series and entity graph (T-406). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — the shell, theming, routing, the design tokens, the primitives and the first three real screens (T-401…T-406) |
-| Tests | **2402 passing, 29 skipped** — 1266 backend (13 need a live PostgreSQL), 531 ml-service (16 need torch), 605 dashboard in 51 files. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), retention with GDPR erasure (T-314), the model ops endpoints (T-315), the request limits (T-316), the metrics and traces (T-317), the structured logging (T-318), the in-process golden pipeline (T-319), the generated API reference (T-320), the typed score columns with the checked severity (T-321), the weekly threshold recalibration (T-322), the declared PostgreSQL driver (T-323), the closed design-token layer (T-401), the UI primitives every screen composes from (T-402), the overview dashboard with its API client and Prometheus reader (T-403), and the triage screen with its alert-detail read model (T-404), the real-time layer at the shell with the polling fallback it degrades into (T-405), and the traffic explorer with its brushable series and entity graph (T-406), and the bounded in-process log tail behind the log explorer's two read routes (T-407). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — the shell, theming, routing, the design tokens, the primitives and the first four real screens (T-401…T-407) |
+| Tests | **2510 passing, 29 skipped** — 1325 backend (13 need a live PostgreSQL), 531 ml-service (16 need torch), 654 dashboard in 56 files. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
 | Checks green | `./scripts/check_all.sh` — **26 checks, 0 failed** (measured 2026-10-06): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, the API reference drift check, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
 | Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
 | Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
 | Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
 | Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
-| Next work | E3 is closed and **E4 is under way**: T-401 (the design tokens), T-402 (the UI primitives), T-403 (the overview dashboard), T-404 (the alert triage screen), T-405 (the real-time layer) and T-406 (the traffic explorer) are done, and **T-407** (the log explorer) is next. **T-418** was raised by T-406 rather than assumed: the explorer's series and edges are alerted records and correlation traces because this build has no read API for ingested flows. **T-409/T-410** were unblocked by T-315 and **T-506** follows T-311; E5 is untouched. **T-417** (dashboard sign-in) was raised by T-405 rather than assumed — the realtime layer needs a credential the dashboard has no way to obtain yet. One follow-on was filed by T-323 rather than fixed: the database session D-030 is missing will need `sqlalchemy[asyncio]` when it is wired, because R-18's request path may not use the synchronous engine Alembic uses — the driver itself is declared and the sync half is proven. Docker remains unavailable here, so T-005 and the k8s apply are still unverified, and T-301's migration half was verified once against a sandbox PostgreSQL rather than in CI (D-055) — each says so in [task.md](task.md) |
+| Next work | E3 is closed and **E4 is under way**: T-401 (the design tokens), T-402 (the UI primitives), T-403 (the overview dashboard), T-404 (the alert triage screen), T-405 (the real-time layer), T-406 (the traffic explorer) and T-407 (the log explorer) are done, and **T-408** (the hunt console) is next. **T-418** was raised by T-406 rather than assumed: the explorer's series and edges are alerted records and correlation traces because this build has no read API for ingested flows. **T-419** was raised the same way by T-407: the log explorer reads a bounded in-process tail because there is no persistent log read model, and the API's own caveat says so. **T-409/T-410** were unblocked by T-315 and **T-506** follows T-311; E5 is untouched. **T-417** (dashboard sign-in) was raised by T-405 rather than assumed — the realtime layer needs a credential the dashboard has no way to obtain yet. One follow-on was filed by T-323 rather than fixed: the database session D-030 is missing will need `sqlalchemy[asyncio]` when it is wired, because R-18's request path may not use the synchronous engine Alembic uses — the driver itself is declared and the sync half is proven. Docker remains unavailable here, so T-005 and the k8s apply are still unverified, and T-301's migration half was verified once against a sandbox PostgreSQL rather than in CI (D-055) — each says so in [task.md](task.md) |
 
-**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-323**; every E3 task is closed. **E4 is under way** — T-401…T-406 are done, T-407 onwards are `TODO` — and **E5 is untouched** — everything past E3 is `TODO` in [task.md](task.md), which holds per-task status.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-323**; every E3 task is closed. **E4 is under way** — T-401…T-407 are done, T-408 onwards are `TODO` — and **E5 is untouched** — everything past E3 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -637,15 +637,15 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | # | Action | Task | When |
 |---|---|---|---|
-| 1 | **Build the log explorer** — template clustering and a pausable live tail (T-407) | T-407 | Next |
-| 2 | Continue E4: the explore screens and the admin surfaces | T-407…T-418 | This sprint |
+| 1 | **Build the hunt console** — query input, autocomplete, saved queries and the audited CSV export (T-408) | T-408 | Next |
+| 2 | Continue E4: the explore screens and the admin surfaces | T-408…T-419 | This sprint |
 | 3 | Confirm Q-03 (false-positive budget) and Q-05 (multi-tenancy) with their owners | — | Before threshold defaults ship |
 | 4 | Run the compose stack where a Docker daemon exists; close T-005 and settle Q-08 | T-005 | When Docker is available |
 | 5 | Verify the T-301 migration up and down against a live PostgreSQL 16 | T-301 remainder | When a server is reachable |
 | 6 | Apply the k8s manifests to a cluster — the checks are static only | T-504 | M5 |
 | 7 | Build the family-holdout release gate Q-07 still owes, then a gated metric for `LogNet` | T-203, T-208 | Before release |
 
-Completed since the last revision of this table: the datasets were fetched and checksummed (T-101–T-105, T-110), `features@1` was pinned (T-107), windowing, splits, the leakage audit and the evaluation harness landed (T-108, T-109, T-111, T-112), both models and the scoring modules landed (T-201–T-215), E3 closed through T-323, and E4 opened with T-401, T-402, T-403, T-404 and T-405.
+Completed since the last revision of this table: the datasets were fetched and checksummed (T-101–T-105, T-110), `features@1` was pinned (T-107), windowing, splits, the leakage audit and the evaluation harness landed (T-108, T-109, T-111, T-112), both models and the scoring modules landed (T-201–T-215), E3 closed through T-323, and E4 opened with T-401, T-402, T-403, T-404, T-405, T-406 and T-407.
 
 ### D-031 — R-51 is enforced where verification happens, and rotation means the old token dies
 Argon2id hashing is easy to get nominally right and still be wrong, because the
@@ -2286,10 +2286,117 @@ a driven clock and a stubbed API — the server's own WS transport is not instal
 here, so the two halves are verified against the same contract rather than against
 each other.
 
+### D-064 — The log tail is a window with an end, and every read carries the sentence that says so (T-407) (2026-10-06)
+
+**Decision.** design.md §4.5 asks for a clustered, pausable log tail, and this build
+has nowhere to read logs from: lines stop at `POST /api/v1/ingest/logs`, and there is
+no log table, no consumer and no read model. The choice was between building the
+storage layer first — T-301's schema, a migration, a writer, a query service, a task
+of its own — or building the screen §4.5 describes against the one thing the backend
+can honestly produce: a **bounded, in-process tail of accepted lines**, with the
+persistent read model filed as **T-419**. The tail was chosen because the acceptance
+criterion is about the *fold*, not about storage — 10,000 identical lines collapsing
+to one row with a count, and a pause that freezes the view — and a screen that says
+what its source is can ship before its source exists. `LogTail` holds the most recent
+**20,000** lines or **900 s**, whichever comes first, and both of its read routes
+return the deployment's own caveats, which the screen renders verbatim rather than
+paraphrasing: "not a store" is a claim about the deployment, and a screen that
+reworded it would eventually word it wrong.
+
+**The fold is arithmetic in two places, and both are asserted.** `clusters()` groups
+on `cluster_key(record)` — the miner's `template_id` when there is one, otherwise
+`message:{sha256(message)[:12]}`, so an untemplated line still clusters without its
+message text entering a query string or an access log (R-58) — and returns `count`,
+`first_seen`, `last_seen`, the level histogram, the hosts, the services and a sample.
+A batch of 10,000 lines sharing a template id is one row whose count is 10,000,
+asserted through the ingest route and again through the read route, so the fold
+cannot pass by drawing a table no assertion ever read; the expansion behind a row is
+reconciled with its count by a test that reads both endpoints, and one ordering,
+`(-count, key)`, is pinned so two runs over the same tail agree.
+
+**Time order is not arrival order.** The first version returned lines in the order the
+collector's batches arrived, which is not the order they happened: a retried line
+appended after a later one read out of sequence. `lines()` sorts by `record.timestamp`
+(stable) before it truncates, and the service tests pin it — a window's raw lines come
+back oldest first even when the batches that carried them did not. The age bound is
+measured from the clock rather than from the newest retained line, so a future-dated
+line cannot extend the buffer.
+
+**"No results" is not one fact, and the screen says which one it is.** Five empty
+screens are distinguishable and four have their own sentence: nothing retained at all
+("No lines are retained"), nothing arrived in the window ("Nothing has arrived"),
+the window falls between the oldest and newest retained line ("falls between them"),
+filters matched nothing ("Nothing matched these filters"), and a filter that has
+never seen a matching line. `_caveats()` takes `present`, `retained_lines` and
+`dropped` separately so it can tell a window-only emptiness from a post-filter one;
+collapsing `present` back into `matched` is how a quiet screen gets misread as a quiet
+system. The page reads the specific sentence through `view.emptyReason`, which is why
+the *index* of that array is a contract both the service tests and the page test hold.
+
+**Pause is a freeze, and the window is state because of it.** A live expression
+computed from the clock would keep moving while "paused", which is the one thing
+pause exists to prevent, so the window is React state: the pause handler sets the
+label's instant and the read's window to the same moment, and the poll is switched off
+(`refetchInterval: enabled ? 2000 : false`) while it is held. Resuming starts a fresh
+window rather than replaying the frozen one, and a span change moves the window at
+once — unless the tail is paused, where the window is the thing being held.
+
+**The halves of §4.5 this build cannot deliver are named on the screen.** A level is
+the level the sender declared, not a model's anomaly score, and the caveat says so; a
+cluster cannot jump to the alert that referenced it, because an alert's evidence
+(`alerts.window_ref["evidence"]`) names a window identity rather than a set of lines,
+so there is no join key and the panel says "not available in this build" instead of
+offering a dead link. Both sentences come from the API, and one of them names T-419 —
+so the task row exists before the string does.
+
+**Evidence.** 59 backend tests (`test_log_tail.py`'s 34 service tests and
+`test_logs_api.py`'s 25 route tests) and 58 dashboard tests (the cluster vocabulary 14,
+the view model 11, the page 16, the hooks 4, the cluster table 3, and the shell's 10
+re-pointed rather than deleted). Running the service tests found **three real defects
+rather than three wrong expectations**: batch-order reads, the misattributed empty
+sentence, and an age bound measured from the wrong clock — only the age test's own
+arithmetic was wrong. Backend **1266 → 1325** tests (13 skipped); dashboard **605 →
+654** tests in **51 → 56** files; total **2510 passing, 29 skipped**.
+
+**The battery found a fourth defect, and it was in the code rather than the tests.**
+**56 injected defects: 53 killed, 0 survivors left as gaps, 3 demonstrated
+equivalences, 0 bad anchors** (the first run killed 40 of 54 with 2 stale anchors and
+12 survivors, and each of those became a test below or an argument). The fourth defect
+was the histogram: `levels` was sorted by *key*, which publishes `critical, debug,
+error, info, warning` — a level listing in no order at all — so the fold now orders it
+by `level_rank` and a test asserts the order rather than the fact that a dict was
+built. The new tests are the gaps the survivors named: two messages differing only in
+case must not share a digest cluster; two templates with equal counts must order by key
+so a retry cannot make the same tail read differently; a line exactly at the age bound
+is held and one second past it is evicted; a zero-width window is refused like an
+inverted one; a host or service filter must narrow both the cluster read and its
+expansion (a swap between the two is the defect that test pins); both reads need a
+credential; a line whose hand-off to the pipeline failed is not in the tail; the tail's
+histogram order; on the dashboard, `keepPreviousData` keeps the last window visible
+when the window *moves*, a disabled tail issues no request and reads no raw lines
+before a row is opened, a span change while paused re-reads nothing, and the severity
+rail is on the error row and off the quiet one. The three equivalences are recorded
+with their arguments rather than papered over: the oldest-retained comparison cannot
+differ inside the branch that guards it, `_Folded._last` starts at the first record's
+own timestamp so `>` and `>=` compute the same maximum, and a disabled React Query
+never fires its interval. `check_all.sh all`: **26 checks, 0 failed**. The two read
+routes are in `ROUTE_MATRIX` (a missing entry fails `test_rbac.py`), the reference is
+regenerated rather than hand-edited, and `start`/`end` are required route parameters —
+a missing window is FastAPI's own 422, and an unparseable, naive, inverted or over-wide
+one is a 400 that never echoes log content.
+
+**Gaps, recorded.** The tail is in-process: it dies with the process, a second replica
+reads its own copy, and a restart loses everything — which is why "not a store" is
+the API's sentence rather than a note the UI invented (T-419). The 900 s / 20,000-line
+caps are configuration, not a retention policy. No alert links to a cluster. And the
+raw-lines panel is deliberately a snapshot rather than a poll, so an expansion does
+not move while it is being read.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-06 | 1.52 | **T-407 done — the log tail is a window with an end, and every read carries the sentence that says so.** `backend/app/services/log_tail.py` (the bounded in-process tail: append, retention, clustering, filtered reads), `backend/app/schemas/logs.py`, `backend/app/api/v1/endpoints/logs.py` (`GET /api/v1/logs`, `GET /api/v1/logs/lines`), `backend/app/api/v1/deps.py`, `backend/app/core/config.py` (20,000 lines / 900 s), `backend/app/main.py`, `backend/app/api/v1/endpoints/ingest.py` (the hook that feeds the tail *after* a line is accepted), `backend/app/auth/rbac.py`, `dashboard/src/api/logs.ts`, `dashboard/src/features/logs/` (the cluster fold, the hooks, the view model, three components, the page and three test files) and `dashboard/src/App.tsx` (`/logs`). Policy recorded as **D-064**. **The acceptance criterion is arithmetic, not a screenshot**: 10,000 lines sharing a template id come back as one row whose count is 10,000, asserted through both the ingest and the read route, and the expansion behind a row is reconciled with that count by a second test — the fold cannot pass by drawing a table no assertion read. **Pause freezes rather than buffers**: the window is state, so pausing stops the clock the read is measured against *and* switches the poll off, and resuming starts a fresh window instead of replaying the frozen one. **Four empty screens have four sentences**, because "no results" is not one fact — nothing retained, a window falling between two retained lines, a window whose filters matched nothing, and a filter that has never matched — and that index is pinned by the service tests and the page. **Every read carries the API's caveats verbatim**, including the two this build cannot deliver: a declared level is not an anomaly score, and the `index` half of §4.5 is **T-419**, filed rather than faked. **Four defects the tests and the battery found rather than review**: the tail returned a collector's batch order instead of time order (now sorted by timestamp before the row limit), the histogram's keys were sorted alphabetically so `critical` preceded `debug` (now ordered by level rank), a window with no lines inherited the "nothing has arrived" sentence, and the age bound was measured from the wrong clock (the battery then found a fourth: the histogram was sorted alphabetically, so `critical` came before `debug`). **56 injected defects, 53 killed, 3 demonstrated equivalences, 0 bad anchors** -- the survivors became tests (case-only messages, equal-count ordering, the age boundary, a zero-width window, both filters on both routes, both reads credentialed, a failed hand-off, and five dashboard gaps) rather than being written off. Backend 1266 → 1325 tests (13 skipped); dashboard 605 → 654 in 56 files; total 2510 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the tail is in-process and dies with the process (T-419), the 15-minute cap is configuration rather than retention, and no cluster links to the alert that referenced it, because an alert's evidence names a window rather than the lines in it. |
 | 2026-10-06 | 1.51 | **T-406 done — the traffic explorer brushes one model and says what it cannot draw.** `dashboard/src/features/traffic/` (`aggregate.ts` for the series, the entity fold and the edge fold; `graph.ts` for the mode, the layout and the matrix; `view.ts` for the one pipeline; `api.ts`/`hooks.ts`; `BrushSeries`, `EntityTable`, `EntityGraph`, the page and six test files), `dashboard/src/components/charts/palette.ts` (moved down a layer so two features can read it — R-15), `dashboard/src/api/alerts.ts` (the shared window walk, so the overview and the explorer cannot drift apart), `dashboard/src/App.tsx` (`/traffic`). Policy recorded as **D-063**. **"Brushing filters everything below" is structural, not an instruction repeated in three panels**: the brush, the entity controls and the pin fold into one row set, and the series alone is drawn from the whole window because it is the axis the brush is drawn on. **The two numbers FR-52 asks for that this build cannot produce are named on the screen and filed rather than invented** — volume is the raw-record count alerts carried (not traffic; **T-418**, no read API for ingested flows) and entities are ids (not hosts; **T-416**) — and the notes live in the model, so no panel can render the numbers without the sentence that qualifies them. **The ≥ 2,000-node fallback is data, not a rendering detail**: the mode and its `reason` are returned together, so the matrix cannot be drawn without labelling the switch, and the matrix says how many of N entities it drew. **Two things the work changed after they were built:** a pin was documented as *widening* while the code narrowed, which the battery caught and the code now matches (the pin leads, its neighbours return from the unfiltered set, everything already on screen stays); and the mulberry32 `randomSource`/`seed` was removed rather than kept as decoration — reading d3-force showed its jitter source only reaches the tick loop for exactly-coincident linked pairs, and four measured graphs laid out identically under seed 1, seed 99 and `Math.random`. **71 injected defects, 70 killed, 1 demonstrated equivalence, 0 bad anchors** (`/tmp/t406_mutations.py`; run 1 killed 43 and its survivors became the six new suites plus that removal — the equivalence is the 4 px click branch, a second spelling of the one-bucket rule at 608 px of plot for 60 buckets). Dashboard 500 → 605 tests in 51 files; total 2402 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the flow read API (T-418) and entity names (T-416) are why the explorer's numbers are not FR-52's numbers; the charting bundle is still eager (T-412); and the realtime layer keeps T-405's gaps. |
 | 2026-10-06 | 1.50 | **T-405 done — the stream degrades instead of stopping.** `dashboard/src/lib/realtime.ts` (the frame vocabulary, the resume cursor, the backoff schedule, the close-code policy), `dashboard/src/api/realtime.ts` (the transport client: one socket, the 15 s REST fallback, backoff with jitter, the silence watchdog), `dashboard/src/api/session.ts` (the credential the dashboard never had), `dashboard/src/components/realtime/` (`RealtimeProvider` + `useAlertFeed` pub/sub, `useAlertSync`, `useConnectionView`, `ConnectionBanner`), `dashboard/src/components/layout/AppShell.tsx` (the real connection state and §8.1's `last update 2 m ago`), `dashboard/src/api/client.ts` (the bearer header; a 401 ends the session and a 403 does not), `dashboard/vite.config.ts` (`ws: true` on `/api`, or the handshake is proxied as a plain request). Policy recorded as **D-062**. **The fallback is a transport, not a feature**: a poll answer becomes the same `ready`/`alert` frames the socket sends, so the cursor (`after=`) is the one resume position and nothing above the client knows which transport it is on — which is what makes the acceptance criterion testable as a union. **One test is the acceptance criterion itself**: alerts 1–2 arrive on the socket, the socket is killed, alert 3 arrives on the fallback, the reconnect resumes `after=3` and replays 4–6, and the assertion is that the sequence a subscriber saw is exactly 1…6 with no duplicates. **A pushed alert re-reads rather than accumulating** (React Query stays the only copy of the data, R-24), coalesced so a fifty-alert replay is one read. **4401/4403 stop the retrying and keep the screen live-with-caveats**: the banner names the reason and the fallback keeps polling, and a new credential reopens the socket. **The test suite found a real ordering defect**: the silence watchdog was armed *before* the frame that carries the server's heartbeat interval, so a 2 s deployment would have been watched at 45 s — arming after the frame is applied is what the test now pins. **61 injected defects, 58 killed, 3 demonstrated equivalences, 0 bad anchors** (`/tmp/t405_mutations.py`; run 1 killed 53 and its survivors became three tests — the server's ahead-of-ours resume cursor, the fallback stopping when the stream returns, and the deferred refresh in a hidden tab — plus the removal of a redundant condition that could never be true). Dashboard 420 → 500 tests in 44 files; total 2297 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the socket needs uvicorn's `ws` extra and the hub is in-process (T-310's, unchanged); sign-in is T-417, so a refused handshake is the honest state until it lands; and the fallback's pause in a hidden tab is §4.1's rule applied to a channel the design section never named. |
 | 2026-10-06 | 1.49 | **T-404 done — the triage loop closes without a mouse.** `backend/app/services/alert_detail.py`, `backend/app/schemas/alert_detail.py` (the read model), `backend/app/api/v1/endpoints/alerts.py` (the detail route), `backend/app/services/alert_store.py` (`get` by partition key), `dashboard/src/features/triage/` (api, hooks, links, verdicts, view, six components, the page, fixtures and eleven test files), `dashboard/src/api/alerts.ts` (the shared wire shapes and path builders), `dashboard/src/api/client.ts` (`postJson`), `dashboard/src/components/hooks/polling.ts` (the polling hooks the two screens now share), `dashboard/src/lib/format.ts` (instant formats pinned to UTC). Policy recorded as **D-061**. **R-70 is enforced by construction**: a blank, unreadable or whitespace-only explanation payload becomes `explanation_unavailable` with a reason naming what was found, so the panel has no code path that renders an empty success — and a JSON `true`, a score outside [0, 1] or a naive timestamp is counted in `unreadable` rather than rendered as data. **Evidence expiry is computed, not guessed**: each occurrence carries `expires_at` from the deployment's retention policy, and a partly expired trail is *partial*, not expired. **The family hint counts strictly prior alerts** on `(created_at, id)`, because the claim is about decisions already taken. **The screen is one bounded read** addressed by both halves of the key (D-030), and the keyboard loop is structural: the queue is links, the bar is sticky, `1`/`2`/`3` come from the same table the buttons do, and the write is announced (`recorded` vs `unchanged`). The parameterised path moved `stream` ahead of `alerts` in the router table, or `/alerts/stream` would be read as an alert id. **53 injected defects each failed the suite** (`/tmp/t404_mutations.py`, 53/53; run 1 killed 48, and of the four survivors three were test gaps now closed and one was an *equivalent* mutant — the prior-alerts filter was unreachable behind the store's half-open window, so the rule moved into the service where it is testable). Dashboard 298 → 420 tests in 39 files; total 2215 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the explanation payload carries no contribution weights and the timeline has no series until T-406, so both panels name what they are missing; raw records are pointers only; the queue is one page of a 24 h window; and the live channel is T-405. |
