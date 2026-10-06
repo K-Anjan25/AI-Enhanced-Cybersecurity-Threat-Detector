@@ -44,6 +44,16 @@
   --color-on-severity: #0b0e14;
 
   --focus-ring: #8b72ff; /* 5.47:1 against base, above the 3:1 requirement */
+
+  /* Elevation (design.md §5.5). Exactly one shadow token exists, because
+     "elevation is reserved for overlays — dropdowns, modals, toasts, command
+     palette": a card cannot acquire a shadow from the token layer, it gets
+     border.default. The blur and spread are implementation values; design.md
+     fixes the policy, not the numbers, and says so here rather than implying a
+     documented value. --shadow-overlay is the only #hex-free colour in this
+     file: a shadow is black at an alpha, and the light theme uses a blue-grey
+     so it does not read as a smudge. */
+  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 45%);
 }
 
 [data-theme='light'] {
@@ -71,6 +81,7 @@
 
   --color-on-severity: #0b0e14;
   --focus-ring: #6c4fe0; /* 5.48:1 against base */
+  --shadow-overlay: 0 6px 16px rgb(16 24 40 / 12%);
 }
 
 @layer base {
@@ -84,6 +95,17 @@
 
   body {
     @apply bg-base font-sans text-body text-ink antialiased;
+  }
+
+  /* Tailwind's preflight falls back to `#9ca3af` for `::placeholder` when the
+     default palette is replaced — which it deliberately is (tailwind.config.js).
+     Placeholders are secondary copy, so the system's colour is stated here
+     instead of leaving one from a palette this app does not have. The selectors
+     match preflight's (`input::placeholder` beats a bare `::placeholder` on
+     specificity) so this rule is the one that applies. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-muted);
   }
 
   /* Visible focus ring on every interactive element (design.md §5.3, NFR-09). */
