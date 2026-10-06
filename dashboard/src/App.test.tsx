@@ -104,14 +104,24 @@ describe('routing and shell', () => {
     expect(await screen.findByText('Nothing has arrived in this window')).toBeInTheDocument();
   });
 
-  it('navigates to a screen that is not built and names the task that owns it', async () => {
+  it('navigates to the hunt console, which is built now', async () => {
     const user = userEvent.setup();
     renderAt('/');
 
     await user.click(screen.getByRole('link', { name: 'Hunt' }));
 
+    expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
+    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
+    // The console does not search until asked, and says so rather than showing an
+    // empty table that would read as a quiet network.
+    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+  });
+
+  it('navigates to a screen that is not built and names the task that owns it', () => {
+    renderAt('/models');
+
     expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-408')).toBeInTheDocument();
+    expect(screen.getByText('T-409')).toBeInTheDocument();
   });
 
   it('mounts the triage screen at /alerts, which is built now', async () => {

@@ -17,6 +17,7 @@ import pytest
 from app.auth.tokens import TokenService
 from app.core.config import Environment, Settings
 from app.main import create_app
+from app.services.log_tail import LogTail
 from fastapi.testclient import TestClient
 
 SECRET = "test-secret-key-that-is-long-enough-0123456789"  # pragma: allowlist secret
@@ -71,6 +72,18 @@ def auth() -> TokenService:
 def client(settings: Settings, auth: TokenService) -> Iterator[TestClient]:
     built = create_app(settings)
     built.state.token_service = auth
+    # Drive the tail's clock instead of racing the wall clock. The fixture's instants
+    # are absolute (so the assertions are exact), and the tail expires a line older
+    # than ``max_age_seconds`` *measured against its clock* -- which is the real one
+    # unless a test supplies another. Without this, every test in this file passes
+    # until the wall clock walks past ``START + 60 s`` and then fails forever, which
+    # is exactly what happened on 2026-10-06 at 10:15 UTC.
+    tail = built.state.log_tail
+    built.state.log_tail = LogTail(
+        max_lines=tail.max_lines,
+        max_age_seconds=tail.max_age_seconds,
+        clock=lambda: START + timedelta(seconds=30),
+    )
     with TestClient(built) as test_client:
         yield test_client
 

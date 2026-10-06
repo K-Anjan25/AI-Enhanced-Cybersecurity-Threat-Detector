@@ -29,6 +29,7 @@ or body do not match the schema below.
 | `POST` | `/api/v1/alerts/{alert_id}/verdict` | Record an analyst verdict on an alert (FR-16) | admin, analyst, responder | `200` `VerdictOutcomeOut` | `VerdictRequest` |
 | `GET` | `/api/v1/alerts/{alert_id}/verdicts` | Read an alert's verdict history, oldest first (FR-16, FR-18) | admin, analyst, responder, viewer | `200` `VerdictHistoryOut` | — |
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
+| `POST` | `/api/v1/hunt/export` | Export the alerts matching a hunt as CSV (FR-23) | admin, responder | `200` `text/csv` | `HuntExportRequest` |
 | `POST` | `/api/v1/ingest/flows` | Ingest flow records (flow@1) | admin, analyst, responder | `200` `IngestResponse` | `FlowRecordIn` |
 | `POST` | `/api/v1/ingest/logs` | Ingest log lines (log@1) | admin, analyst, responder | `200` `IngestResponse` | `LogRecordIn` |
 | `GET` | `/api/v1/keys` | List API keys (FR-44) | admin | `200` `ApiKeyListOut` | — |
@@ -190,7 +191,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `hunt.export`.
 
 ### `AuditEntryOut`
 
@@ -395,6 +396,23 @@ Liveness: the process is running. Never reflects dependency state.
 | `service` | `string` | yes | Service name, e.g. aegis-backend. |
 | `version` | `string` | yes | Build version of the running artifact. |
 | `environment` | `string` | yes | Deployment environment. |
+
+### `HuntExportRequest`
+
+A hunt's query, as the body of an export.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | — |
+| `end` | `string (date-time)` | yes | — |
+| `severity` | list of `string` or `null` | no | — |
+| `status` | list of `string` or `null` | no | — |
+| `family` | list of `string` or `null` | no | — |
+| `entity_id` | `integer` or `null` | no | — |
+| `min_score` | `number` or `null` | no | — |
+| `order` | `desc` or `asc` | no | — |
+| `limit` | `integer` | no | — |
+| `cursor` | `null` | no | Not accepted: an export mirrors the query's first page. |
 
 ### `IngestResponse`
 

@@ -185,6 +185,11 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/models/{model_id}/metrics": frozenset(Role),
     "/api/v1/models/{model_id}/promote": frozenset({Role.ADMIN}),
     "/api/v1/models/{kind}/rollback": frozenset({Role.ADMIN}),
+    # The hunt console's export (T-408). R-53 gives `export` to responder and
+    # above, and this is a route that hands a window's worth of alert rows out of
+    # the system, so viewer and analyst are deliberately absent: reading is the
+    # viewer's job, taking a copy is not.
+    "/api/v1/hunt/export": frozenset({Role.RESPONDER, Role.ADMIN}),
     # The audit trail is read by every role (FR-42, FR-43 reserves the *export*
     # for responder and above). Reading it is reading: no capability beyond the
     # one every authenticated role already holds.

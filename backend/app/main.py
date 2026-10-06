@@ -28,6 +28,7 @@ from app.api.v1.endpoints import (
     api_keys,
     audit,
     health,
+    hunt,
     ingest,
     logs,
     metrics,
@@ -373,6 +374,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # failed on it, so ``/alerts/stream`` would otherwise be read as an alert id.
     app.include_router(stream.router)
     app.include_router(logs.router)
+    app.include_router(hunt.router)
     app.include_router(alerts.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)

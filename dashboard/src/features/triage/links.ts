@@ -12,19 +12,12 @@
  * version of T-404's own tests ask for a timestamp the API could not parse.
  */
 import type { AlertRow } from '../../api/alerts';
+import { alertHref } from '../../lib/routes';
 
-/** The list route. */
-export const ALERTS_PATH = '/alerts';
-
-/** The detail route for one alert, partition key included. */
-export function alertHref(row: Pick<AlertRow, 'id' | 'created_at'>): string {
-  return `${ALERTS_PATH}/${String(row.id)}?created_at=${encodeURIComponent(row.created_at)}`;
-}
-
-/** The detail route from a raw id and key, for callers without a row. */
-export function alertHrefFor(alertId: number, createdAt: string): string {
-  return `${ALERTS_PATH}/${String(alertId)}?created_at=${encodeURIComponent(createdAt)}`;
-}
+// The address itself moved to `lib/routes.ts` when the hunt console became the
+// second feature to link to an alert (T-408). Re-exported here so this feature's
+// callers and tests are unchanged.
+export { ALERTS_PATH, alertHref, alertHrefFor } from '../../lib/routes';
 
 /**
  * Every pair of adjacent rows in queue order, for "next alert".

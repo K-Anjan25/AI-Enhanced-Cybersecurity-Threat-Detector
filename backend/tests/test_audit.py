@@ -928,6 +928,10 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # T-322: moving a threshold changes what the system alerts on, per family,
         # and every moved threshold is one row naming it.
         "threshold.recalibrate",
+        # T-408: the export is the one *read* here. It is in the trail because it
+        # is data leaving the system, and a copy somebody took is a change to what
+        # is knowable about the data, even though no row was written.
+        "hunt.export",
     }
 
 

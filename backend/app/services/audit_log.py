@@ -110,6 +110,9 @@ class AuditAction(StrEnum):
     model_promote = "model.promote"
     model_rollback = "model.rollback"
     threshold_recalibrate = "threshold.recalibrate"
+    #: The one *read* in this table: an export is data leaving the system, which is
+    #: the question the trail answers (T-408, D-065).
+    hunt_export = "hunt.export"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -128,6 +131,9 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/models/{model_id}/promote"): AuditAction.model_promote,
         ("POST", "/api/v1/models/{kind}/rollback"): AuditAction.model_rollback,
         ("POST", "/api/v1/thresholds/recalibrate"): AuditAction.threshold_recalibrate,
+        # The export (T-408). A POST because it writes a trail row -- see the
+        # module docstring of ``app.api.v1.endpoints.hunt``.
+        ("POST", "/api/v1/hunt/export"): AuditAction.hunt_export,
     }
 )
 

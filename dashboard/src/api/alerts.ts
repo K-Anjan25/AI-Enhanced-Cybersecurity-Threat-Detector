@@ -92,6 +92,21 @@ export function alertVerdictPath(alertId: number): string {
   return `/api/v1/alerts/${String(alertId)}/verdict`;
 }
 
+/**
+ * `GET /api/v1/alerts` — one bounded page, with whichever filters the caller set.
+ *
+ * The primitive the window walk below is built from, and what the hunt console reads
+ * (T-408): a hunt is one page by definition, because its answer is a question about
+ * a window rather than a crawl of one. The `limit` is the caller's, so the console
+ * can cap what an export will contain.
+ */
+export async function fetchAlertPage(
+  params: AlertListParams,
+  options: { signal?: AbortSignal | undefined } = {},
+): Promise<AlertPage> {
+  return getJson<AlertPage>(alertListPath(params), options);
+}
+
 /** The largest page the API will serve (T-305's `MAX_PAGE_SIZE`). */
 export const PAGE_SIZE = 1_000;
 
@@ -141,14 +156,16 @@ export async function fetchAlertWindow(request: WindowRequest): Promise<AlertWin
   let pagesFetched = 0;
 
   while (pagesFetched < maxPages) {
-    const path: string = alertListPath({
-      start,
-      end,
-      severity,
-      limit: PAGE_SIZE,
-      cursor: cursor ?? undefined,
-    });
-    const page: AlertPage = await getJson<AlertPage>(path, { signal });
+    const page: AlertPage = await fetchAlertPage(
+      {
+        start,
+        end,
+        severity,
+        limit: PAGE_SIZE,
+        cursor: cursor ?? undefined,
+      },
+      { signal },
+    );
     rows.push(...page.items);
     pagesFetched += 1;
     cursor = page.next_cursor;

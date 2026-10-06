@@ -205,7 +205,26 @@ export async function postJson<T>(
 
 /** `GET` a text document, for `/metrics`' exposition format. */
 export async function getText(path: string, options: RequestOptions = {}): Promise<string> {
-  const response = await request(path, { ...options, accept: 'text/plain' });
+  return readText(await request(path, { ...options, accept: 'text/plain' }));
+}
+
+/**
+ * `POST` a JSON body and read a text answer.
+ *
+ * The hunt console's export (T-408) is the caller: it is a POST because it writes
+ * an audit row, and its body is the query definition. A download is fetched rather
+ * than followed, so the bearer token rides a header and the refusal is a status the
+ * screen can explain instead of a browser error page.
+ */
+export async function postText(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<string> {
+  return readText(await request(path, { ...options, method: 'POST', body, accept: 'text/csv' }));
+}
+
+async function readText(response: Response): Promise<string> {
   try {
     return await response.text();
   } catch {
