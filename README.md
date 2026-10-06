@@ -13,8 +13,9 @@ predict cybersecurity threats before they become confirmed incidents.
 > database connection (T-319). The dashboard has the shell, the closed token layer,
 > the UI primitives, a working overview that reads the alert API and the metrics scrape, and the
 > triage screen with its keyboard loop, the live alert stream with its reconnect banner and REST
-> fallback, the traffic explorer with its brushable series and entity graph, and the log explorer with
-> its template clustering and pausable tail (T-401…T-407). See
+> fallback, the traffic explorer with its brushable series and entity graph, the log explorer with
+> its template clustering and pausable tail, and the hunt console with its query language, saved
+> searches and audited CSV export (T-401…T-408). See
 > [memory.md](memory.md) for the authoritative current state, and [task.md](task.md) for
 > per-task status.
 
@@ -40,12 +41,13 @@ backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, str
               webhooks, the audit trail, API keys, the golden
               pipeline, the API reference and threshold
               recalibration, the declared database
-              driver and the bounded log tail          (T-301…T-323, T-407)
+              driver, the bounded log tail and the
+              audited hunt export                      (T-301…T-323, T-407, T-408)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
 dashboard/    React + TypeScript dashboard — the shell, routing, theming,
               design tokens, UI primitives, overview, triage,
               live stream, traffic explorer,
-              log explorer                             (T-401…T-407)
+              log explorer, hunt console               (T-401…T-408)
 data/         datasets, gitignored                              (R-40 — never committed)
 docker/       compose stack, written but never run here         (no Docker in this sandbox)
 k8s/          manifests, statically checked but never applied
@@ -64,7 +66,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 1325 tests, 13 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 1370 tests, 13 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -89,6 +91,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET  /api/v1/privacy/erasures    the erasure ledger: tombstones, counts, who asked (admin)
 #   GET  /api/v1/logs                a window's log lines folded into clusters; ?start=&end= required
 #   GET  /api/v1/logs/lines          the raw lines behind one cluster (or one window), oldest first
+#   POST /api/v1/hunt/export         the alerts matching a hunt as CSV; audited, responder and above
 
 # ml-service
 cd ../ml-service
