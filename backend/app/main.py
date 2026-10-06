@@ -33,6 +33,7 @@ from app.api.v1.endpoints import (
     logs,
     metrics,
     models,
+    overview,
     privacy,
     stream,
     thresholds,
@@ -48,6 +49,7 @@ from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
+from app.services.entity_registry import EntityRegistry
 from app.services.erasure import (
     EntityRedactionTarget,
     ErasureService,
@@ -242,6 +244,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # here, like every other store in this environment; D-053 records the
     # PostgreSQL adapter as unwired and the case-id column it would need.
     app.state.alert_store = InMemoryAlertStore()
+    # The entity registry (T-416). The same object type the pipeline allocates ids
+    # from, so an alert written by this process can be rendered by name: the
+    # overview resolves `entity_id` through it. D-053 records the persistent
+    # writer (`entities`) as unwired, like the store above.
+    app.state.entity_registry = EntityRegistry()
     # The log tail (T-407). Logs are validated and handed to the broker, but nothing
     # consumes or stores them: the worker scores flows only and there is no
     # `log_events` table, so the explorer's tail is the process's own bounded copy.
@@ -395,6 +402,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(logs.router)
     app.include_router(hunt.router)
     app.include_router(alerts.router)
+    app.include_router(overview.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)
     app.include_router(api_keys.router)

@@ -36,6 +36,13 @@ from typing import Protocol
 from app.db.models import Alert, AlertStatus
 from app.db.repository import TimeRange
 from app.schemas.query import AlertQuery, decode_cursor
+from app.services.overview import (
+    BUCKET_MINUTES_DEFAULT,
+    ENTITY_LIMIT_DEFAULT,
+    FAMILY_LIMIT_DEFAULT,
+    Aggregate,
+    aggregate,
+)
 
 __all__ = ["AlertStore", "InMemoryAlertStore"]
 
@@ -65,6 +72,38 @@ class AlertStore(Protocol):
         Raises:
             ValueError: if the time range is not usable (a naive or inverted
                 bound, or one wider than the R-34 span limit).
+        """
+        ...
+
+    def aggregate(
+        self,
+        window: TimeRange,
+        *,
+        bucket_minutes: int = BUCKET_MINUTES_DEFAULT,
+        entity_limit: int = ENTITY_LIMIT_DEFAULT,
+        family_limit: int = FAMILY_LIMIT_DEFAULT,
+    ) -> Aggregate:
+        """Aggregate **every** row in the window into the overview's panels (T-416).
+
+        The distinction from :meth:`fetch` is the task: ``fetch`` answers one page
+        and is capped by ``limit``, which is why the screen that counted its own
+        rows could report a partial window. This counts the window. An adapter is
+        free to implement it as a ``GROUP BY`` (see
+        :func:`app.db.repository.alert_aggregate_statements`), and it must not
+        apply a row cap to the totals -- ``entities_capped`` is the only cap in
+        the response, and it caps a list, not a count.
+
+        Args:
+            window: the bounded range to aggregate.
+            bucket_minutes: the series' resolution.
+            entity_limit: how many entities the response lists.
+            family_limit: how many families the mix lists.
+
+        Returns:
+            The window's aggregate, complete for the totals and the series.
+
+        Raises:
+            ValueError: if the range is not usable (naive, inverted or over-wide).
         """
         ...
 
@@ -122,6 +161,30 @@ class InMemoryAlertStore:
             if row.id == alert_id and row.created_at == created_at:
                 return row
         return None
+
+    def aggregate(
+        self,
+        window: TimeRange,
+        *,
+        bucket_minutes: int = BUCKET_MINUTES_DEFAULT,
+        entity_limit: int = ENTITY_LIMIT_DEFAULT,
+        family_limit: int = FAMILY_LIMIT_DEFAULT,
+    ) -> Aggregate:
+        """Aggregate every stored row in the window, with no cap on the counts.
+
+        The in-memory reach of this is the whole store rather than a page: the
+        point of T-416 is that a count is the window's count, so filtering here is
+        the same predicate the SQL uses and the tally is complete either way.
+        """
+        rows = [row for row in self._rows if window.start <= row.created_at < window.end]
+        return aggregate(
+            rows,
+            start=window.start,
+            end=window.end,
+            bucket_minutes=bucket_minutes,
+            entity_limit=entity_limit,
+            family_limit=family_limit,
+        )
 
     def fetch(self, query: AlertQuery) -> list[Alert]:
         """Apply the query's predicates, order and cursor to the stored rows."""

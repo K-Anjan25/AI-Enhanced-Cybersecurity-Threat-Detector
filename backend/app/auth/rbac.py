@@ -149,6 +149,10 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     # Reading alerts is the viewer's whole job, so viewer is present here.
     "/api/v1/alerts": frozenset(Role),
+    # The overview is those same rows, aggregated (T-416): every role that may read
+    # an alert may read the window's counts, and no role may read it that may not
+    # read the alerts themselves.
+    "/api/v1/overview": frozenset(Role),
     # One alert and its explanation, evidence and context: the detail behind the
     # list, so it is the same read the list is (FR-51, T-404).
     "/api/v1/alerts/{alert_id}": frozenset(Role),
