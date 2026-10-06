@@ -925,6 +925,9 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # production scores, which is a change to the system's behaviour.
         "model.promote",
         "model.rollback",
+        # T-322: moving a threshold changes what the system alerts on, per family,
+        # and every moved threshold is one row naming it.
+        "threshold.recalibrate",
     }
 
 

@@ -109,6 +109,7 @@ class AuditAction(StrEnum):
     privacy_erasure = "privacy.erasure"
     model_promote = "model.promote"
     model_rollback = "model.rollback"
+    threshold_recalibrate = "threshold.recalibrate"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -126,6 +127,7 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/privacy/erasure"): AuditAction.privacy_erasure,
         ("POST", "/api/v1/models/{model_id}/promote"): AuditAction.model_promote,
         ("POST", "/api/v1/models/{kind}/rollback"): AuditAction.model_rollback,
+        ("POST", "/api/v1/thresholds/recalibrate"): AuditAction.threshold_recalibrate,
     }
 )
 

@@ -42,6 +42,8 @@ or body do not match the schema below.
 | `GET` | `/api/v1/privacy/erasures` | The erasure ledger, newest first (NFR-05) | admin | `200` `ErasureLedgerPageOut` | — |
 | `GET` | `/api/v1/retention` | Retention policy and the plan a run would execute (NFR-05) | admin | `200` `RetentionPlanOut` | — |
 | `POST` | `/api/v1/retention/run` | Apply the retention plan (NFR-05) | admin | `200` `RetentionRunOut` | — |
+| `GET` | `/api/v1/thresholds` | Thresholds in force, and the FR-13 defaults behind them (R-69) | admin, analyst, responder, viewer | `200` `ThresholdListOut` | — |
+| `POST` | `/api/v1/thresholds/recalibrate` | Recalibrate a band from analyst verdicts, under T-207's guardrail (FR-18) | admin | `200` `RecalibrationOut` | `RecalibrationRequest` |
 | `GET` | `/api/v1/webhooks` | List registered webhooks, without secrets | admin, responder | `200` `WebhookListOut` | — |
 | `POST` | `/api/v1/webhooks` | Register an outbound webhook (FR-21) | admin, responder | `201` `WebhookCreatedOut` | `WebhookCreate` |
 | `DELETE` | `/api/v1/webhooks/{webhook_id}` | Delete a webhook | admin, responder | `204` | — |
@@ -153,7 +155,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate`.
 
 ### `AuditEntryOut`
 
@@ -440,6 +442,31 @@ Readiness: can this process serve traffic right now?
 | `version` | `string` | yes | — |
 | `checks` | `ProbeCheck` | no | One entry per registered dependency. Empty in the S0 skeleton. |
 
+### `RecalibrationOut`
+
+A run's report: the window it read, and every threshold it considered.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tenant_id` | `string` | yes | — |
+| `band` | `string` | yes | — |
+| `at` | `string (date-time)` | yes | — |
+| `since` | `string (date-time)` | yes | — |
+| `until` | `string (date-time)` | yes | — |
+| `quantile` | `number` | yes | — |
+| `minimum_sample` | `integer` | yes | — |
+| `considered` | `integer` | yes | — |
+| `changed` | `integer` | yes | — |
+| `outcomes` | `ThresholdOutcomeOut` | yes | — |
+
+### `RecalibrationRequest`
+
+Which band to recalibrate. Everything else is policy, not a per-run knob.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `band` | `string` | no | FR-13 band whose lower bound to move. `high` is the default because the PRD measures precision and recall at the deployed `high` threshold, so that is the bar a false-positive budget applies to. |
+
 ### `RecordError`
 
 Why one record in a batch was rejected (FR-04).
@@ -512,6 +539,46 @@ One scope, with the capabilities it grants.
 | --- | --- | --- | --- |
 | `name` | `string` | yes | — |
 | `capabilities` | list of `string` | yes | — |
+
+### `ThresholdListOut`
+
+The values in force for this deployment, and the defaults behind them.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tenant_id` | `string` | yes | — |
+| `defaults` | map of string to `number` | yes | FR-13's documented initial band edges, in force wherever no row exists. |
+| `items` | `ThresholdOut` | yes | — |
+
+### `ThresholdOut`
+
+One ``thresholds`` row, as the API returns it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tenant_id` | `string` | yes | — |
+| `family` | `string` | yes | — |
+| `band` | `string` | yes | — |
+| `value` | `number` | yes | — |
+| `source` | `string` | yes | — |
+| `updated_at` | `string (date-time)` | yes | — |
+
+### `ThresholdOutcomeOut`
+
+What the run decided about one threshold.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `family` | `string` | yes | — |
+| `band` | `string` | yes | — |
+| `previous` | `number` | yes | — |
+| `previous_was_default` | `boolean` | yes | — |
+| `requested` | `number` or `null` | yes | — |
+| `applied` | `number` | yes | — |
+| `changed` | `boolean` | yes | — |
+| `clamped` | `boolean` | yes | — |
+| `sample_size` | `integer` | yes | — |
+| `reason` | `string` | yes | `fitted` or `insufficient_feedback`. |
 
 ### `UnevictableOut`
 

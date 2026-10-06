@@ -35,7 +35,8 @@ VERSIONS = BACKEND_ROOT / "alembic" / "versions"
 MIGRATION = VERSIONS / "0002_typed_scores_and_severity_check.py"
 
 #: Offline mode never connects, so any PostgreSQL-shaped URL works.
-_URL = "postgresql://aegis:aegis@localhost:5432/aegis"
+# The credentials are placeholders for offline DDL generation and never dialled.
+_URL = "postgresql://aegis:aegis@localhost:5432/aegis"  # pragma: allowlist secret
 
 SCORE_COLUMNS = ((Alert, "score"), (Threshold, "value"))
 

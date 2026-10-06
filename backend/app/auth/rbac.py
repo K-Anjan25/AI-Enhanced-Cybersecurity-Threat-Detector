@@ -181,6 +181,13 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # for responder and above). Reading it is reading: no capability beyond the
     # one every authenticated role already holds.
     "/api/v1/audit": frozenset(Role),
+    # Thresholds (T-322, FR-18, R-69). The values in force are read by every role:
+    # an analyst interprets a score against the bar it was compared to, and a bar
+    # nobody can see is a number nobody can check. Moving one is R-53's `models`
+    # capability, which admin alone holds -- a recalibration changes what the
+    # system alerts on, exactly as a promotion changes what scores it.
+    "/api/v1/thresholds": frozenset(Role),
+    "/api/v1/thresholds/recalibrate": frozenset({Role.ADMIN}),
     # The stream is read-only for every role, viewer included (FR-20). The
     # WebSocket handshake is checked by `authenticate` rather than by the HTTP
     # dependency, because a socket is not a Request -- but it is the same table

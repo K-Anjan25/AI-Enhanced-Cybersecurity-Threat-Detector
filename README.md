@@ -34,7 +34,8 @@ The project is documented before it is coded. Start with the PRD, then the archi
 prd.md architecture.md rules.md design.md task.md memory.md api-reference.md
 backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, stream,
               webhooks, the audit trail, API keys, the golden
-              pipeline and the API reference           (T-301…T-321)
+              pipeline, the API reference and threshold
+              recalibration                            (T-301…T-322)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
 dashboard/    React + TypeScript dashboard — the shell only; E4 has not started
 data/         datasets, gitignored                              (R-40 — never committed)
@@ -55,7 +56,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 1131 tests, 13 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 1213 tests, 13 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
