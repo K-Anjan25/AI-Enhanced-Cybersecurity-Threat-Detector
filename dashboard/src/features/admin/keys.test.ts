@@ -21,7 +21,7 @@ import {
   secretIsLive,
 } from './keys';
 
-const SECRET = 'aegis_sk_7_9f4c1d2e3a4b5c6d7e8f90a1b2c3d4e5';
+const SECRET = 'aegis_sk_7_9f4c1d2e3a4b5c6d7e8f90a1b2c3d4e5'; // pragma: allowlist secret
 
 function issued(over: Partial<ApiKeyIssued> = {}): ApiKeyIssued {
   return {

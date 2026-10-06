@@ -22,7 +22,7 @@ import { ToastProvider } from '../../../components/ui';
 import { KeysPanel } from './KeysPanel';
 
 const KEYS = '/api/v1/keys';
-const SECRET = 'aegis_sk_7_9f4c1d2e3a4b5c6d7e8f90a1b2c3d4e5';
+const SECRET = 'aegis_sk_7_9f4c1d2e3a4b5c6d7e8f90a1b2c3d4e5'; // pragma: allowlist secret
 
 const EXISTING = {
   id: 3,

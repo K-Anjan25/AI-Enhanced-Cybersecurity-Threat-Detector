@@ -95,7 +95,7 @@ describe('keys', () => {
             created_at: '2026-10-06T00:00:00Z',
             last_used_at: null,
             revoked_at: null,
-            secret: 'aegis_sk_1_deadbeef',
+            secret: 'aegis_sk_1_deadbeef', // pragma: allowlist secret -- a test fixture
           }),
       },
     ]);
