@@ -64,14 +64,24 @@ describe('routing and shell', () => {
     }
   });
 
-  it('navigates to a screen that is not built and names the task that owns it', async () => {
+  it('navigates to the traffic explorer, which is built now', async () => {
     const user = userEvent.setup();
     renderAt('/');
 
     await user.click(screen.getByRole('link', { name: 'Traffic' }));
 
+    expect(await screen.findByRole('heading', { level: 1, name: 'Traffic' })).toBeInTheDocument();
+    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
+  });
+
+  it('navigates to a screen that is not built and names the task that owns it', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
+
+    await user.click(screen.getByRole('link', { name: 'Logs' }));
+
     expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-406')).toBeInTheDocument();
+    expect(screen.getByText('T-407')).toBeInTheDocument();
   });
 
   it('mounts the triage screen at /alerts, which is built now', async () => {

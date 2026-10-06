@@ -18,20 +18,9 @@ import type { ChartConfiguration } from 'chart.js';
 import type { Severity } from '../../components/ui/severity';
 
 /** The severity palette as CSS variables (design.md §5.1). */
-export const SEVERITY_VARIABLES: Record<Severity, string> = {
-  critical: '--severity-critical',
-  high: '--severity-high',
-  medium: '--severity-medium',
-  low: '--severity-low',
-  info: '--severity-info',
-  benign: '--severity-benign',
-};
-
-/** Chart text and grid, from the same tokens the rest of the UI uses. */
-export const CHART_VARIABLES = {
-  text: '--color-text-muted',
-  grid: '--color-border',
-} as const;
+// Declared in the shared chart layer (T-406 reads them too), re-exported here
+// because this module is where the overview's charts read them from.
+export { CHART_VARIABLES, SEVERITY_VARIABLES } from '../../components/charts/palette';
 
 /**
  * How long a chart's own transition lasts.
