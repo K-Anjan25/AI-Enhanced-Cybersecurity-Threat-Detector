@@ -23,6 +23,7 @@ or body do not match the schema below.
 | Method | Path | Summary | Roles | Success | Request body |
 | --- | --- | --- | --- | --- | --- |
 | `GET` | `/api/v1/alerts` | Query alerts within a time window | admin, analyst, responder, viewer | `200` `AlertPage` | — |
+| `POST` | `/api/v1/alerts/export` | Export an alert batch as CSV or PDF (FR-23) | admin, responder | `200` `application/pdf`, `text/csv` | `AlertExportRequest` |
 | `GET` | `/api/v1/alerts/notifications` | Alerts published after a stream cursor (FR-20 fallback) | admin, analyst, responder, viewer | `200` `AlertNotificationsOut` | — |
 | `GET` | `/api/v1/alerts/stream` | Server-Sent Events alert stream (FR-20 fallback) | admin, analyst, responder, viewer | `200` `text/event-stream` | — |
 | `GET` | `/api/v1/alerts/{alert_id}` | Read one alert with its explanation, evidence, verdict and context (FR-51) | admin, analyst, responder, viewer | `200` `AlertDetailOut` | — |
@@ -75,6 +76,24 @@ Everything design.md §4.3's four zones render, in one response.
 | `verdict` | `AlertVerdictOut` | no | — |
 | `related` | `RelatedAlertsOut` | yes | — |
 | `family_history` | `FamilyHistoryOut` | yes | — |
+
+### `AlertExportRequest`
+
+A queue filter, as the body of an export.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | — |
+| `end` | `string (date-time)` | yes | — |
+| `severity` | list of `string` or `null` | no | — |
+| `status` | list of `string` or `null` | no | — |
+| `family` | list of `string` or `null` | no | — |
+| `entity_id` | `integer` or `null` | no | — |
+| `min_score` | `number` or `null` | no | — |
+| `order` | `desc` or `asc` | no | — |
+| `limit` | `integer` | no | — |
+| `cursor` | `null` | no | Not accepted: an export mirrors the query's first page. |
+| `format` | `ExportFormat` | no | csv (rows only, for a spreadsheet) or pdf (a report, with the filter on the page). |
 
 ### `AlertModelsOut`
 
@@ -196,7 +215,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export`.
 
 ### `AuditEntryOut`
 
@@ -340,6 +359,12 @@ R-70's explanation contract, as the alert row stored it.
 | `unavailable_modalities` | list of `string` | no | Modalities that contributed without reasons. |
 | `partial_evidence` | `boolean` | no | True while only one modality has contributed. |
 | `families` | list of `string` | no | Every family the case's occurrences named. |
+
+### `ExportFormat`
+
+The two shapes an alert batch leaves in (FR-23).
+
+Types: `csv` or `pdf`.
 
 ### `FamilyHistoryOut`
 

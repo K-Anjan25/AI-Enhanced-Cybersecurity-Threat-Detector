@@ -38,7 +38,12 @@ import { ApiError } from '../../api/client';
 import { fetchAlertDetail, fetchQueue, recordVerdict, QUEUE_LIMIT, QUEUE_WINDOW_MS } from './api';
 import type { AlertDetail } from './types';
 import type { VerdictName } from './verdicts';
-import type { AlertPage } from '../../api/alerts';
+import {
+  exportAlerts,
+  type AlertExportFormat,
+  type AlertListParams,
+  type AlertPage,
+} from '../../api/alerts';
 
 /** The triage screen's cadence. A queue is not a chart; 15 s is fast enough. */
 export const TRIAGE_REFRESH_MS = 15_000;
@@ -158,6 +163,48 @@ export function useRecordVerdict(): UseMutationResult<
         client.invalidateQueries({ queryKey: detailKey(selection.alertId, selection.createdAt) }),
         client.invalidateQueries({ queryKey: queueKey }),
       ]);
+    },
+  });
+}
+
+/** The result of one export, as the controls report it. */
+export interface AlertExportResult {
+  format: AlertExportFormat;
+  /** The document, handed to `saveFile` by the caller. */
+  content: Blob;
+  /** The server's filename, which carries the window. */
+  filename: string | null;
+  /** How many rows the file carries, as the server counted them. */
+  rows: number | null;
+  /** Whether the queue's window held more rows than the file does. */
+  truncated: boolean;
+}
+
+export interface AlertExportRequest {
+  format: AlertExportFormat;
+  /** The queue's window and filters, so the file is the view's rows (T-415). */
+  params: AlertListParams;
+}
+
+/**
+ * Export the alert batch, as CSV or as a PDF report (FR-23).
+ *
+ * A mutation rather than a query, exactly as the hunt export is (T-408): it is an
+ * action with a pending state, a refusal the server owns and an outcome the operator
+ * has to be told about. The refetch-after-mutation React Query does by default is
+ * switched off -- the queue did not change because somebody took a copy of it.
+ */
+export function useAlertExport(): UseMutationResult<AlertExportResult, Error, AlertExportRequest> {
+  return useMutation({
+    mutationFn: async ({ format, params }) => {
+      const document = await exportAlerts(params, format);
+      return {
+        format,
+        content: document.content,
+        filename: document.filename,
+        rows: document.rows,
+        truncated: document.truncated,
+      };
     },
   });
 }

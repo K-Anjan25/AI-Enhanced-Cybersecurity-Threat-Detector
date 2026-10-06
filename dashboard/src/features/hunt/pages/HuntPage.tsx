@@ -27,6 +27,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Button, EmptyState, ErrorState, Panel, Skeleton, useToast } from '../../../components/ui';
 import { ApiError } from '../../../api/client';
 import { sessionToken } from '../../../api/session';
+import { saveFile } from '../../../lib/download';
 import { HUNT_QUERY_PARAM } from '../../../lib/routes';
 import { QueryInput } from '../components/QueryInput';
 import { ResultsTable } from '../components/ResultsTable';
@@ -144,17 +145,6 @@ export function HuntPage() {
     if (run !== null) start(run.parse, key);
   };
 
-  const download = (csv: string): void => {
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'aegis-hunt.csv';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
   const span = spanOf(spanKey);
   const summary: string =
     view.state === 'rows' || view.state === 'empty'
@@ -215,7 +205,15 @@ export function HuntPage() {
                 if (params === null) return;
                 exportation.mutate(params, {
                   onSuccess: (result) => {
-                    download(result.csv);
+                    // The document is handed over by `lib/download.ts`, the one place
+                    // that knows how: the queue's export (T-415) saves two formats and
+                    // a second copy of this would be a second set of rules about
+                    // object URLs, names and cleanup.
+                    saveFile({
+                      content: result.csv,
+                      filename: 'aegis-hunt.csv',
+                      mediaType: 'text/csv;charset=utf-8',
+                    });
                     toast(
                       'success',
                       `Exported ${String(result.rows)} rows as CSV. The export is recorded in the audit trail.`,

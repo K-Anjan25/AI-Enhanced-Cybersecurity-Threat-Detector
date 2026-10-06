@@ -115,6 +115,9 @@ class AuditAction(StrEnum):
     #: The one *read* in this table: an export is data leaving the system, which is
     #: the question the trail answers (T-408, D-065).
     hunt_export = "hunt.export"
+    #: The triage queue's batch export -- the same class of action as the hunt's, on
+    #: a different selection (T-415, FR-23).
+    alert_export = "alert.export"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -138,6 +141,7 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         # The export (T-408). A POST because it writes a trail row -- see the
         # module docstring of ``app.api.v1.endpoints.hunt``.
         ("POST", "/api/v1/hunt/export"): AuditAction.hunt_export,
+        ("POST", "/api/v1/alerts/export"): AuditAction.alert_export,
     }
 )
 

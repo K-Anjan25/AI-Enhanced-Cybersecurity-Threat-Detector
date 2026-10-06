@@ -936,6 +936,12 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # which is a change to who can act, like issuing a key.
         "threshold.set",
         "user.role",
+        # T-415: the triage queue's batch export. The same class of action as the
+        # hunt's, on a different selection -- FR-23's alert batch rather than a
+        # named hunt -- which is why it is a second value rather than a reused one:
+        # a reviewer asking "who exported the queue" must be answered by a filter,
+        # not by reading every export's detail.
+        "alert.export",
     }
 
 
