@@ -67,6 +67,14 @@ module.exports = {
     },
     overrides: [
         {
+            // R-23: `src/api/` *is* the typed client, so this is the one place
+            // `fetch` is allowed to appear.
+            files: ['src/api/**'],
+            rules: {
+                'no-restricted-globals': 'off',
+            },
+        },
+        {
             files: ['**/*.test.ts', '**/*.test.tsx', 'src/test/**'],
             rules: {
                 // Tests legitimately assert on console output and reach for globals.

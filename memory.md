@@ -27,16 +27,16 @@ AEGIS uses **transformer models** over **network flow records** and **system log
 | Aspect | State |
 |---|---|
 | Repository | Six planning documents plus the S0–S2 and E3 code (base `04aeb71`; `415a5b1` re-established the E3 work after the 2026-10-05 environment reset, with T-312 at `87beed9`, T-313 at `69b6b5e` and T-314 at `0814cc7` — see below) |
-| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), retention with GDPR erasure (T-314), the model ops endpoints (T-315), the request limits (T-316), the metrics and traces (T-317), the structured logging (T-318), the in-process golden pipeline (T-319), the generated API reference (T-320), the typed score columns with the checked severity (T-321), the weekly threshold recalibration (T-322), the declared PostgreSQL driver (T-323), the closed design-token layer (T-401) and the UI primitives every screen composes from (T-402). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — React shell, theming, routing, the design tokens and the primitives (T-401, T-402) |
-| Tests | **1917 passing, 29 skipped** — 1227 backend (13 need a live PostgreSQL), 531 ml-service (16 need torch), 159 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
+| Source code | `backend/` — the T-301 schema and migration, auth (T-302/T-303), ingest (T-304), alert query (T-305), Kafka producer and lag (T-306), scoring worker (T-307), the correlator (T-308), analyst verdicts (T-309), the alert stream (T-310), outbound webhooks (T-311), the append-only audit trail (T-312), scoped API keys (T-313), retention with GDPR erasure (T-314), the model ops endpoints (T-315), the request limits (T-316), the metrics and traces (T-317), the structured logging (T-318), the in-process golden pipeline (T-319), the generated API reference (T-320), the typed score columns with the checked severity (T-321), the weekly threshold recalibration (T-322), the declared PostgreSQL driver (T-323), the closed design-token layer (T-401), the UI primitives every screen composes from (T-402), and the overview dashboard with its API client and Prometheus reader (T-403). `ml-service/` — the data layer, `FlowNet`/`LogNet`, late fusion, occlusion explanations, thresholds, drift, shadow harness, registry, training pipeline. `dashboard/` — the shell, theming, routing, the design tokens, the primitives and the first real screen (T-401…T-403) |
+| Tests | **2056 passing, 29 skipped** — 1227 backend (13 need a live PostgreSQL), 531 ml-service (16 need torch), 298 dashboard. Coverage is above the R-80 gate; the exact figure moves every task and is whatever the last `check_all.sh` printed |
 | Checks green | `./scripts/check_all.sh` — **26 checks, 0 failed** (measured 2026-10-06): ruff, black, mypy strict, bandit, import-linter, pytest ×2, coverage, tsc, eslint, stylelint, vitest, vite build, doc integrity, the API reference drift check, compose and k8s consistency, and the 14 pre-commit hooks. Checks that exist to catch a class of defect were injection-proved before being trusted |
 | Dependencies | Python: `pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt`, then `(cd dashboard && npm ci)`. `torch` is the `ml-service[training]` extra and the ONNX stack is `[onnx]`; both are optional and neither is installed here |
 | Datasets | CIC-IDS2017 (225,745 rows) and a 49-column UNSW-NB15 sample (10,000 rows) are on disk, hash-verified by `scripts/fetch_datasets.py`. Synthetic data still generates on demand into the gitignored `data/` |
 | Models | **`FlowNet` trained** (1,163,076 parameters); `LogNet` built and tested but has no held-out metric of its own yet (Q-07). The only defensible FlowNet numbers so far are benign-only training at ROC-AUC 0.8053 / PR-AUC 0.7772; the 1.0000 figure comes from a leaky split (D-015, D-016). R-66 transfer recall **0.7955** at a target-blind threshold (D-022) |
 | Branch | `arena/01a10bf7-ai-enhanced-cybersecurity-thre`, based on `04aeb71` |
-| Next work | E3 is closed and **E4 is under way**: T-401 (the design tokens) and T-402 (the UI primitives) are done, and **T-403** (the overview dashboard) is next, on top of T-305. **T-409/T-410** were unblocked by T-315 and **T-506** follows T-311; E5 is untouched. One follow-on was filed by T-323 rather than fixed: the database session D-030 is missing will need `sqlalchemy[asyncio]` when it is wired, because R-18's request path may not use the synchronous engine Alembic uses — the driver itself is declared and the sync half is proven. Docker remains unavailable here, so T-005 and the k8s apply are still unverified, and T-301's migration half was verified once against a sandbox PostgreSQL rather than in CI (D-055) — each says so in [task.md](task.md) |
+| Next work | E3 is closed and **E4 is under way**: T-401 (the design tokens), T-402 (the UI primitives) and T-403 (the overview dashboard) are done, and **T-404** (the alert triage screen, the critical path) is next. **T-409/T-410** were unblocked by T-315 and **T-506** follows T-311; E5 is untouched. One follow-on was filed by T-323 rather than fixed: the database session D-030 is missing will need `sqlalchemy[asyncio]` when it is wired, because R-18's request path may not use the synchronous engine Alembic uses — the driver itself is declared and the sync half is proven. Docker remains unavailable here, so T-005 and the k8s apply are still unverified, and T-301's migration half was verified once against a sandbox PostgreSQL rather than in CI (D-055) — each says so in [task.md](task.md) |
 
-**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-323**; every E3 task is closed. **E4 is under way** — T-401 and T-402 are done, T-403 onwards are `TODO` — and **E5 is untouched** — everything past E3 is `TODO` in [task.md](task.md), which holds per-task status.
+**E0 and E1 are DONE** except T-005, which is written and has never been executed. **E2 is DONE** except the release gate Q-07 still owes. **E3 is DONE through T-323**; every E3 task is closed. **E4 is under way** — T-401…T-403 are done, T-404 onwards are `TODO` — and **E5 is untouched** — everything past E3 is `TODO` in [task.md](task.md), which holds per-task status.
 
 ## Repository reset record
 
@@ -637,7 +637,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 
 | # | Action | Task | When |
 |---|---|---|---|
-| 1 | **Build the overview dashboard** — KPI tiles, severity chart, top entities, pipeline health (T-403) | T-403 | Next |
+| 1 | **Build the alert triage screen** — list + detail, the four zones, keyboard verdicts (T-404) | T-404 | Next |
 | 2 | Continue E4: the triage loop and the screens that feed it | T-403…T-415 | This sprint |
 | 3 | Confirm Q-03 (false-positive budget) and Q-05 (multi-tenancy) with their owners | — | Before threshold defaults ship |
 | 4 | Run the compose stack where a Docker daemon exists; close T-005 and settle Q-08 | T-005 | When Docker is available |
@@ -645,7 +645,7 @@ The rules are in [rules.md](rules.md). The three that get broken most often in p
 | 6 | Apply the k8s manifests to a cluster — the checks are static only | T-504 | M5 |
 | 7 | Build the family-holdout release gate Q-07 still owes, then a gated metric for `LogNet` | T-203, T-208 | Before release |
 
-Completed since the last revision of this table: the datasets were fetched and checksummed (T-101–T-105, T-110), `features@1` was pinned (T-107), windowing, splits, the leakage audit and the evaluation harness landed (T-108, T-109, T-111, T-112), both models and the scoring modules landed (T-201–T-215), E3 closed through T-323, and E4 opened with T-401 and T-402.
+Completed since the last revision of this table: the datasets were fetched and checksummed (T-101–T-105, T-110), `features@1` was pinned (T-107), windowing, splits, the leakage audit and the evaluation harness landed (T-108, T-109, T-111, T-112), both models and the scoring modules landed (T-201–T-215), E3 closed through T-323, and E4 opened with T-401, T-402 and T-403.
 
 ### D-031 — R-51 is enforced where verification happens, and rotation means the old token dies
 Argon2id hashing is easy to get nominally right and still be wrong, because the
@@ -2035,10 +2035,84 @@ primitives are tested standalone — T-404's triage loop is where they get compo
 and §8.3's responsive behaviour is T-412's. Verified in the browser by rendering
 each state in a test, not by eye.
 
+### D-060 — The overview reads the scrape for its health and the alert window for everything else — and says what it cannot measure (T-403) (2026-10-06)
+
+**Decision.** The overview has two data sources and no third one: the alert window
+(`GET /api/v1/alerts`, T-305) behind the tiles, the chart, the entity list and the
+family mix, and the Prometheus scrape (`/metrics`) plus `/readyz` behind the
+pipeline strip. The strip parses the *exposition format* in the browser rather
+than asking for a bespoke JSON endpoint, because `/metrics` already carries the
+counters, the score histogram and the Kafka lag gauge (D-050), and a second
+endpoint would be a second source of truth for the same numbers. A test asserts
+every budget in the strip equals the one architecture.md §5 or NFR-01 publishes.
+
+**The page reports absences as measurements.** Three things design.md §4.1 draws
+cannot be filled in this build, and each one says so on screen instead of showing
+a number nobody measured: the *mean time to verdict* tile (no endpoint aggregates
+verdict lag — "0 s" would claim instant triage), the *correlate* and *notify*
+latencies (nothing times those stages, so they render "latency not measured" with
+their budgets still shown), and the entity *names* (the query API returns
+`entity_id` only). This is R-74 applied to a UI: a number on a dashboard is a claim
+about the system, and the gaps are filed as **T-416** rather than papered over.
+
+**Counting is bounded, and the bound is visible.** There is no aggregate endpoint,
+so the page walks keyset pages and stops at five of them (5,000 alerts). Hitting
+the cap renders "only the first 5 pages were read, so every count below is
+partial", marks each counted tile `partial coverage`, and suppresses the previous
+-period delta entirely — a delta against a truncated window is a confident, wrong
+arrow. Two refreshes without an answer (30 s) marks the header stale, which is
+§8.1's "rather than silently showing old numbers".
+
+**Auto-refresh follows the numbers that move.** §4.1 asks for 5 s on the tiles and
+15 s on the charts. The tiles and the charts read the same alert window, so polling
+it at both cadences would fetch the same pages twice: the window polls at the
+charts' 15 s and the 5 s cadence goes to the scrape, which is one small text
+document and is where the fast-moving numbers actually are. Both stop when the tab
+is hidden, as the design requires. Deviation recorded here rather than silently
+implemented.
+
+**The chart alternative is a control, not a footnote.** §9 wants "a data-table
+alternative toggled by a 'view as table' control": the control is a real button
+with `aria-expanded`, the table carries `scope`d headers and a caption that names
+the window, and the chart configs themselves are pure data in `charts.ts` so a
+node test can assert §7's rules — stacking, "y-axis starts at 0 — never truncate a
+count axis", descending family order, counts labelled at the bar end — none of
+which a canvas can be asked about.
+
+**Verification.** 121 new dashboard tests across 8 files (27 files, 298 tests, from
+18 and 159), `tsc`, eslint, stylelint, prettier and the vite build green;
+`./scripts/check_all.sh all` 26 checks, 0 failed; the frontend boundary check
+learned the new `api` layer (R-23) and reports 68 files, 148 imports. **43 injected
+defects each failed the suite** (`/tmp/t403_mutations.py`, no file left changed):
+an invented origin, a leaked URL in an error, a request that never times out, a
+`+Inf` bucket parsed as NaN, a silently skipped exposition line, a quantile of zero
+for an unobserved histogram, a negative rate after a counter reset, a dropped
+severity and a dropped out-of-window row, a gap between series buckets, ties
+broken by input order, a delta against a partial window, drifted budgets, an
+inclusive budget boundary, a stage called `ok` with nothing measuring it, averaged
+Kafka lag, an un-narrowed route label, a page cap removed, a not-ready answer
+discarded, an unstacked chart, a truncated count axis, unsorted bars, a chart
+ignoring `prefers-reduced-motion`, a live-looking failure, and a stale screen
+without its marker. Two mutants survived the first run and are now killed; a third
+turned out to be *equivalent* — `formatAge`'s clamp cannot be observed at the
+current bands, so the mutation targets the band ordering instead, and the code says
+so.
+
+**Gaps, recorded rather than implied.** The chart is not brushable (§4.1 asks for
+it; brushing is T-406's task, and a control that does nothing would be worse than
+none). Chart.js and its datalabels plugin add ~350 kB to the bundle (~110 kB gzip)
+and are imported eagerly — code-splitting them belongs with T-412's responsive work
+or a later build task. `Toast` and the WebSocket layer are not wired to the
+overview yet: T-405 owns the live channel, so the page polls. The metric queries
+read the scrape directly, so the strip reflects the browser's view of the backend
+rather than the server's own view of its dependencies beyond `/readyz` — which is
+empty in this build because no probe has registered.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-06 | 1.48 | **T-403 done — the overview answers "is anything happening, and is AEGIS itself healthy?".** `dashboard/src/api/client.ts`, `dashboard/src/lib/prometheus.ts`, `dashboard/src/lib/format.ts`, `dashboard/src/features/overview/` (api, aggregate, pipeline, charts, palette, view, hooks, four components, the page and eight test files), `dashboard/vite.config.ts`, `dashboard/.eslintrc.cjs`, `scripts/check_frontend_boundaries.py`. Policy recorded as **D-060**. **The rules gap is closed by writing them down where the code is**: the page has no aggregate endpoint to call, so it walks keyset pages, stops at five, and says "only the first 5 pages were read, so every count below is partial", marking each tile and suppressing the previous-period delta rather than printing a confident wrong arrow. **Three numbers design.md §4.1 draws cannot be filled in this build and each says so** — the mean-time-to-verdict tile, the correlate and notify latencies (no timer exists; the strip shows the budget and calls the number unmeasured), and the entity names (the API returns ids) — filed as **T-416** instead of shown as zeroes. **The pipeline strip reads the Prometheus scrape** through a parser in `lib/prometheus.ts` (a `+Inf` bucket must become `Infinity`, not `NaN`, or every quantile is wrong), and a test asserts each budget equals the one architecture.md §5 or NFR-01 publishes; a degraded stage renders red *and* names the budget it exceeded. **Charts are pure configuration**: `charts.ts` returns plain data so a node test can assert stacking, "never truncate a count axis", descending bar order and the bar-end labels, and the palette is read from the live CSS variables so the theme switch carries into the canvas. **R-23 found a home**: the typed client moved to `src/api/` where the lint rule says it belongs, and the boundary checker learned the layer. **43 injected defects each failed the suite** (`/tmp/t403_mutations.py`); two survivors from the first run are now killed and one equivalent mutant is documented as such. Dashboard 159 → 298 tests in 27 files; total 2056 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the chart is not brushable (T-406), the charting bundle is eager (~110 kB gzip) and code-splitting is filed with T-412, and the live WebSocket channel is T-405. |
 | 2026-10-06 | 1.47 | **T-402 done — the UI primitives, each with a test for its states and an axe-clean render.** `dashboard/src/components/ui/` (14 source files, 11 test files), `dashboard/src/theme/motion.test.ts`, `dashboard/src/theme/density.ts` + `.test.ts`, `dashboard/src/index.css`, `dashboard/tailwind.config.js`, `dashboard/src/components/layout/AppShell.tsx`, `dashboard/package.json` (`lucide-react`, §5.6's icon set). Policy recorded as **D-059**. **A primitive owns its states**: `Card` takes a `state` discriminator so R-29's loading/empty/error cannot be forgotten, `ConfirmDialog` keeps the destructive gate in React state so a cleared field re-arms nothing, `Toast` auto-dismisses everything except errors, and a modal returns focus to its trigger. **The rules with ratios behind them became classes**: §5.3's badge rule is `text-onSeverity` on every severity fill and on `Button`'s danger variant, `SeverityPill` is the AA text variant with the base-hue rail, and both carry the glyph because colour is never the only encoding. **Two hooks the token layer had not exported** — `onAccent` and `onSeverity` — were added, and `AppShell`'s inline `style={{ width: collapsed ? 56 : 240 }}` became `w-rail`/`w-rail-collapsed`, closing the R-27 gap T-401 recorded. **`DataTable` is virtualised by the density module's own row height** (`ROW_HEIGHT_PX` beside `ROW_HEIGHT_CLASS`, both read out of §5.5 by the test): sorting announced through `aria-sort`, a native column picker, controlled-or-uncontrolled selection, sticky header, and the empty state under the real headers. **§8.2's motion tokens are declared now** because this is the first task that animates: 120/200/300 ms in CSS with `transitionDuration` utilities, the ceiling asserted against the document, and a `prefers-reduced-motion` guard over animations and transitions alike. **34 injected defects each failed the suite** (`/tmp/t402_mutations.py`; no file left changed). Dashboard 67 → 159 tests in 18 files; total 1917 passing, 29 skipped; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** DataTable assumes §5.5's uniform row height, `Toast` has no stacking limit, and the D3 visualisations plus `CommandPalette` stay unexported until T-406 and T-411. |
 | 2026-10-06 | 1.46 | **T-401 done — the design tokens are a closed system, and the tests read design.md rather than restating it.** `dashboard/tailwind.config.js`, `dashboard/src/index.css`, `dashboard/src/theme/tokens.test.ts`, `dashboard/src/theme/tailwind.test.ts`, `dashboard/src/theme/density.ts`, `dashboard/.stylelintrc.cjs`. Policy recorded as **D-058**. **Tailwind's colour, spacing, type and family scales now *replace* the defaults instead of extending them**, so `bg-red-500`, `p-5`, `text-lg` and `font-serif` compile to nothing: "every colour in use resolves to a token" becomes a property of the build rather than of a review that misses things. **Three of Tailwind's own defaults were off-palette once the palette was replaced** — the ring was blue-300/50 %, the placeholder gray-400, the ring offset white — and all three now name tokens; overriding a scale to change its DEFAULT also deletes the rest of the scale, which cost a test during the task when `border-line` vanished, so the colour map is defined once and shared. Two literals still reach the stylesheet and are asserted rather than assumed: Tailwind's `#0000` in its shadow resets (`transparent`) and preflight's `#9ca3af` placeholder fallback, which `src/index.css` overrides at equal specificity and later order. **The suite parses design.md §5** — every colour value, every published contrast ratio, the badge rule's six ratios, the focus-ring pair, the type steps, the spacing and radius steps, the density and icon numbers — and recomputes each against the shipped tokens, including the ratios written as comments beside them, because a stale comment is how a contrast claim rots. Then it compiles the real config and the real `src/index.css` through PostCSS and asserts on the emitted stylesheet. **R-27's CSS half is stylelint as rules.md lists it**: hex, named colours and `rgb()`/`hsl()` are banned repo-wide with one override for the token file. **29 injected defects each failed their target command** — both halves of the placeholder override, every token below AA in either theme, a token deleted from one theme, a restated ratio comment, a palette colour added to the scale, a token turned into a literal, an off-scale spacing step, drifted row/icon/rail numbers, a caption under the 12 px floor, a third font family, the ring default back to blue, a build that scans nothing, and three component-level smuggles. Dashboard 34 → 67 tests; `check_all.sh all`: 26 checks, 0 failed. **Gaps:** the overlay shadow's blur and spread are the one pair design.md does not publish (the policy is what it fixes); §8.2's duration and easing tokens belong to the task that first animates something, so "nothing over 300 ms" is documented and not yet closed; and per-user density persistence is T-410's. |
 | 2026-10-06 | 1.45 | **T-323 done — the deployment now names a driver it installs.** `backend/pyproject.toml` declares `psycopg[binary]>=3.2`; the `Settings.database_url` default, `backend/.env.example` and `docker/docker-compose.yml` all moved from `postgresql+asyncpg://` to `postgresql+psycopg://`; `scripts/check_compose.py` gained rule 8 and `backend/tests/test_database_driver.py` 14 tests. Policy recorded as **D-057**. **The task's premise was only half the defect.** Nothing installed a driver, yes -- but installing `asyncpg` would not have fixed the compose DSN either: Alembic's `env.py` builds a *synchronous* engine, and SQLAlchemy refuses an async-only driver there whatever is installed beside it, failing with `greenlet` missing and then un-awaited coroutines. Measured with `asyncpg` installed, before writing any fix. So the driver is psycopg 3: one library for the synchronous engine Alembic uses and for the async engine R-18 will require, shipped as `[binary]` so a plain install needs no system libpq. **A bare `postgresql://` is refused as well** -- SQLAlchemy would silently reach for psycopg2 -- and the guards are two: the compose checker's rule 8 compares the compose URL and the application default against the dependencies the backend declares, and the new test file scans every DSN in the repository and then, in a subprocess, opens an engine on each and asserts the driver the install loaded. The subprocess is not ceremony: importing psycopg in process would leave it in `sys.modules`, where `test_golden.py` asserts the golden path never needs a database client. **`alembic upgrade head` was then run for real from a venv containing nothing but `pip install ./backend`**, reaching `0002_typed_scores (head)` on pgserver's PostgreSQL 16.2 -- the first application of the repository's own migration from a plain install rather than a developer venv -- and the 13 live migration tests passed under the same `postgresql+psycopg://` DSN (D-055 covers the earlier DDL run). **12 injected defects each failed their target command**, including the checker's own invocation, so an unwired rule could not survive. One process finding worth carrying: the battery's first restore rewrote a file from an empty replacement and corrupted two of them -- a mutation that deletes a line must be restored from a snapshot of the bytes, and the second run verified all five mutated files by hash afterwards. Backend 1213 -> 1227 tests (13 skipped), coverage 98.56% -> 98.63%. **Gaps:** the compose stack is still not started here (no Docker daemon), and the request path's session will need `sqlalchemy[asyncio]` when D-030 is closed -- nothing declares it yet. |
