@@ -46,6 +46,7 @@ from app.services.correlator import Severity
 __all__ = [
     "MIN_SECRET_BYTES",
     "BlockedTarget",
+    "classify_address",
     "AllowlistError",
     "InMemoryWebhookStore",
     "RegisteredTarget",
@@ -103,6 +104,37 @@ class ResolvedAddress:
         return int(ipaddress.ip_address(self.address).version)
 
 
+def classify_address(address: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """One address, with an IPv4-mapped IPv6 address reduced to the IPv4 it maps.
+
+    **The unmap is the point, and it is a correctness fix rather than tidiness.**
+    ``::ffff:127.0.0.1`` is the IPv4 loopback address written in IPv6 form, and
+    CPython did not always say so: on 3.11.2 that address reports
+    ``is_loopback=False, is_private=True`` while a patched 3.11 reports
+    ``is_loopback=True`` -- the classification of mapped addresses was fixed in a
+    security backport. Asking a mapped address what it is therefore answers
+    differently on different interpreters, which is what turned this suite's
+    expectation into a machine-dependent one (it passed here and failed on the CI
+    runner, whose 3.11 is newer). Reducing the address first asks the question of
+    the address that will actually be dialled: ``::ffff:127.0.0.1`` *is*
+    ``127.0.0.1``, so it is loopback — and a mapped ``10.0.0.5`` is private —
+    on every interpreter, which an invariant test pins rather than a table.
+
+    Returns:
+        The address to classify, or ``None`` when the text is not an address at
+        all.
+    """
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return None
+    if isinstance(parsed, ipaddress.IPv6Address):
+        mapped = parsed.ipv4_mapped
+        if mapped is not None:
+            return mapped
+    return parsed
+
+
 def security_verdict_of_address(address: str) -> tuple[bool, str]:
     """Whether a single resolved address may be connected to, and why not.
 
@@ -113,18 +145,18 @@ def security_verdict_of_address(address: str) -> tuple[bool, str]:
     ``is_global`` is the accept rather than a list of ranges, because the list is
     the thing that goes stale: it covers loopback, private, link-local, CGNAT,
     reserved and IPv6 site-local, and it also refuses the ranges a carefully
-    written list forgets -- IPv4-mapped IPv6 such as ``::ffff:127.0.0.1`` and the
-    documentation networks. It is not sufficient on its own: CPython reports
-    IPv4 multicast (224/4) as global, so the multicast class is refused before it.
+    written list forgets -- IPv4-mapped IPv6 such as ``::ffff:127.0.0.1`` (see
+    :func:`classify_address`) and the documentation networks. It is not
+    sufficient on its own: CPython reports IPv4 multicast (224/4) as global, so
+    the multicast class is refused before it.
 
     Returns:
         ``(True, "")`` for an address that may be dialled, else ``(False, why)``
         with ``why`` one of ``not_an_address``, ``loopback``, ``link_local``,
         ``multicast``, ``unspecified``, ``private``, ``not_globally_routable``.
     """
-    try:
-        parsed = ipaddress.ip_address(address)
-    except ValueError:
+    parsed = classify_address(address)
+    if parsed is None:
         return False, "not_an_address"
     # The specific reason first, so a refusal names what is wrong; the multicast
     # check is not redundant with is_global, which reports multicast addresses as

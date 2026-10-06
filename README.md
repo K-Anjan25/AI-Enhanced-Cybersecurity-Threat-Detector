@@ -66,7 +66,7 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 # backend
 cd backend
 cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 1370 tests, 13 skipped (need a live PostgreSQL)
+python -m pytest -q                        # 1378 tests, 13 skipped (need a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)

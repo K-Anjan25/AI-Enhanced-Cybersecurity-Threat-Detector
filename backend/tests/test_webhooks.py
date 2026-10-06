@@ -84,21 +84,43 @@ PUBLIC_V4 = "93.184.216.34"
 PUBLIC_V6 = "2606:2800:220:1:248:1893:25c8:1946"
 
 #: Every address class R-55 refuses, with the reason the refusal must name.
+#: Every refused class, named by the refusal it must produce. A mapped row expects
+#: the class of the address it maps -- see `IPV4_MAPPED_ADDRESSES`, which pins that
+#: as an invariant rather than trusting this table to agree with a stdlib patch.
 REFUSED_ADDRESSES: tuple[tuple[str, str], ...] = (
     ("127.0.0.1", "loopback"),
     ("::1", "loopback"),
+    ("::ffff:127.0.0.1", "loopback"),
     ("10.0.0.5", "private"),
     ("172.16.9.9", "private"),
     ("192.168.1.10", "private"),
-    ("::ffff:127.0.0.1", "private"),
+    ("::ffff:10.0.0.5", "private"),
+    ("::ffff:192.168.1.10", "private"),
     ("fd00::1", "private"),
     ("169.254.169.254", "link_local"),
     ("fe80::1", "link_local"),
+    ("::ffff:169.254.169.254", "link_local"),
     ("224.0.0.1", "multicast"),
     ("ff02::1", "multicast"),
     ("0.0.0.0", "unspecified"),  # noqa: S104 -- refused on purpose, not bound
     ("::", "unspecified"),
     ("100.64.0.1", "not_globally_routable"),
+)
+
+#: An IPv4 address and the IPv4-mapped IPv6 form of the same address.
+#:
+#: The invariant below is what makes the guard independent of the interpreter:
+#: CPython's classification of a *mapped* address changed in a security backport
+#: (`::ffff:127.0.0.1` reported `is_private` on 3.11.2 and `is_loopback` on a
+#: patched 3.11), so a test that asserted a hand-written class for one of them
+#: passed on one machine and failed on the next. The guard reduces the address
+#: first, and this pair asserts the two spellings agree.
+IPV4_MAPPED_ADDRESSES: tuple[tuple[str, str], ...] = (
+    ("127.0.0.1", "::ffff:127.0.0.1"),
+    ("10.0.0.5", "::ffff:10.0.0.5"),
+    ("192.168.1.10", "::ffff:192.168.1.10"),
+    ("169.254.169.254", "::ffff:169.254.169.254"),
+    ("100.64.0.1", "::ffff:100.64.0.1"),
 )
 
 
@@ -354,6 +376,25 @@ def test_a_name_that_does_not_resolve_is_refused() -> None:
             resolver=raising_resolver(),
         )
     assert excinfo.value.reason == "unresolvable_host"
+
+
+@pytest.mark.parametrize(("plain", "mapped"), IPV4_MAPPED_ADDRESSES)
+def test_an_ipv4_mapped_address_is_classified_as_the_address_it_maps(
+    plain: str, mapped: str
+) -> None:
+    """The property that does not depend on the CPython version.
+
+    ``::ffff:127.0.0.1`` *is* ``127.0.0.1`` written in IPv6 form, so the two must
+    get the same refusal and the same reason. Asserting the pair rather than one
+    hand-written class is deliberate: the stdlib's answer for a mapped address
+    changed in a patch release, and a suite that pins the old answer goes red on a
+    newer interpreter (which is exactly how this test came to exist).
+    """
+    from app.services.webhook_targets import security_verdict_of_address
+
+    assert security_verdict_of_address(mapped) == security_verdict_of_address(plain)
+    # And the reason is a refusal, not an accident of both being allowed.
+    assert security_verdict_of_address(plain)[0] is False
 
 
 @pytest.mark.parametrize(("address", "reason"), REFUSED_ADDRESSES)
