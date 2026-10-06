@@ -371,6 +371,32 @@ describe('shipped sources', () => {
     }
   });
 
+  it('compiles every colour utility the shipped sources name', async () => {
+    // The palette check above catches `bg-red-500`; it cannot catch a *misspelled
+    // token* like `text-severity-critical-text`, which is not an off-token palette
+    // colour but an off-token name — and since `theme.colors` is closed, it compiles
+    // to nothing at all and the element silently keeps the default text colour. Two
+    // error messages in the hunt console shipped that way (T-408) and rendered in
+    // normal ink; T-409 found it while adding the models screens. Compiling what the
+    // sources actually contain is the general form of the check, and it is the one
+    // that would have caught the typo the day it was typed.
+    // The trailing lookahead keeps a *partial* utility out of the set: a prose
+    // reference like `bg-severity-*` and a template such as `bg-severity-${tone}`
+    // are fragments, not classes, and Tailwind would emit nothing for either. A
+    // hyphen after the longest match means the token did not end there.
+    const utility =
+      /\b(?:bg|text|border|divide|ring|fill|stroke)-[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*(?![-\w*$])/g;
+    const candidates = new Set<string>();
+    for (const [, source] of shipped) {
+      for (const match of source.matchAll(utility)) candidates.add(match[0]);
+    }
+    // A regex that matched nothing would make the assertion below vacuous.
+    expect(candidates.size).toBeGreaterThanOrEqual(20);
+    const compiled = await compile([...candidates].join(' '));
+    const missing = [...candidates].filter((name) => !compiled.includes(`.${name} {`));
+    expect(missing, 'utilities that emit no CSS at all').toEqual([]);
+  });
+
   it('keeps index.html free of colour literals as well', () => {
     expect(readFileSync(INDEX_HTML, 'utf8')).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(/);
   });

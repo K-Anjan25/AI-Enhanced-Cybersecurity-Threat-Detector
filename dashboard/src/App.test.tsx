@@ -43,6 +43,10 @@ function renderAt(path: string) {
           caveats: ['Nothing has arrived in this window'],
         }),
     },
+    {
+      match: '/api/v1/models',
+      respond: () => jsonResponse({ items: [], count: 0 }),
+    },
     { match: '/metrics', respond: () => textResponse('') },
     {
       match: '/readyz',
@@ -117,11 +121,21 @@ describe('routing and shell', () => {
     expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
   });
 
-  it('navigates to a screen that is not built and names the task that owns it', () => {
+  it('mounts the model ops screen at /models, which is built now', async () => {
     renderAt('/models');
 
+    expect(await screen.findByRole('heading', { level: 1, name: 'Model ops' })).toBeInTheDocument();
+    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
+    // The stubbed registry is empty and the screen says so rather than rendering an
+    // empty table that would read as a deployment with no models.
+    expect(await screen.findByText('No model versions are registered')).toBeInTheDocument();
+  });
+
+  it('navigates to a screen that is not built and names the task that owns it', () => {
+    renderAt('/admin');
+
     expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-409')).toBeInTheDocument();
+    expect(screen.getByText('T-410')).toBeInTheDocument();
   });
 
   it('mounts the triage screen at /alerts, which is built now', async () => {

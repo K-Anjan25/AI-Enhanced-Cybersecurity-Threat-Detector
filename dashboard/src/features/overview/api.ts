@@ -15,14 +15,15 @@
  *     a partial count as a total (design.md §8.1).
  *   * **`/metrics`** is where the pipeline strip gets its numbers: the same
  *     exposition Prometheus scrapes, parsed in `src/lib/prometheus.ts`. It is
- *     unauthenticated by decision (D-050) and carries no content, only counts.
+ *     unauthenticated by decision (D-050) and carries no content, only counts. The
+ *     fetch moved to `src/api/metrics.ts` when the drift screen became its second
+ *     reader (T-409): a feature may not import another feature, and two copies of
+ *     the path would be two things to keep in step.
  *   * **`/readyz`** answers the one question metrics cannot: whether a dependency
  *     the process needs is currently refused.
  */
 import type { AlertPage, AlertRow } from '../../api/alerts';
-import { getJson, getText } from '../../api/client';
-import type { MetricsSnapshot } from './pipeline';
-import { parseExposition } from '../../lib/prometheus';
+import { getJson } from '../../api/client';
 
 export type { AlertPage, AlertRow };
 
@@ -61,10 +62,4 @@ export interface Readiness {
  */
 export async function fetchReadiness(signal?: AbortSignal): Promise<Readiness> {
   return getJson<Readiness>('/readyz', { signal, okStatuses: [503] });
-}
-
-/** Read `/metrics` as a parsed snapshot stamped with the time it arrived. */
-export async function fetchMetrics(signal?: AbortSignal): Promise<MetricsSnapshot> {
-  const text = await getText('/metrics', { signal });
-  return { at: Date.now(), samples: parseExposition(text) };
 }

@@ -2,9 +2,9 @@
  * Route table (design.md §3 information architecture).
  *
  * Overview (T-403, §4.1), Alert triage (T-404, §4.3), Traffic (T-406, §4.4), Logs
- * (T-407, §4.5) and Hunt (T-408, §4.6) exist. Every other route renders an explicit
- * "not built" state rather than a blank panel or a dead link, so the navigation
- * reflects reality (design.md §8.1).
+ * (T-407, §4.5), Hunt (T-408, §4.6) and Model ops with its drift page (T-409, §4.7)
+ * exist. Every other route renders an explicit "not built" state rather than a blank
+ * panel or a dead link, so the navigation reflects reality (design.md §8.1).
  *
  * The toast provider is mounted here rather than at the entry point because it is
  * part of the app's own tree: a route that reports the result of an action (the
@@ -18,12 +18,13 @@ import { AppShell } from './components/layout/AppShell';
 import { ToastProvider } from './components/ui';
 import { HuntPage } from './features/hunt/pages/HuntPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
+import { DriftPage } from './features/models/pages/DriftPage';
+import { ModelsPage } from './features/models/pages/ModelsPage';
 import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 
 const PENDING: Record<string, string> = {
-  '/models': 'T-409',
   '/admin': 'T-410',
 };
 
@@ -52,6 +53,8 @@ export function App() {
           <Route path="/traffic" element={<TrafficPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/hunt" element={<HuntPage />} />
+          <Route path="/models" element={<ModelsPage />} />
+          <Route path="/models/drift" element={<DriftPage />} />
           {Object.keys(PENDING).map((path) => (
             <Route key={path} path={path} element={<NotYetBuilt path={path} />} />
           ))}
