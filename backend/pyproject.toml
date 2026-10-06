@@ -14,6 +14,16 @@ dependencies = [
     # run at deploy time, not at test time.
     "sqlalchemy>=2.1",
     "alembic>=1.20",
+    # T-323. The PostgreSQL driver, declared rather than left to the environment:
+    # `alembic upgrade head` dials this URL at deploy time, so installing the
+    # backend alone has to provide it. It is psycopg 3 because one driver serves
+    # both halves -- Alembic's synchronous engine and, when the request path gets
+    # a session (D-030), an async engine for R-18 -- so the deployed URL names a
+    # dialect the deployment can actually open. The [binary] extra ships libpq,
+    # so no system package is needed, and asyncpg is not an alternative here:
+    # SQLAlchemy refuses it on a synchronous engine whatever is installed beside
+    # it.
+    "psycopg[binary]>=3.2",
     # T-302. Argon2id password hashing and JWT issue/refresh. Both are runtime
     # dependencies: the auth module imports them on every request.
     "argon2-cffi>=23.1",
@@ -57,6 +67,12 @@ dev = [
     "black>=26.5",
     "mypy>=2.4",
     "bandit>=1.9",
+    # T-323. tests/test_database_driver.py loads scripts/check_compose.py the way
+    # tests/test_openapi_docs.py loads the reference generator, and that script
+    # parses the compose file -- so the backend's own test environment needs the
+    # YAML parser. Without it the rule that guards the DSN could only be exercised
+    # in the job that installs requirements-dev.txt.
+    "pyyaml>=6.0",
 ]
 
 [build-system]
