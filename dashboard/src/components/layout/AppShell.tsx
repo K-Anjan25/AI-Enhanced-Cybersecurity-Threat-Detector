@@ -32,7 +32,8 @@ const NAV_ITEMS: readonly NavItem[] = [
   { to: '/traffic', label: 'Traffic', section: 'Explore' },
   { to: '/logs', label: 'Logs', section: 'Explore' },
   { to: '/hunt', label: 'Hunt', section: 'Explore' },
-  { to: '/models', label: 'Models', section: 'Models' },
+  { to: '/models', label: 'Model ops', section: 'Models' },
+  { to: '/models/drift', label: 'Drift', section: 'Models' },
   { to: '/admin', label: 'Admin', section: 'Admin' },
 ];
 

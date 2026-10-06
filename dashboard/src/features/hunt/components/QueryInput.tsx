@@ -119,7 +119,7 @@ export function QueryInput({ value, onChange, onRun, errors, disabled = false }:
           className="h-9 w-full max-w-2xl rounded-input border border-line bg-surface px-3 font-mono text-body-sm text-ink"
         />
         {errors.length === 0 ? null : (
-          <p className="text-caption text-severity-critical-text">
+          <p className="text-caption text-severityText-critical">
             {errors.length === 1
               ? errors[0]?.reason
               : `${String(errors.length)} terms could not be read: ${errors

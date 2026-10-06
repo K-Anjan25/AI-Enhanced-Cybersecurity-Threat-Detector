@@ -222,7 +222,7 @@ export function HuntPage() {
           </p>
 
           {refusal === null ? null : (
-            <p role="alert" className="text-caption text-severity-critical-text">
+            <p role="alert" className="text-caption text-severityText-critical">
               {refusal}
             </p>
           )}

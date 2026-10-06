@@ -24,7 +24,8 @@ import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react
 import { useEffect, useRef, useState } from 'react';
 
 import { fetchAlertWindow, type AlertWindow } from '../../api/alerts';
-import { fetchMetrics, fetchReadiness, type Readiness } from './api';
+import { fetchMetrics } from '../../api/metrics';
+import { fetchReadiness, type Readiness } from './api';
 import { useAlertSync } from '../../components/realtime/useAlertSync';
 import type { MetricsSnapshot } from './pipeline';
 

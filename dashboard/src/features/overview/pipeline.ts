@@ -29,6 +29,14 @@ import {
   samplesNamed,
 } from '../../lib/prometheus';
 
+// The snapshot shape lives in the shared client layer (T-409): the drift screen
+// reads the same scrape, and a feature may not import another feature. Imported for
+// this module's own signatures and re-exported because this is where the overview's
+// panels read it from.
+import type { MetricsSnapshot } from '../../api/metrics';
+
+export type { MetricsSnapshot };
+
 export type StageId = 'ingest' | 'score' | 'correlate' | 'notify';
 
 export type StageStatus =
@@ -87,12 +95,6 @@ export const STAGES: readonly StageSpec[] = [
 
 /** The ingest route, as the HTTP histogram labels it (T-317). */
 export const INGEST_ROUTE = '/api/v1/ingest/flows';
-
-export interface MetricsSnapshot {
-  /** When the scrape was read, in epoch milliseconds. */
-  at: number;
-  samples: readonly Sample[];
-}
 
 export interface StageReading {
   /** Measured p95 latency in milliseconds, or `null` when nothing measures it. */
