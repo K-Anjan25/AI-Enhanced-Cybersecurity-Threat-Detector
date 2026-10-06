@@ -126,7 +126,7 @@ export const CAPABILITY_LABELS: Readonly<Record<string, string>> = {
   users: 'manage users and roles',
   models: 'promote models and move thresholds',
   retention: 'run retention and erasure',
-  api_keys: 'issue and revoke API keys',
+  api_keys: 'issue and revoke API keys', // pragma: allowlist secret -- a label, not a value
 };
 
 /**
