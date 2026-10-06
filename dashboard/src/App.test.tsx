@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './App';
 import { NAV_ITEMS } from './components/layout/nav';
+import { auditLandmarks } from './test/a11y';
 import { expectAccessible } from './test/axe';
 import { jsonResponse, stubFetch, testQueryClient, textResponse } from './test/query';
 import { stubViewport } from './test/viewport';
@@ -253,6 +254,26 @@ describe('routing and shell', () => {
     const { container } = renderAt('/');
 
     await expectAccessible(container as HTMLElement);
+  });
+});
+
+describe('the shell the three core screens are read in (T-413)', () => {
+  it('provides the landmarks a screen reader navigates by, on every core screen', async () => {
+    // The three core screens are the loop: monitor (Overview), triage (Alerts) and
+    // investigate (Hunt). The landmarks come from the shell, so this is where they can
+    // be checked — a page rendered on its own in a test has no `<main>` and should not
+    // be required to mount one.
+    for (const [path, heading] of [
+      ['/', 'Overview'],
+      ['/alerts', 'Alert triage'],
+      ['/hunt', 'Hunt'],
+    ] as const) {
+      const view = renderAt(path);
+      await screen.findByRole('heading', { level: 1, name: heading });
+
+      expect(auditLandmarks(view.container as HTMLElement), path).toEqual([]);
+      view.unmount();
+    }
   });
 });
 

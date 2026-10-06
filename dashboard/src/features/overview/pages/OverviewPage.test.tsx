@@ -10,7 +10,8 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { expectAccessible } from '../../../test/axe';
+import { auditKeyboard, auditStructure } from '../../../test/a11y';
+import { expectAccessible, expectAxeClean } from '../../../test/axe';
 import { jsonResponse, renderWithProviders, stubFetch, textResponse } from '../../../test/query';
 import type { AlertRow } from '../api';
 import { OverviewPage } from './OverviewPage';
@@ -321,6 +322,28 @@ describe('OverviewPage', () => {
 
     expect(await screen.findByText(/Only the first 5 pages were read/)).toBeInTheDocument();
     expect(screen.getAllByText(/partial coverage/)).toHaveLength(4);
+  });
+
+  it('passes the accessibility audit: structure, landmarks and keyboard reach (T-413)', async () => {
+    // design.md §9's structure and keyboard claims on this screen, in one place: the
+    // reading order axe cannot check, and the tab order no per-control test checks.
+    const user = userEvent.setup();
+    stubFetch(routes());
+    const { container } = renderWithProviders(<OverviewPage />);
+    await screen.findByRole('region', { name: 'Detection pipeline health' });
+
+    expect(auditStructure(container as HTMLElement)).toEqual([]);
+    expect(await auditKeyboard(container as HTMLElement, user)).toEqual([]);
+  });
+
+  it('reports no axe violation at any impact level (T-413)', async () => {
+    // Stronger than §9's gate, and measured before it was asserted: this screen reports
+    // nothing at all with the best-practice rules included.
+    stubFetch(routes());
+    const { container } = renderWithProviders(<OverviewPage />);
+    await screen.findByRole('region', { name: 'Detection pipeline health' });
+
+    await expectAxeClean(container as HTMLElement);
   });
 
   it('has no serious accessibility violations once loaded', async () => {
