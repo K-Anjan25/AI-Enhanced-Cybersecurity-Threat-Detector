@@ -12,7 +12,7 @@ predict cybersecurity threats before they become confirmed incidents.
 > ingestion whose secret is stored only as a keyed digest; querying alerts still needs a
 > database connection (T-319). The dashboard has the shell, the closed token layer,
 > the UI primitives, a working overview that reads the alert API and the metrics scrape, and the
-> triage screen with its keyboard loop (T-401…T-404); the real-time layer is next. See
+> triage screen with its keyboard loop, and the live alert stream with its reconnect banner and REST fallback (T-401…T-405). See
 > [memory.md](memory.md) for the authoritative current state, and [task.md](task.md) for
 > per-task status.
 
@@ -41,7 +41,8 @@ backend/      FastAPI ingest, query, auth, messaging, correlation, verdicts, str
               driver                                   (T-301…T-323)
 ml-service/   Data pipeline, FlowNet/LogNet, scoring and the training harness
 dashboard/    React + TypeScript dashboard — the shell, routing, theming,
-              design tokens, UI primitives, overview, triage  (T-401…T-404)
+              design tokens, UI primitives, overview, triage,
+              live stream                             (T-401…T-405)
 data/         datasets, gitignored                              (R-40 — never committed)
 docker/       compose stack, written but never run here         (no Docker in this sandbox)
 k8s/          manifests, statically checked but never applied

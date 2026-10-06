@@ -23,11 +23,20 @@
  *     content into messages that reach a log or a screen: a FastAPI error body
  *     echoes back part of the request, and a URL carries query parameters. The
  *     error's message says what kind of failure it was; the status is a number.
+ *   * **The session token rides along, and a 401 ends the session.** The API is
+ *     authenticated (T-302); the credential lives in `src/api/session.ts` and is
+ *     attached here, in the one place every request is built, rather than by each
+ *     caller. A `401` means the credential is not (or no longer) valid, so the
+ *     session is cleared and the socket's refusal banner becomes true; a `403`
+ *     does **not**, because a valid credential without the required role is a
+ *     permissions message, not a reason to sign the operator out.
  *   * **Every request is abortable, and a request that hangs is aborted anyway.**
  *     React Query cancels on unmount by signal; the timeout covers the case where
  *     nothing cancels — a proxy holding the socket open forever, which would leave
  *     a panel loading longer than the data could possibly still be useful.
  */
+
+import { clearSessionToken, sessionToken } from './session';
 
 /** What kind of failure happened, which is what the UI is allowed to say. */
 export type ApiFailure = 'unreachable' | 'timeout' | 'status' | 'malformed';
@@ -125,6 +134,11 @@ async function request(path: string, options: RequestOptions): Promise<Response>
   }
   const headers: Record<string, string> = { accept: accept ?? 'application/json' };
   if (payload !== undefined) headers['content-type'] = 'application/json';
+  const token = sessionToken();
+  // No token means no header, not an empty one: `Authorization: Bearer ` is a
+  // credential-shaped string that the API would have to reject, and it reads in a
+  // log like an attempt rather than an absence.
+  if (token !== null) headers['authorization'] = `Bearer ${token}`;
 
   let response: Response;
   try {
@@ -153,6 +167,10 @@ async function request(path: string, options: RequestOptions): Promise<Response>
 
 /** A status the API refused with — the status is data, the body is not. */
 function statusError(response: Response): ApiError {
+  // 401 only. See the module docstring: a 403 is an authorisation answer about a
+  // credential that is still good, and signing the operator out over it would
+  // turn "you may not record verdicts" into "you are not signed in".
+  if (response.status === 401) clearSessionToken();
   return new ApiError('status', response.status, `the service answered ${response.status}`);
 }
 
