@@ -53,7 +53,14 @@ class Settings(BaseSettings):
     # Required in every environment. There is no safe default for a secret.
     secret_key: str = Field(min_length=32)
 
-    database_url: str = Field(default="postgresql+asyncpg://aegis:aegis@localhost:5432/aegis")
+    # T-323. The dialect is part of the contract with the deployment: the driver
+    # named here is the one backend/pyproject.toml declares, so a plain install
+    # can open the URL it ships with -- checked statically by
+    # scripts/check_compose.py and through a subprocess by
+    # tests/test_database_driver.py. Alembic opens the same URL with a
+    # *synchronous* engine at deploy time, which is why the driver is psycopg 3
+    # rather than an async-only one.
+    database_url: str = Field(default="postgresql+psycopg://aegis:aegis@localhost:5432/aegis")
 
     # Binding to all interfaces is required for containerised deployment (NFR-08);
     # the container network is the trust boundary, not the loopback device.
