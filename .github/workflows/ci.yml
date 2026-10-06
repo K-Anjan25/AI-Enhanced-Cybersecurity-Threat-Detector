@@ -168,8 +168,47 @@ jobs:
       - name: Import boundaries (R-15)
         run: lint-imports
 
+      # TEMPORARY diagnostic (removed once CI is green): the job log is not
+      # reachable from this environment, so the failures are surfaced as check-run
+      # annotations, which are. The pytest invocation is unchanged.
       - name: Tests with coverage gate (R-80)
-        run: pytest --cov=app --cov-report=term-missing
+        run: |
+          set +e
+          pytest --cov=app --cov-report=term-missing 2>&1 | tee /tmp/pytest-ci.log
+          code=${PIPESTATUS[0]}
+          set -e
+          python - <<'ANNOTATE' || true
+          import pathlib
+          import re
+
+          lines = pathlib.Path("/tmp/pytest-ci.log").read_text(errors="replace").splitlines()
+
+
+          def esc(text: str) -> str:
+              return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+          failures = [
+              line.strip()
+              for line in lines
+              if line.startswith("FAILED ") or line.startswith("ERROR ")
+          ]
+          summary = [
+              line.strip()
+              for line in lines
+              if re.match(r"^=+ .*(passed|failed|error).*=+$", line.strip())
+          ]
+          print("::error title=pytest summary::" + esc(" | ".join(summary[-2:]) or "no summary line"))
+          for entry in failures[:8]:
+              name, _, detail = entry.partition(" - ")
+              print("::error title=" + esc(name) + "::" + esc(detail or "see the job log"))
+          for line in lines:
+              stripped = line.strip()
+              if stripped.startswith("E ") or "AssertionError" in stripped or "Error:" in stripped:
+                  print("::warning title=pytest first detail::" + esc(stripped[:700]))
+                  break
+          ANNOTATE
+          exit $code
 
   ml-service:
     name: ML service
