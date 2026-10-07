@@ -11,7 +11,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import ClassVar
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     )
 
     env: Environment = Field(default=Environment.DEVELOPMENT)
+
+    # Authentication bootstrap (T-417). Passwords are hashed immediately and are
+    # never logged or returned. Production must configure an initial operator; a
+    # local setup form is separately opt-in and development-only.
+    bootstrap_admin_email: str | None = Field(default=None, max_length=254)
+    bootstrap_admin_password: SecretStr | None = Field(default=None, repr=False)
+    dev_auth_setup_enabled: bool = Field(default=False)
 
     # Required: a deployment without an explicit name is a misconfiguration.
     service_name: str = Field(default="aegis-backend")
@@ -170,6 +177,56 @@ class Settings(BaseSettings):
         if normalised not in allowed:
             raise ValueError(f"log_level must be one of {sorted(allowed)}, got {value!r}")
         return normalised
+
+    @field_validator("bootstrap_admin_email", mode="before")
+    @classmethod
+    def _empty_bootstrap_email_is_unset(cls, value: object) -> object:
+        """Let environment forwarding of an unset optional email stay unset."""
+        return None if value == "" else value
+
+    @field_validator("bootstrap_admin_password", mode="before")
+    @classmethod
+    def _empty_bootstrap_password_is_unset(cls, value: object) -> object:
+        """Let environment forwarding of an unset optional password stay unset."""
+        return None if value == "" else value
+
+    @field_validator("bootstrap_admin_email")
+    @classmethod
+    def _normalise_bootstrap_email(cls, value: str | None) -> str | None:
+        """Canonicalise the one configured bootstrap address."""
+        if value is None:
+            return None
+        normalised = value.strip().casefold()
+        local, separator, domain = normalised.partition("@")
+        if (
+            not separator
+            or not local
+            or not domain
+            or "@" in domain
+            or any(character.isspace() for character in normalised)
+        ):
+            raise ValueError("AEGIS_BOOTSTRAP_ADMIN_EMAIL must be a valid email address")
+        return normalised
+
+    @model_validator(mode="after")
+    def _validate_auth_bootstrap(self) -> Settings:
+        """Require a real configured production entry point; keep setup opt-in."""
+        email = self.bootstrap_admin_email
+        password = self.bootstrap_admin_password
+        if (email is None) != (password is None):
+            raise ValueError(
+                "set both AEGIS_BOOTSTRAP_ADMIN_EMAIL and "
+                "AEGIS_BOOTSTRAP_ADMIN_PASSWORD, or neither"
+            )
+        if password is not None and len(password.get_secret_value()) < 12:
+            raise ValueError("AEGIS_BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
+        if self.dev_auth_setup_enabled and self.env is not Environment.DEVELOPMENT:
+            raise ValueError("AEGIS_DEV_AUTH_SETUP_ENABLED is permitted only in development")
+        if self.env is Environment.PRODUCTION and email is None:
+            raise ValueError(
+                "production requires AEGIS_BOOTSTRAP_ADMIN_EMAIL and AEGIS_BOOTSTRAP_ADMIN_PASSWORD"
+            )
+        return self
 
     #: Substrings that mark a value as a copied-from-the-docs placeholder.
     _WEAK_MARKERS: ClassVar[frozenset[str]] = frozenset(

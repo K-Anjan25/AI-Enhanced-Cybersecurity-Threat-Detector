@@ -206,6 +206,14 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 - **Thresholds:** current value, source (`default` | `calibrated` | `manual`), last changed by/at, and a preview of how many alerts the new value would have produced over the last 7 days **before** saving.
 - **Audit log:** append-only, filterable, exportable; visibly non-editable (no edit affordance anywhere).
 
+### 4.9 Authentication — session gate
+
+- With no valid session, show a focused sign-in surface instead of mounting data screens; after sign-in, preserve the requested route. Sign-out clears the tab-scoped session.
+- The form uses operator-provisioned credentials. Production bootstrap credentials come from a secret manager; there is no built-in demo user or default password.
+- A first-administrator setup form is offered only when `AEGIS_DEV_AUTH_SETUP_ENABLED=true` in a private development environment. It warns that the first account has admin permissions and that the in-memory account is cleared when the backend process restarts.
+- Access and refresh tokens live only in `sessionStorage`; refresh is single-use and rotates. A failed refresh or HTTP 401 returns to sign-in and reopens the stream with the new credential. A 403 or WebSocket 4403 is a permissions refusal and does not sign the operator out; WebSocket 4401 clears the session.
+- The sign-in screen follows the same dark/light tokens as the console, keeps visible labels and errors, and never echoes a password or token.
+
 ## 5. Design tokens
 
 Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). Light theme is a full peer, not an afterthought. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
@@ -371,6 +379,7 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 | Overview dashboard | FE | Built — T-403 DONE |
 | D3 entity graph + time-series | FE | Built — T-406 DONE |
 | Accessibility audit of the first three screens | Design | Automated axe and keyboard checks complete (T-413); manual screen-reader pass remains unrun, see [release-note.md](release-note.md#accessibility-t-413-nfr-09) |
+| Authentication gate and first-admin setup (§4.9) | FE/platform | Sign-in/session flow built (T-417); human visual sign-off pending. Durable account and refresh state are follow-up infrastructure (D-081). |
 
 Implementation status is tracked in [task.md](task.md); this document remains the source of truth for intended behaviour. A component that disagrees with §5 or §6 is wrong, not the document.
 
@@ -380,3 +389,4 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 |---|---|---|
 | 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
 | 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
+| 2026-10-07 | 0.3 | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081). |

@@ -3,9 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   clearSessionToken,
   onSessionTokenChange,
+  refreshToken,
   resetSessionForTests,
+  SESSION_REFRESH_TOKEN_KEY,
   SESSION_TOKEN_KEY,
   sessionToken,
+  setSessionCredentials,
   setSessionToken,
 } from './session';
 
@@ -32,6 +35,26 @@ describe('the session token', () => {
 
     expect(window.sessionStorage.getItem(SESSION_TOKEN_KEY)).toBe('t-1');
     expect(window.localStorage.getItem(SESSION_TOKEN_KEY)).toBeNull();
+  });
+
+  it('stores access and refresh credentials in tab-scoped storage only', () => {
+    setSessionCredentials('access-1', 'refresh-1');
+
+    expect(sessionToken()).toBe('access-1');
+    expect(refreshToken()).toBe('refresh-1');
+    expect(window.sessionStorage.getItem(SESSION_TOKEN_KEY)).toBe('access-1');
+    expect(window.sessionStorage.getItem(SESSION_REFRESH_TOKEN_KEY)).toBe('refresh-1');
+    expect(window.localStorage.getItem(SESSION_REFRESH_TOKEN_KEY)).toBeNull();
+  });
+
+  it('clears both credentials when the session ends', () => {
+    setSessionCredentials('access-1', 'refresh-1');
+
+    clearSessionToken();
+
+    expect(sessionToken()).toBeNull();
+    expect(refreshToken()).toBeNull();
+    expect(window.sessionStorage.getItem(SESSION_REFRESH_TOKEN_KEY)).toBeNull();
   });
 
   it('treats an empty or blank token as no session at all', () => {

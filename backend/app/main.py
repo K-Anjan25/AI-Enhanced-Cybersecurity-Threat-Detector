@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     alerts,
     api_keys,
     audit,
+    auth,
     flows,
     health,
     hunt,
@@ -42,6 +43,7 @@ from app.api.v1.endpoints import (
     webhooks,
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
+from app.auth.tokens import TokenService
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
@@ -51,6 +53,7 @@ from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
+from app.services.auth_accounts import AuthAccountStore
 from app.services.entity_registry import EntityRegistry
 from app.services.erasure import (
     EntityRedactionTarget,
@@ -245,6 +248,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.state.settings = resolved
+    # Protected routes used to reach RBAC without the composition root installing
+    # its token verifier, turning every authenticated request into a 500. Make the
+    # same signed-token service available to REST, WebSocket and auth endpoints.
+    app.state.token_service = TokenService(resolved.secret_key)
     app.state.service_name = resolved.service_name
     app.state.version = __version__
     app.state.environment = resolved.env.value
@@ -393,12 +400,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # authority for the lifecycle rules is ml-service's registry (T-212); this
     # restates them at the edge, which is a named gap, not a hidden duplicate.
     app.state.model_ops = ModelOpsService()
-    # The user directory (T-410). Empty, like the model registry and for the same
-    # reason (D-047): a deployment's users are its own, and seeding an identity from
-    # code would put a name nobody chose into the table that decides who can
-    # administer the system. The screen says the directory is empty rather than
-    # inventing a bootstrap account.
-    app.state.user_admin = UserAdminService(directory=InMemoryUserDirectory())
+    # The user directory and authentication accounts (T-410/T-417). The default
+    # is still empty; there is no built-in demo identity. An operator can seed the
+    # initial administrator from environment-provided credentials, or explicitly
+    # enable the development-only first-account form. Both use the same in-memory
+    # directory, and both remain process-local until the database adapter lands.
+    user_directory = InMemoryUserDirectory()
+    app.state.auth_accounts = AuthAccountStore(user_directory)
+    if resolved.bootstrap_admin_email is not None and resolved.bootstrap_admin_password is not None:
+        app.state.auth_accounts.create_initial_admin(
+            resolved.bootstrap_admin_email,
+            resolved.bootstrap_admin_password.get_secret_value(),
+        )
+    app.state.user_admin = UserAdminService(directory=user_directory)
     # The hand-set threshold panel (T-410). It reads and writes the same store the
     # recalibration job does, so a value a person set and a value the job fitted
     # cannot live in two places -- and the preview counts against the alert store
@@ -457,6 +471,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # schema that exists (T-320).
     declare_components(app, (FlowRecordIn, LogRecordIn))
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(metrics.router)
     app.include_router(ingest.router)
     # ``stream`` comes first because its paths are literal where ``alerts`` now has

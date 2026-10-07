@@ -23,20 +23,20 @@
  *     content into messages that reach a log or a screen: a FastAPI error body
  *     echoes back part of the request, and a URL carries query parameters. The
  *     error's message says what kind of failure it was; the status is a number.
- *   * **The session token rides along, and a 401 ends the session.** The API is
- *     authenticated (T-302); the credential lives in `src/api/session.ts` and is
- *     attached here, in the one place every request is built, rather than by each
- *     caller. A `401` means the credential is not (or no longer) valid, so the
- *     session is cleared and the socket's refusal banner becomes true; a `403`
- *     does **not**, because a valid credential without the required role is a
- *     permissions message, not a reason to sign the operator out.
+ *   * **The session token rides along, and an expired pair rotates once.** The
+ *     access token and refresh token live in `src/api/session.ts`; every request
+ *     attaches the access token here. On `401`, one single-use refresh attempt may
+ *     replace the pair and retry the request. If that fails, the session is cleared
+ *     and the sign-in screen returns. A `403` does **not** sign the operator out,
+ *     because a valid credential without the required role is a permissions
+ *     message, not an expired session.
  *   * **Every request is abortable, and a request that hangs is aborted anyway.**
  *     React Query cancels on unmount by signal; the timeout covers the case where
  *     nothing cancels — a proxy holding the socket open forever, which would leave
  *     a panel loading longer than the data could possibly still be useful.
  */
 
-import { clearSessionToken, sessionToken } from './session';
+import { clearSessionToken, refreshToken, sessionToken, setSessionCredentials } from './session';
 
 /** What kind of failure happened, which is what the UI is allowed to say. */
 export type ApiFailure = 'unreachable' | 'timeout' | 'status' | 'malformed';
@@ -73,6 +73,10 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /** Serialised as JSON. Only meaningful with `POST`. */
   body?: unknown;
+  /** Do not send the stored bearer token (used by public auth endpoints). */
+  includeAuth?: boolean;
+  /** Try one shared refresh on 401. Auth endpoints disable their own retry. */
+  retryUnauthorized?: boolean;
   /**
    * Statuses whose body is still the answer.
    *
@@ -114,6 +118,8 @@ async function request(path: string, options: RequestOptions): Promise<Response>
     okStatuses = [],
     method = 'GET',
     body,
+    includeAuth = true,
+    retryUnauthorized = true,
   } = options;
   let timedOut = false;
 
@@ -141,7 +147,7 @@ async function request(path: string, options: RequestOptions): Promise<Response>
   }
   const headers: Record<string, string> = { accept: accept ?? 'application/json' };
   if (payload !== undefined) headers['content-type'] = 'application/json';
-  const token = sessionToken();
+  const token = includeAuth ? sessionToken() : null;
   // No token means no header, not an empty one: `Authorization: Bearer ` is a
   // credential-shaped string that the API would have to reject, and it reads in a
   // log like an attempt rather than an absence.
@@ -168,8 +174,66 @@ async function request(path: string, options: RequestOptions): Promise<Response>
     signal?.removeEventListener('abort', onAbort);
   }
 
+  if (response.status === 401 && retryUnauthorized && token !== null && refreshToken() !== null) {
+    if (await refreshSession()) {
+      return request(path, { ...options, retryUnauthorized: false });
+    }
+    const replacementToken = sessionToken();
+    if (replacementToken !== null && replacementToken !== token) {
+      // A sign-in completed while this request was waiting for refresh. Retry once
+      // with that newer session rather than clearing it because of the old 401.
+      return request(path, { ...options, retryUnauthorized: false });
+    }
+  }
   if (!response.ok && !okStatuses.includes(response.status)) throw statusError(response);
   return response;
+}
+
+interface RefreshedCredentials {
+  access_token: string;
+  refresh_token: string;
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Share one refresh request across concurrent 401 responses to avoid token replay. */
+function refreshSession(): Promise<boolean> {
+  if (refreshInFlight !== null) return refreshInFlight;
+  refreshInFlight = performRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function performRefresh(): Promise<boolean> {
+  const token = refreshToken();
+  const accessAtStart = sessionToken();
+  if (token === null || accessAtStart === null) return false;
+  try {
+    const response = await request('/api/v1/auth/refresh', {
+      method: 'POST',
+      body: { refresh_token: token },
+      includeAuth: false,
+      retryUnauthorized: false,
+    });
+    const credentials = await readJson<RefreshedCredentials>(response);
+    if (
+      typeof credentials.access_token !== 'string' ||
+      credentials.access_token === '' ||
+      typeof credentials.refresh_token !== 'string' ||
+      credentials.refresh_token === ''
+    ) {
+      throw new ApiError('malformed', response.status, 'the refreshed session was incomplete');
+    }
+    // Do not resurrect a session the operator signed out of while this request
+    // was in flight, or overwrite credentials from a later sign-in.
+    if (refreshToken() !== token || sessionToken() !== accessAtStart) return false;
+    setSessionCredentials(credentials.access_token, credentials.refresh_token);
+    return true;
+  } catch {
+    if (refreshToken() === token && sessionToken() === accessAtStart) clearSessionToken();
+    return false;
+  }
 }
 
 /** A status the API refused with — the status is data, the body is not. */
@@ -208,6 +272,15 @@ export async function postJson<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   return readJson<T>(await request(path, { ...options, method: 'POST', body }));
+}
+
+/** `POST` a JSON body to an endpoint whose successful response has no body. */
+export async function postVoid(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<void> {
+  await request(path, { ...options, method: 'POST', body });
 }
 
 /**

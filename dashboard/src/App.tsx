@@ -27,10 +27,11 @@
  * than merely hidden, which is also what makes the refusal testable by request count.
  * `/alerts` and `/alerts/:alertId` are the loop §8.3 keeps, so they are not wrapped.
  */
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Route, Routes } from 'react-router-dom';
 
-import { sessionToken } from './api/session';
+import { sessionToken, onSessionTokenChange } from './api/session';
+import { signOut } from './api/auth';
 import { AppShell } from './components/layout/AppShell';
 import { EmptyState } from './components/ui';
 import { useViewportClass } from './components/hooks/viewport';
@@ -45,6 +46,7 @@ import { ModelsPage } from './features/models/pages/ModelsPage';
 import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
+import { SignInPage } from './features/auth/SignInPage';
 
 /**
  * A screen, when the window is wide enough for it to be offered (§8.3).
@@ -71,11 +73,11 @@ function Offered({ children }: { children: ReactNode }) {
  * The routes, plus the shell — inside the provider, because the top bar's search
  * control opens the palette and so needs the handle the provider publishes.
  */
-function Shell() {
+function Shell({ onSignOut }: { onSignOut: () => void }) {
   const { openPalette } = useCommands();
   return (
     <Routes>
-      <Route element={<AppShell onOpenPalette={openPalette} />}>
+      <Route element={<AppShell onOpenPalette={openPalette} onSignOut={onSignOut} />}>
         <Route
           index
           element={
@@ -155,6 +157,14 @@ function Shell() {
 }
 
 export function App() {
+  const [token, setToken] = useState(() => sessionToken());
+  useEffect(() => onSessionTokenChange(setToken), []);
+  const handleSignOut = useCallback(() => {
+    void signOut().catch(() => undefined);
+  }, []);
+
+  if (token === null) return <SignInPage />;
+
   return (
     <ToastProvider>
       <CommandProvider
@@ -162,7 +172,7 @@ export function App() {
         // by the time it is asked, not what was saved when the app started.
         listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}
       >
-        <Shell />
+        <Shell onSignOut={handleSignOut} />
       </CommandProvider>
     </ToastProvider>
   );
