@@ -12,6 +12,8 @@
  * current decision and this panel is what a second analyst reads to understand how
  * the first one got there — including which record each verdict superseded.
  */
+import { TriangleAlert } from 'lucide-react';
+
 import { Card } from '../../../components/ui';
 import { formatInstant } from '../../../lib/format';
 import type { AlertDetail } from '../types';
@@ -42,9 +44,13 @@ export function ContextPanel({ detail }: { detail: AlertDetail }) {
         }
       >
         {hint.tone === 'warn' ? (
-          <span aria-hidden="true" className="mr-2">
-            {'\u26A0'}
-          </span>
+          // A Lucide triangle rather than the `⚠` character it used to be (§5.6).
+          // Still `aria-hidden`: the sentence beside it is the message, and a screen
+          // reader announcing "warning sign" before it would be reading punctuation.
+          <TriangleAlert
+            aria-hidden="true"
+            className="mr-2 inline size-icon-sm align-text-bottom"
+          />
         ) : null}
         {hint.text}
       </p>

@@ -149,6 +149,10 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     # Reading alerts is the viewer's whole job, so viewer is present here.
     "/api/v1/alerts": frozenset(Role),
+    # The overview is those same rows, aggregated (T-416): every role that may read
+    # an alert may read the window's counts, and no role may read it that may not
+    # read the alerts themselves.
+    "/api/v1/overview": frozenset(Role),
     # One alert and its explanation, evidence and context: the detail behind the
     # list, so it is the same read the list is (FR-51, T-404).
     "/api/v1/alerts/{alert_id}": frozenset(Role),
@@ -162,10 +166,22 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # class of data the alert list already shows a viewer.
     "/api/v1/logs": frozenset(Role),
     "/api/v1/logs/lines": frozenset(Role),
+    # The traffic explorer's aggregate (T-418). Reading traffic is reading for the same
+    # reason reading logs is: R-53 gives viewer the read capability, and an address is
+    # the same class of datum the alert list already shows a viewer. The route is a GET
+    # on a path the ingest router also uses, which is why the matrix is keyed by path
+    # and the capability test enumerates methods separately.
+    "/api/v1/flows": frozenset(Role),
     # Webhook configuration is responder-and-above (R-53). Reading the list is
     # as sensitive as writing it: a target's URL names internal infrastructure.
     "/api/v1/webhooks": frozenset({Role.RESPONDER, Role.ADMIN}),
     "/api/v1/webhooks/{webhook_id}": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # T-422's two routes: the delivery list and a test send. Both are webhook
+    # configuration by another name -- a record names a target, and a test send
+    # points the deployment at it -- so both carry R-53's capability rather than
+    # widening the delivery list to every reader.
+    "/api/v1/webhooks/deliveries": frozenset({Role.RESPONDER, Role.ADMIN}),
+    "/api/v1/webhooks/{webhook_id}/test": frozenset({Role.RESPONDER, Role.ADMIN}),
     # API key management is admin-only (D-042). A key is a credential, and
     # issuing one is minting authority: the same decision as creating a user,
     # which R-53 already reserves for admin.
@@ -190,6 +206,18 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # the system, so viewer and analyst are deliberately absent: reading is the
     # viewer's job, taking a copy is not.
     "/api/v1/hunt/export": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # The triage queue's batch export (T-415, FR-23). The same capability and the
+    # same two roles as the hunt export, because it is the same act -- a window's
+    # worth of alert rows leaving the system -- and two exports with two role rules
+    # would be a way around the stricter one.
+    "/api/v1/alerts/export": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # User and role administration (T-410). R-53 reserves it for admin alone, and
+    # the capability is `users` rather than `read`: the directory names every
+    # account and what it may do, which is reconnaissance for anyone planning an
+    # escalation.
+    "/api/v1/users": frozenset({Role.ADMIN}),
+    "/api/v1/users/roles": frozenset({Role.ADMIN}),
+    "/api/v1/users/{user_id}/role": frozenset({Role.ADMIN}),
     # The audit trail is read by every role (FR-42, FR-43 reserves the *export*
     # for responder and above). Reading it is reading: no capability beyond the
     # one every authenticated role already holds.
@@ -200,7 +228,9 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # capability, which admin alone holds -- a recalibration changes what the
     # system alerts on, exactly as a promotion changes what scores it.
     "/api/v1/thresholds": frozenset(Role),
+    "/api/v1/thresholds/preview": frozenset(Role),
     "/api/v1/thresholds/recalibrate": frozenset({Role.ADMIN}),
+    "/api/v1/thresholds/{family}/{band}": frozenset({Role.ADMIN}),
     # The stream is read-only for every role, viewer included (FR-20). The
     # WebSocket handshake is checked by `authenticate` rather than by the HTTP
     # dependency, because a socket is not a Request -- but it is the same table

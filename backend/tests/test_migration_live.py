@@ -72,13 +72,23 @@ def _tables(engine: object) -> list[str]:
         ]
 
 
+#: The months the initial migration partitions ``alerts`` and ``ingest_stats`` into.
+_INITIAL_PARTITION_TABLES = 6
+
+
 def test_upgrade_applies_cleanly(engine: object) -> None:
+    from app.db.models import ALL_TABLES
+
     assert _alembic("downgrade", "base").returncode == 0
 
     result = _alembic("upgrade", "head")
 
     assert result.returncode == 0, result.stderr
-    assert len(_tables(engine)) == 15
+    # Every documented table, plus the partition tables the initial migration
+    # creates: written as a sum rather than a literal so a new model cannot make this
+    # line a reason to edit the test (T-419 added log_events and had to).
+    assert len(_tables(engine)) == len(ALL_TABLES) + _INITIAL_PARTITION_TABLES
+    assert set(ALL_TABLES) <= set(_tables(engine))
 
 
 def test_downgrade_removes_everything(engine: object) -> None:

@@ -608,13 +608,17 @@ def test_the_definition_sorts_a_multi_value_filter() -> None:
 
 
 def test_only_the_six_formula_characters_are_defused() -> None:
-    """A falsy or unusual first character is data, and must survive untouched."""
-    from app.services.hunt_export import _cell
+    """A falsy or unusual first character is data, and must survive untouched.
+
+    The renderer moved to ``app.services.table_export`` when the queue's export
+    (T-415) needed the same rows in the same columns; the rule it pins is unchanged.
+    """
+    from app.services.table_export import cell_text, defuse_formula
 
     for safe in ("'quoted", "/path", "0.8", "trace-1", "[bracket", "_x", "\u00e9"):
-        assert _cell(safe) == safe
+        assert defuse_formula(cell_text(safe)) == safe
     for hostile in ("=x", "+x", "-x", "@x", "\tx", "\rx"):
-        assert _cell(hostile) == f"'{hostile}"
+        assert defuse_formula(cell_text(hostile)) == f"'{hostile}"
 
 
 def test_the_filename_is_colon_free_even_with_an_offset_window() -> None:

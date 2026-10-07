@@ -15,11 +15,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from app.api.v1.deps import alert_store, audit_trail, client_ip, retention_policy
 from app.auth.rbac import Capability, Principal, require
 from app.schemas.alert_detail import AlertDetailOut
+from app.schemas.alert_export import AlertExportRequest, ExportFormat
+from app.schemas.hunt import CSV_MEDIA_TYPE
 from app.schemas.query import MAX_PAGE_SIZE, AlertPage, AlertQuery, CursorError
 from app.schemas.verdict import (
     VerdictHistoryOut,
@@ -33,8 +35,15 @@ from app.services.alert_detail import (
     detail_of,
     related_window,
 )
+from app.services.alert_export import (
+    PDF_MEDIA_TYPE,
+    alert_export_filename,
+    now_utc,
+    render_rows_pdf,
+)
 from app.services.audit_log import AuditAction, record_action
 from app.services.query_service import paginate
+from app.services.table_export import query_definition, render_rows_csv
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
     UnknownVerdict,
@@ -45,6 +54,104 @@ from app.services.verdict_service import (
 )
 
 router = APIRouter(prefix="/api/v1", tags=["alerts"])
+
+
+#: The export's caller. The capability is declared here *and* in ``ROUTE_MATRIX``,
+#: and ``test_rbac.py`` fails if the two disagree -- the same double check T-408's
+#: hunt export makes, because an audited egress is the wrong place to be clever.
+_Exporter = Annotated[Principal, require(Capability.EXPORT)]
+
+
+@router.post(
+    "/alerts/export",
+    summary="Export an alert batch as CSV or PDF (FR-23)",
+    response_class=Response,
+    responses={
+        200: {
+            "description": (
+                "The matching rows: RFC-4180 CSV, or a PDF report with the filter on the page"
+            ),
+            "content": {
+                CSV_MEDIA_TYPE: {"schema": {"type": "string"}},
+                PDF_MEDIA_TYPE: {"schema": {"type": "string", "format": "binary"}},
+            },
+        }
+    },
+)
+def export_alert_batch(
+    body: AlertExportRequest,
+    request: Request,
+    caller: _Exporter,
+) -> Response:
+    """Render one bounded page of the queue's rows, and record that they were taken.
+
+    The same contract as the hunt console's export, one screen over: the body *is*
+    the filter definition, the rows are the rows the queue showed, and the audit row
+    is written **after** the document is rendered -- a read that failed produced no
+    file, so recording one would put a fiction in the trail.
+
+    What the trail records is the definition, the row count and the format; never a
+    row's content (R-58), because the trail is readable by every role while an alert
+    batch may be scoped to one. ``truncated`` says whether the query held more rows
+    than the export's limit, because "37 rows" and "37 of 4,000" are different
+    disclosures and only one of them is what the file holds.
+
+    The PDF prints the definition as well; the CSV does not, and that asymmetry is
+    T-408's decision (a preamble would break every parser) with T-415's addition (a
+    report read by a person without its window is not a report).
+    """
+    query = body.to_query()
+    try:
+        rows = alert_store(request).fetch(query)
+    except ValueError as exc:
+        # R-34's window rules are validated where the range is used, exactly as the
+        # list route does it: a client error must not surface as a 500.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    page = paginate(rows, query)
+    truncated = page.next_cursor is not None
+
+    document: str | bytes
+    if body.format is ExportFormat.PDF:
+        document = render_rows_pdf(page.items, query, generated_at=now_utc(), truncated=truncated)
+        media_type = PDF_MEDIA_TYPE
+    else:
+        document = render_rows_csv(page.items)
+        media_type = CSV_MEDIA_TYPE
+
+    record_action(
+        audit_trail(request),
+        action=AuditAction.alert_export,
+        actor=caller.subject,
+        target_type="alert_batch",
+        target_id="export",
+        at=datetime.now(UTC),
+        detail={
+            **query_definition(query),
+            "rows": len(page.items),
+            "truncated": truncated,
+            "format": body.format.value,
+        },
+        ip=client_ip(request),
+    )
+
+    filename = alert_export_filename(query, body.format.value)
+    return Response(
+        content=document,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # How many rows the file carries, which is the same number the audit row
+            # records. It is a header rather than something the client counts out of
+            # the document, because a CSV re-parse would be work the server already
+            # did and a PDF cannot be parsed by the dashboard at all -- and because
+            # two counts that could disagree are worse than one that is stated.
+            "X-Export-Rows": str(len(page.items)),
+            # Whether the query held more rows than the file does. The trail records
+            # it, and the operator is told as well: "100 rows" and "100 of 4,000" are
+            # different answers to "did I get everything?".
+            "X-Export-Truncated": "true" if truncated else "false",
+        },
+    )
 
 
 def _ledger(request: Request) -> VerdictLedger:

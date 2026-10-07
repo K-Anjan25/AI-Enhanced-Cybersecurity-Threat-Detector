@@ -27,6 +27,7 @@ import postcss from 'postcss';
 import tailwindcss from 'tailwindcss';
 import { describe, expect, it } from 'vitest';
 
+import { VIEWPORT_QUERY } from '../lib/viewport';
 import { ROW_HEIGHT_CLASS } from './density';
 
 const CONFIG_PATH = fileURLToPath(new URL('../../tailwind.config.js', import.meta.url));
@@ -42,6 +43,7 @@ interface TailwindConfig {
     colors: Record<string, unknown>;
     spacing: Record<string, unknown>;
     fontFamily: Record<string, unknown>;
+    screens: Record<string, string>;
   };
   [key: string]: unknown;
 }
@@ -118,6 +120,40 @@ function publishedTypeScale(): Record<
   }
   expect(Object.keys(scale), 'no type steps parsed out of §5.4').toHaveLength(6);
   return scale;
+}
+
+/**
+ * design.md §8.3's breakpoints, in px, straight out of its table.
+ *
+ * The four rows are written as `< 768 px`, `768–1023 px`, `1024–1439 px` and
+ * `≥ 1440 px`; the *lower* bound of each row above the first is what Tailwind calls a
+ * screen, so the three numbers here are 768, 1024 and 1440.
+ */
+function publishedBreakpoints(): string[] {
+  const start = design.indexOf('### 8.3 Responsive breakpoints');
+  expect(start).toBeGreaterThanOrEqual(0);
+  const section = design.slice(start, design.indexOf('## 9.', start));
+  // One row per line, and the *first* number in the row is its lower bound: `< 768 px`
+  // is 768, `768–1023 px` is 768 (its upper end is the next row's lower one), and so
+  // on. Reading the first number of each row rather than every number in the section
+  // is what keeps `1023` and `1439` — the upper ends of the middle rows, which are the
+  // next row's lower bound and not a boundary any query may name — out of the list. The
+  // table is written widest first, so the set is sorted before it is returned.
+  const bounds = new Set<number>();
+  for (const line of section.split('\n')) {
+    const row = /^\|\s*([^|]*)\|/.exec(line.trim());
+    if (row === null) continue;
+    const first = /(\d{3,4})/.exec(row[1]!);
+    if (first === null) continue;
+    bounds.add(Number.parseInt(first[1]!, 10));
+  }
+  const published = [...bounds].sort((a, b) => a - b).map((width) => `${String(width)}px`);
+  expect(published, 'no breakpoint numbers parsed out of §8.3').toEqual([
+    '768px',
+    '1024px',
+    '1440px',
+  ]);
+  return published;
 }
 
 /** The eight documented spacing steps, in px, straight from design.md §5.5. */
@@ -329,6 +365,52 @@ describe('closed scales', () => {
     }
   });
 
+  it('closes the breakpoints to design.md §8.3’s three numbers (T-412)', async () => {
+    // The breakpoints are a scale like the others: Tailwind's defaults are 640, 768,
+    // 1024, 1280 and 1536, and §8.3 publishes three of those numbers plus 1440. Leaving
+    // the defaults in place would let `sm:` and `2xl:` define two breakpoints no
+    // document mentions, and a screen written against them would be a layout decision
+    // nobody made.
+    expect(config.theme.screens).toEqual({ md: '768px', lg: '1024px', xl: '1440px' });
+    const published = publishedBreakpoints();
+    expect(Object.values(config.theme.screens)).toEqual(published);
+
+    const compiled = await compile('md:flex-row lg:grid-cols-2 xl:grid-cols-4');
+    for (const [prefix, width] of [
+      ['md', published[0]],
+      ['lg', published[1]],
+      ['xl', published[2]],
+    ] as const) {
+      expect(compiled, `${prefix}: did not compile to ${width}`).toContain(
+        `@media (min-width: ${width})`,
+      );
+    }
+  });
+
+  it('emits nothing for a breakpoint design.md does not publish', async () => {
+    const compiled = await compile('sm:flex-row 2xl:grid-cols-6');
+    for (const cls of ['sm:flex-row', '2xl:grid-cols-6']) {
+      expect(compiled, `${cls} compiled — the breakpoints are not closed`).not.toContain(
+        cls.replace(':', '\\:'),
+      );
+    }
+    expect(compiled).not.toContain('@media');
+  });
+
+  it('agrees with the media queries the viewport hook builds', async () => {
+    // Two spellings of one boundary: Tailwind's `max-md:` variant and
+    // `VIEWPORT_QUERY.narrow` from lib/viewport.ts. A panel hidden by the first and a
+    // page hidden by the second have to hide at the same width, which is only true
+    // while both are derived from the same numbers.
+    const [md, lg] = publishedBreakpoints();
+    const compiled = await compile('max-md:hidden max-lg:hidden');
+    const bound = (px: string): string => (Number.parseFloat(px) - 0.02).toFixed(2);
+    expect(compiled).toContain(`@media not all and (min-width: ${md})`);
+    expect(compiled).toContain(`@media not all and (min-width: ${lg})`);
+    expect(VIEWPORT_QUERY.narrow).toBe(`(max-width: ${bound(md!)}px)`);
+    expect(VIEWPORT_QUERY.narrowOrCompact).toBe(`(max-width: ${bound(lg!)}px)`);
+  });
+
   it('keeps the density helper and the compiled token in agreement', async () => {
     const compiled = await compile(Object.values(ROW_HEIGHT_CLASS).join(' '));
     expect(compiled).toContain('.h-row-comfortable { height: 44px');
@@ -369,6 +451,38 @@ describe('shipped sources', () => {
       const found = palette.exec(source);
       expect(found?.[0] ?? null, `${name} uses the off-token class ${found?.[0]}`).toBeNull();
     }
+  });
+
+  it('compiles every colour utility the shipped sources name', async () => {
+    // The palette check above catches `bg-red-500`; it cannot catch a *misspelled
+    // token* like `text-severity-critical-text`, which is not an off-token palette
+    // colour but an off-token name — and since `theme.colors` is closed, it compiles
+    // to nothing at all and the element silently keeps the default text colour. Two
+    // error messages in the hunt console shipped that way (T-408) and rendered in
+    // normal ink; T-409 found it while adding the models screens. Compiling what the
+    // sources actually contain is the general form of the check, and it is the one
+    // that would have caught the typo the day it was typed.
+    // The trailing lookahead keeps a *partial* utility out of the set: a prose
+    // reference like `bg-severity-*` and a template such as `bg-severity-${tone}`
+    // are fragments, not classes, and Tailwind would emit nothing for either. A
+    // hyphen after the longest match means the token did not end there.
+    //
+    // The leading lookbehind is the same rule at the other end, and it is what the
+    // first version of this check got wrong: `\b` matched inside a compound class, so
+    // `align-text-bottom` (a real utility, used by the triage context panel's warning
+    // icon) was read as the invented class `text-bottom` and failed. A utility does
+    // not begin after a word character *or* a hyphen.
+    const utility =
+      /(?<![\w-])(?:bg|text|border|divide|ring|fill|stroke)-[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*(?![-\w*$])/g;
+    const candidates = new Set<string>();
+    for (const [, source] of shipped) {
+      for (const match of source.matchAll(utility)) candidates.add(match[0]);
+    }
+    // A regex that matched nothing would make the assertion below vacuous.
+    expect(candidates.size).toBeGreaterThanOrEqual(20);
+    const compiled = await compile([...candidates].join(' '));
+    const missing = [...candidates].filter((name) => !compiled.includes(`.${name} {`));
+    expect(missing, 'utilities that emit no CSS at all').toEqual([]);
   });
 
   it('keeps index.html free of colour literals as well', () => {

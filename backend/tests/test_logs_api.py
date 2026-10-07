@@ -15,8 +15,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.auth.tokens import TokenService
-from app.core.config import Environment, Settings
+from app.core.config import Environment, LogStoreMode, Settings
 from app.main import create_app
+from app.services.log_source import TailLogSource, tail_reason
 from app.services.log_tail import LogTail
 from fastapi.testclient import TestClient
 
@@ -79,11 +80,16 @@ def client(settings: Settings, auth: TokenService) -> Iterator[TestClient]:
     # until the wall clock walks past ``START + 60 s`` and then fails forever, which
     # is exactly what happened on 2026-10-06 at 10:15 UTC.
     tail = built.state.log_tail
-    built.state.log_tail = LogTail(
+    driven = LogTail(
         max_lines=tail.max_lines,
         max_age_seconds=tail.max_age_seconds,
         clock=lambda: START + timedelta(seconds=30),
     )
+    built.state.log_tail = driven
+    # Reads pass through the source (T-419), so the driven tail has to be the one the
+    # source holds -- swapping only the buffer would leave the routes reading the tail
+    # the composition root built, whose clock is the wall clock.
+    built.state.log_source = TailLogSource(driven, reason=tail_reason(LogStoreMode.AUTO))
     with TestClient(built) as test_client:
         yield test_client
 

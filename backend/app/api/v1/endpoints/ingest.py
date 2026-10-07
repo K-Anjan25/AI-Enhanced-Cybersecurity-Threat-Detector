@@ -15,7 +15,7 @@ oversized batch has no record to attribute the problem to.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
 from typing import Annotated, TypeVar
 
@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.api.openapi_docs import ndjson_batch_body
-from app.api.v1.deps import admission, audit_trail, client_ip, log_tail
+from app.api.v1.deps import admission, audit_trail, client_ip, flow_source, log_source
 from app.auth.rbac import Capability, Principal, require
 from app.observability import metrics
 from app.schemas.ingest import (
@@ -35,7 +35,9 @@ from app.schemas.ingest import (
     RecordError,
 )
 from app.services.audit_log import AuditAction, record_action
+from app.services.flow_store import FlowStoreUnavailable
 from app.services.ingest_service import BatchTooLarge, UnsupportedMediaType, ingest_batch
+from app.services.log_store import LogStoreUnavailable
 
 router = APIRouter(prefix="/api/v1/ingest", tags=["ingest"])
 
@@ -48,7 +50,7 @@ _T = TypeVar("_T", bound=BaseModel)
 _NDJSON = "application/x-ndjson"
 
 
-def _ingest(
+async def _ingest(
     request: Request,
     response: Response,
     body: bytes,
@@ -58,15 +60,18 @@ def _ingest(
     caller: Principal,
     action: AuditAction,
     modality: str,
-    keep: Callable[[Sequence[_T]], int] | None = None,
+    keep: Callable[[Sequence[_T]], Awaitable[int]] | None = None,
 ) -> IngestResponse:
     """Run one ingest, translate batch-level failures into status codes, audit it.
 
     ``keep`` is where accepted records go to be *shown* rather than scored -- the
-    log tail (T-407), which the explorer reads. It is a callable rather than a
-    store lookup so this helper keeps knowing nothing about what a deployment
-    hangs off an ingest, and it is called after the hand-off, beside the audit
-    row, so a request that failed on its way out kept nothing.
+    log read model (T-407's tail, or T-419's store, whichever the deployment
+    configured). It is an awaitable callable rather than a store lookup so this
+    helper keeps knowing nothing about what a deployment hangs off an ingest, and it
+    is called after the hand-off, beside the audit row, so a request that failed on
+    its way out kept nothing. It is awaited for the same reason it is called here
+    rather than later: a store write that has not committed when the response is sent
+    is a line the caller was told was taken in and cannot read back.
 
     These are the failures that have no record to attribute them to, so they
     cannot be expressed as entries in a per-record error list.
@@ -134,8 +139,12 @@ def _ingest(
         if keep is not None:
             # Fed where the trail is fed, and after the hand-off for the same
             # reason: a request that failed before publishing kept nothing, so the
-            # tail never shows a line the pipeline never saw.
-            keep(accepted)
+            # read model never shows a line the pipeline never saw. Awaited, so a
+            # line the caller is told was taken in is a line the next read can find;
+            # a store that cannot write fails the request rather than losing the
+            # batch quietly -- the records were enqueued, so a retry duplicates
+            # rather than loses, which is T-307's rule for the worker applied here.
+            await keep(accepted)
         record_action(
             audit_trail(request),
             action=action,
@@ -193,16 +202,31 @@ async def ingest_flows(
 ) -> IngestResponse:
     """Accept up to 1,000 flow records as JSON or NDJSON (FR-01)."""
     body = await request.body()
-    return _ingest(
-        request,
-        response,
-        body,
-        FlowRecordIn,
-        MAX_FLOW_RECORDS,
-        caller=caller,
-        action=AuditAction.ingest_flows,
-        modality="flow",
-    )
+    try:
+        return await _ingest(
+            request,
+            response,
+            body,
+            FlowRecordIn,
+            MAX_FLOW_RECORDS,
+            caller=caller,
+            action=AuditAction.ingest_flows,
+            modality="flow",
+            # The read model the traffic explorer reads (T-418): the store when the
+            # deployment configured one, the in-process rollup otherwise. A flow record
+            # has no line to fold, so this is the flow route's own hook and not the
+            # log tail's.
+            keep=flow_source(request).append,
+        )
+    except FlowStoreUnavailable as exc:
+        # The batch was validated and handed to the broker, and the store refused it.
+        # 503 rather than 200: the caller would otherwise be told the traffic was taken
+        # in while the next read cannot find it. A retry duplicates on the broker rather
+        # than losing traffic, which is T-307's rule for the worker.
+        raise HTTPException(
+            status_code=503,
+            detail=f"the batch was accepted but could not be stored: {exc}",
+        ) from exc
 
 
 @router.post(
@@ -218,19 +242,30 @@ async def ingest_logs(
 ) -> IngestResponse:
     """Accept up to 5,000 log lines as JSON or NDJSON (FR-02)."""
     body = await request.body()
-    return _ingest(
-        request,
-        response,
-        body,
-        LogRecordIn,
-        MAX_LOG_LINES,
-        caller=caller,
-        action=AuditAction.ingest_logs,
-        modality="log",
-        # The tail the explorer reads (T-407). Only log batches are kept: a flow
-        # record has no line to show, and the traffic explorer reads its own set.
-        keep=log_tail(request).append,
-    )
+    try:
+        return await _ingest(
+            request,
+            response,
+            body,
+            LogRecordIn,
+            MAX_LOG_LINES,
+            caller=caller,
+            action=AuditAction.ingest_logs,
+            modality="log",
+            # The read model the explorer reads (T-407's tail, or T-419's store when
+            # the deployment configured one). Only log batches are kept: a flow record
+            # has no line to show, and the traffic explorer reads its own set.
+            keep=log_source(request).append,
+        )
+    except LogStoreUnavailable as exc:
+        # The batch was validated and handed to the broker, and the store refused it.
+        # 503 rather than 200: the caller would otherwise be told the records were
+        # taken in while the next read cannot find them. A retry duplicates on the
+        # broker rather than losing a line, which is T-307's rule for the worker.
+        raise HTTPException(
+            status_code=503,
+            detail=f"the batch was accepted but could not be stored: {exc}",
+        ) from exc
 
 
 def ndjson_media_type() -> str:

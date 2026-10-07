@@ -16,15 +16,16 @@
  *     `score: null`, and the path skips it rather than drawing through zero — a line
  *     at the floor reads as "benign", and the truth is "nothing happened".
  *   * **The brush is visible, not implied.** The unselected region is dimmed and the
- *     selected range is announced in words beside the chart (`brushLabel`), so the
- *     current selection is never only a shading.
+ *     selected range is announced in words beside the chart (`spanLabel`, printed
+ *     under it and in the group's accessible name), so the current selection is never
+ *     only a shading.
  *   * **A table is available for everything drawn** (§9): the same buckets render as
  *     a table behind a toggle, with the counts the bars encode.
  */
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { Button } from '../../../components/ui';
-import { formatInstant, formatStamp } from '../../../lib/format';
+import { formatBytes, formatCount, formatInstant, formatStamp } from '../../../lib/format';
 import type { BrushRange, TrafficBucket } from '../aggregate';
 import type { ChartPalette } from '../../../components/charts/palette';
 
@@ -68,7 +69,7 @@ export function BrushSeries({
   const innerWidth = width - PADDING.left - PADDING.right;
   const innerHeight = height - PADDING.top - PADDING.bottom;
 
-  const peak = buckets.reduce((best, bucket) => Math.max(best, bucket.records), 0);
+  const peak = buckets.reduce((best, bucket) => Math.max(best, bucket.flows), 0);
   // §7: a count axis starts at zero. The ceiling is at least 1 so an all-empty
   // window draws a baseline rather than dividing by zero.
   const ceiling = Math.max(1, peak);
@@ -79,7 +80,7 @@ export function BrushSeries({
       bucket,
       x: PADDING.left + index * step,
       width: Math.max(1, step - 1),
-      height: (bucket.records / ceiling) * innerHeight,
+      height: (bucket.flows / ceiling) * innerHeight,
     }));
 
     // One segment per contiguous run of buckets that have a score: a break in the
@@ -252,7 +253,7 @@ export function BrushSeries({
 
         {/* Count axis, from zero, with its unit named. */}
         <text x={4} y={PADDING.top + 10} fill={palette.muted} className="text-caption">
-          records
+          flows
         </text>
         <text x={4} y={PADDING.top + innerHeight} fill={palette.muted} className="text-caption">
           0
@@ -272,7 +273,7 @@ export function BrushSeries({
             data-testid={`bar-${String(bar.bucket.start.getTime())}`}
           >
             <title>
-              {`${formatInstant(bar.bucket.start.toISOString())}: ${String(bar.bucket.records)} records, ${String(bar.bucket.alerts)} alerts`}
+              {`${formatInstant(bar.bucket.start.toISOString())}: ${formatCount(bar.bucket.flows)} flows, ${formatBytes(bar.bucket.bytes)}, ${String(bar.bucket.alerts)} alerts`}
             </title>
           </rect>
         ))}
@@ -380,7 +381,10 @@ export function BrushSeries({
                 Bucket start
               </th>
               <th scope="col" className="py-2 pr-4 font-semibold">
-                Records
+                Flows
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                Bytes
               </th>
               <th scope="col" className="py-2 pr-4 font-semibold">
                 Alerts
@@ -396,7 +400,8 @@ export function BrushSeries({
                 <th scope="row" className="py-1 pr-4 text-left font-normal text-ink">
                   {formatStamp(bucket.start.toISOString())}
                 </th>
-                <td className="py-1 pr-4 tabular-nums text-ink">{bucket.records}</td>
+                <td className="py-1 pr-4 tabular-nums text-ink">{formatCount(bucket.flows)}</td>
+                <td className="py-1 pr-4 tabular-nums text-ink">{formatBytes(bucket.bytes)}</td>
                 <td className="py-1 pr-4 tabular-nums text-ink">{bucket.alerts}</td>
                 <td className="py-1 pr-4 tabular-nums text-ink">
                   {bucket.score === null ? 'no data' : bucket.score.toFixed(2)}

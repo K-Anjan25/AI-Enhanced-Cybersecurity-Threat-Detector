@@ -38,7 +38,7 @@ export function SavedHunts({
   const [name, setName] = useState('');
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-2 md:flex-row md:items-center">
       <Button
         variant="secondary"
         size="sm"

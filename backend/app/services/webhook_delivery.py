@@ -456,6 +456,7 @@ class WebhookSender:
         "_clock",
         "_jitter",
         "_log",
+        "_on_report",
         "_policy",
         "_resolver",
         "_sleep",
@@ -477,6 +478,7 @@ class WebhookSender:
         clock: Callable[[], float] = time.time,
         jitter: Callable[[], float] = random.random,
         log: Callable[[Mapping[str, object]], None] | None = None,
+        on_report: Callable[[DeliveryReport], None] | None = None,
     ) -> None:
         """Wire the transport, the vault, the allowlist and the retry policy.
 
@@ -490,7 +492,13 @@ class WebhookSender:
             sleep: the backoff sleeper, injected so tests do not wait.
             clock: the clock the delivery id and timestamp come from.
             jitter: the draw, uniform in ``[0, 1]``, applied to each backoff.
-            log: a sink for delivery records; ``None`` logs nothing.
+            log: a sink for delivery records; ``None`` logs nothing. The records
+                are structured log lines, not a read model (T-422).
+            on_report: a sink for every attempted delivery's report, so the read
+                model the connectors screen serves is fed where the attempt is
+                made rather than by whoever asked for the send. ``None`` records
+                nothing, and a *skipped* delivery is never handed over: it made
+                no attempt, so there is no outcome to read (T-422).
 
         Raises:
             ValueError: if the timeout is not positive.
@@ -507,6 +515,7 @@ class WebhookSender:
         self._clock = clock
         self._jitter = jitter
         self._log = log
+        self._on_report = on_report
 
     def _skip_reason(self, target: WebhookTarget, notification: AlertNotification) -> str | None:
         """Why this target must not receive this alert, or ``None`` to send.
@@ -554,18 +563,7 @@ class WebhookSender:
             )
 
         delivery_id = _delivery_id(self._clock)
-        timestamp = int(self._clock())
-        secret = self._vault.open(target.secret_token)
-        document = alert_event(notification, delivery_id=delivery_id, at=datetime.now(UTC))
-        body = event_body(document)
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "aegis-webhook/1",
-            EVENT_HEADER: EVENT_NAME,
-            DELIVERY_HEADER: delivery_id,
-            TIMESTAMP_HEADER: str(timestamp),
-            SIGNATURE_HEADER: sign_body(secret, body, timestamp=timestamp),
-        }
+        body, headers = self._signed_envelope(target, notification, delivery_id)
 
         attempts: list[DeliveryAttempt] = []
         for attempt in range(1, self._policy.max_attempts + 1):
@@ -599,6 +597,68 @@ class WebhookSender:
                 break
 
         return self._report(delivery_id, target.id, attempts)
+
+    def probe(self, target: WebhookTarget, notification: AlertNotification) -> DeliveryReport:
+        """Attempt one delivery, with no retries, and record it (T-422).
+
+        The question a probe answers is "will this endpoint take a signed event
+        now", and one attempt answers it: the deployment's transport, allowlist and
+        address pinning are used exactly as a real delivery uses them, so the
+        outcome means the same thing. Retries are deliberately absent -- a test
+        send that took the alert path's backoff would hold a request open for the
+        policy's whole budget to answer a question the first response already
+        answered -- and the severity floor is not consulted, because an operator
+        testing a target they just registered asked for the send.
+
+        Raises:
+            SecretUnreadable: as :meth:`deliver`, and for the same reason: no
+                number of attempts makes a rotated application key work.
+        """
+        delivery_id = _delivery_id(self._clock)
+        body, headers = self._signed_envelope(target, notification, delivery_id)
+        outcome, status, reason = self._attempt(target, body, headers)
+        self._emit(
+            {
+                "event": "webhook.attempt",
+                "delivery": delivery_id,
+                "target": target.id,
+                "attempt": 1,
+                "outcome": outcome,
+                "status": status,
+                "reason": reason,
+            }
+        )
+        return self._report(
+            delivery_id,
+            target.id,
+            [
+                DeliveryAttempt(
+                    attempt=1,
+                    outcome=outcome,
+                    status=status,
+                    delay_before=0.0,
+                    reason=reason,
+                )
+            ],
+        )
+
+    def _signed_envelope(
+        self, target: WebhookTarget, notification: AlertNotification, delivery_id: str
+    ) -> tuple[bytes, dict[str, str]]:
+        """The body and headers one delivery sends, signed with the target's secret."""
+        timestamp = int(self._clock())
+        secret = self._vault.open(target.secret_token)
+        document = alert_event(notification, delivery_id=delivery_id, at=datetime.now(UTC))
+        body = event_body(document)
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "aegis-webhook/1",
+            EVENT_HEADER: EVENT_NAME,
+            DELIVERY_HEADER: delivery_id,
+            TIMESTAMP_HEADER: str(timestamp),
+            SIGNATURE_HEADER: sign_body(secret, body, timestamp=timestamp),
+        }
+        return body, headers
 
     def _attempt(
         self, target: WebhookTarget, body: bytes, headers: Mapping[str, str]
@@ -660,6 +720,8 @@ class WebhookSender:
                 "waited_seconds": round(report.waited_seconds, 3),
             }
         )
+        if self._on_report is not None:
+            self._on_report(report)
         return report
 
     def _emit(self, record: Mapping[str, object]) -> None:

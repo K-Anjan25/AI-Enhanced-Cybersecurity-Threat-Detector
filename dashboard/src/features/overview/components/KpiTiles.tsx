@@ -2,9 +2,9 @@
  * The KPI tiles (design.md §4.1).
  *
  * Five tiles: three severity counts, the open-alert count, and mean time to
- * verdict. The first four are read straight out of the alert window; the fifth has
- * no source in this build, and says so on its face rather than showing a zero that
- * would read as "verdicts are instant".
+ * verdict. All five come from the same aggregate (T-416), so no tile can disagree
+ * with the chart below it — and the verdict tile says what its mean covers rather
+ * than showing a figure whose basis is invisible.
  *
  * Numbers are `font.mono` with tabular figures (§5.4) so the tiles do not jitter as
  * they refresh, and each severity tile keeps the palette's ordering rather than the
@@ -18,16 +18,16 @@ export interface Tile {
   value: number | null;
   /** A short line under the value: the window, a target, or why it is absent. */
   caption: string;
+  /** The unit the value is in, rendered beside it (e.g. `s`). */
+  unit?: string | undefined;
   severity?: Severity | undefined;
 }
 
 export interface KpiTilesProps {
   tiles: readonly Tile[];
-  /** How much of the window was actually read; a partial count says so. */
-  partial: boolean;
 }
 
-export function KpiTiles({ tiles, partial }: KpiTilesProps) {
+export function KpiTiles({ tiles }: KpiTilesProps) {
   return (
     <dl className="grid grid-cols-2 gap-4 lg:grid-cols-5">
       {tiles.map((tile) => (
@@ -41,11 +41,11 @@ export function KpiTiles({ tiles, partial }: KpiTilesProps) {
           </dt>
           <dd className="mt-2 text-display font-semibold tabular-nums text-ink">
             {tile.value === null ? '—' : formatCount(tile.value)}
+            {tile.unit === undefined || tile.value === null ? null : (
+              <span className="ml-1 text-body-sm text-muted">{tile.unit}</span>
+            )}
           </dd>
-          <dd className="mt-1 text-caption text-muted">
-            {tile.caption}
-            {partial && tile.value !== null ? ' · partial coverage' : ''}
-          </dd>
+          <dd className="mt-1 text-caption text-muted">{tile.caption}</dd>
         </div>
       ))}
     </dl>

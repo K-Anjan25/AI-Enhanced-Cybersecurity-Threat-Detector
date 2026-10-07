@@ -28,6 +28,25 @@ import type { LogWindow } from './cluster';
 /** How often a live tail is re-read, while it is live and the tab is visible. */
 export const LOG_TAIL_REFRESH_MS = 2_000;
 
+/**
+ * How often a *wide* window is re-read (T-419).
+ *
+ * The 2 s cadence exists because a tail's subject is the last few seconds. A 24-hour
+ * window's subject is a trend, and architecture.md §14's 15 s is what a trend view
+ * asks for; re-reading a day of clusters every two seconds would spend fifteen times
+ * the requests to make a chart that has not visibly moved. The threshold is the tail's
+ * own retention: at or below it this is a tail, above it it is an investigation.
+ */
+export const LOG_WIDE_REFRESH_MS = 15_000;
+
+/** The span at or below which the read is a tail rather than a trend: 15 minutes. */
+export const TAIL_CADENCE_CEILING_MS = 900_000;
+
+/** How often to re-read a read of this span. */
+export function refreshMsFor(spanMs: number): number {
+  return spanMs > TAIL_CADENCE_CEILING_MS ? LOG_WIDE_REFRESH_MS : LOG_TAIL_REFRESH_MS;
+}
+
 export interface LogFilters {
   /** `'all'` reads every level; the API takes no filter at all for that. */
   level: LogLevel | 'all';
@@ -49,6 +68,7 @@ export function useLogTail(
   window: LogWindow,
   filters: LogFilters,
   enabled = true,
+  refreshMs: number = LOG_TAIL_REFRESH_MS,
 ): UseQueryResult<LogTail, Error> {
   return useQuery({
     queryKey: ['logs', 'tail', window.start.toISOString(), window.end.toISOString(), filters.level],
@@ -60,7 +80,7 @@ export function useLogTail(
         signal,
       }),
     enabled,
-    refetchInterval: enabled ? LOG_TAIL_REFRESH_MS : false,
+    refetchInterval: enabled ? refreshMs : false,
     placeholderData: keepPreviousData,
   });
 }

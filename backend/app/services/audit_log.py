@@ -110,9 +110,21 @@ class AuditAction(StrEnum):
     model_promote = "model.promote"
     model_rollback = "model.rollback"
     threshold_recalibrate = "threshold.recalibrate"
+    threshold_set = "threshold.set"
+    user_role = "user.role"
     #: The one *read* in this table: an export is data leaving the system, which is
     #: the question the trail answers (T-408, D-065).
     hunt_export = "hunt.export"
+    #: The triage queue's batch export -- the same class of action as the hunt's, on
+    #: a different selection (T-415, FR-23).
+    alert_export = "alert.export"
+
+    #: A test delivery to a configured endpoint (T-422). It is in the trail because
+    #: it is a request that left the building carrying alert-shaped data, aimed by
+    #: hand rather than by a rule: whoever pointed the deployment at an address and
+    #: pressed send should be answerable for it. The URL and the secret are not in
+    #: the record, for the same reasons they are not in the create record.
+    webhook_test = "webhook.test"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -124,6 +136,7 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/alerts/{alert_id}/verdict"): AuditAction.alert_verdict,
         ("POST", "/api/v1/webhooks"): AuditAction.webhook_create,
         ("DELETE", "/api/v1/webhooks/{webhook_id}"): AuditAction.webhook_delete,
+        ("POST", "/api/v1/webhooks/{webhook_id}/test"): AuditAction.webhook_test,
         ("POST", "/api/v1/keys"): AuditAction.key_create,
         ("DELETE", "/api/v1/keys/{key_id}"): AuditAction.key_revoke,
         ("POST", "/api/v1/retention/run"): AuditAction.retention_apply,
@@ -131,9 +144,12 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/models/{model_id}/promote"): AuditAction.model_promote,
         ("POST", "/api/v1/models/{kind}/rollback"): AuditAction.model_rollback,
         ("POST", "/api/v1/thresholds/recalibrate"): AuditAction.threshold_recalibrate,
+        ("PUT", "/api/v1/thresholds/{family}/{band}"): AuditAction.threshold_set,
+        ("POST", "/api/v1/users/{user_id}/role"): AuditAction.user_role,
         # The export (T-408). A POST because it writes a trail row -- see the
         # module docstring of ``app.api.v1.endpoints.hunt``.
         ("POST", "/api/v1/hunt/export"): AuditAction.hunt_export,
+        ("POST", "/api/v1/alerts/export"): AuditAction.alert_export,
     }
 )
 

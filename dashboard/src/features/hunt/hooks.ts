@@ -21,7 +21,6 @@ import {
 } from '@tanstack/react-query';
 
 import { fetchAlertPage, type AlertListParams, type AlertPage } from '../../api/alerts';
-import { ApiError } from '../../api/client';
 import { exportHunt } from '../../api/hunt';
 
 /** The alert page this console reads: one bounded read, no cursor walk. */
@@ -65,18 +64,9 @@ export function useHuntExport(): UseMutationResult<HuntExportResult, Error, Aler
 /**
  * What a refused export should say, in the analyst's terms.
  *
- * A 403 is the only refusal this route produces for a signed-in caller, and it is
- * the *server's* answer rather than something the dashboard predicts: the screen
- * does not know the role, and inventing one from a token it cannot verify would be
- * a guess rendered as a rule.
+ * Moved to `src/api/exports.ts` when the triage queue's export (T-415) needed the
+ * same sentence -- two exports explaining one 403 two ways is how a permissions
+ * message becomes a guess. Re-exported here because this is where the console and
+ * its tests have always read it from.
  */
-export function exportRefusalMessage(error: Error | null): string | null {
-  if (error === null) return null;
-  if (error instanceof ApiError && error.status === 403) {
-    return 'Exporting needs the responder role. Your account does not have it, so nothing was written to the audit trail.';
-  }
-  if (error instanceof ApiError && error.status === 401) {
-    return 'The session is not authenticated, so the export was refused.';
-  }
-  return 'The export could not be read. Nothing was downloaded.';
-}
+export { exportRefusalMessage } from '../../api/exports';

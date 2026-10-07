@@ -32,12 +32,18 @@ import {
 import { useCallback, useEffect, useMemo } from 'react';
 
 import { useDocumentVisible } from '../../components/hooks/polling';
+import { isTypingTarget, listStepIntent } from '../../lib/keyboard';
 import { useAlertSync } from '../../components/realtime/useAlertSync';
 import { ApiError } from '../../api/client';
 import { fetchAlertDetail, fetchQueue, recordVerdict, QUEUE_LIMIT, QUEUE_WINDOW_MS } from './api';
 import type { AlertDetail } from './types';
 import type { VerdictName } from './verdicts';
-import type { AlertPage } from '../../api/alerts';
+import {
+  exportAlerts,
+  type AlertExportFormat,
+  type AlertListParams,
+  type AlertPage,
+} from '../../api/alerts';
 
 /** The triage screen's cadence. A queue is not a chart; 15 s is fast enough. */
 export const TRIAGE_REFRESH_MS = 15_000;
@@ -161,6 +167,48 @@ export function useRecordVerdict(): UseMutationResult<
   });
 }
 
+/** The result of one export, as the controls report it. */
+export interface AlertExportResult {
+  format: AlertExportFormat;
+  /** The document, handed to `saveFile` by the caller. */
+  content: Blob;
+  /** The server's filename, which carries the window. */
+  filename: string | null;
+  /** How many rows the file carries, as the server counted them. */
+  rows: number | null;
+  /** Whether the queue's window held more rows than the file does. */
+  truncated: boolean;
+}
+
+export interface AlertExportRequest {
+  format: AlertExportFormat;
+  /** The queue's window and filters, so the file is the view's rows (T-415). */
+  params: AlertListParams;
+}
+
+/**
+ * Export the alert batch, as CSV or as a PDF report (FR-23).
+ *
+ * A mutation rather than a query, exactly as the hunt export is (T-408): it is an
+ * action with a pending state, a refusal the server owns and an outcome the operator
+ * has to be told about. The refetch-after-mutation React Query does by default is
+ * switched off -- the queue did not change because somebody took a copy of it.
+ */
+export function useAlertExport(): UseMutationResult<AlertExportResult, Error, AlertExportRequest> {
+  return useMutation({
+    mutationFn: async ({ format, params }) => {
+      const document = await exportAlerts(params, format);
+      return {
+        format,
+        content: document.content,
+        filename: document.filename,
+        rows: document.rows,
+        truncated: document.truncated,
+      };
+    },
+  });
+}
+
 /** Whether the triage screen should be polling at all. */
 export function useTriageVisible(): boolean {
   return useDocumentVisible();
@@ -178,7 +226,9 @@ export function useTriageVisible(): boolean {
  *     the browser and the OS.
  *   * **Typing is not a verdict.** A keypress that lands in an input, a textarea,
  *     a select or a contenteditable region is that control's, not this screen's —
- *     this is the bug that makes a shortcut dangerous once a note field exists.
+ *     this is the bug that makes a shortcut dangerous once a note field exists. The
+ *     rule itself lives in `lib/keyboard.ts` so `j`/`k` below cannot disagree with
+ *     it.
  */
 export function useVerdictShortcuts(
   onVerdict: (verdict: VerdictName) => void,
@@ -188,19 +238,48 @@ export function useVerdictShortcuts(
   const handler = useCallback(
     (event: KeyboardEvent) => {
       if (!enabled || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        target.closest('input, textarea, select, [contenteditable]')
-      ) {
-        return;
-      }
+      // One implementation of "that keystroke is the field's" for the whole app
+      // (T-411): a second copy here is how the two drift apart.
+      if (isTypingTarget(event.target)) return;
       const verdict = resolve(event.key);
       if (verdict === null) return;
       event.preventDefault();
       onVerdict(verdict);
     },
     [enabled, onVerdict, resolve],
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handler]);
+}
+
+/**
+ * The `j`/`k` shortcuts: open the next or previous alert in the queue (T-411).
+ *
+ * They move the *selection*, not the focus. The analyst reading a detail and
+ * pressing `j` wants the next alert, and the screen's whole design is "a queue
+ * beside a detail" — so the step is a route change, exactly what the "Next alert"
+ * link does, and it goes through `stepHref` in `links.ts` so the two cannot
+ * disagree about where next is.
+ *
+ * The rules are the verdict shortcuts' rules, because they are the same problem:
+ * a repeat is ignored (holding `j` would walk the queue), a modified keystroke is
+ * the browser's, and a keystroke in a field belongs to the field. `enabled` is
+ * false while the queue is empty or failed, so the key does nothing rather than
+ * navigating to a row the screen does not have.
+ */
+export function useQueueShortcuts(enabled: boolean, onStep: (delta: -1 | 1) => void): void {
+  const handler = useCallback(
+    (event: KeyboardEvent) => {
+      if (!enabled) return;
+      const step = listStepIntent(event);
+      if (step === 0) return;
+      event.preventDefault();
+      onStep(step);
+    },
+    [enabled, onStep],
   );
 
   useEffect(() => {

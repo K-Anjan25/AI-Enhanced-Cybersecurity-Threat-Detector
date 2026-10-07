@@ -140,7 +140,16 @@ def test_the_migration_chain_has_exactly_one_head() -> None:
             path, "down_revision"
         )  # type: ignore[assignment]
     heads = set(revisions) - {down for down in revisions.values() if down}
-    assert heads == {"0002_typed_scores"}
+    assert len(heads) == 1, f"the chain has {len(heads)} heads: {sorted(heads)}"
+    # The head is also named, because a chain that quietly lost its newest revision
+    # would still have exactly one head -- and ``alembic upgrade head`` would stop one
+    # migration short of the schema the models describe.
+    assert heads == {"0004_flow_events"}
+    # And no revision may revise something that does not exist: a broken link is how a
+    # chain turns into two heads without anybody editing a ``revision`` line.
+    known = set(revisions)
+    for revision, down in revisions.items():
+        assert down is None or down in known, f"{revision} revises unknown {down!r}"
 
 
 def test_the_offline_upgrade_types_the_columns_and_checks_severity() -> None:

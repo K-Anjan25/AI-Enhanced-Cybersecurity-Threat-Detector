@@ -932,6 +932,21 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # is data leaving the system, and a copy somebody took is a change to what
         # is knowable about the data, even though no row was written.
         "hunt.export",
+        # T-410: a hand-set threshold, beside the fitted one, and a role change --
+        # which is a change to who can act, like issuing a key.
+        "threshold.set",
+        "user.role",
+        # T-415: the triage queue's batch export. The same class of action as the
+        # hunt's, on a different selection -- FR-23's alert batch rather than a
+        # named hunt -- which is why it is a second value rather than a reused one:
+        # a reviewer asking "who exported the queue" must be answered by a filter,
+        # not by reading every export's detail.
+        "alert.export",
+        # T-422: a test delivery. A request that left the building carrying
+        # alert-shaped data, aimed by hand rather than by a rule, so whoever
+        # pressed send is answerable for it -- the same reasoning that puts the
+        # two exports in the trail.
+        "webhook.test",
     }
 
 

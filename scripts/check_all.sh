@@ -92,6 +92,14 @@ check_dashboard() {
 # The hooks are the same ones CI runs. Skipped rather than failed when either
 # toolchain is absent, because pre-commit needs the dashboard's node_modules for
 # its prettier, stylelint and commitlint hooks.
+#
+# The file list is tracked + untracked-but-not-ignored, not `--all-files`, and
+# the difference is a real defect rather than a preference: `--all-files` means
+# `git ls-files`, so it sees only tracked files. A file that has just been
+# written and not yet `git add`ed is scanned by CI (which checks out the commit)
+# but not here — T-410's four detect-secrets findings sat in exactly that blind
+# spot, green locally and red in CI. Scanning what the commit will contain is
+# what makes this a mirror.
 check_hooks() {
     if ! command -v pre-commit >/dev/null 2>&1; then
         echo
@@ -105,7 +113,9 @@ check_hooks() {
         echo "SKIPPED: dashboard/node_modules missing. Run: (cd dashboard && npm ci)"
         return
     fi
-    run "hooks: pre-commit"  pre-commit run --all-files
+    local -a FILES
+    mapfile -t FILES < <(git ls-files --cached --others --exclude-standard)
+    run "hooks: pre-commit"  pre-commit run --files "${FILES[@]}"
 }
 
 case "$TARGET" in

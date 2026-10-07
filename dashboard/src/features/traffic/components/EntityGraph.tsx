@@ -1,38 +1,41 @@
 /**
- * The entity graph (design.md §4.4), and the switch that replaces it at scale.
+ * The entity graph (design.md §4.4), and the switch that replaces it at scale (T-418).
  *
- * §4.4 asks for two things in one breath: a force-directed graph, and a static
- * fallback "for >2,000 nodes (a force simulation at that size is unusable — we
- * switch to a ranked adjacency matrix **and say so**)". So this component has two
- * renderers and no third state, and the label is rendered with the mode rather than
- * chosen by it:
+ * §4.4 asks for two things in one breath: a force-directed graph, and a static fallback
+ * "for >2,000 nodes (a force simulation at that size is unusable — we switch to a ranked
+ * adjacency matrix **and say so**)". So this component has two renderers and no third
+ * state, and the label is rendered with the mode rather than chosen by it:
  *
- *   * `force` — an SVG of circles and lines, node radius from the entity's volume
- *     (area-scaled, `graph.ts`), fill from its peak severity, edge width from the
- *     shared-trace count. Hovering shows the numbers in a native `<title>`, and
- *     clicking a node pins it.
- *   * `adjacency` — a ranked matrix over the most active entities, with the reason
- *     string and the "showing N of M" count rendered above it, because a matrix
- *     without that sentence looks like the whole graph.
+ *   * `force` — an SVG of circles and lines, node radius from the address's flow count
+ *     (area-scaled, `graph.ts`), fill from its peak alert severity, edge width from the
+ *     records that flowed between the two addresses. Hovering shows the numbers in a
+ *     native `<title>`, and clicking a node pins it.
+ *   * `adjacency` — a ranked matrix over the most active addresses, with the reason
+ *     string and the "showing N of M" count rendered above it, because a matrix without
+ *     that sentence looks like the whole graph.
  *
  * The layout is computed once per data change with a fixed tick count and no timer
- * (`layoutGraph`), so the picture is reproducible — and because it is
- * never animated, `reducedMotion` needs no flag here: there is no motion for a
- * reader to opt out of.
+ * (`layoutGraph`), so the picture is reproducible — and because it is never animated,
+ * `reducedMotion` needs no flag here: there is no motion for a reader to opt out of.
+ *
+ * The node labels are **addresses**, because that is what the flow read model counts an
+ * entity by (T-418): an alert's `entity_id` is not an address, so the graph names what
+ * the traffic names, and the alert counts the endpoint attaches to an address are the
+ * only numbers here that come from the alert side.
  */
 import { useMemo } from 'react';
 
 import { Badge, EmptyState } from '../../../components/ui';
 import type { ChartPalette } from '../../../components/charts/palette';
-import { formatInstant } from '../../../lib/format';
+import { formatCount, formatInstant } from '../../../lib/format';
 import { adjacencyMatrix, layoutGraph, type GraphModel } from '../graph';
 
 export interface EntityGraphProps {
   model: GraphModel;
   palette: ChartPalette;
-  /** The pinned entity, or `null`. Clicking a node toggles it. */
-  pinnedEntityId: number | null;
-  onPin: (entityId: number | null) => void;
+  /** The pinned address, or `null`. Clicking a node toggles it. */
+  pinnedId: string | null;
+  onPin: (id: string | null) => void;
   width?: number;
   height?: number;
 }
@@ -40,7 +43,7 @@ export interface EntityGraphProps {
 export function EntityGraph({
   model,
   palette,
-  pinnedEntityId,
+  pinnedId,
   onPin,
   width = 520,
   height = 360,
@@ -54,42 +57,40 @@ export function EntityGraph({
   if (model.nodes.length === 0) {
     return (
       <EmptyState
-        title="No entities in this selection"
-        description="Widen the brush or lower the record threshold to bring entities back into view."
+        title="No addresses in this selection"
+        description="Widen the brush or lower the flow threshold to bring addresses back into view."
       />
     );
   }
 
   return (
     <div>
-      <p className="mb-2 text-caption text-muted" data-testid="graph-mode">
-        {model.reason}
-      </p>
+      <p className="mb-2 text-caption text-muted">{model.reason}</p>
 
       {/* `group`, not `img`: the nodes are buttons, and a presentational `img` role
           would hide every one of them from assistive technology. */}
       {matrix === null ? (
         <svg
           role="group"
-          aria-label={`Entity relationships: ${String(model.nodes.length)} entities, ${String(model.edges.length)} relationships. ${model.reason}`}
+          aria-label={`Address relationships: ${String(model.nodes.length)} addresses, ${String(model.edges.length)} relationships. ${model.reason}`}
           viewBox={`0 0 ${String(width)} ${String(height)}`}
           className="w-full"
         >
           {layout.edges.map((edge) => (
             <line
-              key={`${String(edge.edge.source)}-${String(edge.edge.target)}`}
+              key={`${edge.edge.source}->${edge.edge.target}`}
               x1={edge.source.x}
               y1={edge.source.y}
               x2={edge.target.x}
               y2={edge.target.y}
               stroke={palette.grid}
-              strokeWidth={Math.min(4, 0.5 + edge.edge.sharedTraces)}
-              data-testid={`edge-${String(edge.edge.source)}-${String(edge.edge.target)}`}
+              strokeWidth={Math.min(4, 0.5 + Math.log10(1 + edge.edge.flows) * 2)}
+              data-testid={`edge-${edge.edge.source}-${edge.edge.target}`}
             />
           ))}
 
           {layout.nodes.map((node) => (
-            <g key={node.node.entityId}>
+            <g key={node.node.id}>
               <circle
                 cx={node.x}
                 cy={node.y}
@@ -97,25 +98,23 @@ export function EntityGraph({
                 fill={
                   node.node.peakSeverity === null ? palette.muted : palette[node.node.peakSeverity]
                 }
-                stroke={pinnedEntityId === node.node.entityId ? palette.critical : 'transparent'}
+                stroke={pinnedId === node.node.id ? palette.critical : 'transparent'}
                 strokeWidth={2}
                 className="cursor-pointer"
                 role="button"
                 tabIndex={0}
-                aria-pressed={pinnedEntityId === node.node.entityId}
-                aria-label={`Entity ${String(node.node.entityId)}, ${String(node.node.alerts)} alerts, ${String(node.node.records)} records`}
-                onClick={() =>
-                  onPin(pinnedEntityId === node.node.entityId ? null : node.node.entityId)
-                }
+                aria-pressed={pinnedId === node.node.id}
+                aria-label={`Address ${node.node.id}, ${formatCount(node.node.flows)} flows, ${String(node.node.alerts)} alerts`}
+                onClick={() => onPin(pinnedId === node.node.id ? null : node.node.id)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    onPin(pinnedEntityId === node.node.entityId ? null : node.node.entityId);
+                    onPin(pinnedId === node.node.id ? null : node.node.id);
                   }
                 }}
               >
                 <title>
-                  {`Entity ${String(node.node.entityId)} — ${String(node.node.records)} records in ${String(node.node.alerts)} alerts, peak ${node.node.peakSeverity ?? 'unrecognised'}`}
+                  {`${node.node.id} — ${formatCount(node.node.flows)} flows (${formatCount(node.node.inbound)} in, ${formatCount(node.node.outbound)} out) in ${String(node.node.alerts)} alerts, peak ${node.node.peakSeverity ?? 'no alert'}`}
                 </title>
               </circle>
               <text
@@ -125,7 +124,7 @@ export function EntityGraph({
                 fill={palette.muted}
                 className="text-caption"
               >
-                {node.node.entityId}
+                {node.node.id}
               </text>
             </g>
           ))}
@@ -134,55 +133,54 @@ export function EntityGraph({
         <div className="overflow-x-auto">
           <table className="border-collapse text-caption">
             <caption className="sr-only">
-              Ranked adjacency matrix of entity co-occurrence. Showing {matrix.axis.length} of{' '}
-              {matrix.total} entities; empty cells mean no shared correlation trace.
+              Ranked adjacency matrix of flow relationships. Showing {matrix.axis.length} of{' '}
+              {matrix.total} addresses; empty cells mean no traffic in that direction.
             </caption>
             <thead>
               <tr>
                 <th scope="col" className="p-1 text-left font-semibold">
-                  entity
+                  address
                 </th>
                 {matrix.axis.map((column) => (
-                  <th key={column.entityId} scope="col" className="p-1 font-semibold tabular-nums">
-                    {column.entityId}
+                  <th key={column.id} scope="col" className="p-1 font-semibold tabular-nums">
+                    {column.id}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {matrix.axis.map((row) => (
-                <tr key={row.entityId}>
+                <tr key={row.id}>
                   <th scope="row" className="p-1 text-left font-normal tabular-nums text-ink">
-                    {row.entityId}
+                    {row.id}
                   </th>
                   {matrix.axis.map((column) => {
                     const cell = matrix.cells.find(
                       (candidate) =>
-                        candidate.sourceId === row.entityId &&
-                        candidate.targetId === column.entityId,
+                        candidate.sourceId === row.id && candidate.targetId === column.id,
                     );
-                    const weight = cell?.sharedTraces ?? 0;
+                    const weight = cell?.flows ?? 0;
                     return (
                       <td
-                        key={column.entityId}
+                        key={column.id}
                         className="border border-line p-1 text-center tabular-nums"
                         style={{
                           // Shading is the only place a colour is computed, and it is
                           // an opacity on a token colour, never a literal.
                           backgroundColor: palette.high,
                           opacity:
-                            row.entityId === column.entityId
+                            row.id === column.id
                               ? 0
                               : 0.15 + 0.85 * (matrix.peak === 0 ? 0 : weight / matrix.peak),
                         }}
                         title={
                           weight === 0
-                            ? `Entities ${String(row.entityId)} and ${String(column.entityId)}: no shared trace`
-                            : `Entities ${String(row.entityId)} and ${String(column.entityId)}: ${String(weight)} shared traces`
+                            ? `No traffic from ${row.id} to ${column.id} in this window`
+                            : `${formatCount(weight)} flows from ${row.id} to ${column.id}`
                         }
-                        data-testid={`cell-${String(row.entityId)}-${String(column.entityId)}`}
+                        data-testid={`cell-${row.id}-${column.id}`}
                       >
-                        {row.entityId === column.entityId || weight === 0 ? '' : weight}
+                        {row.id === column.id || weight === 0 ? '' : weight}
                       </td>
                     );
                   })}
@@ -193,15 +191,15 @@ export function EntityGraph({
         </div>
       )}
 
-      {pinnedEntityId === null ? null : (
+      {pinnedId === null ? null : (
         <p className="mt-2 flex items-center gap-2 text-caption text-muted">
           <Badge tone="neutral">Pinned</Badge>
-          Entity {pinnedEntityId} and its neighbours are shown; everything else is hidden.
+          {pinnedId} and its neighbours are shown; everything else is hidden.
         </p>
       )}
       {model.edges.length === 0 && model.nodes.length > 1 ? (
         <p className="mt-2 text-caption text-muted" data-testid="graph-no-edges">
-          No shared correlation traces between these entities
+          No flow relationships between these addresses
           {` (last seen ${formatInstant(model.nodes[0]?.lastSeen ?? new Date().toISOString())}).`}
         </p>
       ) : null}

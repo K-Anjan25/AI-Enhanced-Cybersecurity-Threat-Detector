@@ -16,12 +16,21 @@ Four shapes, deliberately separate:
 
 ``worst_level`` is a **level**, not an anomaly score. design.md §4.5 colours anomalous
 templates; no log model is served in this build, so the explorer highlights the worst
-level a cluster reached and says that is what it is (T-419 covers the scored version).
+level a cluster reached and says that is what it is.
+
+**Two read models answer this shape** (T-419). The persistent store (``log_events``)
+and the bounded in-process tail both fold lines into clusters and return these models,
+so a screen renders one contract whichever source its deployment configured. The
+``source`` field is what keeps that honest rather than convenient: it says which of the
+two answered, ``retained_*`` describes *that* source's reach rather than a number that
+means different things in different deployments, and ``dropped_lines`` is null when the
+source cannot report evictions instead of a zero that would read as "nothing was lost".
 """
 
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -86,6 +95,9 @@ class LogClusterOut(BaseModel):
 class LogTailOut(BaseModel):
     """Clusters for one window, plus what the tail could and could not cover."""
 
+    source: Literal["store", "tail"] = Field(
+        description="Which read model answered: the persistent store, or the in-process tail.",
+    )
     start: datetime = Field(description="Window start, inclusive, UTC.")
     end: datetime = Field(description="Window end, exclusive, UTC.")
     clusters: list[LogClusterOut] = Field(default_factory=list)
@@ -93,13 +105,19 @@ class LogTailOut(BaseModel):
     clusters_seen: int = Field(description="Distinct clusters in the window, before any limit.")
     clusters_truncated: bool = Field(description="Whether the row limit cut the list.")
     retained_from: datetime | None = Field(
-        default=None, description="Oldest instant the tail still holds, or null when empty."
+        default=None, description="Oldest instant the source still holds, or null when empty."
     )
     retained_to: datetime | None = Field(
-        default=None, description="Newest instant the tail still holds, or null when empty."
+        default=None, description="Newest instant the source still holds, or null when empty."
     )
-    retained_lines: int = Field(description="Lines held after eviction, across all windows.")
-    dropped_lines: int = Field(description="Lines evicted since the process started.")
+    retained_lines: int = Field(description="Lines the source holds, across all windows.")
+    dropped_lines: int | None = Field(
+        default=None,
+        description=(
+            "Lines evicted since the process started; null when the source cannot "
+            "report evictions, which is not the same as zero."
+        ),
+    )
     caveats: list[str] = Field(
         default_factory=list,
         description="What a reader must know to read the numbers above (R-70).",
@@ -109,6 +127,9 @@ class LogTailOut(BaseModel):
 class LogLinesOut(BaseModel):
     """The raw lines of one cluster (or one window), oldest first."""
 
+    source: Literal["store", "tail"] = Field(
+        description="Which read model answered: the persistent store, or the in-process tail.",
+    )
     start: datetime = Field(description="Window start, inclusive, UTC.")
     end: datetime = Field(description="Window end, exclusive, UTC.")
     key: str | None = Field(default=None, description="Cluster the read was narrowed to, if any.")
@@ -117,6 +138,12 @@ class LogLinesOut(BaseModel):
     lines_truncated: bool = Field(description="Whether the newest rows only are shown.")
     retained_from: datetime | None = Field(default=None)
     retained_to: datetime | None = Field(default=None)
-    retained_lines: int = Field(description="Lines held after eviction, across all windows.")
-    dropped_lines: int = Field(description="Lines evicted since the process started.")
+    retained_lines: int = Field(description="Lines the source holds, across all windows.")
+    dropped_lines: int | None = Field(
+        default=None,
+        description=(
+            "Lines evicted since the process started; null when the source cannot "
+            "report evictions, which is not the same as zero."
+        ),
+    )
     caveats: list[str] = Field(default_factory=list)

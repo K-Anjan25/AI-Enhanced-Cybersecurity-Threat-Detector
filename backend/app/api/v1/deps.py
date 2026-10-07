@@ -24,12 +24,17 @@ from fastapi import Request
 from app.auth.api_keys import ApiKeyStore, KeyDigest
 from app.services.alert_store import AlertStore
 from app.services.audit_log import AuditTrail
+from app.services.entity_registry import EntityRegistry
 from app.services.erasure import ErasureService
+from app.services.flow_source import FlowSource
 from app.services.limits import AdmissionController
+from app.services.log_source import LogSource
 from app.services.log_tail import LogTail
 from app.services.model_ops import ModelOpsService
 from app.services.recalibration import RecalibrationService
 from app.services.retention import RetentionPolicy, StatementRunner
+from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
+from app.services.user_directory import UserAdminService
 
 __all__ = [
     "admission",
@@ -38,14 +43,20 @@ __all__ = [
     "api_key_store",
     "audit_trail",
     "client_ip",
+    "entity_registry",
     "erasure_service",
+    "flow_source",
     "known_partitions",
+    "log_source",
     "log_tail",
     "model_ops",
     "parse_instant",
     "partition_runner",
     "recalibration_service",
     "retention_policy",
+    "threshold_admin",
+    "threshold_impact",
+    "user_admin",
 ]
 
 
@@ -80,8 +91,36 @@ def alert_store(request: Request) -> AlertStore:
     return store
 
 
+def entity_registry(request: Request) -> EntityRegistry:
+    """The process's entity registry: the only source of an entity's name (T-416).
+
+    Alert rows carry ``entity_id`` and nothing else, so every screen that has to
+    render a host or a user value asks here. The persistent source is the
+    ``entities`` table, whose Identity column the ingest path does not write yet
+    (D-053); until it does, this is the same in-memory registry the pipeline
+    allocates ids from, so an alert rendered by the process that created it is
+    named.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, because
+            an unconfigured registry answers every lookup with ``None``, which is
+            indistinguishable from "this deployment has no named entities" -- the
+            overview would render ids and look like a screen that never had names.
+    """
+    registry: EntityRegistry | None = getattr(request.app.state, "entity_registry", None)
+    if registry is None:
+        msg = "entity_registry is not configured on app.state"
+        raise RuntimeError(msg)
+    return registry
+
+
 def log_tail(request: Request) -> LogTail:
     """The process's log tail (T-407).
+
+    Still the tail itself, not the source: the tail is where a deployment without a
+    store keeps its lines, and a test that wants to inspect or drive the buffer wants
+    the buffer rather than whichever read model is answering. The routes read through
+    :func:`log_source`.
 
     Raises:
         RuntimeError: if the composition root never installed one. Loudly, because
@@ -94,6 +133,42 @@ def log_tail(request: Request) -> LogTail:
         msg = "log_tail is not configured on app.state"
         raise RuntimeError(msg)
     return tail
+
+
+def log_source(request: Request) -> LogSource:
+    """Whichever log read model this deployment answers from (T-419).
+
+    The store when one was configured, the tail otherwise, decided once at startup --
+    see :mod:`app.services.log_source`.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, for the
+            same reason as the tail: an unconfigured source answers every read with an
+            empty screen, which reads as a quiet system rather than as a mistake.
+    """
+    source: LogSource | None = getattr(request.app.state, "log_source", None)
+    if source is None:
+        msg = "log_source is not configured on app.state"
+        raise RuntimeError(msg)
+    return source
+
+
+def flow_source(request: Request) -> FlowSource:
+    """Whichever flow read model this deployment answers from (T-418).
+
+    The store when one was configured, the in-process rollup otherwise, decided once at
+    startup -- see :mod:`app.services.flow_source`.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, for the same
+            reason as the log source: an unconfigured source answers every read with an
+            empty graph, which reads as a quiet network rather than as a mistake.
+    """
+    source: FlowSource | None = getattr(request.app.state, "flow_source", None)
+    if source is None:
+        msg = "flow_source is not configured on app.state"
+        raise RuntimeError(msg)
+    return source
 
 
 def api_key_store(request: Request) -> ApiKeyStore:
@@ -207,6 +282,51 @@ def model_ops(request: Request) -> ModelOpsService:
     service: ModelOpsService | None = getattr(request.app.state, "model_ops", None)
     if service is None:
         msg = "model_ops is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
+
+
+def threshold_admin(request: Request) -> ThresholdAdminService:
+    """The hand-set threshold panel's write path (T-410).
+
+    Raises:
+        RuntimeError: if none is installed. A service built per request would hold a
+            store of its own, so a value set here would vanish from the listing and
+            the recalibration job would overwrite it with a fitted one.
+    """
+    service: ThresholdAdminService | None = getattr(request.app.state, "threshold_admin", None)
+    if service is None:
+        msg = "threshold_admin is not configured on app.state"
+        raise RuntimeError(msg)
+    return service
+
+
+def threshold_impact(request: Request) -> ThresholdImpactReader:
+    """The impact preview: a proposed value counted against recorded alerts.
+
+    Raises:
+        RuntimeError: if none is installed. An unwired reader must fail loudly rather
+            than answer zero alerts, which reads as "this value changes nothing".
+    """
+    reader: ThresholdImpactReader | None = getattr(request.app.state, "threshold_impact", None)
+    if reader is None:
+        msg = "threshold_impact is not configured on app.state"
+        raise RuntimeError(msg)
+    return reader
+
+
+def user_admin(request: Request) -> UserAdminService:
+    """The user directory and the rules that guard a role change (T-410).
+
+    Raises:
+        RuntimeError: if none is installed. An empty service built per request would
+            answer "nobody is registered" for a deployment whose users exist, and --
+            worse -- would decide the last-admin rule against an empty directory, so
+            every demotion would be refused as if it were the last admin.
+    """
+    service: UserAdminService | None = getattr(request.app.state, "user_admin", None)
+    if service is None:
+        msg = "user_admin is not configured on app.state"
         raise RuntimeError(msg)
     return service
 

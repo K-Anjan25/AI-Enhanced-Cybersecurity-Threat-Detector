@@ -31,6 +31,23 @@ class Environment(StrEnum):
     PRODUCTION = "production"
 
 
+class LogStoreMode(StrEnum):
+    """Whether reads are answered from the log store, the tail, or by inference.
+
+    T-419. ``AUTO`` is the interesting one: the store is used when the deployment
+    *named* a database URL (``AEGIS_DATABASE_URL`` is set), and the tail is used
+    when it did not. The distinction is between a URL the deployment chose and the
+    built-in default, which exists so ``alembic`` has something to dial -- the
+    default must not silently switch a process's read path to a database it was
+    never told about. ``ON`` and ``OFF`` are for a deployment that wants to be
+    explicit either way, and both are recorded in the response's ``source``.
+    """
+
+    AUTO = "auto"
+    ON = "on"
+    OFF = "off"
+
+
 class Settings(BaseSettings):
     """Backend configuration, populated from environment variables.
 
@@ -108,6 +125,26 @@ class Settings(BaseSettings):
     # count -- because the fold sees the whole tail rather than a page of it.
     log_tail_lines: int = Field(default=20_000, ge=1)
     log_tail_max_age_seconds: float = Field(default=900.0, gt=0)
+
+    # T-419. Which of the two log read models answers. ``auto`` means "the store
+    # when AEGIS_DATABASE_URL was named, the tail otherwise" -- see LogStoreMode.
+    log_store: LogStoreMode = Field(default=LogStoreMode.AUTO)
+    # How long the store's description of itself (its oldest and newest line and
+    # how many it holds) is reused. It changes slowly and a read is not worth three
+    # aggregate queries, but a number nobody refreshes is a lie with a timestamp, so
+    # the cache is short and its age is reported with the read.
+    log_store_coverage_ttl_seconds: float = Field(default=30.0, gt=0)
+
+    # T-418. Which of the two flow read models answers, decided by the same rule as the
+    # log store: ``auto`` means "the store when AEGIS_DATABASE_URL was named, the
+    # in-process rollup otherwise". Separate from ``log_store`` on purpose -- a
+    # deployment may store its logs and roll its traffic up in memory, and the two
+    # screens say which they got rather than sharing one answer.
+    flow_store: LogStoreMode = Field(default=LogStoreMode.AUTO)
+    # The rollup's retention, in minutes. The default is the widest range the traffic
+    # explorer offers, so every offered window is fully answerable by a rollup; a wider
+    # one is answered for the part it still holds, and the caveats say so.
+    flow_rollup_minutes: int = Field(default=60, ge=1)
 
     # Outbound webhooks (FR-21, R-55). The allowlist is empty by default, which
     # means no host is permitted: an empty allowlist is a fail-closed

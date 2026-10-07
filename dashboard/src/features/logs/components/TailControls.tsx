@@ -7,13 +7,15 @@
  * reading would jump the moment it resumed, which is the behaviour the task's
  * acceptance criterion exists to forbid.
  *
- * The window is capped at the tail's own retention by construction: the options are
- * 1, 5 and 15 minutes and the API refuses anything wider than the retention (T-407's
- * 900 s default), so the picker cannot offer a span the server would reject.
+ * The window is capped by *what can answer* (T-419). A tail deployment is offered 1,
+ * 5 and 15 minutes, because the API refuses anything wider than the retention (T-407's
+ * 900 s default); a store deployment is also offered an hour and a day. The list comes
+ * from the page rather than being hard-coded here, so the picker can never offer a span
+ * the server would reject.
  */
 import { Button } from '../../../components/ui';
 import { LOG_LEVELS, type LogLevel } from '../api';
-import { TAIL_SPANS, type TailSpan } from '../cluster';
+import type { TailSpan } from '../cluster';
 import type { LogFilters } from '../hooks';
 
 export interface TailControlsProps {
@@ -21,6 +23,8 @@ export interface TailControlsProps {
   pausedAt: Date | null;
   onPause: (paused: boolean) => void;
   span: TailSpan;
+  /** The spans this deployment can be asked for, widest last (T-419). */
+  spans: readonly TailSpan[];
   onSpan: (key: TailSpan['key']) => void;
   filters: LogFilters;
   onFilters: (filters: LogFilters) => void;
@@ -33,6 +37,7 @@ export function TailControls({
   pausedAt,
   onPause,
   span,
+  spans,
   onSpan,
   filters,
   onFilters,
@@ -49,7 +54,7 @@ export function TailControls({
         {paused ? 'Resume tail' : 'Pause tail'}
       </Button>
 
-      <p className="text-caption text-muted" data-testid="log-tail-state">
+      <p className="text-caption text-muted">
         {paused
           ? `Paused${pausedAt === null ? '' : ` at ${pausedAt.toISOString().slice(11, 19)}Z`} — the window below is frozen and nothing is being read.`
           : `Live · ${windowLabel}`}
@@ -65,7 +70,7 @@ export function TailControls({
           onChange={(event) => onSpan(event.target.value as TailSpan['key'])}
           className="h-8 rounded-input border border-line bg-surface px-2 text-body-sm text-ink"
         >
-          {TAIL_SPANS.map((option) => (
+          {spans.map((option) => (
             <option key={option.key} value={option.key}>
               {option.label}
             </option>

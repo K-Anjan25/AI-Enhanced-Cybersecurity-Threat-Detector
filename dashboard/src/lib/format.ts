@@ -68,6 +68,27 @@ export function formatCount(value: number): string {
   return Number.isFinite(value) ? Math.round(value).toLocaleString('en-US') : '—';
 }
 
+/**
+ * A byte count in the unit a person reads, e.g. `1.4 MB`.
+ *
+ * Binary prefixes (KiB, MiB, GiB) rather than the decimal ones: every number behind
+ * this — a `flow@1` record's `src_bytes + dst_bytes`, summed by the read model — is a
+ * count of bytes, and a screen that called 1,048,576 bytes "1.0 MB" would be off by
+ * 4.9 %. One decimal below ten, none above it, so a column of values lines up.
+ */
+export function formatBytes(value: number): string {
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'] as const;
+  if (!Number.isFinite(value) || value < 0) return '—';
+  let scaled = value;
+  let unit = 0;
+  while (scaled >= 1024 && unit < units.length - 1) {
+    scaled /= 1024;
+    unit += 1;
+  }
+  const rounded = scaled < 10 && unit > 0 ? scaled.toFixed(1) : formatCount(scaled);
+  return `${rounded} ${units[unit] ?? 'B'}`;
+}
+
 /** A rate with its unit, e.g. `1,204 flows/s`. */
 export function formatRate(perSecond: number, unit: string): string {
   return `${formatCount(perSecond)} ${unit}/s`;

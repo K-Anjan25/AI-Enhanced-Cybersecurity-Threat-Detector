@@ -12,6 +12,7 @@
  * window, and when the API reports more, it says so instead of presenting the page
  * as the whole queue.
  */
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -38,6 +39,8 @@ export interface AlertQueueProps {
   selectedId: number | null;
   /** The ticking clock the ages are rendered against. */
   now: number;
+  /** Controls for the panel's header — the batch export (T-415, FR-23). */
+  actions?: ReactNode;
   onRetry?: (() => void) | undefined;
 }
 
@@ -48,12 +51,13 @@ export function AlertQueue({
   windowHours,
   selectedId,
   now,
+  actions,
   onRetry,
 }: AlertQueueProps) {
   const summary = queueSummary(rows.length, hasMore, windowHours);
 
   return (
-    <Card title="Alert queue">
+    <Card title="Alert queue" {...(actions === undefined ? {} : { actions })}>
       <p className="text-body-sm text-muted">{summary.text}</p>
 
       {status === 'error' ? (
@@ -74,7 +78,9 @@ export function AlertQueue({
         </div>
       ) : null}
 
-      {status === 'pending' && rows.length === 0 ? <Skeleton lines={6} /> : null}
+      {status === 'pending' && rows.length === 0 ? (
+        <Skeleton lines={6} label="Alert queue is loading" />
+      ) : null}
 
       {status !== 'pending' && rows.length === 0 ? (
         <EmptyState

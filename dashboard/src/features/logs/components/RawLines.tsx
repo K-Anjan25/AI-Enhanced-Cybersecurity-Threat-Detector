@@ -9,7 +9,9 @@
  * The lines are a snapshot: the panel is filled when a row is opened and not on an
  * interval (a reader who has a cluster open must be able to finish reading it, which
  * is the same argument the pause control makes for the whole screen). The header
- * carries the retention sentence, so an expansion is never mistaken for a store.
+ * carries the API's first caveat, which is the sentence naming where these lines came
+ * from — a tail's own bounds or the store's — so an expansion taken from a fifteen-
+ * minute buffer cannot read as though it were a stored read (T-419).
  */
 import { Badge, Button, Card, ErrorState, Skeleton } from '../../../components/ui';
 import { formatCount, formatStamp } from '../../../lib/format';
