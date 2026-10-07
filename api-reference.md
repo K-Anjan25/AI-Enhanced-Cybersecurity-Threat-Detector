@@ -37,7 +37,7 @@ or body do not match the schema below.
 | `POST` | `/api/v1/keys` | Issue an API key (FR-44) | admin | `201` `ApiKeyIssuedOut` | `ApiKeyCreate` |
 | `GET` | `/api/v1/keys/scopes` | List the scopes a key may hold (FR-44) | admin | `200` `ScopeListOut` | — |
 | `DELETE` | `/api/v1/keys/{key_id}` | Revoke an API key (FR-44) | admin | `200` `ApiKeyOut` | — |
-| `GET` | `/api/v1/logs` | Clustered log tail (log@1) | admin, analyst, responder, viewer | `200` `LogTailOut` | — |
+| `GET` | `/api/v1/logs` | Clustered log read (log@1) | admin, analyst, responder, viewer | `200` `LogTailOut` | — |
 | `GET` | `/api/v1/logs/lines` | Raw log lines behind a cluster (log@1) | admin, analyst, responder, viewer | `200` `LogLinesOut` | — |
 | `GET` | `/api/v1/models` | List registered model versions (FR-30) | admin, analyst, responder, viewer | `200` `ModelListOut` | — |
 | `POST` | `/api/v1/models/{kind}/rollback` | Reverse the most recent promotion of a kind (FR-33) | admin | `200` `ModelTransitionOut` | `RollbackRequest` |
@@ -501,6 +501,7 @@ The raw lines of one cluster (or one window), oldest first.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `source` | `store` or `tail` | yes | Which read model answered: the persistent store, or the in-process tail. |
 | `start` | `string (date-time)` | yes | Window start, inclusive, UTC. |
 | `end` | `string (date-time)` | yes | Window end, exclusive, UTC. |
 | `key` | `string` or `null` | no | Cluster the read was narrowed to, if any. |
@@ -509,8 +510,8 @@ The raw lines of one cluster (or one window), oldest first.
 | `lines_truncated` | `boolean` | yes | Whether the newest rows only are shown. |
 | `retained_from` | `string (date-time)` or `null` | no | — |
 | `retained_to` | `string (date-time)` or `null` | no | — |
-| `retained_lines` | `integer` | yes | Lines held after eviction, across all windows. |
-| `dropped_lines` | `integer` | yes | Lines evicted since the process started. |
+| `retained_lines` | `integer` | yes | Lines the source holds, across all windows. |
+| `dropped_lines` | `integer` or `null` | no | Lines evicted since the process started; null when the source cannot report evictions, which is not the same as zero. |
 | `caveats` | list of `string` | no | — |
 
 ### `LogRecordIn`
@@ -535,16 +536,17 @@ Clusters for one window, plus what the tail could and could not cover.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
+| `source` | `store` or `tail` | yes | Which read model answered: the persistent store, or the in-process tail. |
 | `start` | `string (date-time)` | yes | Window start, inclusive, UTC. |
 | `end` | `string (date-time)` | yes | Window end, exclusive, UTC. |
 | `clusters` | `LogClusterOut` | no | — |
 | `lines_seen` | `integer` | yes | Matching lines folded, before any row limit. |
 | `clusters_seen` | `integer` | yes | Distinct clusters in the window, before any limit. |
 | `clusters_truncated` | `boolean` | yes | Whether the row limit cut the list. |
-| `retained_from` | `string (date-time)` or `null` | no | Oldest instant the tail still holds, or null when empty. |
-| `retained_to` | `string (date-time)` or `null` | no | Newest instant the tail still holds, or null when empty. |
-| `retained_lines` | `integer` | yes | Lines held after eviction, across all windows. |
-| `dropped_lines` | `integer` | yes | Lines evicted since the process started. |
+| `retained_from` | `string (date-time)` or `null` | no | Oldest instant the source still holds, or null when empty. |
+| `retained_to` | `string (date-time)` or `null` | no | Newest instant the source still holds, or null when empty. |
+| `retained_lines` | `integer` | yes | Lines the source holds, across all windows. |
+| `dropped_lines` | `integer` or `null` | no | Lines evicted since the process started; null when the source cannot report evictions, which is not the same as zero. |
 | `caveats` | list of `string` | no | What a reader must know to read the numbers above (R-70). |
 
 ### `MetricPointOut`

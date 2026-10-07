@@ -4,7 +4,7 @@
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Document**     | The release note: what a release contains and what was verified before it shipped                                      |
 | **Version**      | 0.1 — **pre-release**. Sections are filled in by the task that can measure them, and only with measured results (R-74) |
-| **Last updated** | 2026-10-06 (Monday)                                                                                                    |
+| **Last updated** | 2026-10-07 (Tuesday)                                                                                                   |
 | **Related**      | [prd.md](prd.md) · [task.md](task.md) · [memory.md](memory.md) · [design.md](design.md)                                |
 
 **This note is deliberately incomplete, and says which parts are.** A number appears here only
@@ -17,10 +17,10 @@ reader might mistake for a pass. T-510 (v1.0) is the task that publishes this no
 
 Every screen design.md §3 names except `/admin/connectors` (T-422) is built: the overview, alert
 triage with its batch export, the traffic explorer, the log explorer, the hunt console, model ops
-with drift, and the admin screens. E4's remaining work is the read models that make the built
-screens complete rather than capped (T-418, T-419) and the one screen design.md §3 still leaves
-unbuilt (T-422); the accessibility pass (T-413), the frontend-test rule (T-414) and the overview's
-aggregate (T-416) have landed. E5 — load, failure drills, Kubernetes, release engineering — is
+with drift, and the admin screens. E4's remaining work is the flow read model that makes the built
+screens complete rather than capped (T-418) and the one screen design.md §3 still leaves unbuilt
+(T-422); the accessibility pass (T-413), the frontend-test rule (T-414), the overview's aggregate
+(T-416) and the log read model (T-419) have landed. E5 — load, failure drills, Kubernetes, release engineering — is
 untouched.
 
 ## Accessibility (T-413, NFR-09)
@@ -97,6 +97,30 @@ What is **not** yet true: the aggregation SQL is written and tested but not exec
 still reads the in-process store until the database session D-030 records is wired (T-419's
 neighbour problem). Naming is per-process, so an id written by another process or before a restart
 renders as `entity <id>`. Both are stated on the screen rather than papered over.
+
+## The log read model (T-419, FR-52)
+
+Measured 2026-10-07. The log explorer no longer reads only the last 20,000 lines in memory: a
+deployment that names `AEGIS_DATABASE_URL` answers from `log_events`, a PostgreSQL table written on
+ingest, and the API says which of the two read models answered.
+
+| Claim                                                             | Evidence                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| A read survives a restart and a second worker                     | `test_log_store_live.py::test_a_second_client_reads_what_the_first_wrote`, against PostgreSQL 16.2                        |
+| A window older than the tail's retention is readable              | 2-hour-old window: the store answers, the tail refuses it — same test module, both halves asserted                        |
+| A host that has logged nothing since is findable by filter        | the store's window, host and level filters are SQL `WHERE` clauses; the live test reads a quiet host's stored lines       |
+| The caveat about the missing store is gone                        | asserted absent on the Logs screen; a tail deployment keeps its own "not a store" sentence, which is still true for it    |
+| The picker offers only windows the answering source can read      | `spansFor`: 1/5/15 min for a tail, plus 1 h/24 h for a store; the page test drives a 24 h read on the wire                |
+| Counts and rows arrive with the sentence that qualifies them      | the API's caveats, carried verbatim — the store's own set, including that nothing evicts `log_events` yet                 |
+| An unreachable store is a 503, not an empty screen                | both log routes and the ingest write, asserted in `test_logs_source_api.py`                                               |
+| The fold does not depend on which source answered                 | `log_keys.cluster_key` is written at ingest and used by both; `test_log_store_live.py` folds the same lines both ways     |
+| A URL this build cannot open asynchronously is refused at startup | `test_log_engine.py`: the builder names `postgresql+psycopg://`, and `require_async_dialect` refuses a synchronous engine |
+
+What is **not** yet true: nothing evicts `log_events`, so a stored read reports its aged-out count as
+"not reportable" (`null`) rather than as zero, and the API says so in a sentence; there is no text
+search over stored lines — the reads are by window, host, service, level and cluster key — so the
+hunt console's `message` term still carries the reason it is unsearchable; and the alert and
+threshold stores remain in-process until D-030's database session is wired into the request path.
 
 ## Not yet recorded
 

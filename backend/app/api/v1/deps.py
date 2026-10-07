@@ -27,6 +27,7 @@ from app.services.audit_log import AuditTrail
 from app.services.entity_registry import EntityRegistry
 from app.services.erasure import ErasureService
 from app.services.limits import AdmissionController
+from app.services.log_source import LogSource
 from app.services.log_tail import LogTail
 from app.services.model_ops import ModelOpsService
 from app.services.recalibration import RecalibrationService
@@ -44,6 +45,7 @@ __all__ = [
     "entity_registry",
     "erasure_service",
     "known_partitions",
+    "log_source",
     "log_tail",
     "model_ops",
     "parse_instant",
@@ -113,6 +115,11 @@ def entity_registry(request: Request) -> EntityRegistry:
 def log_tail(request: Request) -> LogTail:
     """The process's log tail (T-407).
 
+    Still the tail itself, not the source: the tail is where a deployment without a
+    store keeps its lines, and a test that wants to inspect or drive the buffer wants
+    the buffer rather than whichever read model is answering. The routes read through
+    :func:`log_source`.
+
     Raises:
         RuntimeError: if the composition root never installed one. Loudly, because
             a tail nobody filled answers every read with an empty screen, and
@@ -124,6 +131,24 @@ def log_tail(request: Request) -> LogTail:
         msg = "log_tail is not configured on app.state"
         raise RuntimeError(msg)
     return tail
+
+
+def log_source(request: Request) -> LogSource:
+    """Whichever log read model this deployment answers from (T-419).
+
+    The store when one was configured, the tail otherwise, decided once at startup --
+    see :mod:`app.services.log_source`.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, for the
+            same reason as the tail: an unconfigured source answers every read with an
+            empty screen, which reads as a quiet system rather than as a mistake.
+    """
+    source: LogSource | None = getattr(request.app.state, "log_source", None)
+    if source is None:
+        msg = "log_source is not configured on app.state"
+        raise RuntimeError(msg)
+    return source
 
 
 def api_key_store(request: Request) -> ApiKeyStore:

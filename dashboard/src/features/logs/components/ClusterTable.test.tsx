@@ -58,6 +58,7 @@ const TAIL: LogTail = {
   clusters_truncated: false,
   retained_from: '2026-10-06T10:00:00Z',
   retained_to: '2026-10-06T10:00:09Z',
+  source: 'tail',
   retained_lines: 6,
   dropped_lines: 0,
   caveats: ['not a store', 'Nothing matched these filters'],

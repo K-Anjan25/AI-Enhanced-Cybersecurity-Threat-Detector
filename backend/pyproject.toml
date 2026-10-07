@@ -12,7 +12,13 @@ dependencies = [
     # T-301. The repository layer and the migrations both need the ORM, and
     # alembic is a runtime dependency rather than a dev one because migrations
     # run at deploy time, not at test time.
-    "sqlalchemy>=2.1",
+    #
+    # T-419 added the [asyncio] extra: the log store reads and writes from the
+    # request path, and R-18 forbids a synchronous driver there. The extra is what
+    # installs greenlet, which SQLAlchemy's async engine runs on -- D-030's
+    # follow-on recorded exactly this, and a deployment that pip-installs the
+    # backend alone gets it because it is declared here rather than assumed.
+    "sqlalchemy[asyncio]>=2.1",
     "alembic>=1.20",
     # T-323. The PostgreSQL driver, declared rather than left to the environment:
     # `alembic upgrade head` dials this URL at deploy time, so installing the

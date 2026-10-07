@@ -43,6 +43,7 @@ from app.api.v1.endpoints import (
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
+from app.db.engine import async_session_factory, create_async_database_engine
 from app.db.models import PARTITIONED_TABLES
 from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
@@ -61,6 +62,8 @@ from app.services.erasure import (
 )
 from app.services.health_service import ReadinessRegistry
 from app.services.limits import AdmissionController, RateLimitPolicy
+from app.services.log_source import TailLogSource, store_requested, tail_reason
+from app.services.log_store import PostgresLogStore
 from app.services.log_tail import LogTail
 from app.services.ml_calibration import MlCalibrator
 from app.services.model_ops import ModelOpsService
@@ -151,6 +154,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Drop connected dashboards so they fall back to REST rather than
         # holding a socket that will never speak again (FR-20).
         app.state.alert_hub.close()
+        # Close the log store's pooled connections (T-419). A deployment that
+        # configured a store opened them; leaving them to the garbage collector on a
+        # rolling restart is how a database accumulates half-closed sessions.
+        engine = getattr(app.state, "log_engine", None)
+        if engine is not None:
+            await engine.dispose()
         logger.info("shutdown", service=settings.service_name)
 
 
@@ -249,15 +258,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # overview resolves `entity_id` through it. D-053 records the persistent
     # writer (`entities`) as unwired, like the store above.
     app.state.entity_registry = EntityRegistry()
-    # The log tail (T-407). Logs are validated and handed to the broker, but nothing
-    # consumes or stores them: the worker scores flows only and there is no
-    # `log_events` table, so the explorer's tail is the process's own bounded copy.
-    # In memory and per process, like the alert hub above; the persistent read path
-    # is T-419, and the module docstring names the gap rather than implying a store.
+    # The log tail (T-407). A bounded in-process copy of the accepted lines, for the
+    # deployment that has no log store -- and the thing the store's own wiring below
+    # replaces when the deployment configures one.
     app.state.log_tail = LogTail(
         max_lines=resolved.log_tail_lines,
         max_age_seconds=resolved.log_tail_max_age_seconds,
     )
+    # The log read model (T-419). Which of the two answers is decided here, once, and
+    # it is a question about configuration rather than a probe: `auto` uses the store
+    # when the deployment *named* a database URL, and the tail when only the built-in
+    # default exists. A store that was configured and is unreachable raises on read
+    # rather than falling back -- answering a 92-day window from a 15-minute buffer
+    # would look exactly like "nothing matched", which is what R-70 forbids.
+    #
+    # The engine is built here but opens nothing: SQLAlchemy connects on first use, so
+    # a process whose database is not up yet still starts and reports it through
+    # readiness rather than refusing to boot.
+    named_url = "database_url" in resolved.model_fields_set
+    if store_requested(resolved.log_store, database_url_named=named_url):
+        app.state.log_engine = create_async_database_engine(resolved.database_url)
+        app.state.log_source = PostgresLogStore(
+            async_session_factory(app.state.log_engine),
+            coverage_ttl_seconds=resolved.log_store_coverage_ttl_seconds,
+        )
+    else:
+        app.state.log_engine = None
+        app.state.log_source = TailLogSource(
+            app.state.log_tail, reason=tail_reason(resolved.log_store)
+        )
     # Webhook configuration (T-311). The allowlist is parsed here, at startup,
     # so a malformed entry stops the process with a clear message instead of
     # failing the first alert delivery of the day (R-55).

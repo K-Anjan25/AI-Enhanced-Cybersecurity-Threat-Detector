@@ -8,4 +8,4 @@
  * reach across two layers for a type.
  */
 export { fetchLogLines, fetchLogTail, LOG_LEVELS } from '../../api/logs';
-export type { LogCluster, LogLevel, LogLines, LogTail } from '../../api/logs';
+export type { LogCluster, LogLevel, LogLines, LogSource, LogTail } from '../../api/logs';

@@ -1,20 +1,25 @@
 /**
  * Log explorer — `/logs` (design.md §4.5).
  *
- * A clustered tail: identical lines collapse into one row with a count, a row holding
+ * A clustered read: identical lines collapse into one row with a count, a row holding
  * an error or critical line carries the rail, opening a row shows the raw lines behind
- * it, and the tail can be paused so a stack trace does not scroll away while it is
+ * it, and the view can be paused so a stack trace does not scroll away while it is
  * being read.
  *
- * Five things this screen says out loud rather than hiding:
+ * Six things this screen says out loud rather than hiding:
  *
- *   * **The tail is bounded and in-process.** Every read carries the API's own
- *     caveats, and the screen renders them verbatim beneath the table. It does not
- *     paraphrase them: "not a store" is a claim about the deployment, and a screen
- *     that reworded it would eventually word it wrong.
+ *   * **Where the lines came from.** A deployment answers from the log store or from
+ *     its own process's tail, and the two are not interchangeable: one survives a
+ *     restart and spans a day, the other holds fifteen minutes and dies with the
+ *     process. The header names which one is answering, and every read carries the
+ *     API's own caveats rendered verbatim beneath the table — a screen that
+ *     paraphrased "not a store" would eventually word it wrong.
+ *   * **How far back it can be asked.** The window picker offers what the answering
+ *     source can read: a tail deployment gets the retained spans, a store deployment
+ *     also gets an hour and a day (T-419), so the picker cannot offer a window the
+ *     server would refuse.
  *   * **A level is not an anomaly.** The rail marks lines a reader should look at,
- *     coloured by the level, and the caveats say that no model scored them — the half
- *     of §4.5 this build cannot honestly deliver (T-419).
+ *     coloured by the level, and the caveats say that no model scored them.
  *   * **Nothing is linked to an alert yet.** §4.5 asks a cluster to jump to the alert
  *     that referenced it; an alert's evidence is a window identity, not a set of
  *     lines, so there is nothing to join on and the panel says so instead of offering
@@ -32,8 +37,8 @@ import { formatCount, formatSince } from '../../../lib/format';
 import { ClusterTable } from '../components/ClusterTable';
 import { RawLines } from '../components/RawLines';
 import { TailControls } from '../components/TailControls';
-import { spanOf, tailWindow, templateLabel, type TailSpan } from '../cluster';
-import { useLogLines, useLogTail, type LogFilters } from '../hooks';
+import { SPAN_MS, spanOf, spansFor, tailWindow, templateLabel, type TailSpan } from '../cluster';
+import { refreshMsFor, useLogLines, useLogTail, type LogFilters } from '../hooks';
 import { buildLogView } from '../view';
 
 export function LogsPage() {
@@ -43,18 +48,32 @@ export function LogsPage() {
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   const visible = useDocumentVisible();
-  const span = spanOf(spanKey);
   const paused = pausedAt !== null;
 
   // The window is *state*, not a live expression: pausing freezes it at the instant
   // of the pause, and a resumed tail starts a fresh window. If it were computed from
   // the clock on every render, a paused screen would keep moving — which is the one
   // thing pause exists to prevent.
-  const [window, setWindow] = useState(() => tailWindow(Date.now(), span.spanMs));
+  //
+  // Both it and the read cadence come from the span *asked for* -- its width as the
+  // key defines it (SPAN_MS), not as the answering source clamps it, because the answer
+  // is what this render has not heard yet and the cadence must not depend on it. That
+  // is what keeps this above the query rather than in a cycle with it (T-419).
+  const spanMs = SPAN_MS[spanKey];
+  const [window, setWindow] = useState(() => tailWindow(Date.now(), spanMs));
 
-  const tail = useLogTail(window, filters, visible && !paused);
+  const tail = useLogTail(window, filters, visible && !paused, refreshMsFor(spanMs));
   const lines = useLogLines(window, openKey, visible);
   const now = useNow(5_000);
+
+  // What this deployment can be asked for follows what answered: a store deployment
+  // is offered an hour and a day as well, and a tail deployment keeps the retained
+  // spans. `span` is resolved against the same set, so the picker's value is always
+  // one of its own options even if a deployment's source ever changed underneath a
+  // picked key.
+  const tailSource = tail.data?.source;
+  const spans = spansFor(tailSource);
+  const span = spanOf(spanKey, tailSource);
 
   const view = useMemo(
     () => buildLogView({ tail: tail.data, window, failed: tail.isError }),
@@ -65,7 +84,7 @@ export function LogsPage() {
     setSpanKey(key);
     // A span change is a change to what is being asked for, so it moves the window
     // at once — unless the tail is paused, where the window is the thing being held.
-    if (!paused) setWindow(tailWindow(Date.now(), spanOf(key).spanMs));
+    if (!paused) setWindow(tailWindow(Date.now(), spanOf(key, tailSource).spanMs));
   };
 
   const pause = (next: boolean) => {
@@ -84,9 +103,9 @@ export function LogsPage() {
 
   const openRow = view.rows.find((row) => row.key === openKey) ?? null;
   const staleDetail = paused
-    ? 'The tail is paused, so this window will not change until it is resumed.'
+    ? 'The view is paused, so this window will not change until it is resumed.'
     : view.state === 'loading'
-      ? 'Reading the tail.'
+      ? 'Reading the logs.'
       : `Last read ${formatSince(new Date(tail.dataUpdatedAt).toISOString(), now)}.`;
 
   return (
@@ -95,8 +114,8 @@ export function LogsPage() {
         <div>
           <h1 className="text-h1">Logs</h1>
           <p className="mt-1 text-body-sm text-muted">
-            A bounded live tail of accepted log lines, with identical lines collapsed into one row.
-            Open a cluster to read the lines behind it.
+            Accepted log lines, with identical lines collapsed into one row. Open a cluster to read
+            the lines behind it. {view.sourceLabel}
           </p>
         </div>
       </header>
@@ -106,6 +125,7 @@ export function LogsPage() {
         pausedAt={pausedAt}
         onPause={pause}
         span={span}
+        spans={spans}
         onSpan={changeSpan}
         filters={filters}
         onFilters={setFilters}
@@ -119,7 +139,7 @@ export function LogsPage() {
         actions={
           <span className="text-caption text-muted">
             {view.state === 'loading'
-              ? 'Reading the tail…'
+              ? 'Reading the logs…'
               : `${formatCount(view.clustersSeen)} clusters · ${formatCount(view.linesSeen)} lines · ${formatCount(view.notableCount)} with an error or worse`}
           </span>
         }
@@ -128,7 +148,7 @@ export function LogsPage() {
           <Skeleton lines={5} label="Log clusters" />
         ) : view.state === 'error' ? (
           <ErrorState
-            message="The log tail could not be read"
+            message="The log lines could not be read"
             detail="It reads accepted log lines over the selected window. Nothing is shown rather than a stale window presented as current."
             action={<Button onClick={() => void tail.refetch()}>Retry</Button>}
           />
