@@ -25,9 +25,16 @@
  * T-419 rule — a reworded caveat is a second, unreviewed claim about the data), with
  * only the client-side facts added: which sub-window the numbers describe, how many
  * entities the controls hid, and what the ranked matrix left undrawn.
+ *
+ * What this module does *not* own any more: the selection's caption. The brush used
+ * to filter a bucket list in the browser, and this module reported the selected
+ * buckets in words for a caption under the chart. Since T-418 the chart's own
+ * `spanLabel` states the range it has selected (the brush is the chart's state), and
+ * the three things left over here — `brushed`, `brushLabel` and `bucketsInBrush` —
+ * were dead code kept alive by their own tests. The audit removed them: a helper
+ * nothing renders is a sentence nothing says.
  */
 import {
-  bucketsInBrush,
   trafficEdges,
   trafficNodes,
   trafficSeries,
@@ -76,8 +83,6 @@ export const BUCKET_MINUTES: Record<'1h' | '24h' | '7d', number> = {
 export interface TrafficView {
   /** The brushable series: one bucket per interval across the whole window. */
   series: TrafficBucket[];
-  /** The series' buckets the brush selected, for the caption under the chart. */
-  brushed: TrafficBucket[];
   /** The addresses in the window on screen, after the controls. */
   nodes: TrafficNode[];
   /** Every relationship the read returned; `buildGraph` keeps the drawable ones. */
@@ -138,7 +143,6 @@ export function buildTrafficView(input: TrafficViewInput): TrafficView {
 
   return {
     series,
-    brushed: bucketsInBrush(series, input.brush),
     nodes,
     edges,
     graph,
@@ -169,10 +173,4 @@ function notesFor(input: TrafficViewInput, graph: GraphModel): string[] {
     );
   }
   return notes;
-}
-
-/** The window the brush currently selects, in words, for the panels' captions. */
-export function brushLabel(brush: BrushRange | null): string {
-  if (brush === null) return 'the whole window';
-  return `${new Date(brush.from).toISOString().slice(11, 16)}–${new Date(brush.to).toISOString().slice(11, 16)} UTC`;
 }

@@ -10,7 +10,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { Threshold, ThresholdImpact, ThresholdList } from '../../api/admin';
+import type {
+  RecalibrationResult,
+  Threshold,
+  ThresholdImpact,
+  ThresholdList,
+} from '../../api/admin';
 import {
   BAND_WITHOUT_BOUND,
   SOURCE_CALIBRATED,
@@ -20,6 +25,7 @@ import {
   formatThreshold,
   knownFamilies,
   readPreview,
+  recalibrationSummary,
   setReadiness,
 } from './thresholds';
 
@@ -197,5 +203,45 @@ describe('the band vocabulary', () => {
     // 0.725 is stored as the double just *below* the half, so it rounds down. The
     // panel quotes the number in force rather than the one that was typed in.
     expect(formatThreshold(0.725)).toBe('0.72');
+  });
+});
+
+describe('recalibrationSummary', () => {
+  /**
+   * The response as `RecalibrationOut` sends it (`backend/app/schemas/thresholds.py`):
+   * `since`/`until`/`quantile`, and no `window_days`. The panel's toast read that
+   * field until T-423 and said "over undefined days", which is why this test asserts
+   * the two instants rather than a day count — a day count would pass with a fixture
+   * that invented one.
+   */
+  const RUN: RecalibrationResult = {
+    tenant_id: 't1',
+    band: 'high',
+    at: '2026-10-07T10:00:00Z',
+    since: '2026-09-23T10:00:00Z',
+    until: '2026-10-07T10:00:00Z',
+    quantile: 0.99,
+    minimum_sample: 100,
+    considered: 6,
+    changed: 2,
+    outcomes: [],
+  };
+
+  it('reports the window the run read, the quantile and the sample floor', () => {
+    const sentence = recalibrationSummary(RUN);
+
+    expect(sentence).toContain('23 Sept 2026, 10:00:00Z → 07 Oct 2026, 10:00:00Z');
+    expect(sentence).toContain('2 of 6 bands moved');
+    expect(sentence).toContain('0.99 quantile');
+    expect(sentence).toContain('at least 100 labelled alerts per family');
+    // The defect, as an assertion: a field the server does not send must never reach
+    // a sentence an operator reads.
+    expect(sentence).not.toContain('undefined');
+  });
+
+  it('reports a run that moved nothing as a result rather than as silence', () => {
+    const sentence = recalibrationSummary({ ...RUN, changed: 0 });
+
+    expect(sentence).toContain('0 of 6 bands moved');
   });
 });

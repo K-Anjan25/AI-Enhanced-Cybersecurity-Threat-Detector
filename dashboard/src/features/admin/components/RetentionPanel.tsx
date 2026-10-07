@@ -133,7 +133,7 @@ export function RetentionPanel() {
             <h3 className="text-h2">Storage a run cannot reach</h3>
             <ul className="flex flex-col gap-1">
               {unevictable.map((row) => (
-                <li key={`${row.table}.${row.name}`} className="text-body-sm">
+                <li key={row.table} className="text-body-sm">
                   <code className="font-mono">{row.table}</code>
                   <span className="text-muted"> — {row.explains}</span>
                 </li>
@@ -207,7 +207,7 @@ export function RetentionPanel() {
               {erase.data.already_erased ? ', already erased once before' : ''}.{' '}
               {erase.data.preserved.length === 0
                 ? 'Nothing was preserved.'
-                : `Kept: ${erase.data.preserved.map((entry) => `${entry.store} (${entry.reason})`).join('; ')}.`}
+                : `Kept: ${erase.data.preserved.map((entry) => `${entry.name} (${entry.reason})`).join('; ')}.`}
             </p>
           ) : null}
           <p className="text-body-sm text-muted">

@@ -35,7 +35,7 @@ const PLAN_BODY = {
   ],
   kept: [],
   missing: ['2025-02'],
-  unevictable: [{ table: 'audit_log', name: 'audit_log', reason: 'not-monthly' }],
+  unevictable: [{ table: 'audit_log', reason: 'not-monthly' }],
   external: { object_store: 'raw flow archives, 365 days' },
   statements: [],
 };
@@ -143,7 +143,7 @@ describe('RetentionPanel', () => {
             tombstone: 'sha256:6f1c',
             at: '2026-10-06T00:00:00Z',
             targets: [{ name: 'alerts', affected: 3 }],
-            preserved: [{ store: 'audit_log', reason: 'legal hold' }],
+            preserved: [{ name: 'audit_log', reason: 'legal hold' }],
             already_erased: false,
             ledger_sequence: 12,
             affected: 3,

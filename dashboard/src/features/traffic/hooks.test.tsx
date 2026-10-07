@@ -33,6 +33,33 @@ const READY = {
   heartbeat_seconds: 15,
 };
 
+/** One pushed alert, in the shape the stream sends (`AlertRow`). */
+const ALERT_FRAME = {
+  type: 'alert',
+  sequence: 1,
+  alert: {
+    id: 9,
+    created_at: new Date(Date.now() - 30_000).toISOString(),
+    entity_id: 9,
+    family: 'scan',
+    severity: 'critical',
+    score: 0.95,
+    status: 'open',
+    first_seen: new Date(Date.now() - 60_000).toISOString(),
+    last_seen: new Date(Date.now() - 30_000).toISOString(),
+    occurrence_count: 1,
+    trace_id: null,
+  },
+};
+
+/** Requests for the brushed sub-window, whose `start` is the brush's own. */
+function brushedReads(seen: Request[], brush: { from: number; to: number }): Request[] {
+  return reads(seen).filter(
+    (request) =>
+      new URL(request.url).searchParams.get('start') === new Date(brush.from).toISOString(),
+  );
+}
+
 function aggregate(flows: number): FlowAggregate {
   const now = Date.now();
   return {
@@ -202,23 +229,7 @@ describe('useTrafficWindow', () => {
     act(() => {
       sockets.last().open();
       sockets.last().emit(READY);
-      sockets.last().emit({
-        type: 'alert',
-        sequence: 1,
-        alert: {
-          id: 9,
-          created_at: new Date(Date.now() - 30_000).toISOString(),
-          entity_id: 9,
-          family: 'scan',
-          severity: 'critical',
-          score: 0.95,
-          status: 'open',
-          first_seen: new Date(Date.now() - 60_000).toISOString(),
-          last_seen: new Date(Date.now() - 30_000).toISOString(),
-          occurrence_count: 1,
-          trace_id: null,
-        },
-      });
+      sockets.last().emit(ALERT_FRAME);
     });
     await settle();
 
@@ -283,6 +294,27 @@ describe('useTrafficBrush', () => {
     expect(new URL((brushed as Request).url).searchParams.get('end')).toBe(
       new Date(brush.to).toISOString(),
     );
+  });
+
+  it('re-reads the brushed window when a pushed alert arrives', async () => {
+    // The panels are the server's counts for the brushed window, and their alert
+    // figures come from the alert side. `TRAFFIC_ROOTS` held only
+    // `['traffic', 'window']`, so a pushed alert refreshed the chart and left the
+    // table and the graph on the previous counts until their own 15 s poll — a
+    // staleness nothing said out loud.
+    const seen = stubFlows(1);
+    const { sockets } = renderProbe({ brush });
+    await screen.findByText(/brushed: 1/);
+    const before = brushedReads(seen, brush).length;
+
+    act(() => {
+      sockets.last().open();
+      sockets.last().emit(READY);
+      sockets.last().emit(ALERT_FRAME);
+    });
+    await settle();
+
+    await waitFor(() => expect(brushedReads(seen, brush).length).toBeGreaterThan(before));
   });
 
   it('asks for the brushed window with the same filters as the series', async () => {

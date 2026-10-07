@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -146,6 +146,48 @@ describe('routing and shell', () => {
     for (const section of new Set(NAV_ITEMS.map((item) => item.section))) {
       expect(nav).toHaveTextContent(section);
     }
+  });
+
+  it('draws every rail destination rather than spelling its first letter', () => {
+    // design.md §3: the rail "collapses to a 56 px icon rail", and §5.6 makes the
+    // icon set Lucide. The defect this pins: the collapsed rail rendered
+    // `item.label.slice(0, 1)`, so the icon rail was a column of letters — `O A T L
+    // H M D A` — in which two entries beginning with the same letter were the same
+    // picture, and neither was the screen's name.
+    stubViewport(1200);
+    renderAt('/');
+
+    const rail = screen.getByRole('navigation', { name: 'Primary' });
+    for (const item of NAV_ITEMS) {
+      // Found by its own label, which is also the accessibility half of the bug: a
+      // link whose only content was one letter had that letter for a name, so the
+      // rail was unusable with a screen reader *and* unreadable in a screenshot.
+      const link = within(rail).getByRole('link', { name: item.label });
+      // The drawn mark is `aria-hidden` — the label beside it names the link — so
+      // there is no role to query it by; this is App.test.tsx's exemption in
+      // `src/test/query-rule.test.ts`, and the role query above is the assertion it
+      // stands beside.
+      expect(link.querySelector('svg')).not.toBeNull();
+    }
+  });
+
+  it('draws the rail toggle instead of spelling it with guillemets', async () => {
+    // The control used to render `\u00AB` / `\u00BB` — French quotation marks, read
+    // out as punctuation and saying nothing about a rail. §5.6 wants a Lucide icon
+    // here, and the button's own label already names the action.
+    const user = userEvent.setup();
+    stubViewport(1200);
+    renderAt('/');
+
+    const expand = screen.getByRole('button', { name: 'Expand navigation' });
+    expect(expand.textContent).toBe('');
+    expect(expand.querySelector('svg')).not.toBeNull();
+
+    await user.click(expand);
+
+    const collapse = screen.getByRole('button', { name: 'Collapse navigation' });
+    expect(collapse.textContent).toBe('');
+    expect(collapse.querySelector('svg')).not.toBeNull();
   });
 
   it('opens the palette from anywhere in the shell and runs what it names (T-411)', async () => {

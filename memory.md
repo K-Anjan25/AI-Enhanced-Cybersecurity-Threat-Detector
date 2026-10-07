@@ -3579,10 +3579,114 @@ would need before it were worth more than the newest 200 rows. And no live Postg
 this task, because the sandbox was recreated without the `/tmp` data directory it runs from; nothing
 in T-422 writes SQL, so the store-backed half of the suite is the part that was skipped, not this.
 
+### D-079 — The rail is drawn, the collapse control is an icon, and every API type the dashboard reads is checked against the schema (T-423) (2026-10-07)
+
+**Context.** T-422 closed E4, and the request that followed was an audit of the whole frontend, with
+two defects named in advance: *the navigation has no icons*, and *the rail's collapse control renders
+`«`/`»`, which is not right*. Both were real and both were visible in a screenshot: `nav.ts` carried no
+icon field at all, so `AppShell` collapsed each entry to `item.label.slice(0, 1)` and the design's
+56 px icon rail was a column of letters (`O A T L H M D A`), and the toggle printed two guillemets —
+French quotation marks, announced as punctuation, saying nothing about a rail. The audit that followed
+found the same two *classes* elsewhere: a text glyph standing where an icon belongs (`⚠` in the triage
+context panel), and a screen reading a field the API does not send — the erasure report's preserved
+list typed `{store, reason}` against `PreservedLedgerOut{name, reason}` and drawing `undefined` in the
+one sentence that tells a data subject what was **not** erased, and a recalibration toast reading
+`window_days`, a field `RecalibrationOut` has never carried, which read "Recalibration ran over
+undefined days".
+
+**Decision.** Three, and the third is the one that outlives the task. **An icon is part of a
+destination**, not a decoration chosen at a render site. **Every API type the dashboard reads is
+checked against the model that fills it**, by a test that reads the TypeScript source. And the shell's
+control is **drawn, not spelled** — including a check that reads the source, because the defect that
+prompted it was a character.
+
+- **The icon lives in `nav.ts` and is required.** `NavItem.icon` and `NavLeaf.icon` are `LucideIcon`
+  values (design.md §5.6), fourteen of them, no two the same — the compiler now insists a destination
+  has one, and `nav.test.ts` insists two entries do not share a symbol, because a rail that draws
+  `Logs` and `Audit log` as the same picture is a rail where one of them may as well be missing. The
+  rail draws them at 20 px (one icon per 44 px row is not a dense context) and admin's section nav and
+  index at 16 px (a `py-1` list beside a panel is). A destination that is drawn in three places reads
+  its icon from one field, so the rail, the section nav and the index cannot disagree.
+- **The collapsed rail names its entries; it does not abbreviate them.** The label is rendered
+  `sr-only` when the rail is collapsed rather than dropped, so the link's accessible name is the
+  screen's name at *either* width. That is the accessibility half of the same defect: a link whose
+  only content is one letter has that letter for a name, so the old rail was unusable with a screen
+  reader as well as unreadable on screen. The two new tests are the behavioural half — every
+  destination found by role and full name (the letters rail fails the query), and the toggle's text
+  content asserted empty (the guillemets fail that).
+- **`PanelLeftClose`/`PanelLeftOpen`, and a scan that keeps them.** The toggle is drawn with the pair
+  every editor uses for the same control, `aria-hidden` under the button's existing label. `nav.test`
+  scans every non-test source under `src` for `«`/`»` **and** for their escaped spelling, because the
+  file that rendered `«` contained the six characters `\u00AB`: a scan for the rendered character
+  finds nothing in the file that had the bug. Two things are deliberately *not* swept up by that rule:
+  §5.3's severity glyph column (`severity.ts`) and the connection status glyph (`ConnectionStatus.tsx`)
+  are the design's own state vocabulary, drawn `aria-hidden` with the words beside them — a dot is not
+  an icon standing in for a label — and `⌘K` is a printed key, which is what a keyboard reference is
+  for.
+- **A wire contract that fails on a field the API does not send.** `backend/tests/test_frontend_contract.py`
+  imports every `BaseModel` in `app.schemas` (so the comparison is against the schema FastAPI
+  serialises with, inheritance included) and reads `dashboard/src/api/*.ts` from source (the only
+  description TypeScript types have outside the compiler). Fifty-five response interfaces are paired
+  with their models by a declared table — fuzzy name matching paired `AlertWindow`, a client-side walk,
+  with nothing and said nothing about it — and fourteen are named as not-a-server-shape with a reason
+  each. Every interface must be in one of the two lists, so a new API type is a decision rather than a
+  silent pass; a name in a list that no longer exists fails too. Only one direction is an error: a
+  field the dashboard declares and the model does not have. A model field the dashboard omits is not —
+  the screens are allowed not to model data they do not read, and demanding the mirror image would
+  force a type for every optional extra the API grows.
+- **The fix that made the erasure drift visible is the rule that nested objects must be named.**
+  `preserved: { store: string; reason: string }[]` was an inline literal, so it could not be paired
+  with a model and no comparison could see it; the shape is now `PreservedLedger` and the gate refuses
+  a nested object type written inline. The same pass found `NotificationsPayload.items` written inline
+  and turned it into the named `AlertNotification`, which is where the model has
+  `AlertNotificationOut`.
+- **The drifts, fixed rather than reported.** `ErasureReport.preserved[].store` → `name` (the panel
+  drew `undefined` for every kept store, and the test fixture had been written in the same wrong
+  shape, so it passed); `RecalibrationResult.window_days` → `since`/`until`/`quantile` with one
+  sentence built from the response (`recalibrationSummary`, tested at the unit and at the toast);
+  `Unevictable.name` deleted — nothing sends it, and the panel's key and the row use `table`, which
+  the model does have.
+- **Three more defects the same audit found.** (1) The traffic explorer's `TRAFFIC_ROOTS` held only
+  `['traffic', 'window']`, so a pushed alert re-read the chart and left the brushed table and graph on
+  the previous alert counts until their own 15 s poll — while the module's own docstring promised
+  "pushed alerts re-read both windows". Both roots are listed now and a test drives a frame through
+  the fake socket and counts the *brushed* window's requests. (2) `TrafficView.brushed`, `brushLabel`
+  and `bucketsInBrush` were dead code from before T-418, kept alive by their own tests: the brush's
+  caption is the chart's own `spanLabel`, and a helper nothing renders is a sentence nothing says.
+  (3) `ContextPanel`'s warning mark was the character `⚠`, now `TriangleAlert` — and its test asserted
+  the character, which is a check that cannot tell a triangle from a tofu box.
+- **The tailwind source check had a false positive, and fixing it is part of the audit.** Its candidate
+  regex used `\b`, which matches *inside* a compound class, so `align-text-bottom` (a real utility) was
+  read as the invented `text-bottom` and failed. A leading `(?<![\w-])` is the same rule the check
+  already applied at the trailing end; a planted `text-inkk` still fails, so the check lost a false
+  positive and none of its teeth.
+
+**Verified.** Backend `pytest -q --cov=app`: **1895 passed / 37 skipped / 98.04 %** (72.4 s), the six
+new contract tests included; ruff, `black --check` and mypy strict clean. Dashboard: `tsc --noEmit`,
+`eslint --max-warnings 0`, `prettier --check` clean; `vitest run` **97 files / 1173 passed** (from 96
+and 1171: nine tests added and seven deleted with the dead code). **Eight defects planted, eight
+killed**: the letters rail (the link is no longer findable by its name), the guillemet toggle (its text
+content is not empty), a `store` field on `PreservedLedger`, an interface in neither list, a nested
+object written inline, `window_days` reinstated on `RecalibrationResult` (two tests failed), the
+traffic roots without the brush key, and `text-inkk` against the corrected tailwind check.
+
+**Gaps.** The contract check compares field **names**, not types and not nesting depth: an entry like
+`alert: AlertFrame['alert']` is one field name to it, and nesting is checked only where the nested
+shape is a named interface in `SHAPES` — which the inline-object rule now forces. The audit read the
+shell end to end, the design vocabulary, the traffic view model and hooks, the retention and threshold
+panels with their models, and every API type; the screens it cleared through their own tests and this
+gate rather than line by line are named here so the clearance is not mistaken for a reading:
+`KeysPanel.tsx`, `AuditPanel.tsx` beyond its filter view, `users.ts`/`UsersPanel.tsx` beyond the parts
+read, `features/models/*`, `features/hunt/*`, `features/logs/*` and `components/charts/*`. `DriftBars`
+still carries `data-testid="threshold-mark"` with its declared exemption in `query-rule.test.ts`. And
+the manual screen-reader pass (T-413, handed to T-510) is still **not run** — this task makes the
+*drawn* claim checkable, not the *announced* one.
+
 ## Change log
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-07 | 1.70 | **T-423 done — the frontend audit: the icon rail is drawn, the collapse control is an icon, and every API type the dashboard reads is checked against the schema that fills it.** The two defects named before the audit were both real and both visible in a screenshot: `nav.ts` had no icon field, so `AppShell` collapsed each destination to `item.label.slice(0, 1)` and the 56 px icon rail was a column of letters, and its toggle printed `\u00AB`/`\u00BB`. Fixes: `NavItem.icon`/`NavLeaf.icon` as `LucideIcon` (fourteen, no two alike, asserted), drawn at 20 px in the rail and 16 px in admin's section nav and index; the label rendered `sr-only` when collapsed, so a link's accessible name is the screen's name at either width; `PanelLeftClose`/`PanelLeftOpen` in place of the guillemets, with `nav.test.ts` scanning the sources for the characters **and** their escaped spelling (the file that rendered `«` contained `\u00AB` — a scan for the rendered character finds nothing in it). The audit's instrument is new and outlives the task: `backend/tests/test_frontend_contract.py` imports every `BaseModel` in `app.schemas` and reads `dashboard/src/api/*.ts` from source, pairing 55 response interfaces with their models and naming 14 as not-a-server-shape with a reason each; every interface must be in one list, a TS field the model lacks is a failure, and a nested object type written inline is an error — the rule that made the erasure drift visible at all. Drifts it found and this task fixed: `ErasureReport.preserved[].store` → `name` (the panel drew `undefined` for every kept store, and its fixture had been written in the same wrong shape), `RecalibrationResult.window_days` → `since`/`until`/`quantile` (the toast said "over undefined days"; one sentence now, tested at the unit and at the toast), and `Unevictable.name` deleted — nothing sends it. Same audit: the traffic explorer's `TRAFFIC_ROOTS` held only `['traffic', 'window']`, so a pushed alert re-read the chart and left the brushed panels on the previous counts while the module promised otherwise; three helpers T-418 had made dead (`TrafficView.brushed`, `brushLabel`, `bucketsInBrush`) went with their tests; `ContextPanel`'s `⚠` became `TriangleAlert`; and the tailwind source check's `\b` matched inside a compound class, reading `align-text-bottom` as an invented `text-bottom` — a leading `(?<![\w-])` fixed it and a planted `text-inkk` still fails. **Verified:** backend 1895 passed / 37 skipped / 98.04 %, dashboard 97 files / 1173 passed, tsc/eslint/prettier clean, **eight defects planted and eight killed**. **Gaps:** the contract check compares field names, not types or nesting depth; the screens cleared by their tests and this gate rather than line by line are named in D-079; and the manual screen-reader pass is still not run. |
 | 2026-10-07 | 1.69 | **T-422 done — the connectors screen, and E4's last unbuilt route with it.** New backend: `app/services/webhook_deliveries.py` (`DeliveryRecord`, `record_of` — which refuses a report with no attempts — `InMemoryDeliveryLog` with `record` idempotent on `delivery_id`, `delivery_caveats`, `probe_notification` and `sender_sink`), `WebhookSender.on_report`/`probe`/`_signed_envelope`, `schemas/webhook.py` (`DeliveryOut`, `DeliveryListOut`), two routes in `api/v1/endpoints/webhooks.py` — `GET /deliveries` (`held`/`recorded`/`dispatch_configured`/`caveats`) and `POST /{webhook_id}/test` (404 unknown target, 409 on a secret sealed under another key, **503 with no outbound transport**) — `AuditAction.webhook_test`, two `ROLE_MATRIX` entries at responder-and-above, `app.state.webhook_deliveries`, and `api-reference.md` regenerated. New tests: `test_webhook_deliveries.py` (19) and a route section in `test_webhooks.py` (now 190). Dashboard: `api/webhooks.ts`, `features/admin/secrets.ts` (`IssuedSecret`, `secretIsLive` — the keys panel's mechanism, moved where both credentials use it), `features/admin/connectors.ts` (rows, the join that names a removed endpoint, readiness, the delivery summary), `components/ConnectorsPanel.tsx`, ten hooks and `connectorRefusalMessage`, the sixth `ADMIN_SECTIONS` entry, and `App.tsx`'s `PENDING`/`NotYetBuilt` **deleted** because no design.md §3 route is unbuilt any more; `ConnectorsPanel.test.tsx` (13) and `connectors.test.ts` (23) are new, and `secrets.test.ts` took the lifetime's own cases. **Verified:** backend `pytest -q --cov=app` **1889 passed / 37 skipped / 98.04 %**, ruff/black/mypy clean; dashboard **1171 tests in 96 files**, tsc/eslint/prettier clean; mutation batteries **18 planted, 18 killed** (nine backend, nine dashboard); the sixth environment reset was absorbed — `.venv`, `node_modules` and `/tmp` rebuilt, `git fetch` + `reset --mixed 7ebce6c` restoring the branch with exactly this task's 29 paths outstanding. **Gaps:** records are in-process (a restart forgets them, the newest 200 are kept) and both are stated in the API's own caveats; `POST …/test` answers 503 in a default deployment because T-311's outbound transport is still unwritten, so the screen is complete and the send path is what is missing; the read is a bounded list with no filter or cursor; and no live PostgreSQL was used, because nothing in this task writes SQL. |
 | 2026-10-07 | 1.68 | **T-418 done — the traffic explorer reads flows, and the store it reads from is a read model rather than a buffer.** New backend: `app/services/{flow_read_model,flow_store,flow_source}.py`, `app/db/flow_statements.py`, `app/schemas/flows.py`, `app/api/v1/endpoints/flows.py` (`GET /api/v1/flows`, `require(Capability.READ)`, `start`/`end` required, 400 on a bad window or filter, **503** on an unreachable store), `alembic/versions/0004_flow_events_store.py`, and eight test modules — `test_flow_read_model.py` (39), `test_flow_source.py` (30), `test_flow_statements.py` (25), `test_flow_store.py` (20), `test_flows_api.py` (49), `test_flows_source_api.py` (20), `test_flow_store_schema.py` (16) and `test_flow_store_live.py` (13, skipped without a DSN, run against PostgreSQL 16.2 in this session). Changed: `db/models.py`, `core/config.py` (`flow_store`, `flow_rollup_minutes`), `api/v1/{deps,endpoints/{ingest,overview}}.py`, `auth/rbac.py`, `schemas/overview.py`, `services/{overview,retention,alert_store}.py`, `main.py`, six existing test modules and `api-reference.md`. Dashboard: `api/flows.ts`, `features/traffic/{api,aggregate,view,graph,hooks}.ts`, `components/{EntityTable,EntityGraph,BrushSeries}.tsx`, `pages/TrafficPage.tsx`, `lib/format.ts` (`formatBytes`) and six test modules — 23 page tests, 21 view, 19 graph, 16 aggregate, 15 BrushSeries, 12 hooks. **Three defects found while finishing, all of them claims about data**: the in-memory alert store handed back float scores where the column returns `numeric(5, 4)`, so the overview's bucket mean skipped every row and drew `0.0` (fixed at the store, with the threshold comparison moved to match the SQL); `overview.aggregate` divided its score sum by every row in the bucket while documenting that an unreadable score is skipped (fixed: the divisor is the rows that carried one); and the hunt console still said "raw flow records have no read API in this build (T-418)" (fixed to the sentence that is true — the hunt API reads alerts, and the flow read model counts a window and takes no address filter). Policy recorded as **D-077**. **Verified:** backend `pytest -q --cov=app` **1855 passed / 37 skipped / 98.07 %**, ruff/black/mypy strict clean; `test_flow_store_live.py` 13 passed against a live PostgreSQL 16.2; dashboard **1133 tests in 93 files**, tsc/eslint/prettier/stylelint and the boundary checker clean; the mutation battery **6 planted, 6 killed** — one survived until its test was corrected (it used `min_score=0.5`, the one float whose decimal is exact). **This task also met the sixth environment reset**: mid-turn the sandbox came back with `.venv`, `dashboard/node_modules` and `/tmp` gone and `.git` a fresh shallow clone at the branch point `958d058`, so the toolchain was rebuilt and `git fetch origin arena/dcfee0a3-…` + `git reset --mixed bc12d1b` restored the branch with exactly this task's **49 paths** left uncommitted — the recovery and the proof that nothing else was outstanding. **Gaps:** `flow_events` is unpartitioned and evicted by nothing (named in `UNEVICTABLE_REASONS`); the default deployment reads the minute-grained 60-minute rollup, so the store's exactness is a configured capability; destination-side alerts attach to no address row and the caveat says so; and the store's SQL is exercised through the store, not through the route, until D-030's session reaches the request path. |
 | 2026-10-07 | 1.67 | **Fifth environment reset, and the first that cost a working session's evidence rather than any work.** Between turns the sandbox was recreated: `.venv` and `dashboard/node_modules` gone, `/tmp/pgdata2` gone with the rest of `/tmp`, and `.git` a fresh clone whose `arena/dcfee0a3-…` branch sat at the branch point `958d058` — so this time the working tree came back as **142** uncommitted paths against that point, the branch's own commits included. `git fetch origin` restored `origin/arena/dcfee0a3-…` to `b21aad5` and one `git reset --mixed origin/arena/dcfee0a3-…` left exactly the 41 paths of the then-uncommitted T-419 work, which is both the recovery and the proof that nothing else was outstanding. The toolchain was rebuilt the same way as after the fourth reset, the hooks reinstalled for both stages, and the platform's co-author-trailer hook — preserved by pre-commit's migration mode as `commit-msg.legacy` but **not** called by the generated `commit-msg` — chained back in by hand and proved with a probe message before the next commit, which is the step that has to be remembered rather than scripted. Everything measured after the rebuild reproduces the pre-reset numbers (backend 1638 passed/22 skipped; dashboard 93 files; `./scripts/check_all.sh` 26/0), because the *tree* never changed: only the toolchain that measures it was rebuilt. |

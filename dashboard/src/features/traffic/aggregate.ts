@@ -124,25 +124,6 @@ export function trafficSeries(aggregate: FlowAggregate): TrafficBucket[] {
   });
 }
 
-/**
- * Keep buckets whose span overlaps the brush.
- *
- * Overlap rather than containment, and the same rule the in-process rollup applies to
- * its minute atoms: a bucket that starts before the brush and ends inside it holds
- * traffic the brush selected, and hiding it would draw a series whose bars do not add
- * up to the selection. Half-open on both ends (`start < to && end > from`), so two
- * adjacent brushes never both claim a bucket.
- */
-export function bucketsInBrush(
-  buckets: readonly TrafficBucket[],
-  range: BrushRange | null,
-): TrafficBucket[] {
-  if (range === null) return [...buckets];
-  return buckets.filter(
-    (bucket) => bucket.start.getTime() < range.to && bucket.end.getTime() > range.from,
-  );
-}
-
 /** The addresses, as the table and the graph want them. */
 export function trafficNodes(aggregate: FlowAggregate): TrafficNode[] {
   return aggregate.entities.map((entity: FlowEntity) => ({

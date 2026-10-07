@@ -466,8 +466,14 @@ describe('shipped sources', () => {
     // reference like `bg-severity-*` and a template such as `bg-severity-${tone}`
     // are fragments, not classes, and Tailwind would emit nothing for either. A
     // hyphen after the longest match means the token did not end there.
+    //
+    // The leading lookbehind is the same rule at the other end, and it is what the
+    // first version of this check got wrong: `\b` matched inside a compound class, so
+    // `align-text-bottom` (a real utility, used by the triage context panel's warning
+    // icon) was read as the invented class `text-bottom` and failed. A utility does
+    // not begin after a word character *or* a hyphen.
     const utility =
-      /\b(?:bg|text|border|divide|ring|fill|stroke)-[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*(?![-\w*$])/g;
+      /(?<![\w-])(?:bg|text|border|divide|ring|fill|stroke)-[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*(?![-\w*$])/g;
     const candidates = new Set<string>();
     for (const [, source] of shipped) {
       for (const match of source.matchAll(utility)) candidates.add(match[0]);

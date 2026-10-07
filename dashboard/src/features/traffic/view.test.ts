@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { buildTrafficView, brushLabel, DEFAULT_FILTERS } from './view';
+import { buildTrafficView, DEFAULT_FILTERS } from './view';
 import type { FlowAggregate, FlowBucket, FlowEntity } from '../../api/flows';
 
 const START = Date.parse('2026-10-06T10:00:00Z');
@@ -103,12 +103,6 @@ describe('the series and the panels', () => {
     });
 
     expect(model.series.map((point) => point.flows)).toEqual([4, 8, 0, 2]);
-  });
-
-  it('reports which buckets the brush selected', () => {
-    const model = view({ brush: { from: START + 5 * MINUTE, to: START + 10 * MINUTE } });
-
-    expect(model.brushed.map((point) => point.flows)).toEqual([8]);
   });
 
   it('takes the addresses from the aggregate the read produced', () => {
@@ -272,15 +266,5 @@ describe('the caveats', () => {
     });
 
     expect(model.notes).toContain('Nothing has been counted yet.');
-  });
-});
-
-describe('brushLabel', () => {
-  it('describes the whole window when there is no brush', () => {
-    expect(brushLabel(null)).toBe('the whole window');
-  });
-
-  it('describes the selection in UTC hours and minutes', () => {
-    expect(brushLabel({ from: START, to: START + 30 * MINUTE })).toBe('10:00–10:30 UTC');
   });
 });
