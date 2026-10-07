@@ -1,12 +1,10 @@
 /**
  * Version comparison (design.md §4.7).
  *
- * "Two models side by side, delta per metric" is what the read model can support, and
- * that is what this panel does. The design also asks for confusion matrices and
- * score-distribution histograms; FR-31's metrics are five scalars with provenance and
- * nothing in the API carries either, so the panel **says so** in `comparison.note`
- * instead of drawing a plausible-looking plot from numbers nobody measured. The gap is
- * filed as T-420.
+ * "Two models side by side, delta per metric" is what this panel does. The separate
+ * per-version metrics read also carries the recorded eval@2 confusion matrix and score
+ * histogram; older or missing artifacts remain visibly unavailable rather than being
+ * reverse-engineered from scalar values. Both visual panels show their exact source.
  *
  * A delta is computed only where both sides have the metric: differencing a value
  * against a missing one would be arithmetic on a hole, and the row renders "not
@@ -17,6 +15,8 @@ import { useMemo, useState } from 'react';
 import { Card, DataTable, type Column } from '../../../components/ui';
 import { useModelMetrics } from '../hooks';
 import { compareVersions, type ComparisonCell, type VersionRow } from '../versions';
+import { ComparisonEvidence } from './ComparisonEvidence';
+import { ScoreHistogramComparison } from './ScoreHistogramComparison';
 
 export interface ComparePanelProps {
   rows: readonly VersionRow[];
@@ -37,18 +37,16 @@ export function ComparePanel({ rows }: ComparePanelProps) {
   const left = rows.find((row) => row.id === leftId) ?? null;
   const right = rows.find((row) => row.id === rightId) ?? null;
 
-  // Fetch only what the listing did not carry: a version whose metrics came with the
-  // list costs no request, and one without them costs exactly one.
-  const leftFetch = useModelMetrics(leftId, left !== null && left.version.metrics === null);
-  const rightFetch = useModelMetrics(rightId, right !== null && right.version.metrics === null);
+  // The version listing stays small; the per-version endpoint is the authority for
+  // metrics and carries evaluation details from the immutable report when available.
+  const leftFetch = useModelMetrics(leftId, left !== null);
+  const rightFetch = useModelMetrics(rightId, right !== null);
+  const leftMetrics = leftFetch.data ?? null;
+  const rightMetrics = rightFetch.data ?? null;
 
   const comparison = useMemo(
-    () =>
-      compareVersions(
-        left?.version.metrics ?? leftFetch.data ?? null,
-        right?.version.metrics ?? rightFetch.data ?? null,
-      ),
-    [left, right, leftFetch.data, rightFetch.data],
+    () => compareVersions(leftMetrics, rightMetrics),
+    [leftMetrics, rightMetrics],
   );
 
   const columns: readonly Column<ComparisonCell>[] = [
@@ -122,7 +120,38 @@ export function ComparePanel({ rows }: ComparePanelProps) {
             rows={comparison.cells}
             rowKey={(cell) => cell.name}
           />
-          <p className="px-4 py-3 text-caption text-muted">{comparison.note}</p>
+          <div className="grid gap-4 border-t border-line p-4 xl:grid-cols-2">
+            <ComparisonEvidence
+              side="A"
+              modelId={left?.id ?? null}
+              evaluation={leftMetrics?.evaluation ?? null}
+              loading={left !== null && leftFetch.isFetching}
+              error={leftFetch.error ?? null}
+            />
+            <ComparisonEvidence
+              side="B"
+              modelId={right?.id ?? null}
+              evaluation={rightMetrics?.evaluation ?? null}
+              loading={right !== null && rightFetch.isFetching}
+              error={rightFetch.error ?? null}
+            />
+          </div>
+          <ScoreHistogramComparison
+            left={{
+              modelId: left?.id ?? null,
+              histogram: leftMetrics?.evaluation?.score_histogram ?? null,
+              threshold: leftMetrics?.evaluation?.confusion.threshold ?? null,
+              loading: left !== null && leftFetch.isFetching,
+              error: leftFetch.error ?? null,
+            }}
+            right={{
+              modelId: right?.id ?? null,
+              histogram: rightMetrics?.evaluation?.score_histogram ?? null,
+              threshold: rightMetrics?.evaluation?.confusion.threshold ?? null,
+              loading: right !== null && rightFetch.isFetching,
+              error: rightFetch.error ?? null,
+            }}
+          />
           {left !== null && right !== null && left.id === right.id ? (
             <p className="px-4 pb-3 text-caption text-muted">
               Both sides name the same version, so every delta is zero by construction.

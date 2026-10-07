@@ -6,8 +6,8 @@
  * those two honest:
  *
  *   * **What is serving leads.** One panel per active kind, with FR-31's metric cards
- *     and the run each number came from (R-74). A version whose evaluation is absent
- *     says so; a version whose metrics the listing omitted is fetched once.
+ *     and the run each number came from (R-74). The version list stays compact; each
+ *     active version's metrics and recorded evaluation details are fetched once.
  *   * **The table carries the rules.** A version that cannot be promoted shows the
  *     reason in its row (R-63's manifest, R-68's terminal `retired`) rather than a
  *     disabled button with no explanation.
@@ -16,9 +16,10 @@
  *     sentence — a toast that disappears takes the answer with it. A no-op promotion
  *     (`changed=false`) says the audit trail recorded nothing, which is the part an
  *     operator would otherwise assume wrongly.
- *   * **What the read model cannot answer is named.** The comparison's confusion
- *     matrices and score histograms are T-420, and the drift screen is where PSI
- *     lives; both are linked or named rather than approximated here.
+ *   * **Recorded evaluation details stay attached to their version.** The comparison
+ *     shows confusion matrices and score histograms only for eval@2 runs, with source
+ *     paths. Older or absent artifacts have explicit unavailable states; the drift
+ *     screen remains where PSI lives.
  *
  * The role check is the server's: this screen does not know the operator's role, and
  * a 403 is mapped to a sentence by `promotionRefusalMessage`/`rollbackRefusalMessage`
@@ -241,18 +242,17 @@ export function ModelsPage() {
   );
 }
 
-/** One active version's metric cards, fetching the metrics the listing omitted. */
+/** One active version's metric cards, from the dedicated per-version metrics read. */
 function ServingRow({ row }: { row: VersionRow }) {
-  const needsFetch = row.version.metrics === null;
-  const fetched = useModelMetrics(row.id, needsFetch);
-  const metrics = row.version.metrics ?? fetched.data ?? null;
-  const error = needsFetch ? (fetched.error ?? null) : null;
+  const fetched = useModelMetrics(row.id);
+  const metrics = fetched.data ?? null;
+  const error = fetched.error ?? null;
 
   return (
     <ServingMetrics
       kindLabel={row.kindLabel}
       metrics={metrics}
-      loading={needsFetch && fetched.isFetching}
+      loading={fetched.isFetching}
       error={error}
       absenceNote={
         error === null

@@ -19,11 +19,12 @@
  *      nothing above this file can tell which transport delivered an alert.
  *   3. **Back off, with jitter.** Attempts grow 500 ms → 30 s and never arrive in
  *      lockstep with every other dashboard.
- *   4. **Stop on a refusal.** 4401/4403 are not transient; the client waits for a
- *      credential (`src/api/session.ts` broadcasts one) rather than hammering a
- *      server that has already said no. Polling continues in that state, because
- *      "the socket cannot authenticate" is not the same claim as "the API
- *      cannot", and a banner over the last known numbers beats an empty screen.
+ *   4. **Stop on a refusal.** 4401/4403 are not transient; the client does not
+ *      hammer a server that has already said no. A 4401 clears the unusable session
+ *      so the sign-in screen returns; a 4403 keeps the credential because it is a
+ *      permissions refusal. The stream waits for a new credential before reopening.
+ *      Polling continues while refused, because "the socket cannot authenticate"
+ *      is not the same claim as "the API cannot".
  *   5. **Pause when nobody is looking.** design.md §4.1 pauses refreshes in a
  *      hidden tab; the fallback poll is a refresh, so it pauses with the rest. The
  *      socket stays open — it is the server pushing, and a tab that is hidden now
@@ -34,7 +35,7 @@
  * node-speed test with no DOM and no wall clock.
  */
 import { getJson } from './client';
-import { sessionToken } from './session';
+import { clearSessionToken, sessionToken } from './session';
 import {
   backoffDelay,
   closeDetail,
@@ -374,6 +375,7 @@ export class AlertStreamClient {
       if (code === 1013) this.attempt = 0;
       const verdict = closeVerdict(code);
       if (verdict === 'terminal') {
+        if (code === 4401) clearSessionToken();
         this.setState('refused', closeDetail(code));
         this.startPolling();
         return;

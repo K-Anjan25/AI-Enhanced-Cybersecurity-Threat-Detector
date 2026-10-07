@@ -13,9 +13,10 @@
  *   * **A metric is never a bare number** (R-74). `MetricPoint` carries the value
  *     *and* the recorded run it was read from, and there is no client-side type that
  *     drops the provenance.
- *   * **A version's metrics are a separate read.** The listing deliberately omits
- *     them (T-315's schema says why: a long history must not weigh down the screen
- *     that renders it), so a caller that wants numbers asks for one version.
+ *   * **Metrics are a separate read.** The listing omits them so a long history
+ *     does not weigh down the version table; the per-version endpoint carries scalar
+ *     metrics and, when the recorded artifact is eval@2, its confusion matrix and
+ *     score histogram with their own provenance.
  *   * **A promotion and a rollback are one call each.** The justification and the
  *     reason travel in the body because both are required by the API
  *     (`min_length=1`), and a blank string is refused here as well as there: a
@@ -33,12 +34,46 @@ export interface MetricPoint {
 }
 
 /** FR-31's metrics for one version, on the split they were measured on. */
+export interface ConfusionMatrix {
+  /** Operating point used to count the four cells. */
+  threshold: number;
+  tp: number;
+  fp: number;
+  tn: number;
+  fn: number;
+  /** The immutable recorded evaluation run this matrix came from. */
+  artifact: string;
+  /** Field path in that run; never inferred from scalar metrics. */
+  field: string;
+}
+
+export interface ScoreHistogramBin {
+  /** Lower-inclusive boundary; the final bin also includes 1.0. */
+  lower: number;
+  upper: number;
+  benign: number;
+  threat: number;
+}
+
+export interface ScoreHistogram {
+  bins: ScoreHistogramBin[];
+  artifact: string;
+  field: string;
+}
+
+export interface EvaluationDetails {
+  confusion: ConfusionMatrix;
+  score_histogram: ScoreHistogram;
+}
+
 export interface ModelMetrics {
   split: string;
   /** When the evaluation ran — the date a reader quotes with the number (R-74). */
   evaluated_at: string;
   /** Keyed by the harness's own metric names: precision, recall, f1, roc_auc, pr_auc. */
   metrics: Record<string, MetricPoint>;
+  /** Null for older recorded eval@1 runs, never synthesized from scalar values. */
+  evaluation: EvaluationDetails | null;
 }
 
 /** One registered model version (`ModelOut`). */
@@ -50,8 +85,6 @@ export interface ModelVersion {
   sha256: string;
   /** False means R-63 refuses its promotion. */
   manifest_present: boolean;
-  /** Null when no evaluation is attached: a gap, never a zero (R-74). */
-  metrics: ModelMetrics | null;
   promoted_at: string | null;
   promoted_by: string | null;
   justification: string;

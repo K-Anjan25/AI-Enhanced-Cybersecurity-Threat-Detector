@@ -17,14 +17,19 @@
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { App } from './App';
+import { resetSessionForTests, setSessionToken } from './api/session';
 import { jsonResponse, renderWithProviders, stubFetch, type StubRoute } from './test/query';
 import { alertDetail, alertRow, verdictRecord } from './features/triage/fixtures';
 
 const FIRST_CREATED_AT = '2026-03-15T10:00:00Z';
 const SECOND_CREATED_AT = '2026-03-15T09:20:00Z';
+
+afterEach(() => {
+  resetSessionForTests();
+});
 
 /**
  * The loop's four reads and one write, most specific prefix first.
@@ -76,6 +81,7 @@ describe('the triage loop, from the console as it is mounted', () => {
   it('is walkable end to end: arrive, step, read, record, move on', async () => {
     const user = userEvent.setup();
     const requests = stubFetch(routes());
+    setSessionToken('triage-loop-token');
     renderWithProviders(<App />, undefined, ['/alerts']);
 
     // 1. Arrive. The queue is a named list inside the shell — not a page rendered alone,

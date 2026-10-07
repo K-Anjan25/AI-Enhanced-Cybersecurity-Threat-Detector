@@ -61,6 +61,28 @@ def metrics(*, split: str = "temporal:2025-Q4") -> ModelMetrics:
     )
 
 
+def eval_report(model_id: str) -> dict[str, object]:
+    """The serialized textbook run from evaluation.py's hand-checkable example."""
+    return {
+        "schema_version": "eval@2",
+        "model_id": model_id,
+        "threshold": 0.5,
+        "positives": 2,
+        "negatives": 2,
+        "confusion": {"tp": 1, "fp": 0, "tn": 2, "fn": 1},
+        "score_histogram": [
+            {"lower": index / 10, "upper": (index + 1) / 10, "benign": benign, "threat": threat}
+            for index, (benign, threat) in enumerate(
+                [(0, 0), (1, 0), (0, 0), (0, 1), (1, 0), (0, 0), (0, 0), (0, 0), (0, 1), (0, 0)]
+            )
+        ],
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 2 / 3,
+        "metrics": {"roc_auc": 0.75, "pr_auc": 5 / 6, "accuracy": 0.75},
+    }
+
+
 def version(
     model_id: str,
     *,
@@ -221,6 +243,102 @@ def test_a_metric_renders_with_its_provenance() -> None:
 def test_a_staging_version_may_have_no_recorded_evaluation() -> None:
     """A gap is a fact, not a zero: staged artifacts are often unmeasured yet."""
     assert version("flow-2026-10", with_metrics=False).metrics is None
+
+
+def test_record_evaluation_ingests_the_recorded_report_and_preserves_sources() -> None:
+    service = ModelOpsService()
+    service.register(version("flow-2026-11", with_metrics=False, sha256="f" * 64))
+
+    recorded = service.record_evaluation(
+        "flow-2026-11",
+        eval_report("flow-2026-11"),
+        artifact="runs/flow-2026-11/eval.json",
+        split="temporal:test",
+        evaluated_at=AT,
+    )
+    result = recorded.metrics
+    assert result is not None and result.evaluation is not None
+    assert result.get("roc_auc").value == 0.75
+    assert result.get("roc_auc").artifact == "runs/flow-2026-11/eval.json"
+    assert result.get("roc_auc").field == "metrics.roc_auc"
+    assert result.evaluation.confusion.tp == 1
+    assert result.evaluation.confusion.fn == 1
+    assert result.evaluation.confusion.artifact == "runs/flow-2026-11/eval.json"
+    assert result.evaluation.confusion.field == "confusion"
+    assert len(result.evaluation.score_histogram.bins) == 10
+    assert result.evaluation.score_histogram.bins[3].threat == 1
+    assert result.evaluation.score_histogram.artifact == "runs/flow-2026-11/eval.json"
+    assert result.evaluation.score_histogram.field == "score_histogram"
+    assert (
+        service.record_evaluation(
+            "flow-2026-11",
+            eval_report("flow-2026-11"),
+            artifact="runs/flow-2026-11/eval.json",
+            split="temporal:test",
+            evaluated_at=AT,
+        )
+        is recorded
+    )
+
+
+def test_evaluation_ingestion_rejects_wrong_schema_model_and_rewrites() -> None:
+    service = ModelOpsService()
+    service.register(version("flow-2026-11", with_metrics=False, sha256="f" * 64))
+    base = {
+        "artifact": "runs/flow-2026-11/eval.json",
+        "split": "temporal:test",
+        "evaluated_at": AT,
+    }
+
+    with pytest.raises(ValueError, match="eval@2"):
+        service.record_evaluation(
+            "flow-2026-11", {**eval_report("flow-2026-11"), "schema_version": "eval@1"}, **base
+        )
+    with pytest.raises(ValueError, match="does not match"):
+        service.record_evaluation("flow-2026-11", eval_report("other-model"), **base)
+
+    service.record_evaluation("flow-2026-11", eval_report("flow-2026-11"), **base)
+    with pytest.raises(ImmutableArtifact, match="cannot be rewritten"):
+        service.record_evaluation(
+            "flow-2026-11",
+            eval_report("flow-2026-11"),
+            **{**base, "artifact": "runs/another/eval.json"},
+        )
+
+
+def test_evaluation_ingestion_rejects_inconsistent_histogram_counts() -> None:
+    service = ModelOpsService()
+    service.register(version("flow-2026-11", with_metrics=False, sha256="f" * 64))
+    report = eval_report("flow-2026-11")
+    report["score_histogram"] = []
+
+    with pytest.raises(ValueError, match="needs 10 bins"):
+        service.record_evaluation(
+            "flow-2026-11",
+            report,
+            artifact="runs/flow-2026-11/eval.json",
+            split="temporal:test",
+            evaluated_at=AT,
+        )
+
+
+def test_evaluation_ingestion_rejects_variable_width_bins() -> None:
+    service = ModelOpsService()
+    service.register(version("flow-2026-11", with_metrics=False, sha256="f" * 64))
+    report = eval_report("flow-2026-11")
+    bins = report["score_histogram"]
+    assert isinstance(bins, list)
+    bins[0] = {**bins[0], "upper": 0.15}
+    bins[1] = {**bins[1], "lower": 0.15}
+
+    with pytest.raises(ValueError, match="fixed-width"):
+        service.record_evaluation(
+            "flow-2026-11",
+            report,
+            artifact="runs/flow-2026-11/eval.json",
+            split="temporal:test",
+            evaluated_at=AT,
+        )
 
 
 # --- the service: promotion ---------------------------------------------------
@@ -449,6 +567,7 @@ def test_the_listing_returns_the_version_table(client: TestClient, auth: TokenSe
     first = body["items"][0]
     assert first["kind"] == "flow"
     assert first["manifest_present"] is True
+    assert "metrics" not in first
 
 
 def test_the_listing_filters_and_refuses_an_unknown_filter(
@@ -469,6 +588,42 @@ def test_metrics_come_with_their_provenance(client: TestClient, auth: TokenServi
         "value": 0.9,
         "artifact": "runs/eval-2025-10-01.json",
         "field": "metrics.roc_auc",
+    }
+    assert body["evaluation"] is None
+
+
+def test_metrics_endpoint_serves_recorded_confusion_and_score_histogram(
+    client: TestClient, auth: TokenService
+) -> None:
+    service = seed(client)
+    service.register(version("flow-2026-11", sha256="f" * 64, with_metrics=False))
+    service.record_evaluation(
+        "flow-2026-11",
+        eval_report("flow-2026-11"),
+        artifact="runs/flow-2026-11/eval.json",
+        split="temporal:test",
+        evaluated_at=AT,
+    )
+
+    body = client.get("/api/v1/models/flow-2026-11/metrics", headers=headers(auth)).json()
+    assert body["evaluation"]["confusion"] == {
+        "threshold": 0.5,
+        "tp": 1,
+        "fp": 0,
+        "tn": 2,
+        "fn": 1,
+        "artifact": "runs/flow-2026-11/eval.json",
+        "field": "confusion",
+    }
+    histogram = body["evaluation"]["score_histogram"]
+    assert histogram["artifact"] == "runs/flow-2026-11/eval.json"
+    assert histogram["field"] == "score_histogram"
+    assert len(histogram["bins"]) == 10
+    assert histogram["bins"][3] == {
+        "lower": 0.3,
+        "upper": 0.4,
+        "benign": 0,
+        "threat": 1,
     }
 
 

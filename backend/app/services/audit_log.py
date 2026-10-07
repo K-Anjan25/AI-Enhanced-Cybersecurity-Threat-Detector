@@ -125,6 +125,10 @@ class AuditAction(StrEnum):
     #: pressed send should be answerable for it. The URL and the secret are not in
     #: the record, for the same reasons they are not in the create record.
     webhook_test = "webhook.test"
+    auth_setup = "auth.setup"
+    auth_login = "auth.login"
+    auth_refresh = "auth.refresh"
+    auth_logout = "auth.logout"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -150,6 +154,10 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         # module docstring of ``app.api.v1.endpoints.hunt``.
         ("POST", "/api/v1/hunt/export"): AuditAction.hunt_export,
         ("POST", "/api/v1/alerts/export"): AuditAction.alert_export,
+        ("POST", "/api/v1/auth/setup"): AuditAction.auth_setup,
+        ("POST", "/api/v1/auth/login"): AuditAction.auth_login,
+        ("POST", "/api/v1/auth/refresh"): AuditAction.auth_refresh,
+        ("POST", "/api/v1/auth/logout"): AuditAction.auth_logout,
     }
 )
 

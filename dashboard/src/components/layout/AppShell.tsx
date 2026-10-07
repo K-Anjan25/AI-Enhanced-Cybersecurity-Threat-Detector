@@ -27,7 +27,7 @@
  * height the design asks for became the height the bar needed.
  */
 import { useState, type ReactNode } from 'react';
-import { PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
@@ -51,10 +51,11 @@ interface AppShellProps {
    * could not be rendered without one.
    */
   onOpenPalette: () => void;
+  onSignOut: () => void;
   children?: ReactNode;
 }
 
-export function AppShell({ connection, onOpenPalette, children }: AppShellProps) {
+export function AppShell({ connection, onOpenPalette, onSignOut, children }: AppShellProps) {
   // `null` is "nobody has said", which is what lets the default follow the window:
   // §8.3's icon rail on a laptop, labels on a large monitor. Once the operator
   // toggles it their choice sticks, including across a resize — a rail that sprang
@@ -154,6 +155,19 @@ export function AppShell({ connection, onOpenPalette, children }: AppShellProps)
               <kbd className="font-mono">{paletteKeyLabel()}</kbd>
             </button>
             <ConnectionStatus state={view.state} detail={view.detail} />
+            <span className="hidden items-center gap-1 rounded-pill border border-line px-2 py-1 text-caption text-muted lg:inline-flex">
+              <ShieldCheck aria-hidden="true" className="size-icon-sm text-accent" />
+              Authenticated
+            </span>
+            <button
+              type="button"
+              onClick={onSignOut}
+              aria-label="Sign out"
+              className="inline-flex items-center gap-2 rounded-input border border-line px-3 py-1 text-caption text-muted hover:text-ink"
+            >
+              <LogOut aria-hidden="true" className="size-icon-sm" />
+              <span className="hidden xl:inline">Sign out</span>
+            </button>
             <button
               type="button"
               onClick={toggleTheme}

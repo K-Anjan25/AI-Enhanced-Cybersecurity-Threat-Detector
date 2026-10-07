@@ -30,6 +30,11 @@ or body do not match the schema below.
 | `POST` | `/api/v1/alerts/{alert_id}/verdict` | Record an analyst verdict on an alert (FR-16) | admin, analyst, responder | `200` `VerdictOutcomeOut` | `VerdictRequest` |
 | `GET` | `/api/v1/alerts/{alert_id}/verdicts` | Read an alert's verdict history, oldest first (FR-16, FR-18) | admin, analyst, responder, viewer | `200` `VerdictHistoryOut` | — |
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
+| `POST` | `/api/v1/auth/login` | Sign in with an account password | unauthenticated | `200` `TokenPairOut` | `CredentialsIn` |
+| `POST` | `/api/v1/auth/logout` | Revoke the refresh-token family | unauthenticated | `204` | `RefreshIn` |
+| `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
+| `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
+| `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |
 | `GET` | `/api/v1/flows` | Count one window of traffic: volume, addresses and relationships (FR-52) | admin, analyst, responder, viewer | `200` `FlowAggregateOut` | — |
 | `POST` | `/api/v1/hunt/export` | Export the alerts matching a hunt as CSV (FR-23) | admin, responder | `200` `text/csv` | `HuntExportRequest` |
 | `POST` | `/api/v1/ingest/flows` | Ingest flow records (flow@1) | admin, analyst, responder | `200` `IngestResponse` | `FlowRecordIn` |
@@ -42,7 +47,7 @@ or body do not match the schema below.
 | `GET` | `/api/v1/logs/lines` | Raw log lines behind a cluster (log@1) | admin, analyst, responder, viewer | `200` `LogLinesOut` | — |
 | `GET` | `/api/v1/models` | List registered model versions (FR-30) | admin, analyst, responder, viewer | `200` `ModelListOut` | — |
 | `POST` | `/api/v1/models/{kind}/rollback` | Reverse the most recent promotion of a kind (FR-33) | admin | `200` `ModelTransitionOut` | `RollbackRequest` |
-| `GET` | `/api/v1/models/{model_id}/metrics` | Held-out evaluation metrics for one version (FR-31) | admin, analyst, responder, viewer | `200` `ModelMetricsOut` | — |
+| `GET` | `/api/v1/models/{model_id}/metrics` | Held-out metrics and recorded evaluation artifacts for one version (FR-31, T-420) | admin, analyst, responder, viewer | `200` `ModelMetricsOut` | — |
 | `POST` | `/api/v1/models/{model_id}/promote` | Make a version active and retire the incumbent (FR-33) | admin | `200` `ModelTransitionOut` | `PromotionRequest` |
 | `GET` | `/api/v1/overview` | One window's counts, severity series and named entities (FR-50) | admin, analyst, responder, viewer | `200` `OverviewOut` | — |
 | `POST` | `/api/v1/privacy/erasure` | Erase one data subject across every store (NFR-05, R-37) | admin | `200` `ErasureReportOut` | `ErasureRequest` |
@@ -219,7 +224,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.login` or `auth.refresh` or `auth.logout`.
 
 ### `AuditEntryOut`
 
@@ -244,6 +249,39 @@ A page of the trail, newest first.
 | --- | --- | --- | --- |
 | `items` | `AuditEntryOut` | yes | — |
 | `next_before` | `integer` or `null` | yes | — |
+
+### `AuthStatusOut`
+
+Whether the explicitly enabled local first-admin setup is still available.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `setup_available` | `boolean` | yes | True only when development-only setup is enabled and no account exists. The first account is an administrator and is held in memory. |
+| `setup_enabled` | `boolean` | yes | Whether AEGIS_DEV_AUTH_SETUP_ENABLED is enabled for this process. |
+| `account_exists` | `boolean` | yes | Whether an administrator has been provisioned in this process. |
+
+### `ConfusionMatrixOut`
+
+Recorded TP/FP/TN/FN counts, threshold and exact artifact provenance.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `threshold` | `number` | yes | — |
+| `tp` | `integer` | yes | — |
+| `fp` | `integer` | yes | — |
+| `tn` | `integer` | yes | — |
+| `fn` | `integer` | yes | — |
+| `artifact` | `string` | yes | Recorded evaluation run containing this matrix. |
+| `field` | `string` | yes | Field path inside the recorded evaluation run. |
+
+### `CredentialsIn`
+
+Email and password for local account setup or sign-in.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `email` | `string` | yes | — |
+| `password` | `string (password)` | yes | — |
 
 ### `DeliveryListOut`
 
@@ -349,6 +387,15 @@ What one store did.
 | --- | --- | --- | --- |
 | `name` | `string` | yes | — |
 | `affected` | `integer` | yes | — |
+
+### `EvaluationDetailsOut`
+
+The confusion matrix and score distribution from one evaluation artifact.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `confusion` | `ConfusionMatrixOut` | yes | — |
+| `score_histogram` | `ScoreHistogramOut` | yes | — |
 
 ### `EvidenceOccurrenceOut`
 
@@ -702,6 +749,7 @@ FR-31's metrics for one version, on a named split.
 | `split` | `string` | yes | The split these numbers were measured on, e.g. 'temporal:2025-Q4'. |
 | `evaluated_at` | `string (date-time)` | yes | — |
 | `metrics` | map of string to `MetricPointOut` | yes | — |
+| `evaluation` | `EvaluationDetailsOut` or `null` | no | — |
 
 ### `ModelOut`
 
@@ -715,7 +763,6 @@ One registered model version.
 | `artifact_uri` | `string` | yes | — |
 | `sha256` | `string` | yes | — |
 | `manifest_present` | `boolean` | yes | Whether a training_manifest.json ships with it. False means R-63 refuses its promotion. |
-| `metrics` | `ModelMetricsOut` or `null` | no | — |
 | `promoted_at` | `string (date-time)` or `null` | no | — |
 | `promoted_by` | `string` or `null` | no | — |
 | `justification` | `string` | no | — |
@@ -892,6 +939,14 @@ Why one record in a batch was rejected (FR-04).
 | `message` | `string` | yes | — |
 | `field` | `string` or `null` | no | — |
 
+### `RefreshIn`
+
+A single-use refresh token presented for rotation.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `refresh_token` | `string (password)` | yes | — |
+
 ### `RelatedAlertsOut`
 
 Other alerts on the same entity around this one, for §4.3's "Related alerts".
@@ -1002,6 +1057,27 @@ One scope, with the capabilities it grants.
 | `name` | `string` | yes | — |
 | `capabilities` | list of `string` | yes | — |
 
+### `ScoreHistogramBinOut`
+
+One lower-inclusive score interval and the observed class counts.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `lower` | `number` | yes | — |
+| `upper` | `number` | yes | — |
+| `benign` | `integer` | yes | — |
+| `threat` | `integer` | yes | — |
+
+### `ScoreHistogramOut`
+
+The recorded score distribution and its artifact provenance.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bins` | `ScoreHistogramBinOut` | yes | — |
+| `artifact` | `string` | yes | Recorded evaluation run containing this histogram. |
+| `field` | `string` | yes | Field path inside the recorded evaluation run. |
+
 ### `ThresholdImpactOut`
 
 What a proposed threshold would have produced over the preview window.
@@ -1087,6 +1163,19 @@ A hand-set threshold (design.md §4.8's manual edit).
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `value` | `number` | yes | The new lower bound, strictly inside (0, 1). |
+
+### `TokenPairOut`
+
+The bearer pair returned after setup, login or refresh rotation.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `access_token` | `string` | yes | — |
+| `refresh_token` | `string` | yes | — |
+| `token_type` | `string` | no | — |
+| `expires_in` | `integer` | yes | Access-token lifetime in seconds. |
+| `subject` | `string` | yes | — |
+| `role` | `string` | yes | — |
 
 ### `UnevictableOut`
 
