@@ -36,10 +36,10 @@ import {
   keyRows,
   keySummary,
   scopeChoices,
-  secretIsLive,
   type IssuedKey,
   type KeyRow,
 } from '../keys';
+import { secretIsLive } from '../secrets';
 
 export function KeysPanel() {
   const keys = useKeys();

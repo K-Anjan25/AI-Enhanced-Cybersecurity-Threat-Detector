@@ -12,9 +12,8 @@
  *
  * **Below 768 px the palette offers the triage loop and the actions** (T-412). A
  * command that navigates to a screen the viewport refuses would be a command that
- * navigates to a notice — the same reason T-422's `/admin/connectors` has no palette
- * entry — so the destination list is filtered by the same viewport answer the shell
- * and the routes use.
+ * navigates to a notice, so the destination list is filtered by the same viewport
+ * answer the shell and the routes use.
  *
  * **The saved hunts are read when the palette opens**, not when the provider mounts:
  * an operator who saves a hunt and immediately presses `⌘K` must find it, and a list

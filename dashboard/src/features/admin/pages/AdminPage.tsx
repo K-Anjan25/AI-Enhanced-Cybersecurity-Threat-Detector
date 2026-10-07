@@ -1,10 +1,10 @@
 /**
- * Admin — `/admin` and its five panels (design.md §3, §4.8; T-410).
+ * Admin — `/admin` and its six panels (design.md §3, §4.8; T-410, T-422).
  *
- * The design's navigation tree gives Admin six children. Five of them exist here —
- * users & roles, API keys, thresholds, retention & GDPR, audit — and the sixth,
- * connectors, has no task row and no screen yet, so it renders the honest "not built"
- * state rather than a tab that looks live (see `App.tsx`'s `PENDING`; T-422 files it).
+ * All six of the design's children exist here now: users & roles, API keys,
+ * connectors, thresholds, retention & GDPR, audit. Connectors was the last one — it
+ * needed T-422's delivery read API behind it, and until then the index said so rather
+ * than offering a tab that looked live.
  *
  * Sub-routes are real routes rather than in-page tabs, so a deep link works, the back
  * button works, and a 403 on one panel does not take the others down with it. The nav
@@ -19,6 +19,7 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 
 import { ADMIN_SECTIONS, type AdminSectionPath } from '../../../components/layout/nav';
 import { AuditPanel } from '../components/AuditPanel';
+import { ConnectorsPanel } from '../components/ConnectorsPanel';
 import { KeysPanel } from '../components/KeysPanel';
 import { RetentionPanel } from '../components/RetentionPanel';
 import { ThresholdsPanel } from '../components/ThresholdsPanel';
@@ -48,6 +49,11 @@ const PANELS: Readonly<Record<AdminSectionPath, Panel>> = {
     summary:
       'Machine credentials: issue one, read its prefix, revoke it. The secret is shown once.',
     element: <KeysPanel />,
+  },
+  connectors: {
+    summary:
+      'Outbound endpoints: where alerts are sent, the floor each receives at, one signed test event, and every attempt with its outcome.',
+    element: <ConnectorsPanel />,
   },
   thresholds: {
     summary: 'The band edges in force, where each came from, and what a change would have done.',
@@ -132,14 +138,6 @@ function AdminIndex() {
             <span className="text-body-sm text-muted">{section.summary}</span>
           </li>
         ))}
-        <li className="flex flex-col">
-          <span className="text-body text-muted">Connectors</span>
-          <span className="text-body-sm text-muted">
-            Not built yet: design.md §3 lists the route, the backlog has no task for the screen
-            until T-422. The API that would back it exists — webhook endpoints with a signing secret
-            shown once — so this is a screen gap, not a service one.
-          </span>
-        </li>
       </ul>
     </section>
   );

@@ -58,7 +58,9 @@ or body do not match the schema below.
 | `POST` | `/api/v1/users/{user_id}/role` | Set one user's role, refusing to empty the admin role (T-410, R-53) | admin | `200` `RoleChangeOut` | `RoleChangeRequest` |
 | `GET` | `/api/v1/webhooks` | List registered webhooks, without secrets | admin, responder | `200` `WebhookListOut` | — |
 | `POST` | `/api/v1/webhooks` | Register an outbound webhook (FR-21) | admin, responder | `201` `WebhookCreatedOut` | `WebhookCreate` |
+| `GET` | `/api/v1/webhooks/deliveries` | Recent delivery attempts, newest first (T-422) | admin, responder | `200` `DeliveryListOut` | — |
 | `DELETE` | `/api/v1/webhooks/{webhook_id}` | Delete a webhook | admin, responder | `204` | — |
+| `POST` | `/api/v1/webhooks/{webhook_id}/test` | Attempt one delivery to a target (T-422) | admin, responder | `200` `DeliveryOut` | — |
 | `GET` | `/healthz` | Liveness probe | unauthenticated | `200` `HealthResponse` | — |
 | `GET` | `/metrics` | Prometheus metrics | unauthenticated | `200` `text/plain` | — |
 | `GET` | `/readyz` | Readiness probe | unauthenticated | `200` `ReadinessResponse` | — |
@@ -217,7 +219,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test`.
 
 ### `AuditEntryOut`
 
@@ -242,6 +244,34 @@ A page of the trail, newest first.
 | --- | --- | --- | --- |
 | `items` | `AuditEntryOut` | yes | — |
 | `next_before` | `integer` or `null` | yes | — |
+
+### `DeliveryListOut`
+
+Recent delivery attempts, newest first, with what qualifies them (R-70).
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `items` | `DeliveryOut` | yes | — |
+| `held` | `integer` | yes | How many records the process still holds. |
+| `recorded` | `integer` | yes | How many it has made, including dropped ones. |
+| `dispatch_configured` | `boolean` | yes | Whether this deployment has a sender, so an empty list can be read. |
+| `caveats` | list of `string` | yes | — |
+
+### `DeliveryOut`
+
+One delivery attempt, as the connectors screen reads it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `delivery_id` | `string` | yes | — |
+| `target_id` | `string` | yes | — |
+| `at` | `string (date-time)` | yes | When the delivery finished, on the API's clock. |
+| `delivered` | `boolean` | yes | — |
+| `attempt_count` | `integer` | yes | Requests made, retries included. |
+| `waited_seconds` | `number` | yes | Time spent in backoffs between them. |
+| `outcome` | `string` | yes | The last attempt: delivered, retry, rejected, blocked or transport_error. |
+| `status` | `integer` or `null` | no | HTTP status of the last attempt. |
+| `reason` | `string` | yes | A short code, never a message from the receiver. |
 
 ### `Direction`
 

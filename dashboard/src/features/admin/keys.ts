@@ -23,24 +23,22 @@
  * The panel also states the one thing a copy-to-clipboard field invites people to
  * get wrong: there is no route that returns this value again, so a lost key is
  * re-issued rather than re-read.
+ *
+ * The capture and the predicate that reads it are shared with the connectors panel
+ * (`secrets.ts`), because FR-44's API key and FR-21's signing secret are the same
+ * rule about two credentials. What lives here is only what is true of a key.
  */
 import { formatStamp } from '../../lib/format';
 import type { ApiKey, ApiKeyIssued, ScopeInfo } from '../../api/admin';
+import type { IssuedSecret } from './secrets';
 
 /** A secret, with the lifetime it was given: the modal that received it. */
-export interface IssuedKey {
+export interface IssuedKey extends IssuedSecret {
   id: number;
   name: string;
   prefix: string;
   scopes: string[];
   createdAt: string;
-  secret: string;
-  /**
-   * The rendering that received the secret. A secret is live only while this value
-   * is the modal's current one, so closing the modal revokes it from the screen
-   * without anything having to remember to clear a field.
-   */
-  expiresWith: number;
 }
 
 /** Capture a create response, stamping it with the rendering that may show it. */
@@ -54,17 +52,6 @@ export function issuedKey(issued: ApiKeyIssued, expiresWith: number): IssuedKey 
     secret: issued.secret,
     expiresWith,
   };
-}
-
-/**
- * Whether a secret may still be rendered.
- *
- * `null` when the modal is closed, so the secret is unreachable by construction: a
- * component that wanted to show it after closing would have to pass a number it no
- * longer has.
- */
-export function secretIsLive(key: IssuedKey | null, openToken: number | null): boolean {
-  return key !== null && openToken !== null && key.expiresWith === openToken;
 }
 
 /** The sentence the panel shows under the secret, which is the whole of the rule. */

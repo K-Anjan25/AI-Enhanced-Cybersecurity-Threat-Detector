@@ -1,12 +1,11 @@
 /**
  * The keys model (T-410, FR-44).
  *
- * The acceptance criterion is *the API key secret renders exactly once*, and the
- * mechanism that enforces it lives here: a secret is captured with the rendering that
- * received it (`expiresWith`), and `secretIsLive` is the one predicate that decides
- * whether it may be drawn. The test that matters is the negative one — the same capture
- * against a later rendering is not live — because that is the failure a screenshot
- * would never show: a modal closed and reopened, with the key still in a field.
+ * The acceptance criterion is *the API key secret renders exactly once*. The lifetime
+ * mechanism is shared with the connectors panel and tested where it lives
+ * (`secrets.test.ts`); what is tested here is the keys half — that the capture this
+ * panel makes carries the rendering it was given, and that the listing it draws has no
+ * secret in it at all.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -18,8 +17,8 @@ import {
   keyRows,
   keySummary,
   scopeChoices,
-  secretIsLive,
 } from './keys';
+import { secretIsLive } from './secrets';
 
 const SECRET = 'aegis_sk_7_9f4c1d2e3a4b5c6d7e8f90a1b2c3d4e5'; // pragma: allowlist secret
 
@@ -52,28 +51,15 @@ function listed(over: Partial<ApiKey> = {}): ApiKey {
   };
 }
 
-describe('the one-rendering lifetime', () => {
-  it('is live for the rendering that captured it', () => {
+describe('the capture the keys panel makes', () => {
+  it('carries the secret and the rendering that may draw it', () => {
     const capture = issuedKey(issued(), 3);
     expect(capture.secret).toBe(SECRET);
+    expect(capture.expiresWith).toBe(3);
+    // The predicate itself is tested in `secrets.test.ts`, where it lives (T-422
+    // moved it there so the connectors panel could not grow a second copy).
     expect(secretIsLive(capture, 3)).toBe(true);
-  });
-
-  it('is not live for a later rendering', () => {
-    // Closing the dialog bumps the counter: this is exactly the sequence that would
-    // otherwise leave a secret on screen in a reopened modal.
-    const capture = issuedKey(issued(), 3);
     expect(secretIsLive(capture, 4)).toBe(false);
-  });
-
-  it('is not live when the dialog is closed, whatever the counter says', () => {
-    const capture = issuedKey(issued(), 3);
-    expect(secretIsLive(capture, null)).toBe(false);
-  });
-
-  it('is not live when there is no capture at all', () => {
-    expect(secretIsLive(null, 3)).toBe(false);
-    expect(secretIsLive(null, null)).toBe(false);
   });
 
   it('says the rule in one sentence, and that a lost key is re-issued', () => {

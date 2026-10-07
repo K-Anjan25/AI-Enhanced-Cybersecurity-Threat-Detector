@@ -83,6 +83,7 @@ from app.services.user_directory import InMemoryUserDirectory, UserAdminService
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
 )
+from app.services.webhook_deliveries import InMemoryDeliveryLog
 from app.services.webhook_targets import (
     InMemoryWebhookStore,
     SecretVault,
@@ -316,6 +317,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.webhook_store = InMemoryWebhookStore()
     app.state.webhook_allowlist = parse_allowlist(resolved.webhook_allowlist)
     app.state.secret_vault = SecretVault(resolved.secret_key)
+    # The delivery read model (T-422): where every attempt the sender makes is
+    # recorded, so the connectors screen can answer "did that endpoint take
+    # anything, and if not, why not". In-memory and bounded, like the store it
+    # describes, and the route says both in its caveats.
+    #
+    # No sender is built, and that is T-311's decision rather than an omission:
+    # the HTTP transport was deliberately left unwritten because there is no
+    # network in this environment to verify one against, so ``webhook_sender`` is
+    # absent and the test route refuses with that reason. When a transport exists,
+    # it is built here with ``on_report=sender_sink(app.state.webhook_deliveries)``
+    # and every attempt -- pipeline or probe -- lands in this log.
+    app.state.webhook_deliveries = InMemoryDeliveryLog()
     # The audit trail (T-312, FR-42). Every mutating route appends here after its
     # work succeeded: a refused request changed nothing, and a row per attempt
     # would let a client fill the trail at will.

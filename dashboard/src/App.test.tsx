@@ -84,6 +84,20 @@ function renderAt(path: string) {
       respond: () => jsonResponse({ items: [], count: 0, active_admins: 0 }),
     },
     { match: '/api/v1/keys', respond: () => jsonResponse({ items: [] }) },
+    // T-422's connectors panel reads both of these, so a route that mounts it can
+    // render without 404s; the panel's own behaviour is ConnectorsPanel.test.tsx.
+    {
+      match: '/api/v1/webhooks/deliveries',
+      respond: () =>
+        jsonResponse({
+          items: [],
+          held: 0,
+          recorded: 0,
+          dispatch_configured: false,
+          caveats: ['This deployment has no outbound transport'],
+        }),
+    },
+    { match: '/api/v1/webhooks', respond: () => jsonResponse({ items: [] }) },
     {
       match: '/api/v1/thresholds',
       respond: () => jsonResponse({ tenant_id: 't1', defaults: {}, items: [] }),
@@ -183,7 +197,6 @@ describe('routing and shell', () => {
     await user.click(screen.getByRole('link', { name: 'Traffic' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Traffic' })).toBeInTheDocument();
-    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
   });
 
   it('navigates to the log explorer, which is built now', async () => {
@@ -193,7 +206,6 @@ describe('routing and shell', () => {
     await user.click(screen.getByRole('link', { name: 'Logs' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Logs' })).toBeInTheDocument();
-    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
     // The stubbed tail is empty and says why, which is the log screen's own claim
     // about a bounded buffer rather than a blank table.
     expect(await screen.findByText('Nothing has arrived in this window')).toBeInTheDocument();
@@ -206,7 +218,6 @@ describe('routing and shell', () => {
     await user.click(screen.getByRole('link', { name: 'Hunt' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
-    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
     // The console does not search until asked, and says so rather than showing an
     // empty table that would read as a quiet network.
     expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
@@ -216,7 +227,6 @@ describe('routing and shell', () => {
     renderAt('/models');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Model ops' })).toBeInTheDocument();
-    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
     // The stubbed registry is empty and the screen says so rather than rendering an
     // empty table that would read as a deployment with no models.
     expect(await screen.findByText('No model versions are registered')).toBeInTheDocument();
@@ -226,21 +236,21 @@ describe('routing and shell', () => {
     renderAt('/admin');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Admin' })).toBeInTheDocument();
-    // The index is a map of the sections, and the one section with no task says so.
-    // Twice by design: the section rail and the index map both list it.
+    // The index is a map of all six sections design.md §3 lists, and every one of them
+    // is a real route now — including connectors, which T-422 built. Twice by design:
+    // the section nav and the index map both list each one.
     expect(await screen.findAllByRole('link', { name: 'Audit log' })).toHaveLength(2);
-    expect(screen.getByText(/until T-422/)).toBeInTheDocument();
-    expect(screen.queryByText('Not built yet')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Connectors' })).toHaveLength(2);
   });
 
-  it('navigates to a screen that is not built and names the task that owns it', () => {
-    // `/admin/connectors` is design.md §3's sixth admin route and the only one left
-    // with no task row (T-422). At least one pending path must stay stubbed, or the
-    // not-built state would be an untested claim.
+  it('mounts the connectors screen at /admin/connectors, the last screen the design names', async () => {
+    // T-422 built it, so the router's "not built" state is gone entirely: every path
+    // in design.md §3 is now a screen. This asserts the deep link works, which is the
+    // half a pending state used to stand in for.
     renderAt('/admin/connectors');
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Not built yet' })).toBeInTheDocument();
-    expect(screen.getByText('T-422')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Endpoints' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Delivery attempts' })).toBeInTheDocument();
   });
 
   it('mounts the triage screen at /alerts, which is built now', async () => {

@@ -119,6 +119,13 @@ class AuditAction(StrEnum):
     #: a different selection (T-415, FR-23).
     alert_export = "alert.export"
 
+    #: A test delivery to a configured endpoint (T-422). It is in the trail because
+    #: it is a request that left the building carrying alert-shaped data, aimed by
+    #: hand rather than by a rule: whoever pointed the deployment at an address and
+    #: pressed send should be answerable for it. The URL and the secret are not in
+    #: the record, for the same reasons they are not in the create record.
+    webhook_test = "webhook.test"
+
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
 #: this table fails the suite, so a new endpoint cannot ship unlogged.
@@ -129,6 +136,7 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/alerts/{alert_id}/verdict"): AuditAction.alert_verdict,
         ("POST", "/api/v1/webhooks"): AuditAction.webhook_create,
         ("DELETE", "/api/v1/webhooks/{webhook_id}"): AuditAction.webhook_delete,
+        ("POST", "/api/v1/webhooks/{webhook_id}/test"): AuditAction.webhook_test,
         ("POST", "/api/v1/keys"): AuditAction.key_create,
         ("DELETE", "/api/v1/keys/{key_id}"): AuditAction.key_revoke,
         ("POST", "/api/v1/retention/run"): AuditAction.retention_apply,

@@ -1,13 +1,12 @@
 /**
  * Route table (design.md §3 information architecture).
  *
- * Overview (T-403, §4.1), Alert triage (T-404, §4.3), Traffic (T-406, §4.4), Logs
- * (T-407, §4.5), Hunt (T-408, §4.6), Model ops with its drift page (T-409, §4.7) and
- * Admin (T-410, §4.8) exist. Every other route renders an explicit "not built" state
- * rather than a blank panel or a dead link, so the navigation reflects reality
- * (design.md §8.1) — `/admin/connectors` is the one left, and it names T-422, the task
- * that will build it, because design.md §3 gives it a route and the backlog had no row
- * for the screen.
+ * Every screen design.md §3 names now exists: Overview (T-403, §4.1), Alert triage
+ * (T-404, §4.3), Traffic (T-406, §4.4), Logs (T-407, §4.5), Hunt (T-408, §4.6), Model
+ * ops with its drift page (T-409, §4.7) and Admin with its six sections (T-410,
+ * T-422, §4.8). `/admin/connectors` was the last one, and T-422 built it, so the
+ * router no longer carries a "not built" state at all: a path outside the design's
+ * tree is a 404, and a path inside it is a screen.
  *
  * The toast provider is mounted here rather than at the entry point because it is
  * part of the app's own tree: a route that reports the result of an action (the
@@ -46,24 +45,6 @@ import { ModelsPage } from './features/models/pages/ModelsPage';
 import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
-
-const PENDING: Record<string, string> = {
-  '/admin/connectors': 'T-422',
-};
-
-function NotYetBuilt({ path }: { path: string }) {
-  const task = PENDING[path] ?? 'unplanned';
-  return (
-    <div className="max-w-xl">
-      <h1 className="text-h1">Not built yet</h1>
-      <p className="mt-2 text-body text-muted">
-        This screen is scheduled as task <code className="font-mono">{task}</code> in{' '}
-        <code className="font-mono">task.md</code>. The route exists so navigation is honest about
-        what the build currently covers.
-      </p>
-    </div>
-  );
-}
 
 /**
  * A screen, when the window is wide enough for it to be offered (§8.3).
@@ -155,17 +136,6 @@ function Shell() {
             </Offered>
           }
         />
-        {Object.keys(PENDING).map((path) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <Offered>
-                <NotYetBuilt path={path} />
-              </Offered>
-            }
-          />
-        ))}
         <Route
           path="*"
           element={

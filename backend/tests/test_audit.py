@@ -942,6 +942,11 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # a reviewer asking "who exported the queue" must be answered by a filter,
         # not by reading every export's detail.
         "alert.export",
+        # T-422: a test delivery. A request that left the building carrying
+        # alert-shaped data, aimed by hand rather than by a rule, so whoever
+        # pressed send is answerable for it -- the same reasoning that puts the
+        # two exports in the trail.
+        "webhook.test",
     }
 
 
