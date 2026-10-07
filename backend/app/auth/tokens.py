@@ -176,12 +176,14 @@ class TokenService:
             raise MalformedToken(msg)
         return claims
 
-    def rotate(self, refresh_token: str) -> TokenPair:
+    def rotate(self, refresh_token: str, *, role: str | None = None) -> TokenPair:
         """Spend a refresh token and return a new pair.
 
         The presented token stops working the moment this returns. Presenting it
         again revokes the whole family, because two holders of one single-use
-        credential means at least one of them is not the user.
+        credential means at least one of them is not the user. A user-directory
+        adapter may pass the account's current role so a refresh observes a recent
+        demotion rather than extending the role captured at login.
         """
         claims = self.verify_refresh(refresh_token)
         family = str(claims["fam"])
@@ -198,7 +200,8 @@ class TokenService:
             raise ReusedRefreshToken(msg)
 
         self._store.mark_spent(jti, family, self._int_claim(claims, "exp"))
-        return self._pair(str(claims["sub"]), str(claims.get("role", "")), family=family)
+        current_role = role if role is not None else str(claims.get("role", ""))
+        return self._pair(str(claims["sub"]), current_role, family=family)
 
     def revoke(self, refresh_token: str) -> None:
         """Invalidate a whole session on logout."""

@@ -12,6 +12,7 @@ import { expectAccessible } from './test/axe';
 import { jsonResponse, stubFetch, testQueryClient, textResponse } from './test/query';
 import { stubViewport } from './test/viewport';
 import { ThemeProvider } from './theme/ThemeProvider';
+import { resetSessionForTests, setSessionToken } from './api/session';
 
 /**
  * The overview fetches on mount, so the shell's tests stub the network too rather
@@ -19,6 +20,7 @@ import { ThemeProvider } from './theme/ThemeProvider';
  * and the shell; the page's own behaviour is OverviewPage.test.tsx.
  */
 function renderAt(path: string) {
+  setSessionToken('test-session-token');
   const seen = stubFetch([
     {
       match: '/api/v1/alerts',
@@ -124,8 +126,9 @@ function renderAt(path: string) {
 }
 
 afterEach(() => {
-  // Removes the `fetch` stub and the viewport stub (T-412) together, so no test
-  // inherits a window width.
+  // Removes the `fetch` stub, session credential, and viewport stub (T-412) together,
+  // so no test inherits an authenticated tab or a window width.
+  resetSessionForTests();
   vi.unstubAllGlobals();
 });
 

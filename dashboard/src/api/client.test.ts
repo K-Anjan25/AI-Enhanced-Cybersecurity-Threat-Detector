@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError, getJson, getText, postJson, query, REQUEST_TIMEOUT_MS } from './client';
-import { resetSessionForTests, sessionToken, setSessionToken } from './session';
+import {
+  refreshToken,
+  resetSessionForTests,
+  SESSION_REFRESH_TOKEN_KEY,
+  sessionToken,
+  setSessionCredentials,
+  setSessionToken,
+} from './session';
 import { jsonResponse, stubFetch, textResponse } from '../test/query';
 
 describe('api client', () => {
@@ -228,6 +235,39 @@ describe('the session credential', () => {
     await getJson('/api/v1/alerts').catch(() => undefined);
 
     expect(sessionToken()).toBeNull();
+  });
+
+  it('rotates an expired access token once and retries with the new pair', async () => {
+    let alertReads = 0;
+    const requests = stubFetch([
+      {
+        match: '/api/v1/auth/refresh',
+        respond: (request) => {
+          expect(request.headers.get('authorization')).toBeNull();
+          return jsonResponse({ access_token: 'access-2', refresh_token: 'refresh-2' });
+        },
+      },
+      {
+        match: '/api/v1/alerts',
+        respond: (request) => {
+          alertReads += 1;
+          if (alertReads === 1) {
+            expect(request.headers.get('authorization')).toBe('Bearer access-1');
+            return jsonResponse({ detail: 'expired' }, 401);
+          }
+          expect(request.headers.get('authorization')).toBe('Bearer access-2');
+          return jsonResponse({ ok: true });
+        },
+      },
+    ]);
+    setSessionCredentials('access-1', 'refresh-1');
+
+    await expect(getJson('/api/v1/alerts')).resolves.toEqual({ ok: true });
+
+    expect(requests).toHaveLength(3);
+    expect(sessionToken()).toBe('access-2');
+    expect(refreshToken()).toBe('refresh-2');
+    expect(window.sessionStorage.getItem(SESSION_REFRESH_TOKEN_KEY)).toBe('refresh-2');
   });
 
   it('keeps the session when the API says the role is not enough', async () => {

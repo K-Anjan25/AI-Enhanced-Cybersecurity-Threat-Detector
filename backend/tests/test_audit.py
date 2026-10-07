@@ -947,6 +947,12 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # pressed send is answerable for it -- the same reasoning that puts the
         # two exports in the trail.
         "webhook.test",
+        # T-417: successful first-admin setup and session mutations are audited;
+        # their credentials stay out of the trail.
+        "auth.setup",
+        "auth.login",
+        "auth.refresh",
+        "auth.logout",
     }
 
 

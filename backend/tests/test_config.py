@@ -74,6 +74,8 @@ def test_settings_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("AEGIS_SERVICE_NAME", "aegis-backend-prod")
     monkeypatch.setenv("AEGIS_PORT", "9000")
     monkeypatch.setenv("AEGIS_MAX_FLOW_BATCH", "250")
+    monkeypatch.setenv("AEGIS_BOOTSTRAP_ADMIN_EMAIL", "Operator@Example.Test")
+    monkeypatch.setenv("AEGIS_BOOTSTRAP_ADMIN_PASSWORD", "test-only-strong-password-2026")
 
     settings = load_settings()
 
@@ -82,6 +84,32 @@ def test_settings_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None
     assert settings.port == 9000
     assert settings.max_flow_batch == 250
     assert settings.secret_key == "K7qzR2mVx9pL4tYbN6wJ8sDfG1hA3cEu"
+    assert settings.bootstrap_admin_email == "operator@example.test"
+    assert settings.bootstrap_admin_password is not None
+    assert settings.bootstrap_admin_password.get_secret_value() == "test-only-strong-password-2026"
+
+
+def test_production_requires_an_explicit_bootstrap_account() -> None:
+    with pytest.raises(ValidationError, match="production requires AEGIS_BOOTSTRAP_ADMIN_EMAIL"):
+        Settings(env=Environment.PRODUCTION, secret_key="K7qzR2mVx9pL4tYbN6wJ8sDfG1hA3cEu")
+
+
+def test_bootstrap_credentials_must_be_configured_as_a_pair() -> None:
+    with pytest.raises(ValidationError, match="set both AEGIS_BOOTSTRAP_ADMIN_EMAIL"):
+        Settings(
+            env=Environment.DEVELOPMENT,
+            secret_key="K7qzR2mVx9pL4tYbN6wJ8sDfG1hA3cEu",
+            bootstrap_admin_email="operator@example.test",
+        )
+
+
+def test_development_setup_flag_is_rejected_outside_development() -> None:
+    with pytest.raises(ValidationError, match="permitted only in development"):
+        Settings(
+            env=Environment.TEST,
+            secret_key="K7qzR2mVx9pL4tYbN6wJ8sDfG1hA3cEu",
+            dev_auth_setup_enabled=True,
+        )
 
 
 def test_out_of_range_port_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
