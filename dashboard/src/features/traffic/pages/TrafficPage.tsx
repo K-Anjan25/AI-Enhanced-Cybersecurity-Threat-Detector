@@ -1,68 +1,76 @@
 /**
  * Traffic explorer — `/traffic` (design.md §4.4, FR-52).
  *
- * Top to bottom, one brush and one row set: a brushable series of alerted record
- * volume with the composite score overlaid, then the entity table and the graph
- * side by side, then the caveats. Brushing filters everything below it because
- * `buildTrafficView` derives all three panels from one brushed row set — there is no
- * second place where the brush could be forgotten.
+ * Top to bottom, one brush and one window: a brushable series of **ingested flow volume**
+ * with the composite score overlaid, then the address table and the graph side by side,
+ * then the caveats. Since T-418 the numbers are the traffic's — counted by the flow read
+ * model over the window, with the alert side joined on by the endpoint — and brushing
+ * re-reads the *brushed window* rather than filtering a page of alerts (`hooks.ts`), so
+ * "filters everything below" is true of the server's own counts, not just of a list that
+ * happened to be in the browser.
  *
  * Three things this screen says out loud rather than hiding:
  *
- *   * **What the numbers are.** The series counts records *that raised alerts*, and
- *     the graph's edges are shared correlation traces — not total traffic and not
- *     flow counts. The note is part of the view model, so it renders with the data
- *     it describes and a reader cannot get the chart without the caveat.
- *   * **What was filtered away.** The controls are absolute, so the page reports how
- *     many entities they removed; a table that quietly shrank is how an analyst
- *     concludes there is nothing there.
- *   * **What is partial.** When the page walk hit its cap, the counts say so
- *     (`complete: false`, the rule D-060 recorded for the overview).
+ *   * **What the numbers are, and what the source cannot see.** The caveats come from
+ *     the API verbatim: which read model answered (a persistent store, or this process's
+ *     in-memory rollup), what a cap did to a list, and why a window is empty. A reader
+ *     cannot get the chart without them.
+ *   * **What was filtered away.** The controls are absolute, so the page reports how many
+ *     addresses they removed; a table that quietly shrank is how an analyst concludes
+ *     there is nothing there.
+ *   * **What is partial.** `nodes_capped` and `edges_capped` come from the response, so
+ *     a top-N list says it is one — and the caveats name both numbers, so the reader
+ *     learns how many addresses were not listed rather than that "some" were.
  */
 import { useMemo, useState } from 'react';
 
 import { useChartPalette } from '../../../components/charts/palette';
 import { Button, ConnectionStatus, ErrorState, Panel, Skeleton } from '../../../components/ui';
 import { useConnectionView } from '../../../components/realtime/useConnectionView';
-import { SEVERITIES, type Severity } from '../../../components/ui/severity';
+import { FLOW_DIRECTIONS, FLOW_PROTOCOLS } from '../../../api/flows';
 import { BrushSeries } from '../components/BrushSeries';
 import { EntityGraph } from '../components/EntityGraph';
 import { EntityTable } from '../components/EntityTable';
-import { rangeOf, useTrafficWindow, TRAFFIC_RANGES, type TrafficRangeKey } from '../hooks';
-import { DEFAULT_FILTERS, buildTrafficView, type TrafficFilters } from '../view';
-import { SERIES_BUCKETS } from '../view';
+import {
+  rangeOf,
+  useTrafficBrush,
+  useTrafficWindow,
+  TRAFFIC_RANGES,
+  type TrafficRangeKey,
+} from '../hooks';
+import { buildTrafficView, DEFAULT_FILTERS, type TrafficFilters } from '../view';
 import type { BrushRange } from '../aggregate';
 
 export function TrafficPage() {
   const [rangeKey, setRangeKey] = useState<TrafficRangeKey>('24h');
   const [filters, setFilters] = useState<TrafficFilters>(DEFAULT_FILTERS);
   const [brush, setBrush] = useState<BrushRange | null>(null);
-  const [pinned, setPinned] = useState<number | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
 
   const range = rangeOf(rangeKey);
-  const query = useTrafficWindow(range, filters.severity, true);
+  const window = useTrafficWindow(range, filters, true);
+  // The brushed read is enabled only when there is a brush, so an unbrushed screen makes
+  // one request. While it loads, the unbrushed aggregate is what the panels show — see
+  // the view below — so a committed selection never blanks the screen it was drawn on.
+  const brushed = useTrafficBrush(range, filters, brush, true);
   const palette = useChartPalette();
   const connection = useConnectionView();
 
-  // `useTrafficWindow` subscribes the window to pushed alerts (T-405) — including
-  // the frames the REST fallback delivers once the socket is down. The brush, the
-  // filters and the pin are view state and are deliberately *not* re-read, so a live
-  // update cannot move a selection the analyst is working in.
+  const full = window.data;
+  const panels = brushed.data ?? full;
 
   const view = useMemo(() => {
-    if (query.data === undefined) return null;
+    if (full === undefined || panels === undefined) return null;
     return buildTrafficView({
-      rows: query.data.rows,
-      start: query.data.start,
-      end: query.data.end,
-      complete: query.data.complete,
-      pagesFetched: query.data.pagesFetched,
+      aggregate: full,
+      panels,
       brush,
       filters,
-      pinnedEntityId: pinned,
-      buckets: SERIES_BUCKETS,
+      pinnedId: pinned,
     });
-  }, [query.data, brush, filters, pinned]);
+  }, [full, panels, brush, filters, pinned]);
+
+  const loading = view === null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,8 +78,8 @@ export function TrafficPage() {
         <div>
           <h1 className="text-h1">Traffic</h1>
           <p className="mt-1 text-body-sm text-muted">
-            Record volume and composite score over the window, with the entities those records
-            belong to. Brushing the series filters the table and the graph.
+            Flow volume and composite score over the window, with the addresses those flows belong
+            to. Brushing the series re-reads the selected window for the table and the graph.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
@@ -83,7 +91,12 @@ export function TrafficPage() {
             <select
               id="traffic-range"
               value={rangeKey}
-              onChange={(event) => setRangeKey(event.target.value as TrafficRangeKey)}
+              onChange={(event) => {
+                setRangeKey(event.target.value as TrafficRangeKey);
+                // The selection was drawn on the old series; keeping it would leave the
+                // panels describing a window the chart no longer draws.
+                setBrush(null);
+              }}
               className="h-8 rounded-input border border-line bg-surface px-2 text-body-sm text-ink"
             >
               {TRAFFIC_RANGES.map((option) => (
@@ -96,30 +109,38 @@ export function TrafficPage() {
         </div>
       </header>
 
-      {query.isError && query.data === undefined ? (
+      {window.isError && full === undefined ? (
         <ErrorState
           message="The traffic window could not be loaded"
-          detail="It reads the alert API over the selected window."
-          action={<Button onClick={() => void query.refetch()}>Retry</Button>}
+          detail="It reads the flow API over the selected window, which composes the alert overlay."
+          action={<Button onClick={() => void window.refetch()}>Retry</Button>}
+        />
+      ) : null}
+
+      {brushed.isError && brush !== null ? (
+        <ErrorState
+          message="The brushed window could not be loaded"
+          detail="The table and the graph still describe the whole window; widen the brush to see everything again."
+          action={<Button onClick={() => setBrush(null)}>Clear the brush</Button>}
         />
       ) : null}
 
       <Panel
         title="Flow volume and score"
-        state={view === null ? 'loading' : 'ready'}
+        state={loading ? 'loading' : 'ready'}
         loadingLines={6}
         actions={
           <span className="text-caption text-muted">
-            {range.label} · {String(SERIES_BUCKETS)} buckets
+            {range.label} · {String(full?.bucket_minutes ?? 0)}-minute buckets
           </span>
         }
       >
         {view === null ? (
           <Skeleton lines={6} />
-        ) : view.series.every((bucket) => bucket.alerts === 0) ? (
+        ) : view.series.every((bucket) => bucket.flows === 0) ? (
           <p className="text-body-sm text-muted">
-            No alerts in the {range.label.toLowerCase()}: nothing was scored high enough to alert,
-            so there is no volume to draw.
+            No flow records in the {range.label.toLowerCase()}. The panel&apos;s caveats say whether
+            anything has been ingested at all.
           </p>
         ) : (
           <BrushSeries
@@ -127,49 +148,73 @@ export function TrafficPage() {
             range={brush}
             onRange={setBrush}
             palette={palette}
-            label={`Alerted record volume over the ${range.label.toLowerCase()}, with the mean composite score`}
+            label={`Flow volume over the ${range.label.toLowerCase()}, with the mean composite score of the alerts in each bucket`}
           />
         )}
       </Panel>
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-severity">
-            Severity
+          <label className="text-caption text-muted" htmlFor="traffic-protocol">
+            Protocol
           </label>
           <select
-            id="traffic-severity"
-            value={filters.severity}
+            id="traffic-protocol"
+            value={filters.protocol}
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                severity: event.target.value as Severity | 'all',
+                protocol: event.target.value as TrafficFilters['protocol'],
               }))
             }
             className="h-8 rounded-input border border-line bg-surface px-2 text-body-sm text-ink"
           >
-            <option value="all">All severities</option>
-            {SEVERITIES.map((severity) => (
-              <option key={severity} value={severity}>
-                {severity}
+            <option value="all">All protocols</option>
+            {FLOW_PROTOCOLS.map((protocol) => (
+              <option key={protocol} value={protocol}>
+                {protocol}
               </option>
             ))}
           </select>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-min-records">
-            Min records
+          <label className="text-caption text-muted" htmlFor="traffic-direction">
+            Direction
           </label>
-          <input
-            id="traffic-min-records"
-            type="number"
-            min={0}
-            value={filters.minRecords}
+          <select
+            id="traffic-direction"
+            value={filters.direction}
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                minRecords: Math.max(0, Number(event.target.value) || 0),
+                direction: event.target.value as TrafficFilters['direction'],
+              }))
+            }
+            className="h-8 rounded-input border border-line bg-surface px-2 text-body-sm text-ink"
+          >
+            <option value="all">All directions</option>
+            {FLOW_DIRECTIONS.map((direction) => (
+              <option key={direction} value={direction}>
+                {direction}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-caption text-muted" htmlFor="traffic-min-flows">
+            Min flows
+          </label>
+          <input
+            id="traffic-min-flows"
+            type="number"
+            min={0}
+            value={filters.minFlows}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                minFlows: Math.max(0, Number(event.target.value) || 0),
               }))
             }
             className="h-8 w-24 rounded-input border border-line bg-surface px-2 text-body-sm text-ink"
@@ -179,28 +224,28 @@ export function TrafficPage() {
         <label className="flex items-center gap-2 text-body-sm text-ink">
           <input
             type="checkbox"
-            checked={filters.openOnly}
+            checked={filters.openAlertsOnly}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, openOnly: event.target.checked }))
+              setFilters((current) => ({ ...current, openAlertsOnly: event.target.checked }))
             }
           />
-          Only entities with an open alert
+          Only addresses with an open alert
         </label>
 
         {view === null ? null : (
           <p className="text-caption text-muted">
-            {String(view.entities.length)} entities shown
+            {String(view.nodes.length)} addresses shown
             {view.hiddenByControls === 0
               ? ''
               : `, ${String(view.hiddenByControls)} hidden by the controls`}
-            {pinned === null ? '' : ', pinned to one entity and its neighbours'}.
+            {pinned === null ? '' : ', pinned to one address and its neighbours'}.
           </p>
         )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel
-          title="Entities"
+          title="Addresses"
           state={view === null ? 'loading' : 'ready'}
           loadingLines={5}
           actions={
@@ -215,27 +260,22 @@ export function TrafficPage() {
             <Skeleton lines={5} />
           ) : (
             <EntityTable
-              entities={view.entities}
-              pinnedEntityId={pinned}
-              onPin={(entityId) => setPinned((current) => (current === entityId ? null : entityId))}
+              entities={view.nodes}
+              pinnedId={pinned}
+              onPin={(id) => setPinned((current) => (current === id ? null : id))}
             />
           )}
         </Panel>
 
         <Panel
-          title="Entity relationships"
+          title="Flow relationships"
           state={view === null ? 'loading' : 'ready'}
           loadingLines={5}
         >
           {view === null ? (
             <Skeleton lines={5} />
           ) : (
-            <EntityGraph
-              model={view.graph}
-              palette={palette}
-              pinnedEntityId={pinned}
-              onPin={setPinned}
-            />
+            <EntityGraph model={view.graph} palette={palette} pinnedId={pinned} onPin={setPinned} />
           )}
         </Panel>
       </div>

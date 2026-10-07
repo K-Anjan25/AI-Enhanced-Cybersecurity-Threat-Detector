@@ -30,6 +30,7 @@ or body do not match the schema below.
 | `POST` | `/api/v1/alerts/{alert_id}/verdict` | Record an analyst verdict on an alert (FR-16) | admin, analyst, responder | `200` `VerdictOutcomeOut` | `VerdictRequest` |
 | `GET` | `/api/v1/alerts/{alert_id}/verdicts` | Read an alert's verdict history, oldest first (FR-16, FR-18) | admin, analyst, responder, viewer | `200` `VerdictHistoryOut` | — |
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
+| `GET` | `/api/v1/flows` | Count one window of traffic: volume, addresses and relationships (FR-52) | admin, analyst, responder, viewer | `200` `FlowAggregateOut` | — |
 | `POST` | `/api/v1/hunt/export` | Export the alerts matching a hunt as CSV (FR-23) | admin, responder | `200` `text/csv` | `HuntExportRequest` |
 | `POST` | `/api/v1/ingest/flows` | Ingest flow records (flow@1) | admin, analyst, responder | `200` `IngestResponse` | `FlowRecordIn` |
 | `POST` | `/api/v1/ingest/logs` | Ingest log lines (log@1) | admin, analyst, responder | `200` `IngestResponse` | `LogRecordIn` |
@@ -381,6 +382,74 @@ The trust hint: what analysts decided about this entity and family before.
 | `benign` | `integer` | no | — |
 | `true_positive` | `integer` | no | — |
 
+### `FlowAggregateOut`
+
+One window's traffic: the series, the addresses, the relationships and the caveats.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `window` | `FlowWindowOut` | yes | The window these numbers describe. |
+| `bucket_minutes` | `integer` | yes | Resolution of the series. |
+| `source` | `store` or `rollup` | yes | Which read model answered: the flow store or the in-process rollup. |
+| `filters` | `FlowFiltersOut` | yes | The narrowing applied to the read. |
+| `series` | `FlowBucketOut` | yes | Volume per bucket, oldest first. |
+| `entities` | `FlowEntityOut` | yes | Addresses, busiest first, capped. |
+| `edges` | `FlowEdgeOut` | yes | Relationships, heaviest first, capped. |
+| `totals` | `FlowTotalsOut` | yes | The window's counts and the caps' effect. |
+| `caveats` | list of `string` | yes | What a reader must know about these numbers, in the source's words. |
+
+### `FlowBucketOut`
+
+One point of the volume series, with the alert overlay it is drawn against.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | Inclusive lower bound of the bucket. |
+| `flows` | `integer` | yes | Flow records in the bucket. |
+| `bytes` | `integer` | yes | Bytes those records carried. |
+| `packets` | `integer` | yes | Packets those records carried. |
+| `alerts` | `integer` | yes | Alerts raised in the bucket, joined on its instant. |
+| `score` | `number` or `null` | no | Mean composite score of those alerts, or null when the bucket held none. Null rather than zero: an empty bucket is not a benign one. |
+
+### `FlowEdgeOut`
+
+One directional relationship: two addresses that exchanged traffic.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `source` | `string` | yes | Source address. |
+| `target` | `string` | yes | Destination address. |
+| `flows` | `integer` | yes | Records between them, in that direction. |
+| `bytes` | `integer` | yes | Bytes those records carried. |
+
+### `FlowEntityOut`
+
+One address's share of the window, and the alerts that attach to it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ip` | `string` | yes | The address, as it appeared on the wire. |
+| `flows` | `integer` | yes | Records in which it was an end. |
+| `bytes` | `integer` | yes | Bytes those records carried. |
+| `packets` | `integer` | yes | Packets those records carried. |
+| `inbound` | `integer` | yes | Records in which it was the destination. |
+| `outbound` | `integer` | yes | Records in which it was the source. |
+| `first_seen` | `string (date-time)` or `null` | no | Oldest record, in window. |
+| `last_seen` | `string (date-time)` or `null` | no | Newest record, in window. |
+| `alerts` | `integer` | no | Alerts in the window whose entity value is this address. |
+| `open_alerts` | `integer` | no | How many of them are still open. |
+| `worst_severity` | `string` or `null` | no | Most serious band among them, or null for none. |
+| `max_score` | `number` or `null` | no | Highest score among them, or null for none. |
+
+### `FlowFiltersOut`
+
+The narrowing the read applied, so a filter is never invisible on the wire.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `protocol` | `string` or `null` | no | Protocol the read was narrowed to, or null for all. |
+| `direction` | `string` or `null` | no | Direction the read was narrowed to, or null for all. |
+
 ### `FlowRecordIn`
 
 One flow record on the wire — the ``flow@1`` contract.
@@ -410,6 +479,32 @@ One flow record on the wire — the ``flow@1`` contract.
 | `psh` | `integer` | no | — |
 | `urg` | `integer` | no | — |
 | `label` | `string` or `null` | no | — |
+
+### `FlowTotalsOut`
+
+The window's counts, and what each cap did to the lists.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `flows` | `integer` | yes | Flow records in the window -- every one of them. |
+| `bytes` | `integer` | yes | Bytes they carried. |
+| `packets` | `integer` | yes | Packets they carried. |
+| `nodes` | `integer` | yes | Distinct addresses in the window. |
+| `edges` | `integer` | yes | Distinct directional pairs in the window. |
+| `nodes_capped` | `boolean` | yes | True when more addresses were seen than the entity list holds. |
+| `edges_capped` | `boolean` | yes | True when more relationships were seen than the edge list holds. |
+| `untracked_address_flows` | `integer` | no | Records the in-process rollup could not attribute to an address because it was full. They are in ``flows`` either way; always 0 for a store. |
+| `untracked_pair_flows` | `integer` | no | Records the in-process rollup could not attribute to a pair because it was full. They are in ``flows`` either way; always 0 for a store. |
+
+### `FlowWindowOut`
+
+The window the read answered about, echoed so a client never guesses it.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `start` | `string (date-time)` | yes | Inclusive lower bound of the window (R-34). |
+| `end` | `string (date-time)` | yes | Exclusive upper bound of the window (R-34). |
+| `hours` | `number` | yes | The window's width in hours, for display. |
 
 ### `HTTPValidationError`
 
@@ -618,6 +713,7 @@ One point of the severity series.
 | `start` | `string (date-time)` | yes | — |
 | `total` | `integer` | yes | — |
 | `by_severity` | map of string to `integer` | yes | — |
+| `score` | `number` or `null` | no | Mean score of the bucket's alerts; null for a bucket that held none. |
 
 ### `OverviewEntity`
 

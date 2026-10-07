@@ -17,10 +17,9 @@ reader might mistake for a pass. T-510 (v1.0) is the task that publishes this no
 
 Every screen design.md §3 names except `/admin/connectors` (T-422) is built: the overview, alert
 triage with its batch export, the traffic explorer, the log explorer, the hunt console, model ops
-with drift, and the admin screens. E4's remaining work is the flow read model that makes the built
-screens complete rather than capped (T-418) and the one screen design.md §3 still leaves unbuilt
-(T-422); the accessibility pass (T-413), the frontend-test rule (T-414), the overview's aggregate
-(T-416) and the log read model (T-419) have landed. E5 — load, failure drills, Kubernetes, release engineering — is
+with drift, and the admin screens. E4's remaining work is the one screen design.md §3 still leaves unbuilt
+(**T-422**); the accessibility pass (T-413), the frontend-test rule (T-414), the overview's aggregate
+(T-416), the persistent log read model (T-419) and the flow read model (T-418) have landed. E5 — load, failure drills, Kubernetes, release engineering — is
 untouched.
 
 ## Accessibility (T-413, NFR-09)
@@ -97,6 +96,40 @@ What is **not** yet true: the aggregation SQL is written and tested but not exec
 still reads the in-process store until the database session D-030 records is wired (T-419's
 neighbour problem). Naming is per-process, so an id written by another process or before a restart
 renders as `entity <id>`. Both are stated on the screen rather than papered over.
+
+## The flow read model (T-418, FR-52)
+
+Measured 2026-10-07. The traffic explorer no longer counts records that raised an alert: its volume
+is accepted flow records, its edges are flow relationships, and a deployment that names
+`AEGIS_DATABASE_URL` reads them from `flow_events`, a PostgreSQL table written on ingest.
+
+| Claim                                                      | Evidence                                                                                                                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Volume is traffic, not the alerted subset                  | a test seeds alerts on one address and flows on another; the busiest address, busiest pair and byte totals follow the flows (`test_flows_api.py`) |
+| Edges are flow relationships                               | an edge is a source/target pair with its own record count, not a correlation trace                                                                |
+| Counts are complete for the window                         | `totals` covers every accepted record; a cap on the entity or edge **list** moves the list and not the count, and `*_capped` says so              |
+| A read survives the process that accepted it               | `test_flow_store_live.py::test_a_read_survives_the_process_that_accepted_it`, against PostgreSQL 16.2 over a unix-socket DSN                      |
+| A window the in-process rollup would refuse is answered    | a three-day window at `bucket_minutes=1440`; the rollup refuses anything past its own span, naming its own `max_span_seconds`                     |
+| The panel's permanent caveat has lost the T-418 half       | asserted absent on the Traffic screen, alongside the API's own caveats arriving verbatim                                                          |
+| A deployment without a database is told what it is reading | `source: "rollup"` plus a sentence naming `AEGIS_DATABASE_URL` and the minute granularity; `AEGIS_FLOW_STORE=off` gets its own sentence           |
+| An unreachable store is a 503, not an empty screen         | both the flow route and the ingest write, asserted in `test_flows_source_api.py`                                                                  |
+
+Reproduce with:
+
+```
+cd backend && ../.venv/bin/python -m pytest -q --no-cov tests/test_flow_read_model.py tests/test_flow_source.py \
+  tests/test_flow_statements.py tests/test_flow_store.py tests/test_flows_api.py tests/test_flows_source_api.py
+cd dashboard && npx vitest run src/features/traffic
+```
+
+What is **not** yet true: `flow_events` is unpartitioned and swept by nothing, so no plan removes an
+old row and the retention report names it rather than implying otherwise; the default deployment
+reads the minute-grained 60-minute in-process rollup, so the store's exactness is a capability a
+deployment configures rather than a property of a default install; an alert attaches to an address
+only when the alert's entity value _is_ that address, and flow detections are keyed by source
+address, so a destination-side alert is named in the caveats as a partial rather than shown on a row;
+and the store's SQL is exercised through the store, not through the HTTP route, because D-030's
+database session is still not wired into the request path.
 
 ## The log read model (T-419, FR-52)
 

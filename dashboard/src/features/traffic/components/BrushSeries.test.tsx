@@ -17,12 +17,13 @@ import type { TrafficBucket } from '../aggregate';
 
 const START = Date.parse('2026-10-06T10:00:00Z');
 
-function bucket(index: number, records: number, score: number | null): TrafficBucket {
+function bucket(index: number, flows: number, score: number | null): TrafficBucket {
   return {
     start: new Date(START + index * 60_000),
     end: new Date(START + (index + 1) * 60_000),
-    alerts: records === 0 ? 0 : 1,
-    records,
+    alerts: flows === 0 ? 0 : 1,
+    flows,
+    bytes: flows * 140,
     score,
   };
 }
@@ -73,7 +74,7 @@ describe('BrushSeries', () => {
     renderSeries();
 
     const chart = screen.getByRole('group', { name: /Alerted record volume/ });
-    expect(within(chart).getByText('records')).toBeInTheDocument();
+    expect(within(chart).getByText('flows')).toBeInTheDocument();
     expect(within(chart).getByText('score')).toBeInTheDocument();
     expect(within(chart).getByText('1.0')).toBeInTheDocument();
   });
@@ -83,7 +84,7 @@ describe('BrushSeries', () => {
 
     const bars = screen.getAllByTestId(/^bar-/);
     expect(bars).toHaveLength(BUCKETS.length);
-    // The tallest bucket is 30 records; a bar is drawn proportional to the ceiling.
+    // The tallest bucket is 30 flows; a bar is drawn proportional to the ceiling.
     const heights = bars.map((bar) => Number(bar.getAttribute('height')));
     expect(Math.max(...heights)).toBeGreaterThan(0);
     expect(heights[2]).toBe(0); // the empty bucket draws nothing

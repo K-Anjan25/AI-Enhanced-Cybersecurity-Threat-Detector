@@ -166,6 +166,12 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # class of data the alert list already shows a viewer.
     "/api/v1/logs": frozenset(Role),
     "/api/v1/logs/lines": frozenset(Role),
+    # The traffic explorer's aggregate (T-418). Reading traffic is reading for the same
+    # reason reading logs is: R-53 gives viewer the read capability, and an address is
+    # the same class of datum the alert list already shows a viewer. The route is a GET
+    # on a path the ingest router also uses, which is why the matrix is keyed by path
+    # and the capability test enumerates methods separately.
+    "/api/v1/flows": frozenset(Role),
     # Webhook configuration is responder-and-above (R-53). Reading the list is
     # as sensitive as writing it: a target's URL names internal infrastructure.
     "/api/v1/webhooks": frozenset({Role.RESPONDER, Role.ADMIN}),

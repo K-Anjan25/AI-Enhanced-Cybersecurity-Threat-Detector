@@ -135,6 +135,17 @@ class Settings(BaseSettings):
     # the cache is short and its age is reported with the read.
     log_store_coverage_ttl_seconds: float = Field(default=30.0, gt=0)
 
+    # T-418. Which of the two flow read models answers, decided by the same rule as the
+    # log store: ``auto`` means "the store when AEGIS_DATABASE_URL was named, the
+    # in-process rollup otherwise". Separate from ``log_store`` on purpose -- a
+    # deployment may store its logs and roll its traffic up in memory, and the two
+    # screens say which they got rather than sharing one answer.
+    flow_store: LogStoreMode = Field(default=LogStoreMode.AUTO)
+    # The rollup's retention, in minutes. The default is the widest range the traffic
+    # explorer offers, so every offered window is fully answerable by a rollup; a wider
+    # one is answered for the part it still holds, and the caveats say so.
+    flow_rollup_minutes: int = Field(default=60, ge=1)
+
     # Outbound webhooks (FR-21, R-55). The allowlist is empty by default, which
     # means no host is permitted: an empty allowlist is a fail-closed
     # configuration, not a disabled check. Entries are hostnames, optionally

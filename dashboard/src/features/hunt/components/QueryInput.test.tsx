@@ -59,7 +59,9 @@ describe('QueryInput', () => {
     const options = screen.getAllByRole('option');
     expect(options).toHaveLength(1);
     expect(options[0]).toHaveTextContent('src_ip:');
-    expect(options[0]).toHaveTextContent('raw flow records have no read API in this build (T-418)');
+    expect(options[0]).toHaveTextContent(
+      'the hunt API reads alerts; the flow read API counts a window and takes no address filter (T-418)',
+    );
   });
 
   it('runs the hunt on Enter, because nothing is highlighted until an arrow key', async () => {

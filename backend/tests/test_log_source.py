@@ -30,6 +30,17 @@ WINDOW = LogWindow(start=START, end=START + timedelta(minutes=5))
 class TestWhichSourceAnswers:
     """``AUTO`` is a question about configuration, not a connection."""
 
+    @pytest.fixture(autouse=True)
+    def no_ambient_database(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Assert the *default* settings, whatever the ambient environment names.
+
+        ``Settings`` reads ``AEGIS_DATABASE_URL`` from the environment, so a developer who
+        exports it and runs the whole suite would otherwise turn the premise of
+        :meth:`test_the_default_settings_are_auto_and_name_nothing` into a store
+        deployment. The fixture states the premise rather than inheriting it (R-83).
+        """
+        monkeypatch.delenv("AEGIS_DATABASE_URL", raising=False)
+
     @pytest.mark.parametrize("named", [True, False])
     def test_on_always_uses_the_store(self, named: bool) -> None:
         assert store_requested(LogStoreMode.ON, database_url_named=named) is True

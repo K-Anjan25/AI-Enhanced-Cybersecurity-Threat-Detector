@@ -102,6 +102,12 @@ const EXEMPTIONS: readonly Exemption[] = [
       'SVG geometry inside a labelled `role="group"`: pointer coordinates and painted bucket counts have no accessible representation, and the group label and the slider roles are asserted in the same file',
   },
   {
+    file: 'features/traffic/pages/TrafficPage.test.tsx',
+    pattern: /brush-surface/,
+    reason:
+      'the drag that commits a brush is a pointer gesture on an SVG rect with no accessible representation; the test asserts the request the gesture caused, which is the page-level fact, and every panel it changed is queried by role',
+  },
+  {
     file: 'features/triage/components/TimelinePanel.test.tsx',
     pattern: /tick-[ab]/,
     reason:

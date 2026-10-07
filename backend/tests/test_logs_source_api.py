@@ -32,6 +32,20 @@ START = datetime(2026, 10, 6, 10, 0, tzinfo=UTC)
 UNREACHABLE = "postgresql+psycopg://aegis:aegis@127.0.0.1:59999/aegis"  # pragma: allowlist secret
 
 
+@pytest.fixture(autouse=True)
+def no_ambient_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Assert the *default* deployment, whatever the ambient environment names.
+
+    ``Settings`` reads ``AEGIS_DATABASE_URL`` from the environment, so a developer who
+    exports it and runs the whole suite would otherwise turn these tests' subject into a
+    store deployment and watch them fail for the right reason on the wrong test. The
+    fixture states the premise instead of inheriting it (R-83).
+    """
+    monkeypatch.delenv("AEGIS_DATABASE_URL", raising=False)
+    monkeypatch.delenv("AEGIS_LOG_STORE", raising=False)
+    monkeypatch.delenv("AEGIS_FLOW_STORE", raising=False)
+
+
 def settings_for(**overrides: object) -> Settings:
     """Settings for one deployment shape, never reading the ambient environment."""
     base: dict[str, object] = {

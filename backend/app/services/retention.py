@@ -107,6 +107,11 @@ UNEVICTABLE_REASONS: dict[str, str] = {
         "an old line. Named rather than omitted because 'retention covers "
         "everything' is exactly the assumption a report like this must not invite"
     ),
+    "flow_events": (
+        "the traffic read model (T-418), not partitioned and swept by nothing: the "
+        "same gap the log store names, and the same reason for naming it here -- a "
+        "deployment reading this report must not believe the flows age out"
+    ),
 }
 
 #: Where FR-05's raw records live, and what enforces their window. Named because

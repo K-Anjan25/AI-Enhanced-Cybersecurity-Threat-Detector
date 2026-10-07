@@ -58,13 +58,23 @@ class OverviewTotals(BaseModel):
 
 
 class OverviewBucket(BaseModel):
-    """One point of the severity series."""
+    """One point of the severity series.
+
+    ``score`` is the mean composite score of the bucket's alerts, or ``null`` when the
+    bucket held none (T-418). It exists because the traffic explorer draws the alert
+    overlay along the same buckets as its own volume series, and one window's alert
+    numbers should come from one place: the aggregate that already counted them.
+    """
 
     model_config = ConfigDict(frozen=True)
 
     start: datetime
     total: int = Field(ge=0)
     by_severity: dict[str, int]
+    score: float | None = Field(
+        default=None,
+        description="Mean score of the bucket's alerts; null for a bucket that held none.",
+    )
 
 
 class OverviewEntity(BaseModel):

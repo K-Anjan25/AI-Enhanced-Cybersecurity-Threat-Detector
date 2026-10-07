@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.api.openapi_docs import ndjson_batch_body
-from app.api.v1.deps import admission, audit_trail, client_ip, log_source
+from app.api.v1.deps import admission, audit_trail, client_ip, flow_source, log_source
 from app.auth.rbac import Capability, Principal, require
 from app.observability import metrics
 from app.schemas.ingest import (
@@ -35,6 +35,7 @@ from app.schemas.ingest import (
     RecordError,
 )
 from app.services.audit_log import AuditAction, record_action
+from app.services.flow_store import FlowStoreUnavailable
 from app.services.ingest_service import BatchTooLarge, UnsupportedMediaType, ingest_batch
 from app.services.log_store import LogStoreUnavailable
 
@@ -201,16 +202,31 @@ async def ingest_flows(
 ) -> IngestResponse:
     """Accept up to 1,000 flow records as JSON or NDJSON (FR-01)."""
     body = await request.body()
-    return await _ingest(
-        request,
-        response,
-        body,
-        FlowRecordIn,
-        MAX_FLOW_RECORDS,
-        caller=caller,
-        action=AuditAction.ingest_flows,
-        modality="flow",
-    )
+    try:
+        return await _ingest(
+            request,
+            response,
+            body,
+            FlowRecordIn,
+            MAX_FLOW_RECORDS,
+            caller=caller,
+            action=AuditAction.ingest_flows,
+            modality="flow",
+            # The read model the traffic explorer reads (T-418): the store when the
+            # deployment configured one, the in-process rollup otherwise. A flow record
+            # has no line to fold, so this is the flow route's own hook and not the
+            # log tail's.
+            keep=flow_source(request).append,
+        )
+    except FlowStoreUnavailable as exc:
+        # The batch was validated and handed to the broker, and the store refused it.
+        # 503 rather than 200: the caller would otherwise be told the traffic was taken
+        # in while the next read cannot find it. A retry duplicates on the broker rather
+        # than losing traffic, which is T-307's rule for the worker.
+        raise HTTPException(
+            status_code=503,
+            detail=f"the batch was accepted but could not be stored: {exc}",
+        ) from exc
 
 
 @router.post(

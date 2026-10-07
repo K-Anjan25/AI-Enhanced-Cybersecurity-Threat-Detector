@@ -33,7 +33,7 @@ import {
   type SimulationNodeDatum,
 } from 'd3-force';
 
-import type { EntityEdge, EntityRow } from './aggregate';
+import type { TrafficEdge, TrafficNode } from './aggregate';
 
 /**
  * The node count at which the force simulation is abandoned.
@@ -60,8 +60,8 @@ export interface GraphModel {
   mode: GraphMode;
   /** The switch's explanation, rendered wherever the mode is. */
   reason: string;
-  nodes: EntityRow[];
-  edges: EntityEdge[];
+  nodes: TrafficNode[];
+  edges: TrafficEdge[];
 }
 
 /**
@@ -71,9 +71,12 @@ export interface GraphModel {
  * a half-edge would make the graph claim a relationship to an entity the analyst
  * has filtered away.
  */
-export function buildGraph(nodes: readonly EntityRow[], edges: readonly EntityEdge[]): GraphModel {
+export function buildGraph(
+  nodes: readonly TrafficNode[],
+  edges: readonly TrafficEdge[],
+): GraphModel {
   const kept = [...nodes];
-  const ids = new Set(kept.map((node) => node.entityId));
+  const ids = new Set(kept.map((node) => node.id));
   const drawable = edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
   const mode: GraphMode = kept.length > GRAPH_NODE_LIMIT ? 'adjacency' : 'force';
 
@@ -81,8 +84,8 @@ export function buildGraph(nodes: readonly EntityRow[], edges: readonly EntityEd
     mode,
     reason:
       mode === 'adjacency'
-        ? `Showing a ranked adjacency matrix: ${String(kept.length)} entities is past the ${String(GRAPH_NODE_LIMIT)}-node limit for a force layout.`
-        : `Force layout for ${String(kept.length)} entities.`,
+        ? `Showing a ranked adjacency matrix: ${String(kept.length)} addresses is past the ${String(GRAPH_NODE_LIMIT)}-node limit for a force layout.`
+        : `Force layout for ${String(kept.length)} addresses.`,
     nodes: kept,
     edges: drawable,
   };
@@ -96,7 +99,7 @@ export interface LayoutRequest {
 }
 
 export interface PositionedNode {
-  node: EntityRow;
+  node: TrafficNode;
   x: number;
   y: number;
   /** Radius in user units, from the node's record count. */
@@ -104,7 +107,7 @@ export interface PositionedNode {
 }
 
 export interface PositionedEdge {
-  edge: EntityEdge;
+  edge: TrafficEdge;
   source: PositionedNode;
   target: PositionedNode;
 }
@@ -120,10 +123,10 @@ export interface GraphLayout {
  * d3-force writes `x`, `y`, `vx` and `vy` onto whatever it is handed, so the node
  * type has to be d3's `SimulationNodeDatum` plus the identity this module keys on.
  */
-type SimNode = SimulationNodeDatum & { id: number };
+type SimNode = SimulationNodeDatum & { id: string };
 
-/** A link whose ends are entity ids, before the simulation rewrites them. */
-type SimLink = SimulationLinkDatum<SimNode> & { source: number; target: number };
+/** A link whose ends are addresses, before the simulation rewrites them. */
+type SimLink = SimulationLinkDatum<SimNode> & { source: string; target: string };
 
 /**
  * Radius for a node, on the square root of its volume.
@@ -132,11 +135,11 @@ type SimLink = SimulationLinkDatum<SimNode> & { source: number; target: number }
  * so a linear radius would draw a 100-record entity a hundred times the ink of a
  * 1-record one and read as a claim the data does not make.
  */
-export function nodeRadius(records: number, maxRecords: number): number {
+export function nodeRadius(flows: number, maxFlows: number): number {
   const MIN = 4;
   const MAX = 22;
-  if (!(maxRecords > 0)) return MIN;
-  const share = Math.max(0, Math.min(1, records / maxRecords));
+  if (!(maxFlows > 0)) return MIN;
+  const share = Math.max(0, Math.min(1, flows / maxFlows));
   return MIN + (MAX - MIN) * Math.sqrt(share);
 }
 
@@ -168,27 +171,25 @@ export function layoutGraph(model: GraphModel, request: LayoutRequest): GraphLay
   const innerWidth = Math.max(1, width - pad * 2);
   const innerHeight = Math.max(1, height - pad * 2);
 
-  const maxRecords = model.nodes.reduce((best, node) => Math.max(best, node.records), 0);
-  const radii = new Map(
-    model.nodes.map((node) => [node.entityId, nodeRadius(node.records, maxRecords)]),
-  );
+  const maxFlows = model.nodes.reduce((best, node) => Math.max(best, node.flows), 0);
+  const radii = new Map(model.nodes.map((node) => [node.id, nodeRadius(node.flows, maxFlows)]));
 
   if (model.nodes.length === 0) return { nodes: [], edges: [] };
 
   // One node: a simulation would place it by its own forces; the honest answer is
   // the centre of the panel.
   if (model.nodes.length === 1) {
-    const only = model.nodes[0] as EntityRow;
+    const only = model.nodes[0] as TrafficNode;
     const positioned: PositionedNode = {
       node: only,
       x: width / 2,
       y: height / 2,
-      radius: radii.get(only.entityId) ?? 4,
+      radius: radii.get(only.id) ?? 4,
     };
     return { nodes: [positioned], edges: [] };
   }
 
-  const simulation = forceSimulation<SimNode>(model.nodes.map((node) => ({ id: node.entityId })))
+  const simulation = forceSimulation<SimNode>(model.nodes.map((node) => ({ id: node.id })))
     .force('charge', forceManyBody<SimNode>().strength(-120))
     .force(
       'link',
@@ -212,12 +213,12 @@ export function layoutGraph(model: GraphModel, request: LayoutRequest): GraphLay
   const [minX, maxX] = extent(raw.map((node) => node.x ?? 0));
   const [minY, maxY] = extent(raw.map((node) => node.y ?? 0));
 
-  const byId = new Map(model.nodes.map((node) => [node.entityId, node]));
+  const byId = new Map(model.nodes.map((node) => [node.id, node]));
   const positioned: PositionedNode[] = [];
   for (const node of raw) {
     const source = byId.get(node.id);
     if (source === undefined) continue;
-    const radius = radii.get(source.entityId) ?? 4;
+    const radius = radii.get(source.id) ?? 4;
     positioned.push({
       node: source,
       x: pad + (((node.x ?? 0) - minX) / (maxX - minX)) * innerWidth,
@@ -226,7 +227,7 @@ export function layoutGraph(model: GraphModel, request: LayoutRequest): GraphLay
     });
   }
 
-  const positions = new Map(positioned.map((node) => [node.node.entityId, node]));
+  const positions = new Map(positioned.map((node) => [node.node.id, node]));
   const edges: PositionedEdge[] = [];
   for (const edge of model.edges) {
     const source = positions.get(edge.source);
@@ -240,18 +241,19 @@ export function layoutGraph(model: GraphModel, request: LayoutRequest): GraphLay
 
 /** One cell of the adjacency matrix. */
 export interface MatrixCell {
-  sourceId: number;
-  targetId: number;
-  sharedTraces: number;
+  sourceId: string;
+  targetId: string;
+  /** The records that flowed from the row's address to the column's. */
+  flows: number;
 }
 
 export interface AdjacencyMatrix {
-  /** The entities drawn, most active first — and the same order on both axes. */
-  axis: EntityRow[];
+  /** The addresses drawn, most active first — and the same order on both axes. */
+  axis: TrafficNode[];
   /** How many entities exist, so the panel can say how many it is not drawing. */
   total: number;
   cells: MatrixCell[];
-  /** The largest shared-trace count, for shading. `0` when there are no edges. */
+  /** The heaviest relationship drawn, for shading. `0` when there are no edges. */
   peak: number;
 }
 
@@ -267,18 +269,21 @@ export function adjacencyMatrix(
   limit: number = ADJACENCY_ROWS,
 ): AdjacencyMatrix {
   const axis = [...model.nodes].slice(0, Math.max(0, limit));
-  const drawn = new Set(axis.map((node) => node.entityId));
+  const drawn = new Set(axis.map((node) => node.id));
   const cells: MatrixCell[] = [];
   let peak = 0;
 
   for (const edge of model.edges) {
     if (!drawn.has(edge.source) || !drawn.has(edge.target)) continue;
-    cells.push({ sourceId: edge.source, targetId: edge.target, sharedTraces: edge.sharedTraces });
-    cells.push({ sourceId: edge.target, targetId: edge.source, sharedTraces: edge.sharedTraces });
-    peak = Math.max(peak, edge.sharedTraces);
+    cells.push({ sourceId: edge.source, targetId: edge.target, flows: edge.flows });
+    cells.push({ sourceId: edge.target, targetId: edge.source, flows: edge.flows });
+    peak = Math.max(peak, edge.flows);
   }
 
-  cells.sort((left, right) => left.sourceId - right.sourceId || left.targetId - right.targetId);
+  cells.sort(
+    (left, right) =>
+      left.sourceId.localeCompare(right.sourceId) || left.targetId.localeCompare(right.targetId),
+  );
 
   return { axis, total: model.nodes.length, cells, peak };
 }

@@ -26,6 +26,7 @@ from app.services.alert_store import AlertStore
 from app.services.audit_log import AuditTrail
 from app.services.entity_registry import EntityRegistry
 from app.services.erasure import ErasureService
+from app.services.flow_source import FlowSource
 from app.services.limits import AdmissionController
 from app.services.log_source import LogSource
 from app.services.log_tail import LogTail
@@ -44,6 +45,7 @@ __all__ = [
     "client_ip",
     "entity_registry",
     "erasure_service",
+    "flow_source",
     "known_partitions",
     "log_source",
     "log_tail",
@@ -147,6 +149,24 @@ def log_source(request: Request) -> LogSource:
     source: LogSource | None = getattr(request.app.state, "log_source", None)
     if source is None:
         msg = "log_source is not configured on app.state"
+        raise RuntimeError(msg)
+    return source
+
+
+def flow_source(request: Request) -> FlowSource:
+    """Whichever flow read model this deployment answers from (T-418).
+
+    The store when one was configured, the in-process rollup otherwise, decided once at
+    startup -- see :mod:`app.services.flow_source`.
+
+    Raises:
+        RuntimeError: if the composition root never installed one. Loudly, for the same
+            reason as the log source: an unconfigured source answers every read with an
+            empty graph, which reads as a quiet network rather than as a mistake.
+    """
+    source: FlowSource | None = getattr(request.app.state, "flow_source", None)
+    if source is None:
+        msg = "flow_source is not configured on app.state"
         raise RuntimeError(msg)
     return source
 
