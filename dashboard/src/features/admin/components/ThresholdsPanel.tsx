@@ -35,6 +35,7 @@ import {
   formatThreshold,
   knownFamilies,
   readPreview,
+  recalibrationSummary,
   setReadiness,
   type BandRow,
 } from '../thresholds';
@@ -103,10 +104,11 @@ export function ThresholdsPanel() {
             onClick={() => {
               recalibrate.mutate('high', {
                 onSuccess: (result) => {
-                  toast(
-                    'success',
-                    `Recalibration ran over ${String(result.window_days)} days: ${String(result.changed)} of ${String(result.considered)} bands moved.`,
-                  );
+                  // The sentence is the response's own numbers (`recalibrationSummary`):
+                  // the toast is the only place a finished run is described, so a field
+                  // the server does not send has nowhere else to be noticed. It used to
+                  // read `result.window_days`, and said "over undefined days".
+                  toast('success', recalibrationSummary(result));
                 },
               });
             }}

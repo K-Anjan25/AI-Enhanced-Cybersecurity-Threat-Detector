@@ -27,7 +27,7 @@
  * height the design asks for became the height the bar needed.
  */
 import { useState, type ReactNode } from 'react';
-import { Search } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
@@ -88,7 +88,17 @@ export function AppShell({ connection, onOpenPalette, children }: AppShellProps)
               aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
               className="rounded-input p-1 text-muted hover:text-ink"
             >
-              {collapsed ? '\u00BB' : '\u00AB'}
+              {/* The toggle is drawn, not spelled (§5.6): it used to render a pair
+                  of guillemets — French quotation marks — which a screen reader
+                  reads as punctuation and which say nothing about a rail, and which
+                  `nav.test.ts` now scans the source for. The two panel icons are the
+                  pair every editor uses for the same control, and the button's own
+                  label already names the action. */}
+              {collapsed ? (
+                <PanelLeftOpen aria-hidden="true" className="size-icon-md" />
+              ) : (
+                <PanelLeftClose aria-hidden="true" className="size-icon-md" />
+              )}
             </button>
           </div>
 
@@ -105,12 +115,21 @@ export function AppShell({ connection, onOpenPalette, children }: AppShellProps)
                       end={item.to === '/'}
                       title={item.label}
                       className={({ isActive }) =>
-                        `block px-4 py-2 text-body ${
+                        `flex items-center gap-2 px-4 py-2 text-body ${
+                          collapsed ? 'justify-center' : ''
+                        } ${
                           isActive ? 'border-l-2 border-accent text-ink' : 'text-muted'
                         } hover:text-ink`
                       }
                     >
-                      {collapsed ? item.label.slice(0, 1) : item.label}
+                      {/* 20 px in the rail (§5.6: not a dense context — one icon per
+                          row, 44 px tall). `aria-hidden`, because the label beside
+                          it is the link's name; when the rail is collapsed the same
+                          label is still in the link, as `sr-only` text, so the icon
+                          is never the only content (§5.6) and the accessible name of
+                          an entry does not change with the rail's width. */}
+                      <item.icon aria-hidden="true" className="size-icon-md shrink-0" />
+                      <span className={collapsed ? 'sr-only' : ''}>{item.label}</span>
                     </NavLink>
                   </li>
                 ))}

@@ -108,6 +108,18 @@ const EXEMPTIONS: readonly Exemption[] = [
       'the drag that commits a brush is a pointer gesture on an SVG rect with no accessible representation; the test asserts the request the gesture caused, which is the page-level fact, and every panel it changed is queried by role',
   },
   {
+    file: 'App.test.tsx',
+    pattern: /querySelector\('svg'\)/,
+    reason:
+      'the rail\u2019s destination icons and the collapse toggle are `aria-hidden` by design (the label beside each one is the link\u2019s or button\u2019s name), so a drawn mark has no role to query; the same tests find every destination by role and name',
+  },
+  {
+    file: 'features/triage/components/ContextPanel.test.tsx',
+    pattern: /querySelector\('svg'\)/,
+    reason:
+      'the same case in the trust hint: the warning triangle is `aria-hidden` and the sentence beside it is the message, which the same test asserts on the status role',
+  },
+  {
     file: 'features/triage/components/TimelinePanel.test.tsx',
     pattern: /tick-[ab]/,
     reason:

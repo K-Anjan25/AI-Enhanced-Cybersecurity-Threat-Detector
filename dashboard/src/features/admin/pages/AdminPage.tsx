@@ -73,6 +73,7 @@ const SECTIONS = ADMIN_SECTIONS.map((section) => ({
   path: section.path,
   to: section.to,
   label: section.label,
+  icon: section.icon,
   ...PANELS[section.path],
 }));
 
@@ -96,9 +97,14 @@ export function AdminPage() {
                 <NavLink
                   to={section.to}
                   className={({ isActive }) =>
-                    `block rounded-control px-2 py-1 text-body ${isActive ? 'bg-surface text-accent' : 'text-ink hover:bg-surface'}`
+                    `flex items-center gap-2 rounded-control px-2 py-1 text-body ${isActive ? 'bg-surface text-accent' : 'text-ink hover:bg-surface'}`
                   }
                 >
+                  {/* 16 px, unlike the rail's 20: this is a dense list (§5.6) —
+                      `py-1` rows of body text beside a panel, not one icon per
+                      44 px row. `aria-hidden` for the same reason as the rail's:
+                      the label is the link's name. */}
+                  <section.icon aria-hidden="true" className="size-icon-sm shrink-0" />
                   {section.label}
                 </NavLink>
               </li>
@@ -132,7 +138,11 @@ function AdminIndex() {
       <ul className="flex flex-col gap-2">
         {SECTIONS.map((section) => (
           <li key={section.to} className="flex flex-col">
-            <NavLink className="text-body text-accent underline" to={section.to}>
+            <NavLink
+              className="flex items-center gap-2 text-body text-accent underline"
+              to={section.to}
+            >
+              <section.icon aria-hidden="true" className="size-icon-sm shrink-0" />
               {section.label}
             </NavLink>
             <span className="text-body-sm text-muted">{section.summary}</span>

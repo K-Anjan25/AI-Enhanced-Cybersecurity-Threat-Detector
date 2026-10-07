@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { bucketsInBrush, trafficEdges, trafficNodes, trafficSeries } from './aggregate';
+import { trafficEdges, trafficNodes, trafficSeries } from './aggregate';
 import type { FlowAggregate, FlowBucket, FlowEntity } from '../../api/flows';
 
 const START = Date.parse('2026-10-06T10:00:00Z');
@@ -123,61 +123,6 @@ describe('trafficSeries', () => {
     );
 
     expect(series[0]?.score).toBeNull();
-  });
-});
-
-describe('bucketsInBrush', () => {
-  const series = [
-    {
-      start: new Date(START),
-      end: new Date(START + 60_000),
-      flows: 1,
-      bytes: 1,
-      alerts: 0,
-      score: null,
-    },
-    {
-      start: new Date(START + 60_000),
-      end: new Date(START + 120_000),
-      flows: 2,
-      bytes: 2,
-      alerts: 0,
-      score: null,
-    },
-    {
-      start: new Date(START + 120_000),
-      end: new Date(START + 180_000),
-      flows: 3,
-      bytes: 3,
-      alerts: 0,
-      score: null,
-    },
-  ];
-
-  it('returns everything when there is no brush', () => {
-    expect(bucketsInBrush(series, null)).toHaveLength(3);
-  });
-
-  it('keeps a bucket that overlaps the selection at either end', () => {
-    // A selection starting inside the middle bucket: the bucket is drawn, because it
-    // holds traffic the analyst selected.
-    const kept = bucketsInBrush(series, { from: START + 90_000, to: START + 130_000 });
-
-    expect(kept.map((bucket) => bucket.flows)).toEqual([2, 3]);
-  });
-
-  it('drops buckets entirely outside the selection', () => {
-    const kept = bucketsInBrush(series, { from: START + 120_000, to: START + 180_000 });
-
-    expect(kept.map((bucket) => bucket.flows)).toEqual([3]);
-  });
-
-  it('is half-open, so a boundary bucket belongs to one side only', () => {
-    // A selection ending exactly where a bucket starts does not include it: two adjacent
-    // brushes must never both claim a bucket.
-    const kept = bucketsInBrush(series, { from: START, to: START + 60_000 });
-
-    expect(kept.map((bucket) => bucket.flows)).toEqual([1]);
   });
 });
 

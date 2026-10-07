@@ -80,7 +80,7 @@ describe('readRetention', () => {
 
   it('warns about storage a partition drop can never reach', () => {
     const warnings = readRetention(
-      plan({ unevictable: [{ table: 'audit_log', name: 'audit_log', reason: 'not-monthly' }] }),
+      plan({ unevictable: [{ table: 'audit_log', reason: 'not-monthly' }] }),
     ).warnings;
     expect(warnings[0]).toContain('can never be evicted');
   });
@@ -104,14 +104,14 @@ describe('readRetention', () => {
 
 describe('unevictableRows', () => {
   it('explains a known reason in a sentence', () => {
-    const rows = unevictableRows([{ table: 't', name: 't', reason: 'not-monthly' }]);
+    const rows = unevictableRows([{ table: 't', reason: 'not-monthly' }]);
     expect(rows[0]?.explains).toBe(
       'Its partitions are not monthly, so a retention window does not bound them.',
     );
   });
 
   it('passes an unknown reason through rather than inventing an explanation', () => {
-    const rows = unevictableRows([{ table: 't', name: 't', reason: 'because' }]);
+    const rows = unevictableRows([{ table: 't', reason: 'because' }]);
     expect(rows[0]?.explains).toBe('because');
   });
 });

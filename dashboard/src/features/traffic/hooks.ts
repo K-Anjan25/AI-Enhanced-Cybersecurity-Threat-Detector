@@ -61,7 +61,20 @@ export function rangeOf(key: TrafficRangeKey): TrafficRange {
   return TRAFFIC_RANGES.find((range) => range.key === key) ?? (TRAFFIC_RANGES[1] as TrafficRange);
 }
 
-const TRAFFIC_ROOTS = [['traffic', 'window']] as const;
+/**
+ * The query roots a pushed alert re-reads: **both** windows.
+ *
+ * The panels describe the brushed window when there is one, and their alert counts,
+ * severities and peak score come from the alert side — the same reason the series
+ * carries a score overlay. A single root was enough while the brush filtered a list
+ * in the browser; since T-418 the brushed window is read from the server like the
+ * series, and a frame for a new alert left the table and the graph showing the
+ * previous counts until their own poll came round.
+ */
+const TRAFFIC_ROOTS = [
+  ['traffic', 'window'],
+  ['traffic', 'brush'],
+] as const;
 
 /**
  * The request for one window, from the range, the controls and the clock.

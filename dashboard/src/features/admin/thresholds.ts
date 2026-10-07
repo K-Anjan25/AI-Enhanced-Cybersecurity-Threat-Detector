@@ -21,7 +21,12 @@
  * governed by the default, so the panel shows it as `default` rather than as absent.
  */
 import { formatStamp } from '../../lib/format';
-import type { Threshold, ThresholdImpact, ThresholdList } from '../../api/admin';
+import type {
+  RecalibrationResult,
+  Threshold,
+  ThresholdImpact,
+  ThresholdList,
+} from '../../api/admin';
 
 /** FR-13's bands, worst first, which is the order the correlator bands in. */
 export const BANDS: readonly string[] = ['critical', 'high', 'medium', 'low'];
@@ -147,6 +152,29 @@ function raisedText(impact: ThresholdImpact): string | null {
 function loweredText(impact: ThresholdImpact): string | null {
   if (impact.proposed >= impact.current) return null;
   return `Lowering ${impact.band} from ${formatThreshold(impact.current)} to ${formatThreshold(impact.proposed)}: ${String(impact.would_start_firing)} alerts would reach it that do not today.`;
+}
+
+/**
+ * A finished run, in one sentence for the toast.
+ *
+ * Everything in the sentence is the response's: the two instants it read, the
+ * quantile the fit was taken at, and the floor of feedback it needed. The panel
+ * used to print `result.window_days`, which `RecalibrationOut` does not carry, so a
+ * run over fourteen days of alerts reported "over undefined days" — a sentence that
+ * still looked like an answer.
+ *
+ * `changed` is read against `considered` rather than alone: "0 of 6 moved" is a
+ * result, and "0 moved" is indistinguishable from a job that never ran (each
+ * outcome's `reason` is where the *why* lives, and the audit trail is where the run
+ * itself is).
+ */
+export function recalibrationSummary(result: RecalibrationResult): string {
+  return (
+    `Recalibration ran over ${formatStamp(result.since)} → ${formatStamp(result.until)}: ` +
+    `${String(result.changed)} of ${String(result.considered)} bands moved, ` +
+    `fitted at the ${String(result.quantile)} quantile ` +
+    `with at least ${String(result.minimum_sample)} labelled alerts per family.`
+  );
 }
 
 /** Whether a proposed value may be sent: a proportion, and a real change. */

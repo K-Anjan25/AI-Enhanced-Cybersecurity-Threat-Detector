@@ -66,6 +66,23 @@ function routes(impact: typeof IMPACT = IMPACT) {
   ];
 }
 
+/**
+ * The report a run returns (`RecalibrationOut`): the field names are the server's,
+ * which is the point — the panel used to read a `window_days` that does not exist.
+ */
+const RECALIBRATION = {
+  tenant_id: 't1',
+  band: 'high',
+  at: '2026-10-07T10:00:00Z',
+  since: '2026-09-23T10:00:00Z',
+  until: '2026-10-07T10:00:00Z',
+  quantile: 0.99,
+  minimum_sample: 100,
+  considered: 2,
+  changed: 1,
+  outcomes: [],
+};
+
 describe('ThresholdsPanel', () => {
   it('shows the value in force, its source and who moved it', async () => {
     stubFetch(routes());
@@ -189,6 +206,27 @@ describe('ThresholdsPanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/leave the bands out of order/)).toBeInTheDocument();
     });
+  });
+
+  it('describes a finished recalibration with the window the server sent', async () => {
+    // A run is described in exactly one place — the toast — so a field the server
+    // does not send is invisible until someone reads the sentence. It did: the
+    // toast said "Recalibration ran over undefined days".
+    const user = userEvent.setup();
+    stubFetch([
+      { match: `${BASE}/recalibrate`, respond: () => jsonResponse(RECALIBRATION) },
+      ...routes(),
+    ]);
+    panel();
+
+    await user.click(await screen.findByRole('button', { name: 'Recalibrate now' }));
+
+    const report = await screen.findByRole('status');
+    expect(report).toHaveTextContent('23 Sept 2026, 10:00:00Z → 07 Oct 2026, 10:00:00Z');
+    expect(report).toHaveTextContent('1 of 2 bands moved');
+    expect(report).toHaveTextContent('0.99 quantile');
+    expect(report).toHaveTextContent('at least 100 labelled alerts per family');
+    expect(report.textContent).not.toContain('undefined');
   });
 
   it('does not read a family the deployment has never moved as having no thresholds', async () => {

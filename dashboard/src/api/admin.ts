@@ -216,11 +216,26 @@ export interface RecalibrationOutcome {
   reason: string;
 }
 
+/**
+ * A run's report: the window it read, and every threshold it considered.
+ *
+ * `window_days` used to stand where `since`/`until`/`quantile` belong — a field
+ * `RecalibrationOut` has never carried (`backend/app/schemas/thresholds.py`), so the
+ * panel's toast read "Recalibration ran over undefined days". The window is the
+ * job's own 14 days (`DEFAULT_WINDOW`) but the response does not assume a reader
+ * knows that: it says which two instants it read, and this type repeats them.
+ */
 export interface RecalibrationResult {
   tenant_id: string;
-  at: string;
   band: string;
-  window_days: number;
+  at: string;
+  /** Start of the window the fit read, inclusive. */
+  since: string;
+  /** End of it, exclusive — the run's own instant. */
+  until: string;
+  /** The quantile the fit used: the false-positive budget, inverted. */
+  quantile: number;
+  /** The floor of labelled alerts a family's fit had to clear. */
   minimum_sample: number;
   considered: number;
   changed: number;
@@ -284,9 +299,17 @@ export interface WindowPartition {
   statement: string;
 }
 
+/**
+ * A table retention will not touch, and why.
+ *
+ * One entry per table, keyed by the table itself: `UnevictableOut` is
+ * `{table, reason}`, and this interface declared a `name` the server has never
+ * sent — which the drop list's rows also have, so the extra field read as though
+ * the two lists shared a shape. It did not, and every consumer of `name` was
+ * handed `undefined`.
+ */
 export interface Unevictable {
   table: string;
-  name: string;
   reason: string;
 }
 
@@ -317,12 +340,26 @@ export interface ErasureTarget {
   affected: number;
 }
 
+/** A store the erasure left alone, and why. */
+export interface PreservedLedger {
+  name: string;
+  reason: string;
+}
+
 export interface ErasureReport {
   kind: string;
   tombstone: string;
   at: string;
   targets: ErasureTarget[];
-  preserved: { store: string; reason: string }[];
+  /**
+   * The append-only stores the erasure did not rewrite, with the server's reason.
+   *
+   * `name`, not `store`: the wire field is `PreservedLedgerOut.name`
+   * (`backend/app/schemas/privacy.py`), and this type said `store` until T-423 —
+   * so the panel rendered `undefined` for every preserved entry it was handed, in
+   * the one sentence that tells a data subject what was *not* erased.
+   */
+  preserved: PreservedLedger[];
   already_erased: boolean;
   ledger_sequence: number | null;
   affected: number;

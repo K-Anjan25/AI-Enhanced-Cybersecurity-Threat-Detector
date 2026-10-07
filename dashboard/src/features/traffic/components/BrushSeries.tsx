@@ -16,8 +16,9 @@
  *     `score: null`, and the path skips it rather than drawing through zero — a line
  *     at the floor reads as "benign", and the truth is "nothing happened".
  *   * **The brush is visible, not implied.** The unselected region is dimmed and the
- *     selected range is announced in words beside the chart (`brushLabel`), so the
- *     current selection is never only a shading.
+ *     selected range is announced in words beside the chart (`spanLabel`, printed
+ *     under it and in the group's accessible name), so the current selection is never
+ *     only a shading.
  *   * **A table is available for everything drawn** (§9): the same buckets render as
  *     a table behind a toggle, with the counts the bars encode.
  */

@@ -19,7 +19,9 @@ reader might mistake for a pass. T-510 (v1.0) is the task that publishes this no
 traffic explorer, the log explorer, the hunt console, model ops with drift, and the six admin
 sections including `/admin/connectors` (T-422). The accessibility pass (T-413), the frontend-test rule
 (T-414), the overview's aggregate (T-416), the persistent log read model (T-419), the flow read model
-(T-418) and the connectors screen (T-422) have landed. E4's remaining rows — T-420's evaluation
+(T-418) and the connectors screen (T-422) have landed, and so has the frontend audit that followed it
+(T-423): the navigation is drawn rather than spelled, and the dashboard's API types are checked against
+the schema that fills them. E4's remaining rows — T-420's evaluation
 artifacts and T-421's drift gauge — add evidence to a screen that already renders what exists and
 names what does not, rather than routes to a console. E5 — load, failure drills, Kubernetes, release
 engineering — is untouched.
@@ -196,6 +198,45 @@ default deployment**, because T-311 deliberately left the HTTP transport unwritt
 network here to verify one against), so the screen is complete and the send path is what is missing;
 and the pipeline still does not dispatch on an alert — the sender has no caller outside these routes
 until the dispatch half of T-311 lands.
+
+## The frontend contract and the shell's icons (T-423)
+
+Measured 2026-10-07. An audit of the whole dashboard, prompted by a report that the navigation had no
+icons and the rail's collapse control showed the guillemets — both of which were true, and both of
+which were the first of a class: a character standing where an icon belongs, and a screen reading a
+field the API does not send.
+
+| Claim                                                                        | Evidence                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every rail destination is drawn with a Lucide icon (design.md §5.6)          | `nav.ts` carries a required `LucideIcon` per destination — 14 of them, no two the same; `App.test.tsx` finds each destination by role and full name and asserts a drawn mark inside it, and `nav.test.ts` asserts the icons are distinct                                                       |
+| The collapsed rail names its entries instead of printing their first letter  | the label is rendered `sr-only` when the rail is collapsed, so a link's accessible name is the screen's name at either width; the test queries every destination by name _in the collapsed state_, which the old letters rail cannot satisfy (planted and killed)                              |
+| The collapse control is an icon, and no destination is drawn as a text glyph | `PanelLeftClose`/`PanelLeftOpen` under the button's existing label, with its text content asserted empty; `nav.test.ts` scans every non-test source for the two characters **and** for their escaped spelling, and asserts its own detector against the planted form before trusting it        |
+| A field the dashboard reads that the API does not send fails a test          | `backend/tests/test_frontend_contract.py`: 55 response interfaces paired with their models by a declared table, 14 named as not-a-server-shape with a reason, every interface required to be in one list, and the comparison is field names against the models' own `model_fields`             |
+| The two drifts this found are fixed, not merely reported                     | `ErasureReport.preserved[]` is `{name, reason}` and the panel renders the name it is sent (it drew `undefined` before); `RecalibrationResult` is `since`/`until`/`quantile` and the toast is one sentence built from them (`recalibrationSummary`, asserted at the unit and through the toast) |
+| A pushed alert re-reads both traffic windows, as the module says             | `TRAFFIC_ROOTS` now lists the brushed root as well; a test drives a frame through the fake socket and counts the _brushed_ window's requests, which fails on the previous roots                                                                                                                |
+| The design's state glyphs are kept deliberately, not missed                  | §5.3's severity glyph column and the connection status glyph are drawn `aria-hidden` with the words beside them, and `⌘K` is a printed key: the scan's rule is about a _character standing in for an icon_, and the decision is recorded in D-079                                              |
+
+Reproduce with:
+
+```
+cd backend && ../.venv/bin/python -m pytest -q --no-cov tests/test_frontend_contract.py
+cd dashboard && npx vitest run src/components/layout/nav.test.ts src/App.test.tsx \
+  src/features/admin src/features/traffic src/features/triage/components/ContextPanel.test.tsx
+```
+
+**Eight defects were planted, and all eight failed their target tests**: the collapsed rail printing
+`item.label.slice(0, 1)`, the guillemet toggle, a `store` field on `PreservedLedger`, an interface
+listed in neither table of the contract check, a nested object type written inline
+(`preserved: { store: string }[]`), `window_days` reinstated on `RecalibrationResult`, the traffic
+roots without the brush key, and a misspelled `text-inkk` against the tailwind source check — the last
+of which also confirms the check kept its teeth after a false positive was fixed
+(`align-text-bottom` had been read as the invented class `text-bottom`).
+
+What is **not** claimed: the contract check compares field **names**, not types and not nesting depth,
+and it covers nesting only where the nested shape is a named interface — which the inline-object rule
+now forces. Screens cleared by their own tests and this gate rather than read line by line are named
+in D-079. The manual screen-reader pass is still **not run** (T-510): this task makes the _drawn_
+claim checkable, not the _announced_ one.
 
 ## Not yet recorded
 
