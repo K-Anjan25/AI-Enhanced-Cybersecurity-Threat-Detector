@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     alerts,
     api_keys,
     audit,
+    flows,
     health,
     hunt,
     ingest,
@@ -60,6 +61,9 @@ from app.services.erasure import (
     Redactor,
     UserDeletionTarget,
 )
+from app.services.flow_read_model import InProcessFlowRollup
+from app.services.flow_source import RollupFlowSource, flow_rollup_reason
+from app.services.flow_store import PostgresFlowStore
 from app.services.health_service import ReadinessRegistry
 from app.services.limits import AdmissionController, RateLimitPolicy
 from app.services.log_source import TailLogSource, store_requested, tail_reason
@@ -154,10 +158,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Drop connected dashboards so they fall back to REST rather than
         # holding a socket that will never speak again (FR-20).
         app.state.alert_hub.close()
-        # Close the log store's pooled connections (T-419). A deployment that
+        # Close the read models' pooled connections (T-418/T-419). A deployment that
         # configured a store opened them; leaving them to the garbage collector on a
         # rolling restart is how a database accumulates half-closed sessions.
-        engine = getattr(app.state, "log_engine", None)
+        engine = getattr(app.state, "store_engine", None)
         if engine is not None:
             await engine.dispose()
         logger.info("shutdown", service=settings.service_name)
@@ -276,16 +280,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # a process whose database is not up yet still starts and reports it through
     # readiness rather than refusing to boot.
     named_url = "database_url" in resolved.model_fields_set
-    if store_requested(resolved.log_store, database_url_named=named_url):
-        app.state.log_engine = create_async_database_engine(resolved.database_url)
+    log_store_on = store_requested(resolved.log_store, database_url_named=named_url)
+    flow_store_on = store_requested(resolved.flow_store, database_url_named=named_url)
+    # One engine for both read models: two stores with one database is one pool, and a
+    # deployment that has only one of them switched on still opens only one. It is built
+    # (lazily -- ``create_async_engine`` opens nothing) and then judged, so a deployment
+    # whose database is down still starts and answers 503 on the routes that need it.
+    app.state.store_engine = (
+        create_async_database_engine(resolved.database_url)
+        if log_store_on or flow_store_on
+        else None
+    )
+    if log_store_on:
         app.state.log_source = PostgresLogStore(
-            async_session_factory(app.state.log_engine),
+            async_session_factory(app.state.store_engine),
             coverage_ttl_seconds=resolved.log_store_coverage_ttl_seconds,
         )
     else:
-        app.state.log_engine = None
         app.state.log_source = TailLogSource(
             app.state.log_tail, reason=tail_reason(resolved.log_store)
+        )
+    if flow_store_on:
+        app.state.flow_source = PostgresFlowStore(
+            async_session_factory(app.state.store_engine),
+            coverage_ttl_seconds=resolved.log_store_coverage_ttl_seconds,
+        )
+    else:
+        app.state.flow_source = RollupFlowSource(
+            InProcessFlowRollup(retention_minutes=resolved.flow_rollup_minutes),
+            reason=flow_rollup_reason(resolved.flow_store),
         )
     # Webhook configuration (T-311). The allowlist is parsed here, at startup,
     # so a malformed entry stops the process with a clear message instead of
@@ -429,6 +452,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # failed on it, so ``/alerts/stream`` would otherwise be read as an alert id.
     app.include_router(stream.router)
     app.include_router(logs.router)
+    # The flow read route (T-418) shares ``/api/v1/flows`` with the ingest route and
+    # differs by method, so it must be registered with the same path and not shadowed:
+    # ``ingest`` owns POST, this owns GET.
+    app.include_router(flows.router)
     app.include_router(hunt.router)
     app.include_router(alerts.router)
     app.include_router(overview.router)

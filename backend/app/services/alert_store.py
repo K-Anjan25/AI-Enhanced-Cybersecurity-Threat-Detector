@@ -25,15 +25,24 @@ The in-memory implementation re-states the SQL predicates -- the bounded window
 deliberate and bounded: it is what lets the golden test exercise the API's own
 query semantics with no server. ``test_query.py`` still asserts the SQL, so the two
 descriptions of "the same page" are both under test.
+
+**A stored row is the row the column would return.** Two of the ``alerts`` columns
+have a type the database imposes and Python does not: ``status`` is a native enum,
+and ``score`` is ``numeric(5, 4)`` (R-39), so a score written here as a float would
+come back from the table as a ``Decimal`` at that scale. :func:`_column_value`
+imposes both, because the difference is not cosmetic: the overview's series score
+is the mean of a bucket's scores and counts only the rows whose score is a
+``Decimal``, so a float in this store reads on screen as a floor of zero (D-077).
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Protocol
 
-from app.db.models import Alert, AlertStatus
+from app.db.models import SCORE_SCALE, Alert, AlertStatus
 from app.db.repository import TimeRange
 from app.schemas.query import AlertQuery, decode_cursor
 from app.services.overview import (
@@ -45,6 +54,9 @@ from app.services.overview import (
 )
 
 __all__ = ["AlertStore", "InMemoryAlertStore"]
+
+#: The unit a score rounds to: the last digit of ``numeric(5, 4)`` (R-39).
+_SCORE_QUANTUM = Decimal(1).scaleb(-SCORE_SCALE)
 
 
 class AlertStore(Protocol):
@@ -214,16 +226,30 @@ def _column_value(name: str, value: object) -> object:
     """Normalise one column value the way the database would on the way back.
 
     The status column is a native enum, so a string written by the correlator
-    reads back as ``AlertStatus``. Doing the same here keeps the in-memory store
-    honest about the type a caller gets.
+    reads back as ``AlertStatus``. The score column is ``numeric(5, 4)``, so a
+    float written by a caller reads back as a ``Decimal`` rounded to four places
+    -- half away from zero, which is what PostgreSQL's ``numeric`` does and what
+    migration ``0002`` documents. Doing both here keeps the in-memory store honest
+    about the types a caller gets, which is the only reason the overview's mean
+    score and the ``min_score`` filter agree with the SQL they stand in for.
     """
     if name == "status" and isinstance(value, str):
         return AlertStatus(value)
+    if name == "score" and isinstance(value, int | float | str | Decimal):
+        return Decimal(str(value)).quantize(_SCORE_QUANTUM, rounding=ROUND_HALF_UP)
     return value
 
 
 def _matches(row: Alert, query: AlertQuery) -> bool:
-    """Whether one row satisfies every filter in the query."""
+    """Whether one row satisfies every filter in the query.
+
+    The score filter compares as the SQL does rather than in ``Decimal``: the
+    parameter is a float, and ``Alert.score >= query.min_score`` reaches PostgreSQL
+    as a ``numeric`` column against a ``float8`` bound, so a row *at* the threshold
+    is kept. Comparing the column's ``Decimal`` against the float directly would
+    drop ``0.9000`` from a ``min_score=0.9`` read, because the exact ``0.9`` is
+    below the float -- which is not the exact tenth either (D-077).
+    """
     if query.severity and str(row.severity) not in query.severity:
         return False
     if query.status and str(row.status) not in query.status:
@@ -232,7 +258,7 @@ def _matches(row: Alert, query: AlertQuery) -> bool:
         return False
     if query.entity_id is not None and row.entity_id != query.entity_id:
         return False
-    return not (query.min_score is not None and row.score < query.min_score)
+    return not (query.min_score is not None and float(row.score) < query.min_score)
 
 
 def _after_cursor(row: Alert, cursor: tuple[datetime, int], order: str) -> bool:

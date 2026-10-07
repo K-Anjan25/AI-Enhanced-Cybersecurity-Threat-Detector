@@ -14,9 +14,9 @@
  *     empty table is the one place an analyst cannot tell a quiet network from a typo
  *     (design.md §4.6).
  *   * **What cannot be done is said, not omitted.** §4.6 asks for fields this build
- *     has no read model for (`src_ip`, `dst_port`, `template_id`) and for a "create
- *     alert from this filter" action. The console names the first as unsearchable
- *     terms with their reasons (T-418, T-419) and the second as unavailable with the
+ *     cannot be answered by a read model (`src_ip`, `dst_port`, `template_id`) and
+ *     for a "create alert from this filter" action. The console names the first as
+ *     unsearchable terms with their reasons (T-418, T-419) and the second as unavailable with the
  *     reason there is no such write API: alerts are produced by the detection
  *     pipeline. A control that is absent with a reason beats one that looks as if it
  *     worked.

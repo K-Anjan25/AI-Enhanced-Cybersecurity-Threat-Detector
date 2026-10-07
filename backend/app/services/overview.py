@@ -33,6 +33,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from app.db.models import Alert, Severity
 
@@ -76,11 +77,16 @@ class SeriesPoint:
         total: how many alerts fell in it.
         by_severity: the same count split by band, with the unrecognised band
             present only when it is non-zero.
+        score: the mean composite score of the bucket's alerts, or ``None`` for an
+            empty bucket. ``None`` rather than ``0.0``: the traffic explorer draws
+            this as a second axis, and a zero would draw a line along the floor of a
+            bucket where nothing happened (T-418).
     """
 
     start: datetime
     total: int
     by_severity: Mapping[str, int]
+    score: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -317,6 +323,8 @@ def aggregate(
     starts = bucket_starts(start, end, bucket_minutes)
     totals = dict.fromkeys((member.value for member in Severity), 0)
     buckets = [dict.fromkeys((member.value for member in Severity), 0) for _ in starts]
+    scores = [0.0 for _ in starts]
+    scored = [0 for _ in starts]
     unrecognised = 0
     open_alerts = 0
     for row in rows:
@@ -329,17 +337,30 @@ def aggregate(
             open_alerts += 1
         index = _bucket_index(row.created_at, start, bucket_minutes, len(starts))
         buckets[index][severity] = buckets[index].get(severity, 0) + 1
+        # A score is a Decimal in the database (R-39: fixed precision, never a
+        # float), and a row whose score is not one is skipped rather than counted as
+        # a zero -- and, below, it does not count towards the mean's divisor either.
+        # A mean dragged towards zero by a malformed row would read as a quiet
+        # bucket.
+        if isinstance(row.score, Decimal):
+            scores[index] += float(row.score)
+            scored[index] += 1
 
     points = []
     for index, bucket_start in enumerate(starts):
         counts = buckets[index]
+        total = sum(counts.values())
         points.append(
             SeriesPoint(
                 start=bucket_start,
                 # The bucket's total counts the unrecognised band too: a bucket
                 # whose rows are all unknown is not an empty bucket.
-                total=sum(counts.values()),
+                total=total,
                 by_severity={band: count for band, count in counts.items() if count > 0},
+                # The mean is over the rows that carried a readable score, not over
+                # every row in the bucket, and a bucket with none has no score
+                # rather than a fabricated zero.
+                score=None if scored[index] == 0 else round(scores[index] / scored[index], 6),
             )
         )
 

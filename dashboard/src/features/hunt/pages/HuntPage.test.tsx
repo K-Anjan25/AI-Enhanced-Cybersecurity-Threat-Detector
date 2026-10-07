@@ -221,7 +221,8 @@ describe('the hunt console', () => {
 
     const options = screen.getAllByRole('option');
     expect(options.map((option) => option.textContent)).toContain(
-      'src_ip:not searchable — raw flow records have no read API in this build (T-418)',
+      'src_ip:not searchable — the hunt API reads alerts; the flow read API counts a window and ' +
+        'takes no address filter (T-418)',
     );
   });
 

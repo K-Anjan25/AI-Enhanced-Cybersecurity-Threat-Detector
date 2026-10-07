@@ -154,7 +154,10 @@ def _response(
         ),
         series=[
             OverviewBucket(
-                start=point.start, total=point.total, by_severity=dict(point.by_severity)
+                start=point.start,
+                total=point.total,
+                by_severity=dict(point.by_severity),
+                score=point.score,
             )
             for point in summary.points
         ],

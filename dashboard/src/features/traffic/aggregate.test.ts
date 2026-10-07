@@ -1,294 +1,280 @@
+/**
+ * The traffic model's mapping, and the brush (T-418).
+ *
+ * What is left in `aggregate.ts` after the arithmetic moved to the flow read model: the
+ * wire→component mapping and two rules that could silently mislead a reader.
+ *
+ *   * **Every bucket has an end**, taken from the next bucket's start and the window's
+ *     own end for the last one — so the series tiles the window the totals describe.
+ *   * **The brush selects by overlap**, because a bucket that starts before the selection
+ *     and ends inside it holds traffic the analyst selected.
+ */
 import { describe, expect, it } from 'vitest';
 
-import { entityEdges, entityRows, rowsInBrush, trafficSeries } from './aggregate';
-import type { AlertRow } from '../../api/alerts';
+import { bucketsInBrush, trafficEdges, trafficNodes, trafficSeries } from './aggregate';
+import type { FlowAggregate, FlowBucket, FlowEntity } from '../../api/flows';
 
-function row(overrides: Partial<AlertRow> & { id: number }): AlertRow {
+const START = Date.parse('2026-10-06T10:00:00Z');
+
+function bucket(overrides: Partial<FlowBucket> & { start: string }): FlowBucket {
   return {
-    created_at: '2026-10-06T10:00:00Z',
-    entity_id: 1,
-    family: 'exfiltration',
-    severity: 'high',
-    score: 0.8,
-    status: 'open',
-    first_seen: '2026-10-06T09:59:00Z',
-    last_seen: '2026-10-06T10:00:00Z',
-    occurrence_count: 10,
-    trace_id: null,
+    flows: 1,
+    bytes: 140,
+    packets: 3,
+    alerts: 0,
+    score: null,
     ...overrides,
   };
 }
 
-const WINDOW = { start: new Date('2026-10-06T10:00:00Z'), end: new Date('2026-10-06T11:00:00Z') };
+function entity(overrides: Partial<FlowEntity> & { ip: string }): FlowEntity {
+  return {
+    flows: 1,
+    bytes: 140,
+    packets: 3,
+    inbound: 0,
+    outbound: 1,
+    first_seen: new Date(START).toISOString(),
+    last_seen: new Date(START).toISOString(),
+    alerts: 0,
+    open_alerts: 0,
+    worst_severity: null,
+    max_score: null,
+    ...overrides,
+  };
+}
+
+function aggregate(overrides: Partial<FlowAggregate> = {}): FlowAggregate {
+  return {
+    window: {
+      start: new Date(START).toISOString(),
+      end: new Date(START + 3_600_000).toISOString(),
+      hours: 1,
+    },
+    bucket_minutes: 5,
+    source: 'rollup',
+    filters: { protocol: null, direction: null },
+    series: [],
+    entities: [],
+    edges: [],
+    totals: {
+      flows: 0,
+      bytes: 0,
+      packets: 0,
+      nodes: 0,
+      edges: 0,
+      nodes_capped: false,
+      edges_capped: false,
+      untracked_address_flows: 0,
+      untracked_pair_flows: 0,
+    },
+    caveats: [],
+    ...overrides,
+  };
+}
 
 describe('trafficSeries', () => {
-  it('tiles the window with buckets that touch end to end', () => {
-    const buckets = trafficSeries([], { ...WINDOW, buckets: 4 });
-
-    expect(buckets).toHaveLength(4);
-    expect(buckets[0]?.start.toISOString()).toBe('2026-10-06T10:00:00.000Z');
-    expect(buckets[3]?.end.toISOString()).toBe('2026-10-06T11:00:00.000Z');
-    for (let index = 1; index < buckets.length; index += 1) {
-      expect(buckets[index]?.start.getTime()).toBe(buckets[index - 1]?.end.getTime());
-    }
-  });
-
-  it('sums record volume and means the score per bucket', () => {
-    const buckets = trafficSeries(
-      [
-        row({ id: 1, created_at: '2026-10-06T10:10:00Z', occurrence_count: 4, score: 0.5 }),
-        row({ id: 2, created_at: '2026-10-06T10:20:00Z', occurrence_count: 6, score: 0.9 }),
-      ],
-      { ...WINDOW, buckets: 2 },
-    );
-
-    expect(buckets[0]?.records).toBe(10);
-    expect(buckets[0]?.alerts).toBe(2);
-    expect(buckets[0]?.score).toBeCloseTo(0.7);
-    expect(buckets[1]?.records).toBe(0);
-  });
-
-  it('says an empty bucket has no score rather than scoring it zero', () => {
-    // A zero would draw a line through the floor of an empty bucket, which reads as
-    // "everything was benign" when the truth is "nothing happened".
-    const buckets = trafficSeries([row({ id: 1, created_at: '2026-10-06T10:10:00Z' })], {
-      ...WINDOW,
-      buckets: 2,
-    });
-
-    expect(buckets[1]?.score).toBeNull();
-    expect(buckets[0]?.score).not.toBeNull();
-  });
-
-  it('clamps a row outside the window into the nearest bucket rather than dropping it', () => {
-    const buckets = trafficSeries(
-      [row({ id: 1, created_at: '2026-10-06T09:00:00Z', occurrence_count: 3 })],
-      { ...WINDOW, buckets: 2 },
-    );
-
-    expect(buckets[0]?.records).toBe(3);
-    expect(buckets.reduce((total, bucket) => total + bucket.records, 0)).toBe(3);
-  });
-
-  it('counts a row whose timestamp cannot be parsed nowhere, and does not crash', () => {
-    expect(() =>
-      trafficSeries([row({ id: 1, created_at: 'not-a-time' })], { ...WINDOW, buckets: 2 }),
-    ).not.toThrow();
-  });
-
-  it('refuses an inverted or empty window instead of drawing a zero-width chart', () => {
-    expect(() => trafficSeries([], { start: WINDOW.end, end: WINDOW.start, buckets: 4 })).toThrow(
-      RangeError,
-    );
-    expect(() => trafficSeries([], { ...WINDOW, buckets: 0 })).toThrow(RangeError);
-  });
-});
-
-describe('entityRows', () => {
-  it('folds rows into one entry per entity, counting alerts and records', () => {
-    const entities = entityRows([
-      row({ id: 1, entity_id: 7, occurrence_count: 5, family: 'exfiltration' }),
-      row({ id: 2, entity_id: 7, occurrence_count: 3, family: 'scan' }),
-      row({ id: 3, entity_id: 9, occurrence_count: 1 }),
-    ]);
-
-    expect(entities).toHaveLength(2);
-    expect(entities[0]).toMatchObject({
-      entityId: 7,
-      alerts: 2,
-      records: 8,
-      families: ['exfiltration', 'scan'],
-    });
-    expect(entities[1]).toMatchObject({ entityId: 9, alerts: 1, records: 1 });
-  });
-
-  it('keeps the most serious severity seen, whatever order the rows arrive in', () => {
-    const entities = entityRows([
-      row({ id: 1, entity_id: 4, severity: 'low' }),
-      row({ id: 2, entity_id: 4, severity: 'critical' }),
-      row({ id: 3, entity_id: 4, severity: 'medium' }),
-    ]);
-
-    expect(entities[0]?.peakSeverity).toBe('critical');
-  });
-
-  it('leaves the peak null when no severity is recognised, rather than inventing one', () => {
-    const entities = entityRows([row({ id: 1, entity_id: 4, severity: 'catastrophic' })]);
-
-    expect(entities[0]?.peakSeverity).toBeNull();
-  });
-
-  it('marks an entity whose alerts are all judged as not open', () => {
-    const entities = entityRows([
-      row({ id: 1, entity_id: 4, status: 'resolved' }),
-      row({ id: 2, entity_id: 4, status: 'benign' }),
-    ]);
-
-    expect(entities[0]?.hasOpen).toBe(false);
-  });
-
-  it('widens first and last seen to the extremes, compared as instants', () => {
-    const entities = entityRows([
-      row({
-        id: 1,
-        entity_id: 4,
-        first_seen: '2026-10-06T09:00:00Z',
-        last_seen: '2026-10-06T09:30:00Z',
+  it('fills each bucket end from the next bucket start', () => {
+    const series = trafficSeries(
+      aggregate({
+        series: [
+          bucket({ start: new Date(START).toISOString() }),
+          bucket({ start: new Date(START + 300_000).toISOString() }),
+        ],
       }),
-      row({
-        id: 2,
-        entity_id: 4,
-        // A different offset for the same instant must not sort later as text.
-        first_seen: '2026-10-06T08:00:00+00:00',
-        last_seen: '2026-10-06T11:00:00Z',
+    );
+
+    expect(series[0]?.end.getTime()).toBe(START + 300_000);
+  });
+
+  it('ends the last bucket where the window ends', () => {
+    // The API's window is the authority: a last bucket ending anywhere else would leave
+    // a gap (or an overlap) between the series and the totals that describe it.
+    const series = trafficSeries(
+      aggregate({ series: [bucket({ start: new Date(START).toISOString() })] }),
+    );
+
+    expect(series[0]?.end.getTime()).toBe(START + 3_600_000);
+  });
+
+  it('carries flows, bytes, alerts and the score through unchanged', () => {
+    const series = trafficSeries(
+      aggregate({
+        series: [
+          bucket({
+            start: new Date(START).toISOString(),
+            flows: 7,
+            bytes: 900,
+            alerts: 2,
+            score: 0.75,
+          }),
+        ],
       }),
-    ]);
+    );
 
-    expect(Date.parse(entities[0]?.firstSeen ?? '')).toBe(Date.parse('2026-10-06T08:00:00Z'));
-    expect(Date.parse(entities[0]?.lastSeen ?? '')).toBe(Date.parse('2026-10-06T11:00:00Z'));
+    expect(series[0]).toMatchObject({ flows: 7, bytes: 900, alerts: 2, score: 0.75 });
   });
 
-  it('counts distinct traces per entity', () => {
-    const entities = entityRows([
-      row({ id: 1, entity_id: 4, trace_id: 'trace-a' }),
-      row({ id: 2, entity_id: 4, trace_id: 'trace-a' }),
-      row({ id: 3, entity_id: 4, trace_id: 'trace-b' }),
-      row({ id: 4, entity_id: 4, trace_id: null }),
-    ]);
+  it('keeps a null score null rather than turning it into zero', () => {
+    // A zero here draws the score line along the floor of a bucket where nothing
+    // happened, which reads as "everything was benign".
+    const series = trafficSeries(
+      aggregate({ series: [bucket({ start: new Date(START).toISOString() })] }),
+    );
 
-    expect(entities[0]?.traces).toBe(2);
-  });
-
-  it('orders by volume and breaks ties by id, so two refreshes agree', () => {
-    const rows = [
-      row({ id: 1, entity_id: 9, occurrence_count: 1 }),
-      row({ id: 2, entity_id: 3, occurrence_count: 5 }),
-      row({ id: 3, entity_id: 5, occurrence_count: 1 }),
-    ];
-
-    expect(entityRows(rows).map((entity) => entity.entityId)).toEqual([3, 5, 9]);
-    expect(entityRows([...rows].reverse()).map((entity) => entity.entityId)).toEqual([3, 5, 9]);
+    expect(series[0]?.score).toBeNull();
   });
 });
 
-describe('entityEdges', () => {
-  it('builds one edge per pair that shared a correlation trace', () => {
-    const edges = entityEdges([
-      row({ id: 1, entity_id: 9, trace_id: 'trace-1' }),
-      row({ id: 2, entity_id: 3, trace_id: 'trace-1' }),
-    ]);
-
-    expect(edges).toEqual([{ source: 3, target: 9, sharedTraces: 1 }]);
-  });
-
-  it('spells a pair the same way whichever side arrives first', () => {
-    const edges = entityEdges([
-      row({ id: 1, entity_id: 9, trace_id: 'trace-1' }),
-      row({ id: 2, entity_id: 3, trace_id: 'trace-1' }),
-    ]);
-
-    // Smaller id first, always: `(3,9)` and `(9,3)` must be one edge, not two.
-    expect(edges[0]?.source).toBe(3);
-    expect(edges[0]?.target).toBe(9);
-  });
-
-  it('counts the traces two entities share, not the alerts', () => {
-    const edges = entityEdges([
-      row({ id: 1, entity_id: 1, trace_id: 'trace-1' }),
-      row({ id: 2, entity_id: 2, trace_id: 'trace-1' }),
-      row({ id: 3, entity_id: 1, trace_id: 'trace-1' }),
-      row({ id: 4, entity_id: 2, trace_id: 'trace-2' }),
-      row({ id: 5, entity_id: 1, trace_id: 'trace-2' }),
-    ]);
-
-    expect(edges).toEqual([{ source: 1, target: 2, sharedTraces: 2 }]);
-  });
-
-  it('groups nothing by a missing trace, however many rows share one', () => {
-    // `null` is a valid Map key, so the guard is not decoration: without it every
-    // alert that never had a trace context lands in one bucket and the graph draws a
-    // relationship out of the fact that two unrelated alerts were both untraced.
-    const edges = entityEdges([
-      row({ id: 1, entity_id: 1, trace_id: null }),
-      row({ id: 2, entity_id: 2, trace_id: null }),
-      row({ id: 3, entity_id: 3, trace_id: null }),
-    ]);
-
-    expect(edges).toEqual([]);
-  });
-
-  it('draws no edge from a trace that touched one entity, and no self-loop', () => {
-    const edges = entityEdges([
-      row({ id: 1, entity_id: 1, trace_id: 'trace-1' }),
-      row({ id: 2, entity_id: 1, trace_id: 'trace-1' }),
-      row({ id: 3, entity_id: 2, trace_id: null }),
-    ]);
-
-    expect(edges).toEqual([]);
-  });
-
-  it('orders edges by weight, then by both ends', () => {
-    // The input order deliberately disagrees with the output order three ways: the
-    // heavy pair comes last, one pair lists its higher id first, and the light pairs
-    // arrive (3,4) before (2,9). Entities 1 and 2 share *two* distinct traces — so the
-    // weight is 2, which is what "counts traces, not alerts" means: four alerts in one
-    // trace are one edge.
-    const edges = entityEdges([
-      row({ id: 1, entity_id: 3, trace_id: 't3' }),
-      row({ id: 2, entity_id: 4, trace_id: 't3' }),
-      row({ id: 3, entity_id: 9, trace_id: 't8' }),
-      row({ id: 4, entity_id: 2, trace_id: 't8' }),
-      row({ id: 5, entity_id: 1, trace_id: 't1' }),
-      row({ id: 6, entity_id: 2, trace_id: 't1' }),
-      row({ id: 7, entity_id: 1, trace_id: 't2' }),
-      row({ id: 8, entity_id: 2, trace_id: 't2' }),
-      row({ id: 9, entity_id: 5, trace_id: 't5' }),
-      row({ id: 10, entity_id: 5, trace_id: 't5' }),
-    ]);
-
-    expect(edges.map((edge) => [edge.source, edge.target, edge.sharedTraces])).toEqual([
-      [1, 2, 2],
-      [2, 9, 1],
-      [3, 4, 1],
-    ]);
-  });
-});
-
-describe('rowsInBrush', () => {
-  const rows = [
-    row({ id: 1, created_at: '2026-10-06T10:00:00Z' }),
-    row({ id: 2, created_at: '2026-10-06T10:30:00Z' }),
-    row({ id: 3, created_at: '2026-10-06T11:00:00Z' }),
+describe('bucketsInBrush', () => {
+  const series = [
+    {
+      start: new Date(START),
+      end: new Date(START + 60_000),
+      flows: 1,
+      bytes: 1,
+      alerts: 0,
+      score: null,
+    },
+    {
+      start: new Date(START + 60_000),
+      end: new Date(START + 120_000),
+      flows: 2,
+      bytes: 2,
+      alerts: 0,
+      score: null,
+    },
+    {
+      start: new Date(START + 120_000),
+      end: new Date(START + 180_000),
+      flows: 3,
+      bytes: 3,
+      alerts: 0,
+      score: null,
+    },
   ];
 
-  it('passes everything through with no brush', () => {
-    expect(rowsInBrush(rows, null)).toHaveLength(3);
+  it('returns everything when there is no brush', () => {
+    expect(bucketsInBrush(series, null)).toHaveLength(3);
   });
 
-  it('drops a row before the brush, not only one after it', () => {
-    const earlier = [
-      row({ id: 0, created_at: '2026-10-06T09:30:00Z' }),
-      row({ id: 1, created_at: '2026-10-06T10:00:00Z' }),
-      row({ id: 2, created_at: '2026-10-06T10:30:00Z' }),
-      row({ id: 3, created_at: '2026-10-06T11:00:00Z' }),
-    ];
+  it('keeps a bucket that overlaps the selection at either end', () => {
+    // A selection starting inside the middle bucket: the bucket is drawn, because it
+    // holds traffic the analyst selected.
+    const kept = bucketsInBrush(series, { from: START + 90_000, to: START + 130_000 });
 
-    const kept = rowsInBrush(earlier, {
-      from: Date.parse('2026-10-06T10:00:00Z'),
-      to: Date.parse('2026-10-06T11:00:00Z'),
-    });
-
-    expect(kept.map((entry) => entry.id)).toEqual([1, 2]);
+    expect(kept.map((bucket) => bucket.flows)).toEqual([2, 3]);
   });
 
-  it('keeps a row on the left edge and drops one on the right', () => {
-    // Half-open, exactly like the API's window: two adjacent brushes must not both
-    // claim a row sitting on the boundary.
-    const kept = rowsInBrush(rows, {
-      from: Date.parse('2026-10-06T10:00:00Z'),
-      to: Date.parse('2026-10-06T11:00:00Z'),
-    });
+  it('drops buckets entirely outside the selection', () => {
+    const kept = bucketsInBrush(series, { from: START + 120_000, to: START + 180_000 });
 
-    expect(kept.map((entry) => entry.id)).toEqual([1, 2]);
+    expect(kept.map((bucket) => bucket.flows)).toEqual([3]);
+  });
+
+  it('is half-open, so a boundary bucket belongs to one side only', () => {
+    // A selection ending exactly where a bucket starts does not include it: two adjacent
+    // brushes must never both claim a bucket.
+    const kept = bucketsInBrush(series, { from: START, to: START + 60_000 });
+
+    expect(kept.map((bucket) => bucket.flows)).toEqual([1]);
+  });
+});
+
+describe('trafficNodes', () => {
+  it('keys an address by its value, not by an id', () => {
+    const nodes = trafficNodes(aggregate({ entities: [entity({ ip: '10.0.0.7' })] }));
+
+    expect(nodes[0]?.id).toBe('10.0.0.7');
+  });
+
+  it('keeps the read model’s directions and counters', () => {
+    const nodes = trafficNodes(
+      aggregate({
+        entities: [entity({ ip: '10.0.0.7', flows: 9, inbound: 4, outbound: 5, bytes: 500 })],
+      }),
+    );
+
+    expect(nodes[0]).toMatchObject({ flows: 9, inbound: 4, outbound: 5, bytes: 500 });
+  });
+
+  it('carries the alert side through', () => {
+    const nodes = trafficNodes(
+      aggregate({
+        entities: [
+          entity({
+            ip: '10.0.0.7',
+            alerts: 3,
+            open_alerts: 1,
+            worst_severity: 'critical',
+            max_score: 0.97,
+          }),
+        ],
+      }),
+    );
+
+    expect(nodes[0]).toMatchObject({
+      alerts: 3,
+      openAlerts: 1,
+      peakSeverity: 'critical',
+      maxScore: 0.97,
+    });
+  });
+
+  it('treats an unknown severity band as no severity rather than as a band', () => {
+    // The palette only has the four declared severities; a band this build does not know
+    // would otherwise be passed to a colour lookup that has no entry for it.
+    const nodes = trafficNodes(
+      aggregate({ entities: [entity({ ip: '10.0.0.7', worst_severity: 'catastrophic' })] }),
+    );
+
+    expect(nodes[0]?.peakSeverity).toBeNull();
+  });
+
+  it('leaves an address with no alert without a score or a severity', () => {
+    const nodes = trafficNodes(aggregate({ entities: [entity({ ip: '10.0.0.7' })] }));
+
+    expect(nodes[0]?.peakSeverity).toBeNull();
+    expect(nodes[0]?.maxScore).toBeNull();
+    expect(nodes[0]?.alerts).toBe(0);
+  });
+});
+
+describe('trafficEdges', () => {
+  it('keeps the direction the read model reported', () => {
+    const edges = trafficEdges(
+      aggregate({
+        edges: [
+          { source: '10.0.0.1', target: '10.0.0.2', flows: 3, bytes: 300 },
+          { source: '10.0.0.2', target: '10.0.0.1', flows: 1, bytes: 100 },
+        ],
+      }),
+    );
+
+    expect(edges.map((edge) => `${edge.source}->${edge.target}`)).toEqual([
+      '10.0.0.1->10.0.0.2',
+      '10.0.0.2->10.0.0.1',
+    ]);
+  });
+
+  it('weights an edge by its records', () => {
+    const edges = trafficEdges(
+      aggregate({ edges: [{ source: '10.0.0.1', target: '10.0.0.2', flows: 12, bytes: 3_000 }] }),
+    );
+
+    expect(edges[0]?.flows).toBe(12);
+  });
+
+  it('preserves the read model’s order, busiest first', () => {
+    const edges = trafficEdges(
+      aggregate({
+        edges: [
+          { source: '10.0.0.1', target: '10.0.0.2', flows: 9, bytes: 1 },
+          { source: '10.0.0.3', target: '10.0.0.4', flows: 2, bytes: 1 },
+        ],
+      }),
+    );
+
+    expect(edges[0]?.flows).toBe(9);
   });
 });
