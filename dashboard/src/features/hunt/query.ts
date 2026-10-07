@@ -10,8 +10,9 @@
  *
  *   * **The vocabulary is the read model's own.** design.md §4.6 lists `src_ip`,
  *     `dst_port`, `template_id` and `family` as autocomplete suggestions, and only
- *     `family` exists in this build: flow records have no read API (T-418) and log
- *     lines are a bounded in-process tail with no text search (T-419). Rather than
+ *     `family` exists in this build: flow records have no read API (T-418) and the
+ *     hunt API queries alerts, not the log store (T-419) — whose reads are by window,
+ *     host, level and cluster key, with no text search by design. Rather than
  *     accept a term it cannot answer, the console knows the fields the API actually
  *     filters on and names the missing ones on the screen — see `UNSEARCHABLE_TERMS`.
  *   * **An unknown field is refused, never ignored.** A hunt that silently dropped
@@ -142,11 +143,11 @@ export const UNSEARCHABLE_TERMS: readonly { name: string; reason: string }[] = [
   },
   {
     name: 'template_id',
-    reason: 'log template ids are searched on the Logs screen, from a bounded tail (T-419)',
+    reason: 'cluster keys are searched on the Logs screen; the hunt API reads alerts (T-419)',
   },
   {
     name: 'message',
-    reason: 'the log tail has no text search, and there is no persistent log read model (T-419)',
+    reason: 'log lines carry a message digest, not a searchable text field (T-419)',
   },
   {
     name: 'trace',

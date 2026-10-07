@@ -13,7 +13,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { jsonResponse, stubFetch, testQueryClient } from '../../test/query';
-import { LOG_TAIL_REFRESH_MS, useLogLines, useLogTail } from './hooks';
+import {
+  LOG_TAIL_REFRESH_MS,
+  LOG_WIDE_REFRESH_MS,
+  refreshMsFor,
+  useLogLines,
+  useLogTail,
+} from './hooks';
 import { tailWindow, type LogWindow } from './cluster';
 import type { LogTail } from './api';
 
@@ -43,6 +49,7 @@ function tail(count: number): LogTail {
     clusters_truncated: false,
     retained_from: '2026-10-06T10:00:00Z',
     retained_to: '2026-10-06T10:04:59Z',
+    source: 'tail',
     retained_lines: count,
     dropped_lines: 0,
     caveats: ['not a store', 'Nothing matched these filters'],
@@ -74,6 +81,19 @@ function renderProbe(ui: React.ReactElement) {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+
+describe('refreshMsFor', () => {
+  it('reads at the tail cadence up to the retention, and a trend cadence beyond it', () => {
+    // The 2 s cadence exists for the last few seconds. A day-long window has not
+    // visibly moved in two seconds, and re-reading a day of clusters fifteen times more
+    // often than the trend view does would be load bought for nothing (T-419).
+    expect(refreshMsFor(60_000)).toBe(LOG_TAIL_REFRESH_MS);
+    expect(refreshMsFor(300_000)).toBe(LOG_TAIL_REFRESH_MS);
+    expect(refreshMsFor(900_000)).toBe(LOG_TAIL_REFRESH_MS);
+    expect(refreshMsFor(3_600_000)).toBe(LOG_WIDE_REFRESH_MS);
+    expect(refreshMsFor(86_400_000)).toBe(LOG_WIDE_REFRESH_MS);
+  });
 });
 
 describe('useLogTail', () => {

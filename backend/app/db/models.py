@@ -343,6 +343,52 @@ class IngestStat(Base):
     __table_args__ = ({"postgresql_partition_by": "RANGE (window_start)"},)
 
 
+class LogEvent(Base):
+    """An accepted log line, stored so a read survives the process that accepted it.
+
+    The log read model (T-419, FR-02). ``log@1`` lines were validated, admitted and
+    published, then kept only in the accepting process's bounded tail; this table is
+    where they are *stored*, so a query is answered from the database rather than
+    from the last 20,000 lines in one worker's memory.
+
+    **The cluster key is stored, and it is the tail's own key.** ``key`` is what
+    ``app.services.log_tail.cluster_key`` returns for the line — the template id, or
+    ``message:<sha256[:12]>`` when there was none — written the moment the line is
+    accepted. Storing it rather than recomputing it in the query means the fold is
+    one function's answer, the group-by is a plain indexed equality, and a stored
+    read cannot invent a cluster the live tail would not have shown. The column is
+    indexed with ``timestamp`` because every read is "these keys, inside this
+    window".
+
+    **No index on ``message``, on purpose.** Nothing searches message text: a
+    cluster is opened by its key, so lookups are by key and by time. A GIN index
+    here would make text search possible and make every insert pay for a capability
+    nothing uses — and text search is the one thing Q-02/D-034 deferred to a
+    measured volume rather than to an index that happens to be there.
+    """
+
+    __tablename__ = "log_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    host: Mapped[str] = mapped_column(String(512), nullable=False)
+    service: Mapped[str] = mapped_column(String(200), nullable=False)
+    level: Mapped[str] = mapped_column(String(16), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    template_id: Mapped[str | None] = mapped_column(String(200))
+    parameters: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, default=dict)
+    key: Mapped[str] = mapped_column(String(300), nullable=False)
+
+    __table_args__ = (
+        # The read is always a time window, so the time is indexed; and the busiest
+        # window read is a group-by on the key, so (key, timestamp) serves both the
+        # fold and the "lines behind this cluster" lookup.
+        Index("ix_log_events_timestamp", "timestamp"),
+        Index("ix_log_events_key_timestamp", "key", "timestamp"),
+        Index("ix_log_events_host_timestamp", "host", "timestamp"),
+    )
+
+
 #: Every model, for migration autogeneration and for tests that walk the schema.
 ALL_TABLES: tuple[str, ...] = (
     "users",
@@ -354,6 +400,7 @@ ALL_TABLES: tuple[str, ...] = (
     "audit_log",
     "thresholds",
     "ingest_stats",
+    "log_events",
 )
 
 #: The column each partitioned table is ranged on.
@@ -371,6 +418,7 @@ __all__ = [
     "Entity",
     "EntityKind",
     "IngestStat",
+    "LogEvent",
     "ModelKind",
     "ModelRecord",
     "ModelStatus",

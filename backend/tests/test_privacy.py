@@ -145,7 +145,11 @@ def test_the_preview_shows_the_policy_and_the_boundary_rule(client: TestClient) 
         )
         assert date.fromisoformat(partition["covers_end"]) <= cutoff
         assert partition["statement"].startswith("DROP TABLE IF EXISTS ")
-    assert all(item["table"] == "audit_log" for item in body["unevictable"])
+    # Every unevictable table is named with a reason, and the log store (T-419) is
+    # one of them: FR-05's raw-record window reaches it through a sweep that is not
+    # built, and a plan that omitted it would invite the opposite assumption.
+    assert {item["table"] for item in body["unevictable"]} == {"audit_log", "log_events"}
+    assert all(item["reason"] for item in body["unevictable"])
     assert set(body["external"]) == {"kafka", "elasticsearch"}
 
 

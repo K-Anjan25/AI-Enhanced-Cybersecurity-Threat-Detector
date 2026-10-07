@@ -38,7 +38,13 @@ from app.db.models import PARTITION_KEYS, PARTITIONED_TABLES
 
 #: A ``Select`` of any column shape -- the shape is the caller's, and ``Select``'s
 #: parameters are the columns themselves, so the shape has to be packed.
-_SelectAny = Select[*tuple[Any, ...]]
+#:
+#: Public because more than one module builds such statements: the log store's
+#: builders (T-419) name it too, and a private name imported across modules is a
+#: boundary that only looks like one.
+SelectAny = Select[*tuple[Any, ...]]
+#: The same type under the name this module's own annotations use.
+_SelectAny = SelectAny
 #: A ``Select`` of any column shape, bound for a type variable.
 _Statement = TypeVar("_Statement", bound=_SelectAny)
 
@@ -356,6 +362,7 @@ _MODEL_FOR_TABLE: dict[str, str] = {"alerts": "Alert", "ingest_stats": "IngestSt
 __all__ = [
     "MAX_QUERY_SPAN_DAYS",
     "AggregateStatements",
+    "SelectAny",
     "TimeRange",
     "UnboundedScanError",
     "alert_aggregate_statements",
