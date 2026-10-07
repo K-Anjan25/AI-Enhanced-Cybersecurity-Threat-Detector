@@ -33,7 +33,6 @@ function version(overrides: Partial<ModelVersion> & { model_id: string }): Model
     artifact_uri: 's3://aegis/models/flow',
     sha256: 'd'.repeat(64),
     manifest_present: true,
-    metrics: null,
     promoted_at: null,
     promoted_by: null,
     justification: '',
@@ -48,6 +47,7 @@ const METRICS = {
     roc_auc: { value: 0.8123, artifact: 'runs/flow-7.json', field: 'test.roc_auc' },
     recall: { value: 0.441, artifact: 'runs/flow-7.json', field: 'test.recall' },
   },
+  evaluation: null,
 };
 
 function registry(items: ModelVersion[]) {
@@ -63,7 +63,10 @@ function registry(items: ModelVersion[]) {
  */
 function modelRoutes(
   items: ModelVersion[],
-  overrides: { promote?: (modelId: string) => Response; metrics?: Record<string, unknown> } = {},
+  overrides: {
+    promote?: (modelId: string) => Response;
+    metrics?: Record<string, unknown> | ((modelId: string) => Record<string, unknown>);
+  } = {},
 ) {
   return [
     {
@@ -75,7 +78,11 @@ function modelRoutes(
           return overrides.promote?.(id) ?? jsonResponse(transition(id));
         }
         const id = path.split('/')[4] ?? '';
-        return jsonResponse(overrides.metrics ?? metricsFor(id));
+        const metrics =
+          typeof overrides.metrics === 'function'
+            ? overrides.metrics(id)
+            : (overrides.metrics ?? metricsFor(id));
+        return jsonResponse(metrics);
       },
     },
     { match: '/api/v1/models', respond: () => jsonResponse(registry(items)) },
@@ -99,6 +106,55 @@ function metricsFor(id: string) {
   return { ...METRICS, split: `held-out:${id.slice(0, 4)}` };
 }
 
+/** A recorded eval@2 textbook report, isolated by version id rather than shared fixture data. */
+function metricsWithEvidence(id: string): Record<string, unknown> {
+  const artifact = `runs/${id}/eval@2.json`;
+  const counts = [
+    [0, 0],
+    [1, 0],
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 1],
+    [0, 0],
+  ] as const;
+  return {
+    split: 'temporal:test',
+    evaluated_at: '2026-10-06T12:00:00Z',
+    metrics: {
+      precision: { value: 1, artifact, field: 'precision' },
+      recall: { value: 0.5, artifact, field: 'recall' },
+      f1: { value: 2 / 3, artifact, field: 'f1' },
+      roc_auc: { value: 0.75, artifact, field: 'metrics.roc_auc' },
+      pr_auc: { value: 5 / 6, artifact, field: 'metrics.pr_auc' },
+    },
+    evaluation: {
+      confusion: {
+        threshold: 0.5,
+        tp: 1,
+        fp: 0,
+        tn: 2,
+        fn: 1,
+        artifact,
+        field: 'confusion',
+      },
+      score_histogram: {
+        bins: counts.map(([benign, threat], index) => ({
+          lower: index / 10,
+          upper: (index + 1) / 10,
+          benign,
+          threat,
+        })),
+        artifact,
+        field: 'score_histogram',
+      },
+    },
+  };
+}
+
 function renderPage() {
   return render(
     <ToastProvider>
@@ -117,14 +173,14 @@ describe('the version table', () => {
   it('leads with what is serving and shows each metric beside its run', async () => {
     stubFetch(
       modelRoutes([
-        version({ model_id: FLOW_ACTIVE, status: 'active', metrics: METRICS }),
+        version({ model_id: FLOW_ACTIVE, status: 'active' }),
         version({ model_id: FLOW_STAGING }),
       ]),
     );
     renderPage();
 
     const serving = await screen.findByRole('region', { name: /Serving now — Flow/i });
-    expect(within(serving).getByText('0.8123')).toBeInTheDocument();
+    expect(await within(serving).findByText('0.8123')).toBeInTheDocument();
     expect(
       within(serving).getByText('read from runs/flow-7.json at test.roc_auc'),
     ).toBeInTheDocument();
@@ -132,6 +188,38 @@ describe('the version table', () => {
     // Both versions are in the table, abbreviated but with the full id available.
     expect(screen.getByTitle(`${FLOW_ACTIVE} (content address, R-68)`)).toBeInTheDocument();
     expect(screen.getByText('Serving Flow traffic.')).toBeInTheDocument();
+    expect(await screen.findAllByText('Confusion matrix unavailable')).toHaveLength(2);
+    expect(
+      await screen.findByText('Score-distribution comparison unavailable'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders each version’s recorded confusion matrix and score histogram with provenance', async () => {
+    stubFetch(
+      modelRoutes(
+        [version({ model_id: FLOW_ACTIVE, status: 'active' }), version({ model_id: FLOW_STAGING })],
+        { metrics: metricsWithEvidence },
+      ),
+    );
+    renderPage();
+
+    const evidenceA = await screen.findByRole('region', {
+      name: `Evaluation evidence A · ${FLOW_ACTIVE.slice(0, 12)}`,
+    });
+    const evidenceB = await screen.findByRole('region', {
+      name: `Evaluation evidence B · ${FLOW_STAGING.slice(0, 12)}`,
+    });
+    expect(await within(evidenceA).findByText('Confusion matrix')).toBeInTheDocument();
+    expect(await within(evidenceB).findByText('Confusion matrix')).toBeInTheDocument();
+    expect(evidenceA).toHaveTextContent(`runs/${FLOW_ACTIVE}/eval@2.json`);
+    expect(evidenceB).toHaveTextContent(`runs/${FLOW_STAGING}/eval@2.json`);
+    const histogram = screen.getByRole('region', { name: 'Score-distribution comparison' });
+    expect(
+      await within(histogram).findByRole('img', { name: /Overlaid score histograms/ }),
+    ).toBeInTheDocument();
+    expect(within(histogram).getByText('0.3–0.4')).toBeInTheDocument();
+    expect(within(histogram).getAllByText('score_histogram')).toHaveLength(2);
+    expect(within(histogram).getByText(/A threshold 0\.50/)).toBeInTheDocument();
   });
 
   it('refuses a version with no manifest with the rule that refuses it', async () => {
@@ -158,7 +246,7 @@ describe('the version table', () => {
   it('is accessibility-clean', async () => {
     stubFetch(
       modelRoutes([
-        version({ model_id: FLOW_ACTIVE, status: 'active', metrics: METRICS }),
+        version({ model_id: FLOW_ACTIVE, status: 'active' }),
         version({ model_id: LOG_ACTIVE, kind: 'log', status: 'active' }),
         version({ model_id: FLOW_STAGING }),
       ]),
@@ -244,9 +332,7 @@ describe('promotion requires typing the model id', () => {
   });
 
   it('reports a no-op as a change that was not recorded', async () => {
-    stubFetch(
-      modelRoutes([version({ model_id: FLOW_ACTIVE, status: 'active', metrics: METRICS })]),
-    );
+    stubFetch(modelRoutes([version({ model_id: FLOW_ACTIVE, status: 'active' })]));
     renderPage();
 
     // A version that is already serving has no Promote control; the refusal is stated

@@ -159,11 +159,10 @@ export function rollbackRefusalMessage(error: Error | null): string | null {
 /**
  * Why a version's metric panel is empty, when it is.
  *
- * The listing may carry no metrics for a version (`null`) and the metrics route then
- * answers 404 with a message distinguishing "no run attached" from "no such model".
- * The dashboard does not read that body, so it says the first, which is the one that
- * can reach this screen: a 404 for an unknown id cannot arrive from a row the table
- * just rendered.
+ * The listing deliberately carries no metrics; the metrics route answers 404 with a
+ * message distinguishing "no run attached" from "no such model". The dashboard does
+ * not read that body, so it says the first, which is the one that can reach this
+ * screen: a 404 for an unknown id cannot arrive from a row the table just rendered.
  */
 export function metricsAbsenceMessage(error: Error | null): string | null {
   if (error === null) return null;

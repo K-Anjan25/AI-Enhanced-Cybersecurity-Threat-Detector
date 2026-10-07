@@ -116,6 +116,10 @@ SHAPES: tuple[tuple[str, str], ...] = (
     ("LogLines", "LogLinesOut"),
     # --- models ----------------------------------------------------------------
     ("MetricPoint", "MetricPointOut"),
+    ("ConfusionMatrix", "ConfusionMatrixOut"),
+    ("ScoreHistogramBin", "ScoreHistogramBinOut"),
+    ("ScoreHistogram", "ScoreHistogramOut"),
+    ("EvaluationDetails", "EvaluationDetailsOut"),
     ("ModelMetrics", "ModelMetricsOut"),
     ("ModelVersion", "ModelOut"),
     ("ModelList", "ModelListOut"),

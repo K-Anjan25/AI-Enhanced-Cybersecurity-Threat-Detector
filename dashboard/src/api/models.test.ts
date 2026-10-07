@@ -73,6 +73,7 @@ describe('reads', () => {
       split: 'temporal:2025-Q4',
       evaluated_at: '2026-09-30T12:00:00Z',
       metrics: { f1: { value: 0.5, artifact: 'runs/1.json', field: 'test.f1' } },
+      evaluation: null,
     };
     const seen = stubFetch([{ match: MODELS_PATH, respond: () => jsonResponse(body) }]);
     await expect(fetchModelMetrics(ID)).resolves.toEqual(body);

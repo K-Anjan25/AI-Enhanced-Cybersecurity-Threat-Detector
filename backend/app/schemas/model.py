@@ -20,6 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     "MAX_REASON_LENGTH",
+    "ConfusionMatrixOut",
+    "EvaluationDetailsOut",
     "MetricPointOut",
     "ModelListOut",
     "ModelMetricsOut",
@@ -27,6 +29,8 @@ __all__ = [
     "ModelTransitionOut",
     "PromotionRequest",
     "RollbackRequest",
+    "ScoreHistogramBinOut",
+    "ScoreHistogramOut",
 ]
 
 #: A note for the change record, not a document store. It is held on the version
@@ -45,6 +49,50 @@ class MetricPointOut(BaseModel):
     field: str = Field(description="Location of the value inside that artifact.")
 
 
+class ConfusionMatrixOut(BaseModel):
+    """Recorded TP/FP/TN/FN counts, threshold and exact artifact provenance."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    threshold: float = Field(ge=0.0, le=1.0)
+    tp: int = Field(ge=0)
+    fp: int = Field(ge=0)
+    tn: int = Field(ge=0)
+    fn: int = Field(ge=0)
+    artifact: str = Field(description="Recorded evaluation run containing this matrix.")
+    field: str = Field(description="Field path inside the recorded evaluation run.")
+
+
+class ScoreHistogramBinOut(BaseModel):
+    """One lower-inclusive score interval and the observed class counts."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    lower: float = Field(ge=0.0, le=1.0)
+    upper: float = Field(gt=0.0, le=1.0)
+    benign: int = Field(ge=0)
+    threat: int = Field(ge=0)
+
+
+class ScoreHistogramOut(BaseModel):
+    """The recorded score distribution and its artifact provenance."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    bins: list[ScoreHistogramBinOut]
+    artifact: str = Field(description="Recorded evaluation run containing this histogram.")
+    field: str = Field(description="Field path inside the recorded evaluation run.")
+
+
+class EvaluationDetailsOut(BaseModel):
+    """The confusion matrix and score distribution from one evaluation artifact."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    confusion: ConfusionMatrixOut
+    score_histogram: ScoreHistogramOut
+
+
 class ModelMetricsOut(BaseModel):
     """FR-31's metrics for one version, on a named split.
 
@@ -52,7 +100,9 @@ class ModelMetricsOut(BaseModel):
     roc_auc and pr_auc -- because the service refuses a partial set. A mapping
     rather than five fields: the names come from the evaluation harness's own
     vocabulary, and a reader iterating them renders every metric without a change
-    to this schema.
+    to this schema. ``evaluation`` is present only when the recorded report is
+    ``eval@2`` and carries both visuals with independent artifact/field provenance;
+    older reports remain readable with it set to null.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -62,6 +112,7 @@ class ModelMetricsOut(BaseModel):
     )
     evaluated_at: datetime
     metrics: dict[str, MetricPointOut]
+    evaluation: EvaluationDetailsOut | None = None
 
 
 class ModelOut(BaseModel):
@@ -80,7 +131,6 @@ class ModelOut(BaseModel):
             "refuses its promotion."
         )
     )
-    metrics: ModelMetricsOut | None = None
     promoted_at: datetime | None = None
     promoted_by: str | None = None
     justification: str = ""
