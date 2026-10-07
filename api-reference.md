@@ -42,7 +42,7 @@ or body do not match the schema below.
 | `GET` | `/api/v1/logs/lines` | Raw log lines behind a cluster (log@1) | admin, analyst, responder, viewer | `200` `LogLinesOut` | — |
 | `GET` | `/api/v1/models` | List registered model versions (FR-30) | admin, analyst, responder, viewer | `200` `ModelListOut` | — |
 | `POST` | `/api/v1/models/{kind}/rollback` | Reverse the most recent promotion of a kind (FR-33) | admin | `200` `ModelTransitionOut` | `RollbackRequest` |
-| `GET` | `/api/v1/models/{model_id}/metrics` | Held-out evaluation metrics for one version (FR-31) | admin, analyst, responder, viewer | `200` `ModelMetricsOut` | — |
+| `GET` | `/api/v1/models/{model_id}/metrics` | Held-out metrics and recorded evaluation artifacts for one version (FR-31, T-420) | admin, analyst, responder, viewer | `200` `ModelMetricsOut` | — |
 | `POST` | `/api/v1/models/{model_id}/promote` | Make a version active and retire the incumbent (FR-33) | admin | `200` `ModelTransitionOut` | `PromotionRequest` |
 | `GET` | `/api/v1/overview` | One window's counts, severity series and named entities (FR-50) | admin, analyst, responder, viewer | `200` `OverviewOut` | — |
 | `POST` | `/api/v1/privacy/erasure` | Erase one data subject across every store (NFR-05, R-37) | admin | `200` `ErasureReportOut` | `ErasureRequest` |
@@ -245,6 +245,20 @@ A page of the trail, newest first.
 | `items` | `AuditEntryOut` | yes | — |
 | `next_before` | `integer` or `null` | yes | — |
 
+### `ConfusionMatrixOut`
+
+Recorded TP/FP/TN/FN counts, threshold and exact artifact provenance.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `threshold` | `number` | yes | — |
+| `tp` | `integer` | yes | — |
+| `fp` | `integer` | yes | — |
+| `tn` | `integer` | yes | — |
+| `fn` | `integer` | yes | — |
+| `artifact` | `string` | yes | Recorded evaluation run containing this matrix. |
+| `field` | `string` | yes | Field path inside the recorded evaluation run. |
+
 ### `DeliveryListOut`
 
 Recent delivery attempts, newest first, with what qualifies them (R-70).
@@ -349,6 +363,15 @@ What one store did.
 | --- | --- | --- | --- |
 | `name` | `string` | yes | — |
 | `affected` | `integer` | yes | — |
+
+### `EvaluationDetailsOut`
+
+The confusion matrix and score distribution from one evaluation artifact.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `confusion` | `ConfusionMatrixOut` | yes | — |
+| `score_histogram` | `ScoreHistogramOut` | yes | — |
 
 ### `EvidenceOccurrenceOut`
 
@@ -702,6 +725,7 @@ FR-31's metrics for one version, on a named split.
 | `split` | `string` | yes | The split these numbers were measured on, e.g. 'temporal:2025-Q4'. |
 | `evaluated_at` | `string (date-time)` | yes | — |
 | `metrics` | map of string to `MetricPointOut` | yes | — |
+| `evaluation` | `EvaluationDetailsOut` or `null` | no | — |
 
 ### `ModelOut`
 
@@ -715,7 +739,6 @@ One registered model version.
 | `artifact_uri` | `string` | yes | — |
 | `sha256` | `string` | yes | — |
 | `manifest_present` | `boolean` | yes | Whether a training_manifest.json ships with it. False means R-63 refuses its promotion. |
-| `metrics` | `ModelMetricsOut` or `null` | no | — |
 | `promoted_at` | `string (date-time)` or `null` | no | — |
 | `promoted_by` | `string` or `null` | no | — |
 | `justification` | `string` | no | — |
@@ -1001,6 +1024,27 @@ One scope, with the capabilities it grants.
 | --- | --- | --- | --- |
 | `name` | `string` | yes | — |
 | `capabilities` | list of `string` | yes | — |
+
+### `ScoreHistogramBinOut`
+
+One lower-inclusive score interval and the observed class counts.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `lower` | `number` | yes | — |
+| `upper` | `number` | yes | — |
+| `benign` | `integer` | yes | — |
+| `threat` | `integer` | yes | — |
+
+### `ScoreHistogramOut`
+
+The recorded score distribution and its artifact provenance.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `bins` | `ScoreHistogramBinOut` | yes | — |
+| `artifact` | `string` | yes | Recorded evaluation run containing this histogram. |
+| `field` | `string` | yes | Field path inside the recorded evaluation run. |
 
 ### `ThresholdImpactOut`
 

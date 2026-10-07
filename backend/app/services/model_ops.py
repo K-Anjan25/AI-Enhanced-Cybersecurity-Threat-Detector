@@ -241,6 +241,11 @@ class ScoreHistogram:
             left.upper != right.lower for left, right in zip(self.bins, self.bins[1:], strict=False)
         ):
             raise ValueError("score histogram bins must be contiguous and ordered")
+        if any(
+            item.lower != index / 10 or item.upper != (index + 1) / 10
+            for index, item in enumerate(self.bins)
+        ):
+            raise ValueError("score histogram bins must be fixed-width over [0, 1]")
         if self.benign_count + self.threat_count == 0:
             raise ValueError("score histogram must contain recorded examples")
 

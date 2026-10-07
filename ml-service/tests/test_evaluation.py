@@ -148,6 +148,11 @@ def test_the_schema_rejects_impossible_values() -> None:
         EvalReport.model_validate({**payload, "confusion": {**payload["confusion"], "tp": -1}})
     with pytest.raises(ValidationError, match="needs 10 bins"):
         EvalReport.model_validate({**payload, "score_histogram": payload["score_histogram"][:-1]})
+    uneven_bins = list(payload["score_histogram"])
+    uneven_bins[0] = {**uneven_bins[0], "upper": 0.15}
+    uneven_bins[1] = {**uneven_bins[1], "lower": 0.15}
+    with pytest.raises(ValidationError, match="fixed-width"):
+        EvalReport.model_validate({**payload, "score_histogram": uneven_bins})
     with pytest.raises(ValidationError, match="threat count"):
         EvalReport.model_validate(
             {

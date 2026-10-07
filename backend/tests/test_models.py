@@ -322,6 +322,25 @@ def test_evaluation_ingestion_rejects_inconsistent_histogram_counts() -> None:
         )
 
 
+def test_evaluation_ingestion_rejects_variable_width_bins() -> None:
+    service = ModelOpsService()
+    service.register(version("flow-2026-11", with_metrics=False, sha256="f" * 64))
+    report = eval_report("flow-2026-11")
+    bins = report["score_histogram"]
+    assert isinstance(bins, list)
+    bins[0] = {**bins[0], "upper": 0.15}
+    bins[1] = {**bins[1], "lower": 0.15}
+
+    with pytest.raises(ValueError, match="fixed-width"):
+        service.record_evaluation(
+            "flow-2026-11",
+            report,
+            artifact="runs/flow-2026-11/eval.json",
+            split="temporal:test",
+            evaluated_at=AT,
+        )
+
+
 # --- the service: promotion ---------------------------------------------------
 
 

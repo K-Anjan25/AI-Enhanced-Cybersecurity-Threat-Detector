@@ -71,7 +71,7 @@ export function ScoreHistogramComparison({ left, right }: ScoreHistogramComparis
       ) : !isCompleteHistogram(left.histogram) || !isCompleteHistogram(right.histogram) ? (
         <ErrorState
           message="A recorded score histogram is incomplete"
-          detail="The chart requires ten valid, non-empty probability bins over the full [0, 1] range. No partial distribution is drawn."
+          detail="The chart requires ten fixed-width, valid, non-empty probability bins over the full [0, 1] range. No partial distribution is drawn."
         />
       ) : left.threshold === null ||
         right.threshold === null ||
@@ -116,6 +116,8 @@ function isCompleteHistogram(histogram: ScoreHistogram): boolean {
       !isProbability(bin.lower) ||
       !isProbability(bin.upper) ||
       bin.lower >= bin.upper ||
+      bin.lower !== index / 10 ||
+      bin.upper !== (index + 1) / 10 ||
       !Number.isSafeInteger(bin.benign) ||
       bin.benign < 0 ||
       !Number.isSafeInteger(bin.threat) ||
