@@ -81,6 +81,26 @@ describe('ScoreHistogramComparison', () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
 
+  it('refuses contiguous but variable-width bins instead of spacing them evenly', () => {
+    const base = histogram('runs/flow-a/eval.json');
+    const uneven: ScoreHistogram = {
+      ...base,
+      bins: base.bins.map((bin, index) =>
+        index === 0 ? { ...bin, upper: 0.15 } : index === 1 ? { ...bin, lower: 0.15 } : bin,
+      ),
+    };
+    render(
+      <ScoreHistogramComparison
+        left={{ ...side('flow-a', 'runs/flow-a/eval.json'), histogram: uneven }}
+        right={side('flow-b', 'runs/flow-b/eval.json')}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('A recorded score histogram is incomplete');
+    expect(screen.getByRole('alert')).toHaveTextContent('ten fixed-width');
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
   it('keeps eval@1 scalar-only runs visibly unavailable', () => {
     const older = {
       modelId: 'flow-old',

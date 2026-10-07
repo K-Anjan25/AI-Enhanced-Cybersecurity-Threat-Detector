@@ -128,6 +128,12 @@ class EvalReport(BaseModel):
             raise ValueError("score histogram must cover [0, 1]")
         if any(left.upper != right.lower for left, right in zip(bins, bins[1:], strict=False)):
             raise ValueError("score histogram bins must be contiguous and ordered")
+        if any(
+            item.lower != index / DEFAULT_SCORE_HISTOGRAM_BINS
+            or item.upper != (index + 1) / DEFAULT_SCORE_HISTOGRAM_BINS
+            for index, item in enumerate(bins)
+        ):
+            raise ValueError("score histogram bins must be fixed-width over [0, 1]")
         if sum(item.threat for item in bins) != self.positives:
             raise ValueError("score histogram threat count does not match positives")
         if sum(item.benign for item in bins) != self.negatives:

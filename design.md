@@ -365,17 +365,18 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 
 | Deliverable | Owner | Status |
 |---|---|---|
-| Design tokens as Tailwind config + CSS variables | Design/FE | Not started — [task.md](task.md) T-401 |
-| UI primitive components (§6) | FE | Not started — T-402 |
-| Alert triage screen (highest value) | FE | Not started — T-404 |
-| Overview dashboard | FE | Not started — T-403 |
-| D3 entity graph + time-series | FE | Not started — T-406 |
-| Accessibility audit of the first three screens | Design | Blocked on T-402 |
+| Design tokens as Tailwind config + CSS variables | Design/FE | Built — T-401 DONE |
+| UI primitive components (§6) | FE | Built — T-402 DONE |
+| Alert triage screen (highest value) | FE | Built — T-404 DONE |
+| Overview dashboard | FE | Built — T-403 DONE |
+| D3 entity graph + time-series | FE | Built — T-406 DONE |
+| Accessibility audit of the first three screens | Design | Automated axe and keyboard checks complete (T-413); manual screen-reader pass remains unrun, see [release-note.md](release-note.md#accessibility-t-413-nfr-09) |
 
-Until these exist, this document is the source of truth. A component that disagrees with §5 or §6 is wrong, not the document.
+Implementation status is tracked in [task.md](task.md); this document remains the source of truth for intended behaviour. A component that disagrees with §5 or §6 is wrong, not the document.
 
 ## 12. Change log
 
 | Date | Version | Change |
 |---|---|---|
 | 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
+| 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
