@@ -21,7 +21,7 @@
  *   * **Nothing absolute.** Paths are relative to the dashboard's own origin;
  *     `src/api/client.ts` is what turns them into URLs (R-23).
  */
-import { getJson, query } from './client';
+import { getJson, postExport, query, type ExportDocument } from './client';
 
 /** One alert as `GET /api/v1/alerts` returns it (T-305's `AlertRow`). */
 export interface AlertRow {
@@ -85,6 +85,70 @@ export function alertListPath(params: AlertListParams): string {
 /** `GET /api/v1/alerts/{id}` — one alert, addressed by both halves of its key. */
 export function alertDetailPath(alertId: number, createdAt: Date | string): string {
   return `/api/v1/alerts/${String(alertId)}${query({ created_at: instant(createdAt) })}`;
+}
+
+/**
+ * `POST /api/v1/alerts/export` — the queue's batch, as CSV or as a PDF report.
+ *
+ * A POST for the reason the hunt export is one (T-408, D-065): it writes an audit
+ * row, and a route that writes one is a change by the same rule the ingest routes
+ * are. The body is the *filter definition*, so the file's rows are the rows the
+ * queue showed -- the acceptance criterion of T-415 is exactly that agreement, and
+ * the only way to keep it is to send the same query the queue sent.
+ */
+export const ALERTS_EXPORT_PATH = '/api/v1/alerts/export';
+
+/** The two shapes FR-23 asks for. The value is the wire name *and* the suffix. */
+export type AlertExportFormat = 'csv' | 'pdf';
+
+/** The JSON body the export route takes: the alert query plus the format. */
+export interface AlertExportBody {
+  start: string;
+  end: string;
+  severity?: string;
+  status?: string;
+  family?: string;
+  entity_id?: number;
+  min_score?: number;
+  order?: 'asc' | 'desc';
+  limit?: number;
+  format: AlertExportFormat;
+}
+
+/**
+ * The queue's filter, as the export's body.
+ *
+ * Field names are the *wire* names (`entity_id`, `min_score`), and the cursor is
+ * deliberately absent: the API refuses one, because an export mirrors the first
+ * page of the query the analyst ran.
+ */
+export function alertExportBody(
+  params: AlertListParams,
+  format: AlertExportFormat,
+): AlertExportBody {
+  const body: AlertExportBody = {
+    start: instant(params.start),
+    end: instant(params.end),
+    format,
+  };
+  if (params.severity !== undefined) body.severity = params.severity;
+  if (params.status !== undefined) body.status = params.status;
+  if (params.family !== undefined) body.family = params.family;
+  if (params.entityId !== undefined) body.entity_id = params.entityId;
+  if (params.minScore !== undefined) body.min_score = params.minScore;
+  if (params.order !== undefined) body.order = params.order;
+  if (params.limit !== undefined) body.limit = params.limit;
+  return body;
+}
+
+/** Export the alert batch matching a queue filter, in one of FR-23's two shapes. */
+export async function exportAlerts(
+  params: AlertListParams,
+  format: AlertExportFormat,
+  options: { signal?: AbortSignal | undefined } = {},
+): Promise<ExportDocument> {
+  const accept = format === 'pdf' ? 'application/pdf' : 'text/csv';
+  return postExport(ALERTS_EXPORT_PATH, alertExportBody(params, format), accept, options);
 }
 
 /** `POST /api/v1/alerts/{id}/verdict` — where an analyst's decision is written. */

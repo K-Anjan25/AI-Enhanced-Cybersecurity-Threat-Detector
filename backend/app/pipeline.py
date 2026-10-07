@@ -53,6 +53,11 @@ from app.services.correlator import (
     Outcome,
     alert_row,
 )
+
+# The registry is defined here rather than in this module: it is what the API
+# process needs to name an entity, and importing this module for it would pull
+# the scoring worker -- and, with it, ``aegis_ml`` -- into that process (D-075).
+from app.services.entity_registry import EntityRegistry
 from app.services.query_service import alert_row_of
 from app.workers.scoring_worker import (
     ConsumedRecord,
@@ -169,35 +174,6 @@ class FlowConsumer:
     def end_offset(self, partition: int) -> int:
         """This consumer's view of the partition end, for lag."""
         return self._bus.end_offset(self._topic, partition)
-
-
-class EntityRegistry:
-    """Assigns the integer id an alert row references (T-319).
-
-    ``alerts.entity_id`` is a foreign key into ``entities``, and the persistent
-    source of that id is the table's Identity column. The ingest path does not
-    write ``entities`` yet, so this allocates in memory: stable per ``(kind,
-    value)``, assigned on first sight, so two detections about one host are one
-    entity. The id is meaningful within a process and nowhere else, which is why
-    it is a recorded gap and not presented as the real thing.
-    """
-
-    __slots__ = ("_ids",)
-
-    def __init__(self) -> None:
-        """Start empty, with ids from 1 the way a fresh sequence would."""
-        self._ids: dict[tuple[str, str], int] = {}
-
-    def id_for(self, kind: str, value: str) -> int:
-        """Return the stable id for one entity, allocating it on first sight."""
-        key = (kind, value)
-        if key not in self._ids:
-            self._ids[key] = len(self._ids) + 1
-        return self._ids[key]
-
-    def __len__(self) -> int:
-        """How many entities have been seen."""
-        return len(self._ids)
 
 
 class DetectionSink:

@@ -1,4 +1,4 @@
-"""The log tail read API (T-407, design.md §4.5).
+"""The log read API (T-407, T-419, design.md §4.5).
 
 Two reads, both bounded by construction (R-34) rather than by a default that happens
 to be small:
@@ -8,15 +8,22 @@ to be small:
 * ``GET /api/v1/logs/lines`` returns the raw lines behind one cluster, or behind a
   window when no cluster is named.
 
-``start`` and ``end`` are required and the span between them may not exceed the tail's
-own retention: the retention *is* the bound, so a wider request is refused (400, like
-the other over-wide window in this codebase) rather than answered with a subset the
-caller may not realise is partial. Reading is R-53's ``viewer`` capability, like
-reading alerts.
+**The window's bound is the source's own reach.** ``start`` and ``end`` are required,
+and the span between them may not exceed what the answering source can see: a tail's
+retention (15 minutes by default), or the store's 92-day query bound. A wider request
+is refused (400, like the other over-wide window in this codebase) rather than answered
+with a subset the caller may not realise is partial, and the message names which source
+answered and what its bound is.
 
-The router stays thin (R-13): parse, validate the window, call the service, serialise.
+**Which source answers is a deployment's configuration, not this router's choice**
+(T-419). Both implement :class:`~app.services.log_source.LogSource`; the response's
+``source`` field says which one replied, and its caveats say what that source cannot
+do. Reading is R-53's ``viewer`` capability, like reading alerts.
+
+The router stays thin (R-13): parse, validate the window, call the source, serialise.
 Everything worth testing about the fold — counts, ordering, digest keys, eviction —
-lives in :mod:`app.services.log_tail` and is tested without an HTTP server.
+lives in :mod:`app.services.log_tail` and :mod:`app.services.log_store`, and is tested
+without an HTTP server.
 """
 
 from __future__ import annotations
@@ -26,16 +33,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from app.api.v1.deps import log_tail, parse_instant
+from app.api.v1.deps import log_source, parse_instant
 from app.auth.rbac import Capability, require
 from app.schemas.ingest import LogLevel
 from app.schemas.logs import LogLinesOut, LogTailOut
+from app.services.log_source import LogSource
+from app.services.log_store import LogStoreUnavailable
 from app.services.log_tail import (
     DEFAULT_CLUSTER_LIMIT,
     DEFAULT_LINE_LIMIT,
     MAX_CLUSTER_LIMIT,
     MAX_LINE_LIMIT,
-    LogTail,
     LogWindow,
 )
 
@@ -59,7 +67,7 @@ _Level = Annotated[LogLevel | None, Query(description="Only lines at this level.
 
 
 def _window(
-    tail: LogTail,
+    source: LogSource,
     *,
     start: str,
     end: str,
@@ -74,6 +82,10 @@ def _window(
     missing one is FastAPI's own 422 before this is reached — which is also why the
     annotation is ``str`` rather than ``str | None``: a required parameter has no
     ``None`` to check for.
+
+    The span bound comes from the source, and the refusal names it: a tail's bound is
+    its retention, the store's is the query bound, and a caller told "narrow the
+    window" without being told which of the two applies would keep guessing.
 
     Raises:
         HTTPException: 400 for an unparseable, naive, inverted or over-wide window.
@@ -91,14 +103,14 @@ def _window(
             detail="end must be later than start; an inverted range reads nothing",
         )
     span = window_end - window_start
-    allowed = timedelta(seconds=tail.max_age_seconds)
+    allowed = timedelta(seconds=source.max_span_seconds)
     if span > allowed:
         raise HTTPException(
             status_code=400,
             detail=(
                 f"the range spans {span.total_seconds():.0f}s, over the "
-                f"{allowed.total_seconds():.0f}s this tail retains. Narrow the window; "
-                "a wider one has nothing more to read."
+                f"{allowed.total_seconds():.0f}s the {source.name} can read. Narrow "
+                "the window; a wider one has nothing more to read."
             ),
         )
     return LogWindow(
@@ -114,10 +126,10 @@ def _window(
 @router.get(
     "/logs",
     response_model=LogTailOut,
-    summary="Clustered log tail (log@1)",
+    summary="Clustered log read (log@1)",
     dependencies=[require(Capability.READ)],
 )
-def read_log_tail(
+async def read_log_clusters(
     request: Request,
     start: _Start,
     end: _End,
@@ -128,9 +140,9 @@ def read_log_tail(
     limit: Annotated[int, Query(ge=1, le=MAX_CLUSTER_LIMIT)] = DEFAULT_CLUSTER_LIMIT,
 ) -> LogTailOut:
     """Fold the window's lines into clusters, the busiest first."""
-    tail = log_tail(request)
+    source = log_source(request)
     window = _window(
-        tail,
+        source,
         start=start,
         end=end,
         key=key,
@@ -138,7 +150,12 @@ def read_log_tail(
         service=service,
         level=level,
     )
-    return tail.clusters(window, limit=limit)
+    try:
+        return await source.clusters(window, limit=limit)
+    except LogStoreUnavailable as exc:
+        # 503 rather than an empty screen: a configured store that cannot be read is
+        # a dependency outage, and "no logs matched" would be a different claim.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get(
@@ -147,7 +164,7 @@ def read_log_tail(
     summary="Raw log lines behind a cluster (log@1)",
     dependencies=[require(Capability.READ)],
 )
-def read_log_lines(
+async def read_log_lines(
     request: Request,
     start: _Start,
     end: _End,
@@ -158,9 +175,9 @@ def read_log_lines(
     limit: Annotated[int, Query(ge=1, le=MAX_LINE_LIMIT)] = DEFAULT_LINE_LIMIT,
 ) -> LogLinesOut:
     """Return the newest ``limit`` matching raw lines, oldest first."""
-    tail = log_tail(request)
+    source = log_source(request)
     window = _window(
-        tail,
+        source,
         start=start,
         end=end,
         key=key,
@@ -168,4 +185,7 @@ def read_log_lines(
         service=service,
         level=level,
     )
-    return tail.lines(window, limit=limit)
+    try:
+        return await source.lines(window, limit=limit)
+    except LogStoreUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

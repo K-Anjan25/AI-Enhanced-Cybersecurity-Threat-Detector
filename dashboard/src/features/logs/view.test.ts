@@ -40,6 +40,7 @@ function tail(overrides: Partial<LogTail> = {}): LogTail {
     clusters_truncated: false,
     retained_from: '2026-10-06T10:00:00Z',
     retained_to: '2026-10-06T10:00:09Z',
+    source: 'tail',
     retained_lines: 1,
     dropped_lines: 0,
     caveats: ['the tail is not a store', 'nothing matched these filters'],
@@ -59,7 +60,10 @@ describe('buildLogView', () => {
     const view = buildLogView({ tail: undefined, window: WINDOW, failed: true });
 
     expect(view.state).toBe('error');
-    expect(view.retention).toBe('The tail could not be read.');
+    // "The logs", not "the tail": a deployment may be reading a store, and the screen
+    // must not name a source it has no answer from.
+    expect(view.retention).toBe('The logs could not be read.');
+    expect(view.source).toBeNull();
   });
 
   it('turns a cluster into the cells the table renders', () => {
@@ -140,6 +144,37 @@ describe('buildLogView', () => {
     const view = buildLogView({ tail: tail({ dropped_lines: 0 }), window: WINDOW, failed: false });
 
     expect(view.retention).toContain('nothing aged out yet');
+  });
+
+  it('omits the aged-out clause when the source cannot report evictions', () => {
+    // A store reports `null`, not `0`: nothing evicts yet, and "0 aged out" would be a
+    // claim about a retention job that does not exist (T-419).
+    const view = buildLogView({
+      tail: tail({ source: 'store', dropped_lines: null, retained_lines: 42 }),
+      window: WINDOW,
+      failed: false,
+    });
+
+    expect(view.retention).toBe('Holding 42 lines · newest 06 Oct 2026, 10:00:09Z.');
+    expect(view.retention).not.toContain('aged out');
+  });
+
+  it('names which read model answered', () => {
+    const fromStore = buildLogView({
+      tail: tail({ source: 'store', dropped_lines: null }),
+      window: WINDOW,
+      failed: false,
+    });
+    const fromTail = buildLogView({
+      tail: tail({ source: 'tail' }),
+      window: WINDOW,
+      failed: false,
+    });
+
+    expect(fromStore.source).toBe('store');
+    expect(fromStore.sourceLabel).toBe('Read from the log store.');
+    expect(fromTail.source).toBe('tail');
+    expect(fromTail.sourceLabel).toBe('Read from this process’s own tail.');
   });
 
   it('describes an empty window with the API’s own reason', () => {

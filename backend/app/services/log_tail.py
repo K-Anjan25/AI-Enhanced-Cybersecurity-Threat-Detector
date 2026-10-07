@@ -4,12 +4,13 @@ design.md §4.5 asks for a streaming tail in which identical lines collapse into
 row with a count, expandable back to the raw lines. Two facts about this build
 decide the shape of the module:
 
-* **Nothing stores log lines.** The ingest route validates a batch and hands it to the
-  broker for scoring; there is no log consumer (the worker is flow-only, T-307) and no
-  ``log_events`` table. A tail that can show what arrived therefore has to keep its own
-  copy, and the only place it can live is the process that accepted the lines —
-  bounded by count and by age, and lost on restart. That is a gap, and every response
-  says so rather than implying a store (R-70).
+* **A tail, not the store.** The ingest route validates a batch, hands it to the
+  broker for scoring, and keeps a copy here so the explorer has something to read
+  *now*: this is a bounded in-process view that lives and dies with the process.
+  T-419 added the persistent alternative (the ``log_events`` table, read through
+  :mod:`app.services.log_store`) and a deployment that configures it answers from
+  there instead; this module is what a deployment without a database has, and every
+  response says which of the two answered (R-70).
 * **Clustering is a read-time fold, not a write-time index.** ``log@1`` carries
   ``template_id``, mined by the collector before the wire (T-104's miner), so the
   cluster key is the template id when there is one. A line without one cannot be given
@@ -27,7 +28,7 @@ for the whole stream.
 **What this module deliberately does not do.** It does not score a template. The
 severity a cluster carries is the worst ``level`` among its lines, which is data; the
 anomaly signal design.md §4.5 colours would be a model's, and no log model is served in
-this build (T-419). It does not link a cluster to an alert either: an alert's evidence
+this build at all. It does not link a cluster to an alert either: an alert's evidence
 is a window identity, not a set of lines, so there is nothing to join on yet — the
 screen says "no link" rather than inventing one.
 """
@@ -38,10 +39,10 @@ import threading
 from collections import deque
 from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime, timedelta
-from hashlib import sha256
 
 from app.schemas.ingest import LogLevel, LogRecordIn
 from app.schemas.logs import LogClusterOut, LogLineOut, LogLinesOut, LogTailOut
+from app.services.log_keys import MESSAGE_KEY_PREFIX, cluster_key, message_key
 
 __all__ = [
     "DEFAULT_CLUSTER_LIMIT",
@@ -51,6 +52,7 @@ __all__ = [
     "MESSAGE_KEY_PREFIX",
     "LogTail",
     "LogWindow",
+    "cluster_key",
     "level_rank",
     "message_key",
 ]
@@ -64,9 +66,6 @@ MAX_CLUSTER_LIMIT = 500
 DEFAULT_LINE_LIMIT = 200
 #: The ceiling on raw lines per read: opening a cluster is a look, not an export.
 MAX_LINE_LIMIT = 1_000
-#: The prefix that marks a cluster key as a message digest rather than a template id.
-MESSAGE_KEY_PREFIX = "message:"
-
 #: Levels in the order ``log@1`` defines them, least severe first.
 _LEVEL_ORDER: tuple[LogLevel, ...] = (
     LogLevel.DEBUG,
@@ -77,10 +76,6 @@ _LEVEL_ORDER: tuple[LogLevel, ...] = (
 )
 _RANK: dict[LogLevel, int] = {level: index for index, level in enumerate(_LEVEL_ORDER)}
 
-#: A digest is 12 hex characters: long enough that two distinct messages collide only
-#: by a chosen collision, short enough to paste into a URL by hand.
-_DIGEST_LENGTH = 12
-
 
 def _utcnow() -> datetime:
     """The clock, in UTC. A function so tests can drive it."""
@@ -90,27 +85,6 @@ def _utcnow() -> datetime:
 def level_rank(level: LogLevel) -> int:
     """Where one level sits in ``log@1``'s order, least severe first."""
     return _RANK[level]
-
-
-def message_key(message: str) -> str:
-    """The cluster key for a line that carries no template id.
-
-    A digest rather than the message: the key travels in a query string, and a
-    query string ends up in an access log (R-58). It is stable for the same
-    message, which is all a cluster key has to be.
-    """
-    return f"{MESSAGE_KEY_PREFIX}{sha256(message.encode('utf-8')).hexdigest()[:_DIGEST_LENGTH]}"
-
-
-def cluster_key(record: LogRecordIn) -> str:
-    """The cluster a line belongs to: its template id, or its message digest.
-
-    An empty string is treated as no template id rather than as one of its own:
-    a collector that sends ``""`` means "not mined", and a cluster named after
-    nothing would collect every such line together.
-    """
-    template_id = (record.template_id or "").strip()
-    return template_id if template_id else message_key(record.message)
 
 
 class LogWindow:
@@ -304,6 +278,7 @@ class LogTail:
             max_age=self._max_age,
         )
         return LogTailOut(
+            source="tail",
             start=window.start,
             end=window.end,
             clusters=[entry.cluster for _key, entry in top],
@@ -359,6 +334,7 @@ class LogTail:
             max_age=self._max_age,
         )
         return LogLinesOut(
+            source="tail",
             start=window.start,
             end=window.end,
             key=window.key,
@@ -520,7 +496,7 @@ def _caveats(
             f"This tail holds the most recent {max_lines:,} lines or {minutes} minutes of "
             "the process that accepted them, whichever comes first. It is not a store: a "
             "restart, a second worker or an aged-out line is not shown here, and only "
-            "accepted lines appear in it (T-419 covers the persistent read path)."
+            "accepted lines appear in it."
         )
     ]
     if retained_lines == 0 and dropped == 0:

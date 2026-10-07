@@ -14,18 +14,21 @@
  *     empty table is the one place an analyst cannot tell a quiet network from a typo
  *     (design.md §4.6).
  *   * **What cannot be done is said, not omitted.** §4.6 asks for fields this build
- *     has no read model for (`src_ip`, `dst_port`, `template_id`) and for a "create
- *     alert from this filter" action. The console names the first as unsearchable
- *     terms with their reasons (T-418, T-419) and the second as unavailable with the
+ *     cannot be answered by a read model (`src_ip`, `dst_port`, `template_id`) and
+ *     for a "create alert from this filter" action. The console names the first as
+ *     unsearchable terms with their reasons (T-418, T-419) and the second as unavailable with the
  *     reason there is no such write API: alerts are produced by the detection
  *     pipeline. A control that is absent with a reason beats one that looks as if it
  *     worked.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { Button, EmptyState, ErrorState, Panel, Skeleton, useToast } from '../../../components/ui';
 import { ApiError } from '../../../api/client';
 import { sessionToken } from '../../../api/session';
+import { saveFile } from '../../../lib/download';
+import { HUNT_QUERY_PARAM } from '../../../lib/routes';
 import { QueryInput } from '../components/QueryInput';
 import { ResultsTable } from '../components/ResultsTable';
 import { SavedHunts } from '../components/SavedHunts';
@@ -93,19 +96,46 @@ export function HuntPage() {
   const toast = useToast();
   const refusal = exportRefusalMessage(exportation.error);
 
-  const start = (parse: HuntParse, key: HuntSpan['key']): void => {
-    setRun({ parse, window: huntWindow(key, Date.now()), spanKey: key });
-    if (parse.errors.length === 0) {
-      // Recent hunts record the *canonical* echo, so re-running one from the dropdown
-      // is the query that actually executed rather than the keystrokes that led to it.
-      setRecent(rememberHunt(subject, describeHunt(parse), new Date()));
-    }
-  };
+  const start = useCallback(
+    (parse: HuntParse, key: HuntSpan['key']): void => {
+      setRun({ parse, window: huntWindow(key, Date.now()), spanKey: key });
+      if (parse.errors.length === 0) {
+        // Recent hunts record the *canonical* echo, so re-running one from the
+        // dropdown is the query that actually executed rather than the keystrokes
+        // that led to it.
+        setRecent(rememberHunt(subject, describeHunt(parse), new Date()));
+      }
+    },
+    [subject],
+  );
 
   const runHunt = (): void => {
     if (liveParse.errors.length > 0) return;
     start(liveParse, spanKey);
   };
+
+  // A query in the URL is a hunt the operator asked for by name: the command
+  // palette's saved hunts navigate to `/hunt?q=...` (T-411). It runs through the
+  // same `start` the Run button uses, so the echo, the export and the recent list
+  // cannot disagree with a hand-typed run.
+  //
+  // Three details are deliberate. The guard is on the *text that was already
+  // started*, not on the parameter, so editing the box afterwards does not re-run
+  // anything. An unparseable query sets the box and runs nothing, which leaves the
+  // input's own error list to explain why rather than firing a request that must
+  // fail. And the window stays the analyst's own choice: a saved hunt is a query,
+  // not a window (T-408's store keeps only the text).
+  const [search] = useSearchParams();
+  const requested = search.get(HUNT_QUERY_PARAM);
+  const startedFromUrl = useRef<string | null>(null);
+  useEffect(() => {
+    if (requested === null || startedFromUrl.current === requested) return;
+    startedFromUrl.current = requested;
+    setText(requested);
+    const parsed = parseHuntQuery(requested);
+    if (parsed.errors.length > 0) return;
+    start(parsed, spanKey);
+  }, [requested, spanKey, start]);
 
   // Changing the window while a hunt is on screen re-runs it: the window control is
   // what the table is about, and a result set that disagreed with the selector above
@@ -113,17 +143,6 @@ export function HuntPage() {
   const changeSpan = (key: HuntSpan['key']): void => {
     setSpanKey(key);
     if (run !== null) start(run.parse, key);
-  };
-
-  const download = (csv: string): void => {
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'aegis-hunt.csv';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
 
   const span = spanOf(spanKey);
@@ -186,7 +205,15 @@ export function HuntPage() {
                 if (params === null) return;
                 exportation.mutate(params, {
                   onSuccess: (result) => {
-                    download(result.csv);
+                    // The document is handed over by `lib/download.ts`, the one place
+                    // that knows how: the queue's export (T-415) saves two formats and
+                    // a second copy of this would be a second set of rules about
+                    // object URLs, names and cleanup.
+                    saveFile({
+                      content: result.csv,
+                      filename: 'aegis-hunt.csv',
+                      mediaType: 'text/csv;charset=utf-8',
+                    });
                     toast(
                       'success',
                       `Exported ${String(result.rows)} rows as CSV. The export is recorded in the audit trail.`,
@@ -222,7 +249,7 @@ export function HuntPage() {
           </p>
 
           {refusal === null ? null : (
-            <p role="alert" className="text-caption text-severity-critical-text">
+            <p role="alert" className="text-caption text-severityText-critical">
               {refusal}
             </p>
           )}
@@ -233,7 +260,7 @@ export function HuntPage() {
         title="Results"
         actions={
           view.executed === null ? null : (
-            <p className="text-caption text-muted" data-testid="hunt-echo">
+            <p className="text-caption text-muted">
               {`Searched ${view.executed} · ${view.windowLabel ?? ''}`}
             </p>
           )

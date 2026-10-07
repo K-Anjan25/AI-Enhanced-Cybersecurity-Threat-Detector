@@ -1,40 +1,50 @@
 /**
- * The traffic explorer's derived model: one pipeline, one place where a filter is
- * applied.
+ * The traffic explorer's view model: one pipeline, one place where a filter is applied.
  *
- * design.md §4.4's promise is that "brushing filters everything below", and the way
- * to keep that promise is structural: the brush, the controls and the pinned entity
- * are folded into **one** row set here, and the series, the table and the graph are
- * all derived from that row set. Three panels each remembering to apply the brush is
- * three chances for one of them to keep showing what the analyst just excluded.
+ * design.md §4.4's promise is that "brushing filters everything below", and since T-418
+ * the way to keep that promise is different from before — and stronger. The brush is no
+ * longer applied to a row set in the browser; a committed brush is a **new window**, and
+ * the page re-reads it from the flow API (`hooks.ts`). Every number below the series is
+ * then the server's own count for the brushed window, which is what the panel's caption
+ * claims and what a client-side filter over an already-aggregated list could not do: a
+ * list of the window's top addresses cannot be re-narrowed to a sub-window after the
+ * fact, because the addresses it left out are exactly the ones the sub-window might have
+ * had.
  *
- * The pipeline, in order, with the reason each step is where it is:
+ * So this module holds the parts that really are view state:
  *
- *   1. `rowsInBrush` — the brush is the outermost filter, because it is the one the
- *      analyst draws on the time axis and expects to be absolute.
- *   2. entity aggregation — from the brushed rows, so an entity's counts are the
- *      counts *in the brush*, not for the whole window.
- *   3. `minRecords` and `openOnly` — the entity-level filters, which can only be
- *      applied after the fold.
- *   4. pinning — last, and *widening* rather than narrowing: a pinned entity keeps
- *      its neighbours in view, because the question a pin asks is "what is this
- *      entity connected to?".
+ *   1. `nodes` and `edges` come from the aggregate for the window on screen — the
+ *      brushed window when a brush is set, the whole window otherwise.
+ *   2. the entity controls (`minFlows`, `openAlertsOnly`) narrow that list, because
+ *      they are thresholds over the aggregate rather than questions the API answers.
+ *   3. pinning — last, and *widening* rather than narrowing: a pinned address keeps its
+ *      neighbours in view, because the question a pin asks is "what is this address
+ *      connected to?".
  *
- * Everything the screen cannot show is a `note` in the model rather than a comment
- * in a component, so the panel renders the caveats that belong to the data it was
- * actually given (design.md §8.1's partial state, R-70's "never an empty success").
+ * And the caveats: the source's own sentences are carried through **verbatim** (the
+ * T-419 rule — a reworded caveat is a second, unreviewed claim about the data), with
+ * only the client-side facts added: which sub-window the numbers describe, how many
+ * entities the controls hid, and what the ranked matrix left undrawn.
+ *
+ * What this module does *not* own any more: the selection's caption. The brush used
+ * to filter a bucket list in the browser, and this module reported the selected
+ * buckets in words for a caption under the chart. Since T-418 the chart's own
+ * `spanLabel` states the range it has selected (the brush is the chart's state), and
+ * the three things left over here — `brushed`, `brushLabel` and `bucketsInBrush` —
+ * were dead code kept alive by their own tests. The audit removed them: a helper
+ * nothing renders is a sentence nothing says.
  */
-import type { AlertRow } from '../../api/alerts';
-import type { Severity } from '../../components/ui/severity';
 import {
-  entityEdges,
-  entityRows,
-  rowsInBrush,
+  trafficEdges,
+  trafficNodes,
   trafficSeries,
   type BrushRange,
-  type EntityEdge,
-  type EntityRow,
+  type FlowAggregate,
+  type FlowDirection,
+  type FlowProtocol,
   type TrafficBucket,
+  type TrafficEdge,
+  type TrafficNode,
 } from './aggregate';
 import {
   ADJACENCY_ROWS,
@@ -44,133 +54,123 @@ import {
   type GraphModel,
 } from './graph';
 
-/** The graph controls §4.4 names, as state the page holds. */
+/** The controls §4.4 names, as state the page holds. */
 export interface TrafficFilters {
-  /** `'all'`, or one severity. The read is narrowed server-side when it is set. */
-  severity: Severity | 'all';
-  /** Hide entities whose alerted record count is below this. */
-  minRecords: number;
-  /** Keep only entities with at least one open alert. */
-  openOnly: boolean;
+  /** `'all'`, or one protocol. The read is narrowed server-side when it is set. */
+  protocol: FlowProtocol | 'all';
+  /** `'all'`, or one direction. The read is narrowed server-side when it is set. */
+  direction: FlowDirection | 'all';
+  /** Hide addresses whose flow count is below this. */
+  minFlows: number;
+  /** Keep only addresses with at least one open alert. */
+  openAlertsOnly: boolean;
 }
 
-export const DEFAULT_FILTERS: TrafficFilters = { severity: 'all', minRecords: 0, openOnly: false };
+export const DEFAULT_FILTERS: TrafficFilters = {
+  protocol: 'all',
+  direction: 'all',
+  minFlows: 0,
+  openAlertsOnly: false,
+};
 
-/** How many buckets the series is divided into. */
-export const SERIES_BUCKETS = 60;
+/** How wide a bucket is, in minutes, at each offered range. */
+export const BUCKET_MINUTES: Record<'1h' | '24h' | '7d', number> = {
+  '1h': 1,
+  '24h': 15,
+  '7d': 60,
+};
 
 export interface TrafficView {
   /** The brushable series: one bucket per interval across the whole window. */
   series: TrafficBucket[];
-  /** The rows the brush selected. */
-  rows: AlertRow[];
-  /** Entities derived from the brushed rows, after the controls. */
-  entities: EntityRow[];
-  /** Every edge among the brushed rows; `buildGraph` keeps the drawable ones. */
-  edges: EntityEdge[];
+  /** The addresses in the window on screen, after the controls. */
+  nodes: TrafficNode[];
+  /** Every relationship the read returned; `buildGraph` keeps the drawable ones. */
+  edges: TrafficEdge[];
   graph: GraphModel;
   /** Present only in adjacency mode — computed when the mode needs it. */
   matrix: AdjacencyMatrix | null;
-  pinned: EntityRow | null;
+  pinned: TrafficNode | null;
   /** Caveats that belong to this data, rendered rather than remembered. */
   notes: string[];
-  /** What the entity controls removed, so a filtered-away entity is never a mystery. */
+  /** What the entity controls removed, so a filtered-away address is never a mystery. */
   hiddenByControls: number;
 }
 
 export interface TrafficViewInput {
-  rows: readonly AlertRow[];
-  start: Date;
-  end: Date;
-  complete: boolean;
-  pagesFetched: number;
+  /** The whole window's aggregate: the series is drawn from this one, always. */
+  aggregate: FlowAggregate;
+  /** The aggregate the panels describe: the brushed window when one is set. */
+  panels: FlowAggregate;
   brush: BrushRange | null;
   filters: TrafficFilters;
-  pinnedEntityId: number | null;
-  buckets?: number;
+  pinnedId: string | null;
 }
 
 export function buildTrafficView(input: TrafficViewInput): TrafficView {
-  // The brush first: everything below the series is derived from the rows it kept,
-  // which is exactly what "brushing filters everything below" has to mean. The
-  // *series* is still drawn from the whole window — it is the axis the analyst
-  // brushes, and a series drawn from its own selection could never be re-brushed.
-  const brushed = rowsInBrush(input.rows, input.brush);
-
-  const flagged = entityRows(brushed);
+  const series = trafficSeries(input.aggregate);
+  const flagged = trafficNodes(input.panels);
   const guarded = flagged.filter(
-    (entity) =>
-      entity.records >= input.filters.minRecords && (!input.filters.openOnly || entity.hasOpen),
+    (node) =>
+      node.flows >= input.filters.minFlows &&
+      (!input.filters.openAlertsOnly || node.openAlerts > 0),
   );
 
-  // Every edge among the brushed rows: the graph prunes the ones whose endpoint the
+  // Every relationship the read returned: the graph prunes the ones whose endpoint the
   // controls removed, so the pruning rule lives in one place (`buildGraph`).
-  const edges = entityEdges(brushed);
+  const edges = trafficEdges(input.panels);
 
   const pinned =
-    input.pinnedEntityId === null
-      ? null
-      : (flagged.find((entity) => entity.entityId === input.pinnedEntityId) ?? null);
-  let entities = guarded;
+    input.pinnedId === null ? null : (flagged.find((node) => node.id === input.pinnedId) ?? null);
+  let nodes = guarded;
   if (pinned !== null) {
-    const neighbours = new Set<number>();
+    const neighbours = new Set<string>();
     for (const edge of edges) {
-      if (edge.source === pinned.entityId) neighbours.add(edge.target);
-      if (edge.target === pinned.entityId) neighbours.add(edge.source);
+      if (edge.source === pinned.id) neighbours.add(edge.target);
+      if (edge.target === pinned.id) neighbours.add(edge.source);
     }
     // Widening, in three parts: the pin leads (it is what was asked about, and it
     // survives the controls that would have hidden it), its neighbours come from the
-    // *unfiltered* brushed set — a relationship the controls hid is what the pin was
-    // asked to reveal — and everything already on screen stays on screen. Narrowing to
-    // the neighbourhood would answer a different question than the one the pin asks.
-    const promoted = [pinned, ...flagged.filter((entity) => neighbours.has(entity.entityId))];
-    const promotedIds = new Set(promoted.map((entity) => entity.entityId));
-    entities = [...promoted, ...guarded.filter((entity) => !promotedIds.has(entity.entityId))];
+    // *unfiltered* set — a relationship the controls hid is what the pin was asked to
+    // reveal — and everything already on screen stays on screen. Narrowing to the
+    // neighbourhood would answer a different question than the one the pin asks.
+    const promoted = [pinned, ...flagged.filter((node) => neighbours.has(node.id))];
+    const promotedIds = new Set(promoted.map((node) => node.id));
+    nodes = [...promoted, ...guarded.filter((node) => !promotedIds.has(node.id))];
   }
 
-  const graph = buildGraph(entities, edges);
+  const graph = buildGraph(nodes, edges);
 
   return {
-    series: trafficSeries(input.rows, {
-      start: input.start,
-      end: input.end,
-      buckets: input.buckets ?? SERIES_BUCKETS,
-    }),
-    rows: brushed,
-    entities,
+    series,
+    nodes,
     edges,
     graph,
     matrix: graph.mode === 'adjacency' ? adjacencyMatrix(graph) : null,
     pinned,
-    notes: notesFor({ ...input, graph }),
+    notes: notesFor(input, graph),
     hiddenByControls: flagged.length - guarded.length,
   };
 }
 
-function notesFor(input: TrafficViewInput & { graph: GraphModel }): string[] {
-  // The permanent caveat's wording is a decision, not a sentence: this screen reads
-  // alerts, so every number on it is about records that were *alerted on*, and
-  // saying "flow volume" about it would be a different claim.
-  const notes = [
-    'Volume is the raw-record count carried by alerts, not total traffic: this build has no read API for ingested flows (T-418). Edges are shared correlation traces rather than flow counts, and entities are shown by id because the alert API returns no host or user value (T-416).',
-  ];
+function notesFor(input: TrafficViewInput, graph: GraphModel): string[] {
+  // The source's caveats come first and unchanged: which read model answered, what a
+  // cap did to a list, and why a window is empty are claims only the server can make,
+  // and a screen that reworded one would be making its own.
+  const notes = [...input.panels.caveats];
 
-  if (!input.complete) {
-    notes.push(
-      `Only the first ${String(input.pagesFetched)} pages were read, so every total below is partial.`,
-    );
+  if (input.brush !== null) {
+    // Which window the numbers below describe, so a brush cannot be mistaken for a
+    // zoom on a list that still covers the whole window.
+    const from = new Date(input.brush.from).toISOString().slice(11, 16);
+    const to = new Date(input.brush.to).toISOString().slice(11, 16);
+    notes.push(`The table and the graph describe the brushed window (${from}–${to} UTC).`);
   }
-  if (input.graph.mode === 'adjacency') {
-    const drawn = Math.min(input.graph.nodes.length, ADJACENCY_ROWS);
+  if (graph.mode === 'adjacency') {
+    const drawn = Math.min(graph.nodes.length, ADJACENCY_ROWS);
     notes.push(
-      `The matrix draws the ${String(drawn)} most active of ${String(input.graph.nodes.length)} entities; the rest are counted, not drawn.`,
+      `The matrix draws the ${String(drawn)} most active of ${String(graph.nodes.length)} addresses; the rest are counted, not drawn.`,
     );
   }
   return notes;
-}
-
-/** The window the brush currently selects, in words, for the panels' captions. */
-export function brushLabel(brush: BrushRange | null): string {
-  if (brush === null) return 'the whole window';
-  return `${new Date(brush.from).toISOString().slice(11, 16)}–${new Date(brush.to).toISOString().slice(11, 16)} UTC`;
 }

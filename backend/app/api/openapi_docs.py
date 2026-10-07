@@ -59,7 +59,14 @@ EXEMPT_ROUTES: Mapping[str, str] = {
 
 #: POST routes that legitimately take no request body. Every other body method
 #: must document one; the tests assert this set is still necessary.
-BODYLESS_POSTS: frozenset[str] = frozenset({"/api/v1/retention/run"})
+#:
+#: ``/retention/run`` acts on the deployment's own policy, and a test delivery
+#: (T-422) acts on the target named in the path -- there is nothing for a caller
+#: to send, and inventing an empty body model would be a field a reader has to
+#: skip rather than documentation.
+BODYLESS_POSTS: frozenset[str] = frozenset(
+    {"/api/v1/retention/run", "/api/v1/webhooks/{webhook_id}/test"}
+)
 
 #: Methods whose request body the rule requires (the ones HTTP defines bodies for).
 _BODY_METHODS = frozenset({"post", "put", "patch"})

@@ -16,7 +16,10 @@ import {
   levelRank,
   levelTone,
   levelsLabel,
+  SPAN_MS,
   spanOf,
+  spansFor,
+  STORE_SPANS,
   tailWindow,
   templateLabel,
   windowLabel,
@@ -123,6 +126,42 @@ describe('tailWindow', () => {
     expect(TAIL_SPANS.map((span) => span.spanMs)).toEqual([60_000, 300_000, 900_000]);
     expect(spanOf('15m').spanMs).toBe(900_000);
     expect(spanOf('nonsense' as never).key).toBe('5m');
+  });
+
+  it("carries each key's own width, whichever set it is offered in", () => {
+    // The width belongs to the key: the picker, the window the page asks for and the
+    // cadence it is re-read at all read it from here, so a key whose width depended on
+    // which set it was found in would make one of the three disagree (T-419).
+    for (const span of [...TAIL_SPANS, ...STORE_SPANS]) {
+      expect(span.spanMs).toBe(SPAN_MS[span.key]);
+    }
+    expect(Object.keys(SPAN_MS).sort()).toEqual(
+      [...new Set([...TAIL_SPANS, ...STORE_SPANS].map((span) => span.key))].sort(),
+    );
+  });
+
+  it('offers a store the windows a tail cannot be asked for', () => {
+    // T-419: the picker must not offer a span the answering source would refuse, and
+    // must not withhold one a store can read. A store is not bounded by the 15-minute
+    // retention, so an hour and a day become askable.
+    expect(spansFor('tail').map((span) => span.key)).toEqual(['1m', '5m', '15m']);
+    expect(spansFor('store').map((span) => span.key)).toEqual(['1m', '5m', '15m', '1h', '24h']);
+  });
+
+  it('offers only what a tail can read while the source is unknown', () => {
+    // The first paint has no response yet, so it has no idea what will answer. It must
+    // offer the narrow set: a 24-hour option that a tail then refuses is exactly the
+    // dead control this rule exists to prevent.
+    expect(spansFor(undefined).map((span) => span.key)).toEqual(['1m', '5m', '15m']);
+  });
+
+  it('still resolves a key against the wrong source, rather than throwing', () => {
+    // A picked key outlives a source change (the store goes away, the deployment falls
+    // back to a tail). The lookup has to keep answering, and the fallback must be a
+    // span every source can read.
+    expect(spanOf('24h', 'tail').key).toBe('5m');
+    expect(spanOf('24h', 'store').spanMs).toBe(86_400_000);
+    expect(spanOf('1m', 'store').spanMs).toBe(60_000);
   });
 });
 

@@ -10,10 +10,12 @@
  *
  *   * **The vocabulary is the read model's own.** design.md §4.6 lists `src_ip`,
  *     `dst_port`, `template_id` and `family` as autocomplete suggestions, and only
- *     `family` exists in this build: flow records have no read API (T-418) and log
- *     lines are a bounded in-process tail with no text search (T-419). Rather than
- *     accept a term it cannot answer, the console knows the fields the API actually
- *     filters on and names the missing ones on the screen — see `UNSEARCHABLE_TERMS`.
+ *     `family` is answerable here: the hunt API queries alerts, the flow read model
+ *     counts a window rather than filtering one by address or port (T-418), and the
+ *     log reads are by window, host, level and cluster key, with no text search by
+ *     design (T-419). Rather than accept a term it cannot answer, the console knows
+ *     the fields the API actually filters on and names the others on the screen —
+ *     see `UNSEARCHABLE_TERMS`.
  *   * **An unknown field is refused, never ignored.** A hunt that silently dropped
  *     `src_ip:10.0.0.7` and returned the whole window would be the worst possible
  *     answer: the analyst believes they searched by source address and the rows say
@@ -134,19 +136,21 @@ export const HUNT_FIELDS: readonly HuntField[] = [
 export const UNSEARCHABLE_TERMS: readonly { name: string; reason: string }[] = [
   {
     name: 'src_ip',
-    reason: 'raw flow records have no read API in this build (T-418)',
+    reason:
+      'the hunt API reads alerts; the flow read API counts a window and takes no address filter (T-418)',
   },
   {
     name: 'dst_port',
-    reason: 'raw flow records have no read API in this build (T-418)',
+    reason:
+      'the hunt API reads alerts; the flow read API counts a window and takes no port filter (T-418)',
   },
   {
     name: 'template_id',
-    reason: 'log template ids are searched on the Logs screen, from a bounded tail (T-419)',
+    reason: 'cluster keys are searched on the Logs screen; the hunt API reads alerts (T-419)',
   },
   {
     name: 'message',
-    reason: 'the log tail has no text search, and there is no persistent log read model (T-419)',
+    reason: 'log lines carry a message digest, not a searchable text field (T-419)',
   },
   {
     name: 'trace',

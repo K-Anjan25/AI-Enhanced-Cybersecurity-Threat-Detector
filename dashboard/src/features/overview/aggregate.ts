@@ -1,36 +1,28 @@
 /**
- * The overview's arithmetic: rows in, panel data out.
+ * The overview's arithmetic: one aggregate in, panel data out.
  *
- * Every function here is pure and tested against fixtures, because this is where
- * an overview can lie without looking wrong. A count that drops an unrecognised
- * severity, a series whose last bucket is silently truncated, a "top entity" list
- * that reorders between refreshes — none of those throw, and all of them produce a
- * screen that reads as authoritative while being wrong.
+ * Before T-416 this module counted rows the browser had *read*, which is why every
+ * function here took `AlertRow[]` and why the page had to admit a partial window
+ * past the page cap. The server now aggregates where the rows are, so this module
+ * is the opposite kind of code: a handful of pure, total mappings from the wire
+ * shape (`GET /api/v1/overview`) to the shapes the panels render. Keeping them
+ * pure and separate is still the point — a mapping is exactly where a screen can
+ * lie without looking wrong.
  *
- * Three rules are encoded rather than assumed:
+ * Two rules are encoded rather than assumed, and both are about not losing a row:
  *
- *   * **Unknown severities are counted, not dropped.** The API's `severity` column
- *     is a checked enum (T-321), but this code must not *assume* that: a value it
- *     does not recognise is counted as `unrecognised` so the KPI tiles still add
- *     up to the rows fetched.
- *   * **Every row lands in a bucket.** A row outside the requested window is
- *     clamped into the nearest bucket rather than dropped, so the series total
- *     always equals the row count.
- *   * **Ordering is total.** Ties break by id or name, never by input order, so
- *     two refreshes of the same data produce the same screen.
+ *   * **Unknown bands are counted, not dropped.** The API's `severity` column is a
+ *     checked enum (T-321) and the palette is the client's own list, so they can
+ *     disagree: a band the palette does not know lands in `unrecognised` so the
+ *     tiles still add up to the window's own total (`alerts`).
+ *   * **A blank family is a fact, not a gap.** The server sends `(unnamed)` for an
+ *     attribution the model did not make, and the mix renders it as a bar rather
+ *     than dropping it — dropped, the bars would not add up to the window.
  */
 import { SEVERITIES, type Severity } from '../../components/ui/severity';
-import type { AlertRow } from './api';
+import type { OverviewBucket, OverviewEntity, OverviewFamily, OverviewTotals } from './api';
 
-/** Severity, most serious first — the order the palette is declared in (§5.3). */
-const RANK: readonly Severity[] = ['critical', 'high', 'medium', 'low', 'info', 'benign'];
-
-function rankOf(severity: string): number {
-  const index = RANK.indexOf(severity as Severity);
-  return index === -1 ? RANK.length : index;
-}
-
-/** True when the row's severity is one of the six the palette defines. */
+/** True when the band is one the palette defines. */
 function known(severity: string): severity is Severity {
   return (SEVERITIES as readonly string[]).includes(severity);
 }
@@ -44,119 +36,84 @@ export function emptyTally(): SeverityTally {
   return tally;
 }
 
-/** Count rows by severity. */
-export function countBySeverity(rows: readonly AlertRow[]): SeverityTally {
+/**
+ * Fold one band map into a tally the palette can render.
+ *
+ * `total` is the authority on how many rows the map describes. Whatever the known
+ * bands do not account for — the server's `unrecognised_severity` plus any band
+ * this client's palette has never heard of — is `unrecognised`, so
+ * `sum(tally) + unrecognised === total` holds for a bucket the same way it holds
+ * for the window.
+ */
+export function tallyOf(counts: Record<string, number>, total: number): SeverityTally {
   const tally = emptyTally();
-  for (const row of rows) {
-    if (known(row.severity)) tally[row.severity] += 1;
-    else tally.unrecognised += 1;
+  let counted = 0;
+  for (const [band, count] of Object.entries(counts)) {
+    if (!known(band)) continue;
+    tally[band] += count;
+    counted += count;
   }
+  tally.unrecognised = Math.max(0, total - counted);
   return tally;
 }
 
-/** How many rows are still open. */
-export function countOpen(rows: readonly AlertRow[]): number {
-  return rows.filter((row) => row.status === 'open').length;
+/** The window's tally, from the totals the endpoint returns. */
+export function tallyFromOverview(totals: OverviewTotals): SeverityTally {
+  return tallyOf(totals.by_severity, totals.alerts);
 }
 
-/** The most serious severity present, or `null` for no rows. */
-export function peakSeverity(rows: readonly AlertRow[]): Severity | null {
-  let best: Severity | null = null;
-  for (const row of rows) {
-    if (known(row.severity) && (best === null || rankOf(row.severity) < rankOf(best))) {
-      best = row.severity;
-    }
-  }
-  return best;
-}
-
-export interface SeriesBucket {
+export interface SeriesPoint {
   /** Inclusive start of the bucket. */
   start: Date;
-  /** Exclusive end of the bucket. */
-  end: Date;
   counts: SeverityTally;
   total: number;
 }
 
-export interface SeriesRequest {
-  start: Date;
-  end: Date;
-  /** How many buckets the window is divided into. */
-  buckets: number;
-}
-
 /**
- * Bucket rows over the window, one bucket per interval.
+ * The severity series, oldest bucket first.
  *
- * The buckets tile the window exactly — `end` is the last bucket's exclusive
- * boundary — so the bars on the chart line up with the axis labels rather than
- * floating between them. An inverted or empty window is refused instead of
- * producing a chart of zero width.
+ * The server buckets the window; this only turns the ISO instants into `Date`s and
+ * the band maps into tallies. A bucket's `total` is the authority on its own rows,
+ * never the sum of the bands a client happens to know.
  */
-export function severitySeries(rows: readonly AlertRow[], request: SeriesRequest): SeriesBucket[] {
-  const { start, end, buckets } = request;
-  if (buckets < 1) throw new RangeError('a series needs at least one bucket');
-  const span = end.getTime() - start.getTime();
-  if (!(span > 0)) throw new RangeError('a series window must end after it starts');
-
-  const width = span / buckets;
-  const series: SeriesBucket[] = Array.from({ length: buckets }, (_unused, index) => ({
-    start: new Date(start.getTime() + index * width),
-    end: new Date(start.getTime() + (index + 1) * width),
-    counts: emptyTally(),
-    total: 0,
+export function seriesFromOverview(buckets: readonly OverviewBucket[]): SeriesPoint[] {
+  return buckets.map((bucket) => ({
+    start: new Date(bucket.start),
+    counts: tallyOf(bucket.by_severity, bucket.total),
+    total: bucket.total,
   }));
-
-  for (const row of rows) {
-    const at = Date.parse(row.created_at);
-    if (Number.isNaN(at)) continue;
-    const raw = Math.floor((at - start.getTime()) / width);
-    const index = Math.min(buckets - 1, Math.max(0, raw));
-    const bucket = series[index] as SeriesBucket;
-    if (known(row.severity)) bucket.counts[row.severity] += 1;
-    else bucket.counts.unrecognised += 1;
-    bucket.total += 1;
-  }
-
-  return series;
 }
 
+/** One entity as the panel renders it. */
 export interface EntitySummary {
   entityId: number;
+  /** Whether `kind`/`value` name this entity, or it is known only by id. */
+  named: boolean;
+  kind: string | null;
+  value: string | null;
   alerts: number;
   occurrences: number;
   peak: Severity | null;
 }
 
 /**
- * The entities with the most alerts in the window.
+ * The entity list, in the order the server ranked it.
  *
- * Ranked by alert count first, then by peak severity, then by id: the third key
- * exists so that a list with a tie does not shuffle on every refresh.
+ * Deliberately not re-sorted: the server ranks by alert count with a total
+ * tie-break, and a client that re-sorted would be a second opinion about the order
+ * — the one thing a "top N" cannot have. A `worst_severity` the palette does not
+ * know renders as no pill rather than as a band it made up.
  */
-export function topEntities(rows: readonly AlertRow[], limit: number): EntitySummary[] {
-  const byEntity = new Map<number, AlertRow[]>();
-  for (const row of rows) {
-    const bucket = byEntity.get(row.entity_id);
-    if (bucket === undefined) byEntity.set(row.entity_id, [row]);
-    else bucket.push(row);
-  }
-
-  const summaries: EntitySummary[] = [...byEntity].map(([entityId, entityRows]) => ({
-    entityId,
-    alerts: entityRows.length,
-    occurrences: entityRows.reduce((total, row) => total + row.occurrence_count, 0),
-    peak: peakSeverity(entityRows),
+export function entitiesFromOverview(entities: readonly OverviewEntity[]): EntitySummary[] {
+  return entities.map((entity) => ({
+    entityId: entity.entity_id,
+    named: entity.named,
+    kind: entity.kind,
+    value: entity.value,
+    alerts: entity.alerts,
+    occurrences: entity.occurrences,
+    peak: known(entity.worst_severity) ? entity.worst_severity : null,
   }));
-
-  summaries.sort(
-    (a, b) =>
-      b.alerts - a.alerts ||
-      rankOf(a.peak ?? 'benign') - rankOf(b.peak ?? 'benign') ||
-      a.entityId - b.entityId,
-  );
-  return summaries.slice(0, limit);
 }
 
 export interface FamilySummary {
@@ -166,28 +123,17 @@ export interface FamilySummary {
 }
 
 /**
- * Alert counts per threat family, largest first.
+ * The family mix, largest first.
  *
- * §7: "Horizontal bars, sorted descending, counts labelled at bar end." An empty
- * family name is kept as `(unnamed)` rather than dropped — the count would not add
- * up otherwise, and "the API sent a blank family" is a fact worth seeing.
+ * §7: "Horizontal bars, sorted descending, counts labelled at bar end." The order
+ * the server ranked is kept, for the same reason the entity list keeps its own.
  */
-export function familyMix(rows: readonly AlertRow[], limit = 8): FamilySummary[] {
-  const byFamily = new Map<string, AlertRow[]>();
-  for (const row of rows) {
-    const family = row.family.trim() === '' ? '(unnamed)' : row.family;
-    const bucket = byFamily.get(family);
-    if (bucket === undefined) byFamily.set(family, [row]);
-    else bucket.push(row);
-  }
-
-  const summaries: FamilySummary[] = [...byFamily].map(([family, familyRows]) => ({
-    family,
-    count: familyRows.length,
-    peak: peakSeverity(familyRows),
+export function familiesFromOverview(families: readonly OverviewFamily[]): FamilySummary[] {
+  return families.map((family) => ({
+    family: family.family,
+    count: family.alerts,
+    peak: known(family.worst_severity) ? family.worst_severity : null,
   }));
-  summaries.sort((a, b) => b.count - a.count || a.family.localeCompare(b.family));
-  return summaries.slice(0, limit);
 }
 
 /** A change against the previous window, or `null` when there is no basis. */
@@ -197,11 +143,12 @@ export interface Delta {
 }
 
 /**
- * The delta shown beside a KPI, and only when both windows were read completely.
+ * The delta shown beside a KPI, and only when both windows are known.
  *
- * A partial previous window would compare a full count against a truncated one and
- * produce a confident, wrong arrow. `undefined` renders no delta at all — which is
- * the honest state for "we do not know yet".
+ * A previous window that failed to load would compare a full count against nothing
+ * and produce a confident, wrong arrow. `null` renders no delta at all — which is
+ * the honest state for "we do not know yet". The completeness question is the
+ * caller's: it knows whether the previous number came from a read that succeeded.
  */
 export function delta(
   current: number,

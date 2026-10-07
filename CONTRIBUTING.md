@@ -34,6 +34,10 @@ That is why `npm ci` is part of setup and not optional.
 interpreter. It prints a pass/fail summary and exits non-zero on the first failure — read the
 output; a clean exit code alone is not a pass.
 
+Its `hooks` suite scans every file the commit will contain, untracked ones included. That is
+deliberate: plain `pre-commit run --all-files` means `git ls-files` and therefore skips a file
+that has not been `git add`ed yet, which CI — checking out the commit — does scan.
+
 ## Run one service
 
 ```bash

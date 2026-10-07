@@ -20,15 +20,35 @@ import { alertHref } from '../../lib/routes';
 export { ALERTS_PATH, alertHref, alertHrefFor } from '../../lib/routes';
 
 /**
- * Every pair of adjacent rows in queue order, for "next alert".
+ * The address `delta` rows away from the open alert, for "next alert" and for
+ * `j`/`k` (T-411).
  *
- * Kept here rather than in the page so the rule — *next* means the next row the
- * analyst can see, and the last row has no next — is a pure function with a test.
+ * Kept here rather than in the page so the rule is a pure function with a test:
+ *
+ *   * **The step is the queue's, not a list widget's.** `j` opens the next alert —
+ *     the same thing the "Next alert" link does — because the analyst is reading the
+ *     detail and wants the next one, not to move focus inside a list beside it.
+ *   * **Nothing selected means the top.** `j` on `/alerts` opens the first row; `k`
+ *     has nowhere to go and does nothing, which is better than opening the last row
+ *     of a queue the analyst has not looked at.
+ *   * **The ends are the ends.** No wrap: re-opening the alert at the top of a
+ *     queue is the one moment an analyst is definitely not looking, and T-411's
+ *     reference promises "the next or previous alert", not a carousel.
  */
+export function stepHref(
+  rows: readonly AlertRow[],
+  currentId: number | null,
+  delta: number,
+): string | null {
+  const first = rows[0];
+  if (first === undefined) return null;
+  const index = currentId === null ? -1 : rows.findIndex((row) => row.id === currentId);
+  if (index === -1) return delta > 0 ? alertHref(first) : null;
+  const target = rows[index + delta];
+  return target === undefined ? null : alertHref(target);
+}
+
+/** The next row the analyst can see: `stepHref` one forward. */
 export function nextHref(rows: readonly AlertRow[], currentId: number | null): string | null {
-  if (currentId === null) return rows.length === 0 ? null : alertHref(rows[0]!);
-  const index = rows.findIndex((row) => row.id === currentId);
-  if (index === -1) return rows.length === 0 ? null : alertHref(rows[0]!);
-  const next = rows[index + 1];
-  return next === undefined ? null : alertHref(next);
+  return stepHref(rows, currentId, 1);
 }

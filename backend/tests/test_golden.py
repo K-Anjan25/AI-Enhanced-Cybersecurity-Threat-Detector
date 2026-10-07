@@ -144,6 +144,8 @@ class GoldenRun:
     scorer: PortScanScorer
     alerts: InMemoryAlertStore
     auth: TokenService
+    #: Modules that arrived while this run built the app and entered its lifespan.
+    newly_imported: frozenset[str] = frozenset()
 
     def granted(self, role: str = "analyst") -> dict[str, str]:
         """A bearer token for a role that may ingest and read."""
@@ -171,6 +173,7 @@ class GoldenRun:
 @pytest.fixture
 def golden(settings: Settings) -> Iterator[GoldenRun]:
     """Build the application and wire the in-process pipeline into it."""
+    modules_before = frozenset(sys.modules)
     app = create_app(settings)
     app.state.token_service = TokenService(SECRET)
     store = app.state.alert_store
@@ -196,6 +199,7 @@ def golden(settings: Settings) -> Iterator[GoldenRun]:
             scorer=scorer,
             alerts=store,
             auth=app.state.token_service,
+            newly_imported=frozenset(sys.modules) - modules_before,
         )
 
 
@@ -342,8 +346,13 @@ def test_the_golden_path_composes_real_stages_over_in_process_fakes(golden: Gold
     assert isinstance(golden.pipeline.producer, FlowProducer)
     assert isinstance(golden.pipeline.worker, ScoringWorker)
     assert isinstance(golden.pipeline.correlator, Correlator)
-    # And no client for the two systems R-88 names has been imported to run it.
-    assert UNNEEDED_CLIENTS.isdisjoint(sys.modules)
+    # And no client for the two systems R-88 names was imported by *this run*. The set
+    # is what the fixture saw arrive while it built the app and entered its lifespan,
+    # not everything the process has ever imported: a suite that also runs the live
+    # PostgreSQL tests has ``psycopg`` in ``sys.modules`` long before the golden path,
+    # and a process-wide assertion would then fail for a reason the golden path did not
+    # cause. What R-88 forbids is the golden path needing one, which is what this says.
+    assert UNNEEDED_CLIENTS.isdisjoint(golden.newly_imported)
 
 
 def test_the_api_refuses_a_window_it_cannot_bound(golden: GoldenRun) -> None:

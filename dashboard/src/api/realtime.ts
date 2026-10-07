@@ -79,9 +79,22 @@ export interface Clock {
   clearTimeout(handle: number): void;
 }
 
+/**
+ * One alert plus its stream position, as `AlertNotificationOut` defines it.
+ *
+ * Named rather than written inline in `NotificationsPayload.items`, so the wire
+ * contract check can see it: an inline literal is invisible to a field-by-field
+ * comparison, which is exactly how the erasure report's `preserved` rows drifted
+ * (`{store}` where the server sends `{name}`) without anything noticing.
+ */
+export interface AlertNotification {
+  sequence: number;
+  alert: AlertFrame['alert'];
+}
+
 /** The polling answer, as `app/schemas/stream.py` defines it. */
-interface NotificationsPayload {
-  items: { sequence: number; alert: AlertFrame['alert'] }[];
+export interface NotificationsPayload {
+  items: AlertNotification[];
   oldest_available: number | null;
   latest: number | null;
   resync_required: boolean;

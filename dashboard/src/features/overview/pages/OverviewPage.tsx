@@ -1,5 +1,5 @@
 /**
- * Overview — `/` (design.md §4.1).
+ * Overview — `/` (design.md §4.1, FR-50).
  *
  * The question this screen answers is the one in the design: *"is anything
  * happening, and is AEGIS itself healthy?"* That second clause is why the pipeline
@@ -8,6 +8,15 @@
  * normal reading, so an absence that is *not* meaningful has to be distinguishable
  * from one that is.
  *
+ * **One window, one read (T-416).** The tiles, the severity chart, the entity list
+ * and the family mix all render `GET /api/v1/overview`, which aggregates the window
+ * where the rows are. Before this, the page walked alert pages and counted what it
+ * had read: three panels over three walks could disagree, and past the walk's cap
+ * every figure came with a "partial coverage" asterisk. The counts are now the
+ * window's counts, which is why the page has no partial-coverage language left —
+ * there is nothing partial to describe. The pipeline strip is still `/metrics`
+ * (D-060): a scrape is not a window.
+ *
  * Layout follows §4.1: the header with the connection pill and the window selector,
  * the KPI tiles, the severity chart, top entities beside the family mix, and the
  * pipeline strip across the bottom.
@@ -15,7 +24,13 @@
 import { useState } from 'react';
 
 import { Button, Card, ConnectionStatus, EmptyState } from '../../../components/ui';
-import { countBySeverity, countOpen, familyMix, severitySeries, topEntities } from '../aggregate';
+import {
+  emptyTally,
+  entitiesFromOverview,
+  familiesFromOverview,
+  seriesFromOverview,
+  tallyFromOverview,
+} from '../aggregate';
 import { FamilyMixChart } from '../components/FamilyMixChart';
 import { KpiTiles } from '../components/KpiTiles';
 import { PipelineStrip } from '../components/PipelineStrip';
@@ -24,10 +39,10 @@ import { TopEntities } from '../components/TopEntities';
 import {
   rangeSpec,
   RANGES,
-  useAlertWindow,
   useDocumentVisible,
   useMetrics,
   useNow,
+  useOverviewWindow,
   usePrefersReducedMotion,
   usePrevious,
   useReadiness,
@@ -43,39 +58,33 @@ export function OverviewPage() {
 
   const visible = useDocumentVisible();
   const now = useNow(1_000, visible);
-  const alerts = useAlertWindow(range, visible);
+  const overview = useOverviewWindow(range, visible);
   const metrics = useMetrics(visible);
   const readiness = useReadiness(visible);
   const previousMetrics = usePrevious(metrics.data);
   const palette = useChartPalette();
   const reducedMotion = usePrefersReducedMotion();
 
-  const rows = alerts.data?.rows ?? [];
-  const windowStart = alerts.data?.start ?? new Date(now - range.spanMs);
-  const windowEnd = alerts.data?.end ?? new Date(now);
-
-  const tally = countBySeverity(rows);
-  const open = countOpen(rows);
-  const series = severitySeries(rows, {
-    start: windowStart,
-    end: windowEnd,
-    buckets: range.buckets,
-  });
+  const summary = overview.data;
+  const tally = summary === undefined ? emptyTally() : tallyFromOverview(summary.totals);
+  const series = summary === undefined ? [] : seriesFromOverview(summary.series);
   const points = series.map((bucket) => ({
     label: bucketLabel(bucket.start, range.spanMs),
     counts: bucket.counts,
   }));
-  const entities = topEntities(rows, 5);
-  const families = familyMix(rows, 8);
+  const entities = summary === undefined ? [] : entitiesFromOverview(summary.entities);
+  const families = summary === undefined ? [] : familiesFromOverview(summary.families);
   const peaks = Object.fromEntries(
     families.flatMap((family) => (family.peak === null ? [] : [[family.family, family.peak]])),
   );
 
-  const state = panelState(alerts.status, rows.length);
-  const windowLabel = `${range.label} \u00b7 ${String(rows.length)} alerts read`;
-  const age = staleness(alerts.dataUpdatedAt === 0 ? null : alerts.dataUpdatedAt, now);
+  const alerts = summary?.totals.alerts ?? 0;
+  const state = panelState(overview.status, alerts);
+  // The window's own label, and the count is the window's, not a page walk's.
+  const windowLabel = `${range.label} \u00b7 ${String(alerts)} alerts in this window`;
+  const age = staleness(overview.dataUpdatedAt === 0 ? null : overview.dataUpdatedAt, now);
   const connection = connectionState({
-    alertsFailed: alerts.isError,
+    alertsFailed: overview.isError,
     metricsFailed: metrics.isError,
     stale: age.stale,
   });
@@ -89,10 +98,8 @@ export function OverviewPage() {
         <div>
           <h1 className="text-h1">Overview</h1>
           <p className="mt-1 text-body-sm text-muted">
-            Detection posture and pipeline health.{' '}
-            {alerts.data?.complete === false
-              ? `Only the first ${String(alerts.data.pagesFetched)} pages were read, so every count below is partial.`
-              : 'Every panel is read from the live API.'}
+            Detection posture and pipeline health. Every panel below is one read of the{' '}
+            {range.label} window.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
@@ -122,8 +129,10 @@ export function OverviewPage() {
       </header>
 
       <KpiTiles
-        tiles={kpiTiles(tally, open, range.label)}
-        partial={alerts.data?.complete === false}
+        tiles={kpiTiles(tally, summary?.totals.open ?? 0, range.label, {
+          meanSeconds: summary?.totals.mean_time_to_verdict_seconds ?? null,
+          measured: summary?.totals.verdicts_measured ?? 0,
+        })}
       />
 
       <SeverityAreaChart
@@ -133,7 +142,7 @@ export function OverviewPage() {
         palette={palette}
         reducedMotion={reducedMotion}
         state={state}
-        onRetry={() => void alerts.refetch()}
+        onRetry={() => void overview.refetch()}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -144,11 +153,15 @@ export function OverviewPage() {
           empty={{ title: `No entity was attacked in the ${range.label}.` }}
           error={{
             message: 'Top entities could not be loaded',
-            detail: 'They read the same alert window as the tiles.',
-            action: <Button onClick={() => void alerts.refetch()}>Retry</Button>,
+            detail: 'They are part of the same window as the tiles.',
+            action: <Button onClick={() => void overview.refetch()}>Retry</Button>,
           }}
         >
-          <TopEntities entities={entities} windowLabel={windowLabel} />
+          <TopEntities
+            entities={entities}
+            windowLabel={windowLabel}
+            capped={summary?.entities_capped ?? false}
+          />
         </Card>
 
         <FamilyMixChart
@@ -159,7 +172,7 @@ export function OverviewPage() {
           palette={palette}
           reducedMotion={reducedMotion}
           state={state}
-          onRetry={() => void alerts.refetch()}
+          onRetry={() => void overview.refetch()}
         />
       </div>
 

@@ -8,8 +8,8 @@
  *     palette so a reader's eye can find the worst rows — but the label stays the
  *     level's own word, because "critical" in this column means a line said
  *     `critical`, not that a model scored anything (design.md §4.5's anomaly colour
- *     has no source in this build; T-419 is the scored version). `levelTone` picks
- *     the hue, `levelLabel` names the thing.
+ *     has no source in this build at all: no log model is served here). `levelTone`
+ *     picks the hue, `levelLabel` names the thing.
  *   * **A cluster key is shown, not the message.** An untemplated cluster's key is a
  *     digest (R-58), so the row can be addressed and linked without a log line
  *     travelling in a URL. The row still shows a sample message, because that is
@@ -20,7 +20,7 @@
  */
 import type { BadgeTone } from '../../components/ui';
 import { formatCount } from '../../lib/format';
-import { LOG_LEVELS, type LogCluster, type LogLevel } from '../../api/logs';
+import { LOG_LEVELS, type LogCluster, type LogLevel, type LogSource } from '../../api/logs';
 
 /** Levels ordered least severe first, from the wire vocabulary's own list. */
 export { LOG_LEVELS };
@@ -102,21 +102,73 @@ export function tailWindow(now: number, spanMs: number): LogWindow {
   return { start: new Date(now - spanMs), end: new Date(now) };
 }
 
-/** The span options the page offers. The ceiling is the tail's own retention. */
+/**
+ * The span options the page offers, which depend on what can answer (T-419).
+ *
+ * A tail can only answer within its retention, and the API refuses anything wider —
+ * so a tail deployment is offered exactly the retained spans, and the picker cannot
+ * offer a window the server would reject. A store is not bounded that way, so it also
+ * offers an hour and a day: the same window that used to be unaskable becomes a read,
+ * which is the acceptance criterion made visible on the screen rather than only in the
+ * API.
+ */
 export interface TailSpan {
-  key: '1m' | '5m' | '15m';
+  key: '1m' | '5m' | '15m' | '1h' | '24h';
   label: string;
   spanMs: number;
 }
 
+/**
+ * How wide each key is, in one table.
+ *
+ * The width is a fact about the key, not about who answers: a key the user picked is
+ * the same window whether a store or a tail is reading it. Both span sets below are
+ * built from this table, so a width cannot drift between the picker and the window
+ * the page asks for.
+ */
+export const SPAN_MS: Record<TailSpan['key'], number> = {
+  '1m': 60_000,
+  '5m': 300_000,
+  '15m': 900_000,
+  '1h': 3_600_000,
+  '24h': 86_400_000,
+};
+
+/** The spans a deployment with no log store can ask for: its retention, and no more. */
 export const TAIL_SPANS: readonly TailSpan[] = [
-  { key: '1m', label: 'Last minute', spanMs: 60_000 },
-  { key: '5m', label: 'Last 5 min', spanMs: 300_000 },
-  { key: '15m', label: 'Last 15 min', spanMs: 900_000 },
+  { key: '1m', label: 'Last minute', spanMs: SPAN_MS['1m'] },
+  { key: '5m', label: 'Last 5 min', spanMs: SPAN_MS['5m'] },
+  { key: '15m', label: 'Last 15 min', spanMs: SPAN_MS['15m'] },
 ];
 
-export function spanOf(key: TailSpan['key']): TailSpan {
-  return TAIL_SPANS.find((span) => span.key === key) ?? (TAIL_SPANS[1] as TailSpan);
+/** The same, plus what a store can reach: the retention is no longer the ceiling. */
+export const STORE_SPANS: readonly TailSpan[] = [
+  ...TAIL_SPANS,
+  { key: '1h', label: 'Last hour', spanMs: SPAN_MS['1h'] },
+  { key: '24h', label: 'Last 24 h', spanMs: SPAN_MS['24h'] },
+];
+
+/**
+ * The spans a picker should offer, given what answered.
+ *
+ * `undefined` is "the source is not known yet" -- the first paint, before any
+ * response -- and it gets the *narrow* set. Offering an hour or a day before a store
+ * has confirmed it is answering would put a control on screen that the next response
+ * may prove dead; withholding them for one round trip costs a reload nothing. The
+ * asymmetry is deliberate: a promise of what can be read is made only by a source
+ * that has said it can read it.
+ *
+ * `spanOf` looks a key up in the same set, so the picker's value is always one of its
+ * own options.
+ */
+export function spansFor(source: LogSource | undefined): readonly TailSpan[] {
+  return source === 'store' ? STORE_SPANS : TAIL_SPANS;
+}
+
+/** One span by key, falling back to the five-minute default every source can read. */
+export function spanOf(key: TailSpan['key'], source?: LogSource): TailSpan {
+  const spans = spansFor(source);
+  return spans.find((span) => span.key === key) ?? (spans[1] as TailSpan);
 }
 
 /**

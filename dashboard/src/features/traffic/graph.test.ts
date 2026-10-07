@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { entityRows, type EntityRow } from './aggregate';
+import type { TrafficEdge, TrafficNode } from './aggregate';
 import {
   ADJACENCY_ROWS,
   GRAPH_NODE_LIMIT,
@@ -9,35 +9,50 @@ import {
   layoutGraph,
   nodeRadius,
 } from './graph';
-import type { AlertRow } from '../../api/alerts';
 
+/**
+ * One address, with the fields the graph reads.
+ *
+ * The graph keys on the address itself since T-418, so the ids here are strings — the
+ * same shape the flow read model reports — and a test that used numbers would be testing
+ * a node identity the API cannot produce.
+ */
 function entity(
-  entityId: number,
-  records: number,
-  severity: EntityRow['peakSeverity'] = 'high',
-): EntityRow {
+  id: string,
+  flows: number,
+  severity: TrafficNode['peakSeverity'] = 'high',
+): TrafficNode {
   return {
-    entityId,
+    id,
+    flows,
+    bytes: flows * 100,
+    packets: flows,
+    inbound: 0,
+    outbound: flows,
     alerts: 2,
-    records,
+    openAlerts: 1,
     peakSeverity: severity,
-    hasOpen: true,
-    families: ['exfiltration'],
+    maxScore: 0.8,
     firstSeen: '2026-10-06T10:00:00Z',
     lastSeen: '2026-10-06T10:30:00Z',
-    traces: 1,
   };
 }
 
-function bare(count: number): EntityRow[] {
-  return Array.from({ length: count }, (_unused, index) => entity(index + 1, count - index));
+function edge(source: string, target: string, flows: number): TrafficEdge {
+  return { source, target, flows, bytes: flows * 100 };
+}
+
+function bare(count: number): TrafficNode[] {
+  return Array.from({ length: count }, (_unused, index) =>
+    entity(`10.0.${String(Math.floor(index / 250))}.${String(index % 250)}`, count - index),
+  );
 }
 
 describe('buildGraph', () => {
   it('draws a force layout below the limit, and says so', () => {
     const model = buildGraph(
-      [entity(1, 10), entity(2, 5)],
-      [{ source: 1, target: 2, sharedTraces: 1 }],
+      [entity('10.0.0.1', 10), entity('10.0.0.2', 5)],
+      [edge('10.0.0.1', '10.0.0.2', 1)],
     );
 
     expect(model.mode).toBe('force');
@@ -64,7 +79,7 @@ describe('buildGraph', () => {
   });
 
   it('drops an edge whose endpoint was filtered away', () => {
-    const model = buildGraph([entity(1, 10)], [{ source: 1, target: 99, sharedTraces: 3 }]);
+    const model = buildGraph([entity('10.0.0.1', 10)], [edge('10.0.0.1', '10.0.0.99', 3)]);
 
     expect(model.edges).toEqual([]);
   });
@@ -94,25 +109,22 @@ describe('nodeRadius', () => {
   });
 
   it('gives every node the radius its own volume earned', () => {
-    const nodes = entityRows([rowFixture(1, 1, 100), rowFixture(2, 2, 25)]);
+    const nodes = [entity('10.0.0.1', 100), entity('10.0.0.2', 25)];
 
     const layout = layoutGraph(buildGraph(nodes, []), { width: 400, height: 300 });
 
-    const byId = new Map(layout.nodes.map((node) => [node.node.entityId, node.radius]));
+    const byId = new Map(layout.nodes.map((node) => [node.node.id, node.radius]));
     // Literal numbers, not calls back into `nodeRadius`: comparing the layout with the
     // function it uses would pass whatever that function did.
-    expect(byId.get(1)).toBe(22); // the busiest entity gets the cap
-    expect(byId.get(2)).toBe(13); // 4 + 18 * sqrt(25 / 100)
+    expect(byId.get('10.0.0.1')).toBe(22); // the busiest address gets the cap
+    expect(byId.get('10.0.0.2')).toBe(13); // 4 + 18 * sqrt(25 / 100)
   });
 });
 
 describe('layoutGraph', () => {
   const model = buildGraph(
-    [entity(1, 30), entity(2, 20), entity(3, 10)],
-    [
-      { source: 1, target: 2, sharedTraces: 2 },
-      { source: 2, target: 3, sharedTraces: 1 },
-    ],
+    [entity('10.0.0.1', 30), entity('10.0.0.2', 20), entity('10.0.0.3', 10)],
+    [edge('10.0.0.1', '10.0.0.2', 2), edge('10.0.0.2', '10.0.0.3', 1)],
   );
 
   it('places every node inside the panel', () => {
@@ -141,7 +153,7 @@ describe('layoutGraph', () => {
   });
 
   it('positions the panel centre for a single node instead of collapsing to a point', () => {
-    const single = buildGraph([entity(1, 5)], []);
+    const single = buildGraph([entity('10.0.0.1', 5)], []);
 
     const layout = layoutGraph(single, { width: 200, height: 100 });
 
@@ -160,8 +172,8 @@ describe('layoutGraph', () => {
 
     expect(layout.edges).toHaveLength(2);
     for (const edge of layout.edges) {
-      expect(edge.source.node.entityId).toBe(edge.edge.source);
-      expect(edge.target.node.entityId).toBe(edge.edge.target);
+      expect(edge.source.node.id).toBe(edge.edge.source);
+      expect(edge.target.node.id).toBe(edge.edge.target);
     }
   });
 });
@@ -169,15 +181,15 @@ describe('layoutGraph', () => {
 describe('adjacencyMatrix', () => {
   it('draws both halves of every pair, and no diagonal', () => {
     const model = buildGraph(
-      [entity(1, 10), entity(2, 5)],
-      [{ source: 1, target: 2, sharedTraces: 4 }],
+      [entity('10.0.0.1', 10), entity('10.0.0.2', 5)],
+      [edge('10.0.0.1', '10.0.0.2', 4)],
     );
 
     const matrix = adjacencyMatrix(model);
 
     expect(matrix.cells).toEqual([
-      { sourceId: 1, targetId: 2, sharedTraces: 4 },
-      { sourceId: 2, targetId: 1, sharedTraces: 4 },
+      { sourceId: '10.0.0.1', targetId: '10.0.0.2', flows: 4 },
+      { sourceId: '10.0.0.2', targetId: '10.0.0.1', flows: 4 },
     ]);
     expect(matrix.cells.some((cell) => cell.sourceId === cell.targetId)).toBe(false);
   });
@@ -186,20 +198,17 @@ describe('adjacencyMatrix', () => {
     // Weight and id order disagree on purpose here: (1,2) is the heavy pair, but (1,3)
     // comes first in reading order, so a sort by weight would be visible.
     const model = buildGraph(
-      [entity(1, 10), entity(2, 5), entity(3, 4)],
-      [
-        { source: 1, target: 2, sharedTraces: 9 },
-        { source: 1, target: 3, sharedTraces: 1 },
-      ],
+      [entity('10.0.0.1', 10), entity('10.0.0.2', 5), entity('10.0.0.3', 4)],
+      [edge('10.0.0.1', '10.0.0.2', 9), edge('10.0.0.1', '10.0.0.3', 1)],
     );
 
     const cells = adjacencyMatrix(model).cells;
 
     expect(cells.map((cell) => [cell.sourceId, cell.targetId])).toEqual([
-      [1, 2],
-      [1, 3],
-      [2, 1],
-      [3, 1],
+      ['10.0.0.1', '10.0.0.2'],
+      ['10.0.0.1', '10.0.0.3'],
+      ['10.0.0.2', '10.0.0.1'],
+      ['10.0.0.3', '10.0.0.1'],
     ]);
   });
 
@@ -214,45 +223,29 @@ describe('adjacencyMatrix', () => {
   });
 
   it('ranks the axis the way the nodes are ordered: busiest first', () => {
-    const nodes = entityRows([{ ...rowFixture(1, 1, 2) }, { ...rowFixture(2, 2, 50) }]);
+    // The read model's order is busiest-first and the API preserves it; this asserts the
+    // matrix does not re-sort, so the axis and the table agree about the ranking.
+    const nodes = [entity('10.0.0.2', 50), entity('10.0.0.1', 2)];
 
     const matrix = adjacencyMatrix(buildGraph(nodes, []));
 
-    expect(matrix.axis.map((entry) => entry.entityId)).toEqual([2, 1]);
+    expect(matrix.axis.map((entry) => entry.id)).toEqual(['10.0.0.2', '10.0.0.1']);
   });
 
   it('drops a cell whose endpoint is off the axis', () => {
-    const model = buildGraph(bare(ADJACENCY_ROWS + 5), [
-      { source: ADJACENCY_ROWS + 5, target: 1, sharedTraces: 9 },
-    ]);
+    const offAxis = bare(ADJACENCY_ROWS + 5).at(-1)?.id ?? '';
+    const model = buildGraph(bare(ADJACENCY_ROWS + 5), [edge(offAxis, '10.0.0.0', 9)]);
 
     expect(adjacencyMatrix(model).cells).toEqual([]);
   });
 
   it('reports the peak weight for shading, and zero when there is nothing to shade', () => {
     const model = buildGraph(
-      [entity(1, 10), entity(2, 5)],
-      [{ source: 1, target: 2, sharedTraces: 7 }],
+      [entity('10.0.0.1', 10), entity('10.0.0.2', 5)],
+      [edge('10.0.0.1', '10.0.0.2', 7)],
     );
 
     expect(adjacencyMatrix(model).peak).toBe(7);
-    expect(adjacencyMatrix(buildGraph([entity(1, 10)], [])).peak).toBe(0);
+    expect(adjacencyMatrix(buildGraph([entity('10.0.0.1', 10)], [])).peak).toBe(0);
   });
 });
-
-/** One alert row, for the ranking test. */
-function rowFixture(id: number, entityId: number, occurrences: number): AlertRow {
-  return {
-    id,
-    created_at: '2026-10-06T10:00:00Z',
-    entity_id: entityId,
-    family: 'exfiltration',
-    severity: 'high',
-    score: 0.8,
-    status: 'open',
-    first_seen: '2026-10-06T09:00:00Z',
-    last_seen: '2026-10-06T10:00:00Z',
-    occurrence_count: occurrences,
-    trace_id: null,
-  };
-}

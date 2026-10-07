@@ -27,26 +27,31 @@ from app.api.v1.endpoints import (
     alerts,
     api_keys,
     audit,
+    flows,
     health,
     hunt,
     ingest,
     logs,
     metrics,
     models,
+    overview,
     privacy,
     stream,
     thresholds,
+    users,
     webhooks,
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
+from app.db.engine import async_session_factory, create_async_database_engine
 from app.db.models import PARTITIONED_TABLES
 from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
+from app.services.entity_registry import EntityRegistry
 from app.services.erasure import (
     EntityRedactionTarget,
     ErasureService,
@@ -56,8 +61,13 @@ from app.services.erasure import (
     Redactor,
     UserDeletionTarget,
 )
+from app.services.flow_read_model import InProcessFlowRollup
+from app.services.flow_source import RollupFlowSource, flow_rollup_reason
+from app.services.flow_store import PostgresFlowStore
 from app.services.health_service import ReadinessRegistry
 from app.services.limits import AdmissionController, RateLimitPolicy
+from app.services.log_source import TailLogSource, store_requested, tail_reason
+from app.services.log_store import PostgresLogStore
 from app.services.log_tail import LogTail
 from app.services.ml_calibration import MlCalibrator
 from app.services.model_ops import ModelOpsService
@@ -68,9 +78,12 @@ from app.services.recalibration import (
     RecalibrationService,
 )
 from app.services.retention import RetentionPolicy
+from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
+from app.services.user_directory import InMemoryUserDirectory, UserAdminService
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
 )
+from app.services.webhook_deliveries import InMemoryDeliveryLog
 from app.services.webhook_targets import (
     InMemoryWebhookStore,
     SecretVault,
@@ -146,6 +159,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Drop connected dashboards so they fall back to REST rather than
         # holding a socket that will never speak again (FR-20).
         app.state.alert_hub.close()
+        # Close the read models' pooled connections (T-418/T-419). A deployment that
+        # configured a store opened them; leaving them to the garbage collector on a
+        # rolling restart is how a database accumulates half-closed sessions.
+        engine = getattr(app.state, "store_engine", None)
+        if engine is not None:
+            await engine.dispose()
         logger.info("shutdown", service=settings.service_name)
 
 
@@ -239,21 +258,77 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # here, like every other store in this environment; D-053 records the
     # PostgreSQL adapter as unwired and the case-id column it would need.
     app.state.alert_store = InMemoryAlertStore()
-    # The log tail (T-407). Logs are validated and handed to the broker, but nothing
-    # consumes or stores them: the worker scores flows only and there is no
-    # `log_events` table, so the explorer's tail is the process's own bounded copy.
-    # In memory and per process, like the alert hub above; the persistent read path
-    # is T-419, and the module docstring names the gap rather than implying a store.
+    # The entity registry (T-416). The same object type the pipeline allocates ids
+    # from, so an alert written by this process can be rendered by name: the
+    # overview resolves `entity_id` through it. D-053 records the persistent
+    # writer (`entities`) as unwired, like the store above.
+    app.state.entity_registry = EntityRegistry()
+    # The log tail (T-407). A bounded in-process copy of the accepted lines, for the
+    # deployment that has no log store -- and the thing the store's own wiring below
+    # replaces when the deployment configures one.
     app.state.log_tail = LogTail(
         max_lines=resolved.log_tail_lines,
         max_age_seconds=resolved.log_tail_max_age_seconds,
     )
+    # The log read model (T-419). Which of the two answers is decided here, once, and
+    # it is a question about configuration rather than a probe: `auto` uses the store
+    # when the deployment *named* a database URL, and the tail when only the built-in
+    # default exists. A store that was configured and is unreachable raises on read
+    # rather than falling back -- answering a 92-day window from a 15-minute buffer
+    # would look exactly like "nothing matched", which is what R-70 forbids.
+    #
+    # The engine is built here but opens nothing: SQLAlchemy connects on first use, so
+    # a process whose database is not up yet still starts and reports it through
+    # readiness rather than refusing to boot.
+    named_url = "database_url" in resolved.model_fields_set
+    log_store_on = store_requested(resolved.log_store, database_url_named=named_url)
+    flow_store_on = store_requested(resolved.flow_store, database_url_named=named_url)
+    # One engine for both read models: two stores with one database is one pool, and a
+    # deployment that has only one of them switched on still opens only one. It is built
+    # (lazily -- ``create_async_engine`` opens nothing) and then judged, so a deployment
+    # whose database is down still starts and answers 503 on the routes that need it.
+    app.state.store_engine = (
+        create_async_database_engine(resolved.database_url)
+        if log_store_on or flow_store_on
+        else None
+    )
+    if log_store_on:
+        app.state.log_source = PostgresLogStore(
+            async_session_factory(app.state.store_engine),
+            coverage_ttl_seconds=resolved.log_store_coverage_ttl_seconds,
+        )
+    else:
+        app.state.log_source = TailLogSource(
+            app.state.log_tail, reason=tail_reason(resolved.log_store)
+        )
+    if flow_store_on:
+        app.state.flow_source = PostgresFlowStore(
+            async_session_factory(app.state.store_engine),
+            coverage_ttl_seconds=resolved.log_store_coverage_ttl_seconds,
+        )
+    else:
+        app.state.flow_source = RollupFlowSource(
+            InProcessFlowRollup(retention_minutes=resolved.flow_rollup_minutes),
+            reason=flow_rollup_reason(resolved.flow_store),
+        )
     # Webhook configuration (T-311). The allowlist is parsed here, at startup,
     # so a malformed entry stops the process with a clear message instead of
     # failing the first alert delivery of the day (R-55).
     app.state.webhook_store = InMemoryWebhookStore()
     app.state.webhook_allowlist = parse_allowlist(resolved.webhook_allowlist)
     app.state.secret_vault = SecretVault(resolved.secret_key)
+    # The delivery read model (T-422): where every attempt the sender makes is
+    # recorded, so the connectors screen can answer "did that endpoint take
+    # anything, and if not, why not". In-memory and bounded, like the store it
+    # describes, and the route says both in its caveats.
+    #
+    # No sender is built, and that is T-311's decision rather than an omission:
+    # the HTTP transport was deliberately left unwritten because there is no
+    # network in this environment to verify one against, so ``webhook_sender`` is
+    # absent and the test route refuses with that reason. When a transport exists,
+    # it is built here with ``on_report=sender_sink(app.state.webhook_deliveries)``
+    # and every attempt -- pipeline or probe -- lands in this log.
+    app.state.webhook_deliveries = InMemoryDeliveryLog()
     # The audit trail (T-312, FR-42). Every mutating route appends here after its
     # work succeeded: a refused request changed nothing, and a row per attempt
     # would let a client fill the trail at will.
@@ -318,6 +393,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # authority for the lifecycle rules is ml-service's registry (T-212); this
     # restates them at the edge, which is a named gap, not a hidden duplicate.
     app.state.model_ops = ModelOpsService()
+    # The user directory (T-410). Empty, like the model registry and for the same
+    # reason (D-047): a deployment's users are its own, and seeding an identity from
+    # code would put a name nobody chose into the table that decides who can
+    # administer the system. The screen says the directory is empty rather than
+    # inventing a bootstrap account.
+    app.state.user_admin = UserAdminService(directory=InMemoryUserDirectory())
+    # The hand-set threshold panel (T-410). It reads and writes the same store the
+    # recalibration job does, so a value a person set and a value the job fitted
+    # cannot live in two places -- and the preview counts against the alert store
+    # the query API reads.
+    app.state.threshold_admin = ThresholdAdminService(
+        store=app.state.threshold_store, tenant_id=DEFAULT_TENANT_ID
+    )
+    app.state.threshold_impact = ThresholdImpactReader(
+        alerts=app.state.alert_store, admin=app.state.threshold_admin
+    )
     app.state.erasure_service = ErasureService(
         [
             EntityRedactionTarget(app.state.entity_store),
@@ -374,14 +465,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # failed on it, so ``/alerts/stream`` would otherwise be read as an alert id.
     app.include_router(stream.router)
     app.include_router(logs.router)
+    # The flow read route (T-418) shares ``/api/v1/flows`` with the ingest route and
+    # differs by method, so it must be registered with the same path and not shadowed:
+    # ``ingest`` owns POST, this owns GET.
+    app.include_router(flows.router)
     app.include_router(hunt.router)
     app.include_router(alerts.router)
+    app.include_router(overview.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)
     app.include_router(api_keys.router)
     app.include_router(privacy.router)
     app.include_router(models.router)
     app.include_router(thresholds.router)
+    app.include_router(users.router)
     return app
 
 

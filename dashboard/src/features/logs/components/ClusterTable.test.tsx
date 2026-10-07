@@ -58,6 +58,7 @@ const TAIL: LogTail = {
   clusters_truncated: false,
   retained_from: '2026-10-06T10:00:00Z',
   retained_to: '2026-10-06T10:00:09Z',
+  source: 'tail',
   retained_lines: 6,
   dropped_lines: 0,
   caveats: ['not a store', 'Nothing matched these filters'],
@@ -90,11 +91,11 @@ function levelCell(table: ReturnType<typeof within>, index: number): HTMLElement
 }
 
 describe('ClusterTable', () => {
-  it('marks a row holding an error with a rail, not only with a colour', () => {
+  it('says a row holds an error or worse, not only with a colour', () => {
     const table = renderTable();
 
-    expect(levelCell(table, 0).querySelector('span')).toHaveClass('border-l-4');
-    expect(levelCell(table, 1).querySelector('span')).not.toHaveClass('border-l-4');
+    expect(within(levelCell(table, 0)).getByText(/\(error or worse\)/)).toBeInTheDocument();
+    expect(within(levelCell(table, 1)).queryByText(/\(error or worse\)/)).toBeNull();
   });
 
   it('labels the chip with the level’s own word', () => {

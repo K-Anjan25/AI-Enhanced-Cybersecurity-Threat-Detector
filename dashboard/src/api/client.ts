@@ -62,8 +62,15 @@ interface RequestOptions {
   signal?: AbortSignal | undefined;
   timeoutMs?: number;
   accept?: string;
-  /** Defaults to `GET`. Nothing here needs a method the API does not serve. */
-  method?: 'GET' | 'POST';
+  /**
+   * Defaults to `GET`.
+   *
+   * `PUT` and `DELETE` joined the set for the admin screens (T-410): a threshold
+   * is replaced in place, and revoking a key is a DELETE that keeps its row
+   * (T-313). Both are real methods on the API, and the alternative — tunnelling
+   * them through POST — would put a verb in a path where the protocol has one.
+   */
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /** Serialised as JSON. Only meaningful with `POST`. */
   body?: unknown;
   /**
@@ -203,6 +210,32 @@ export async function postJson<T>(
   return readJson<T>(await request(path, { ...options, method: 'POST', body }));
 }
 
+/**
+ * `PUT` a JSON body and read a JSON answer.
+ *
+ * The threshold editor is the caller (T-410): one value replaces the one in force
+ * for a `(family, band)`, and a repeat is the same request rather than a second
+ * row. Nothing else in the dashboard replaces a resource in place.
+ */
+export async function putJson<T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  return readJson<T>(await request(path, { ...options, method: 'PUT', body }));
+}
+
+/**
+ * `DELETE`, for a route that answers 204.
+ *
+ * The API key revoke is the caller (T-313, T-410). There is no body to read, and
+ * reading one would turn a successful revocation into a "malformed response";
+ * what the caller needs is that the request succeeded.
+ */
+export async function deleteJson(path: string, options: RequestOptions = {}): Promise<void> {
+  await request(path, { ...options, method: 'DELETE' });
+}
+
 /** `GET` a text document, for `/metrics`' exposition format. */
 export async function getText(path: string, options: RequestOptions = {}): Promise<string> {
   return readText(await request(path, { ...options, accept: 'text/plain' }));
@@ -222,6 +255,60 @@ export async function postText(
   options: RequestOptions = {},
 ): Promise<string> {
   return readText(await request(path, { ...options, method: 'POST', body, accept: 'text/csv' }));
+}
+
+/**
+ * One exported document: its bytes, the name the server gave it, and its row count.
+ *
+ * The name comes from `Content-Disposition` rather than from the client, because
+ * the server's filename carries the window (T-408's rule: a saved file should say
+ * when it covers) and a client-side copy of that rule would drift silently.
+ * `rows` comes from a header for the same kind of reason: a CSV could be re-parsed
+ * here, a PDF could not, and two counts that can disagree are worse than one that
+ * is stated.
+ */
+export interface ExportDocument {
+  content: Blob;
+  /** The server's filename, or `null` when it sent none. */
+  filename: string | null;
+  /** How many rows the file carries, or `null` when the server did not say. */
+  rows: number | null;
+  /** Whether the query held more rows than the file does. */
+  truncated: boolean;
+}
+
+/**
+ * `POST` a JSON body and read a document back (T-415).
+ *
+ * The triage queue's export is the caller: it answers with CSV or a PDF and it is a
+ * POST for the same reason the hunt export is -- it writes an audit row, so it is
+ * not a read the trail has no business knowing about (D-041). A download is fetched
+ * rather than followed, so the bearer token rides a header and a refusal is a status
+ * the screen can explain instead of a browser error page.
+ */
+export async function postExport(
+  path: string,
+  body: unknown,
+  accept: string,
+  options: RequestOptions = {},
+): Promise<ExportDocument> {
+  const response = await request(path, { ...options, method: 'POST', body, accept });
+  let content: Blob;
+  try {
+    content = await response.blob();
+  } catch {
+    throw new ApiError('malformed', response.status, 'the response body could not be read');
+  }
+  const disposition = response.headers.get('content-disposition');
+  const match = disposition?.match(/filename="([^"]+)"/);
+  const stated = response.headers.get('x-export-rows');
+  const rows = stated === null ? Number.NaN : Number.parseInt(stated, 10);
+  return {
+    content,
+    filename: match?.[1] ?? null,
+    rows: Number.isFinite(rows) ? rows : null,
+    truncated: response.headers.get('x-export-truncated') === 'true',
+  };
 }
 
 async function readText(response: Response): Promise<string> {

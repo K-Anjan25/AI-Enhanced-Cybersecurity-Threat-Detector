@@ -24,6 +24,7 @@
  */
 import { useId, useRef, useState } from 'react';
 
+import { FILTER_MARK } from '../../../lib/keyboard';
 import { huntCompletions, type HuntError, type HuntSuggestion } from '../query';
 
 export interface QueryInputProps {
@@ -67,6 +68,9 @@ export function QueryInput({ value, onChange, onRun, errors, disabled = false }:
       <div className="relative flex flex-wrap items-center gap-2">
         <input
           id={`${listId}-input`}
+          // `/` focuses this field: it is the screen's filter, and the marker is how
+          // the global shortcut finds it (T-411).
+          {...FILTER_MARK}
           ref={input}
           role="combobox"
           aria-expanded={open && suggestions.length > 0}
@@ -119,7 +123,7 @@ export function QueryInput({ value, onChange, onRun, errors, disabled = false }:
           className="h-9 w-full max-w-2xl rounded-input border border-line bg-surface px-3 font-mono text-body-sm text-ink"
         />
         {errors.length === 0 ? null : (
-          <p className="text-caption text-severity-critical-text">
+          <p className="text-caption text-severityText-critical">
             {errors.length === 1
               ? errors[0]?.reason
               : `${String(errors.length)} terms could not be read: ${errors

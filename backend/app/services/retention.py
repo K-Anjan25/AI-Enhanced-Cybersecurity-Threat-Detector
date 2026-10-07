@@ -34,8 +34,9 @@ inverted the privacy intent of FR-05.
 
 **What this module cannot evict is reported, not hidden.** ``audit_log`` is not
 partitioned and R-31 forbids rewriting its rows, so no partition drop reaches it
-and no row delete is allowed. It therefore appears in every plan as
-``unevictable`` with the reason. The same is true of the raw records themselves
+and no row delete is allowed; ``log_events`` (T-419's store) is not partitioned
+either, so an old log line in it survives every plan this module can make. Both appear
+in every plan as ``unevictable``, with the reason. The same is true of the raw records themselves
 (FR-05's 30 days): they live in Kafka and Elasticsearch, whose retention is
 configured in the deployment rather than executed here, so the plan names the
 window and the mechanism instead of pretending to have trimmed them.
@@ -99,6 +100,17 @@ UNEVICTABLE_REASONS: dict[str, str] = {
         "append-only (R-31) and not partitioned: no partition drop reaches it and "
         "a row delete is forbidden. Retention for the trail needs its own "
         "partitioning, which is a schema change (recorded, not done here)"
+    ),
+    "log_events": (
+        "the log store (T-419), not partitioned: FR-05's raw-record window reaches "
+        "it through a sweep of its own, which is not built, so no plan here removes "
+        "an old line. Named rather than omitted because 'retention covers "
+        "everything' is exactly the assumption a report like this must not invite"
+    ),
+    "flow_events": (
+        "the traffic read model (T-418), not partitioned and swept by nothing: the "
+        "same gap the log store names, and the same reason for naming it here -- a "
+        "deployment reading this report must not believe the flows age out"
     ),
 }
 

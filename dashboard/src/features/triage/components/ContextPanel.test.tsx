@@ -45,12 +45,19 @@ describe('ContextPanel', () => {
     const hint = screen.getByRole('status');
     expect(hint.textContent).toContain('2 of 3');
     expect(hint.textContent).toContain('false positive');
-    expect(hint.textContent).toContain('\u26A0');
+    // The mark that goes with the warning is drawn (Lucide, §5.6) rather than typed:
+    // it used to be the character `\u26A0`, which this assertion pinned — a check on
+    // a text glyph cannot tell a triangle from a tofu box. It is `aria-hidden` (the
+    // sentence is the message), so it has no role to query it by; this is this file's
+    // exemption in `src/test/query-rule.test.ts`, beside the role query above.
+    expect(hint.querySelector('svg')).not.toBeNull();
   });
 
   it('does not warn when the history is empty or agreed with', () => {
     const { unmount } = render(<ContextPanel detail={alertDetail()} />);
     expect(screen.getByRole('status').textContent).toContain('No previous');
+    // No warning, no mark: the panel does not decorate a calm history with one.
+    expect(screen.getByRole('status').querySelector('svg')).toBeNull();
     unmount();
 
     render(

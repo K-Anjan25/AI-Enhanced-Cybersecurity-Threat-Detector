@@ -29,11 +29,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any, TypeVar
 
-from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy import ColumnElement, Select, case, func, select
 from sqlalchemy.sql.elements import BinaryExpression
 
 from app.db.models import PARTITION_KEYS, PARTITIONED_TABLES
+
+#: A ``Select`` of any column shape -- the shape is the caller's, and ``Select``'s
+#: parameters are the columns themselves, so the shape has to be packed.
+#:
+#: Public because more than one module builds such statements: the log store's
+#: builders (T-419) name it too, and a private name imported across modules is a
+#: boundary that only looks like one.
+SelectAny = Select[*tuple[Any, ...]]
+#: The same type under the name this module's own annotations use.
+_SelectAny = SelectAny
+#: A ``Select`` of any column shape, bound for a type variable.
+_Statement = TypeVar("_Statement", bound=_SelectAny)
 
 #: Widest range a single query may cover. A year of monthly partitions is the
 #: archive, and a query allowed to span it is the unbounded scan R-34 forbids,
@@ -109,7 +122,7 @@ def _partition_columns_in(clause: object) -> set[str]:
     return found
 
 
-def assert_time_bounded(statement: Select[tuple[object, ...]]) -> None:
+def assert_time_bounded(statement: _SelectAny) -> None:
     """Refuse a statement that reads a partitioned table without pruning it.
 
     Args:
@@ -191,13 +204,168 @@ def query_partitioned(
     return statement
 
 
+@dataclass(frozen=True, slots=True)
+class AggregateStatements:
+    """The four statements a persistent overview aggregation runs (T-416).
+
+    Attributes:
+        totals: one row per ``(severity, status, verdict)`` with its count.
+        series: one row per ``(bucket, severity)`` with its count.
+        entities: one row per ``(entity_id, kind, value, severity)`` with its
+            count, its occurrence sum, its open count, its highest score and its
+            latest ``last_seen``, biggest first, capped at the requested limit.
+        families: one row per ``(family, severity)`` with its count, largest
+            first, capped at the requested limit.
+    """
+
+    # Each statement selects a different column shape, so the columns are packed:
+    # ``Select[Unpack[tuple[Any, ...]]]`` is a select of any arity, which is what
+    # this holds. Naming one shape here would make three of the four a lie.
+    totals: _SelectAny
+    series: _SelectAny
+    entities: _SelectAny
+    families: _SelectAny
+
+
+def alert_aggregate_statements(
+    time_range: TimeRange,
+    *,
+    bucket_seconds: int,
+    entity_limit: int,
+    family_limit: int,
+) -> AggregateStatements:
+    """Build the four GROUP BY statements behind ``GET /api/v1/overview``.
+
+    The overview's counts must be the *window's* counts -- the client-side version
+    this replaces counted pages and said so -- so none of these statements carries
+    a row limit except the entity list, and that one is a top-N *of a complete
+    grouping*, which is why it can be capped without lying.
+
+    The set is grouped by severity rather than carrying a ``worst_severity``
+    expression: the band order lives in :class:`~app.db.models.Severity` (R-38), and
+    an adapter folds these rows with the same rank the in-memory path uses rather
+    than re-deriving the order in SQL.
+
+    Every statement passes :func:`assert_time_bounded`, and a test asserts that
+    dropping the window makes it raise -- R-34 applies to an aggregate exactly as
+    it applies to a page.
+
+    Args:
+        time_range: the bounded window. Positional, like :func:`query_partitioned`.
+        bucket_seconds: the series' resolution in seconds.
+        entity_limit: how many entities the top-N keeps.
+        family_limit: how many families the mix keeps.
+
+    Returns:
+        The four bounded statements.
+
+    Raises:
+        ValueError: if the bucket is not positive, or a limit is not.
+    """
+    from app.db import models  # noqa: PLC0415
+
+    if bucket_seconds < 1:
+        msg = "bucket_seconds must be positive"
+        raise ValueError(msg)
+    if entity_limit < 1:
+        msg = "entity_limit must be positive"
+        raise ValueError(msg)
+    if family_limit < 1:
+        msg = "family_limit must be positive"
+        raise ValueError(msg)
+
+    def bounded(statement: _Statement) -> _Statement:
+        """Attach R-34's window predicate, which every statement below carries.
+
+        Generic in the statement's own type on purpose: ``Select`` carries the
+        columns in its parameters, and flattening them to ``tuple[object, ...]``
+        would make every caller's type a lie.
+        """
+        return statement.where(models.Alert.created_at >= time_range.start).where(
+            models.Alert.created_at < time_range.end
+        )
+
+    totals = bounded(
+        select(
+            models.Alert.severity,
+            models.Alert.status,
+            models.Alert.verdict,
+            func.count().label("alerts"),
+        ).select_from(models.Alert)
+    ).group_by(models.Alert.severity, models.Alert.status, models.Alert.verdict)
+
+    # An epoch floor rather than ``date_bin``: the same expression works on any
+    # supported server, and the bucket boundary is then the same arithmetic the
+    # in-memory path does over ``timedelta``.
+    bucket = (
+        func.floor(
+            func.extract("epoch", models.Alert.created_at - time_range.start) / bucket_seconds
+        )
+    ).label("bucket")
+    series = bounded(
+        select(bucket, models.Alert.severity, func.count().label("alerts")).select_from(
+            models.Alert
+        )
+    ).group_by(bucket, models.Alert.severity)
+
+    entities = (
+        bounded(
+            select(
+                models.Alert.entity_id,
+                models.Entity.kind,
+                models.Entity.value,
+                models.Alert.severity,
+                func.count().label("alerts"),
+                func.sum(models.Alert.occurrence_count).label("occurrences"),
+                func.sum(case((models.Alert.status == models.AlertStatus.open, 1), else_=0)).label(
+                    "open_alerts"
+                ),
+                func.max(models.Alert.score).label("max_score"),
+                func.max(models.Alert.last_seen).label("last_seen"),
+            ).select_from(models.Alert)
+            # LEFT JOIN: an entity the registry has never seen still has alerts,
+            # and dropping those rows would understate the window. ``kind`` and
+            # ``value`` come back NULL and the response says the id is unnamed.
+            .join(models.Entity, models.Entity.id == models.Alert.entity_id, isouter=True)
+        )
+        .group_by(
+            models.Alert.entity_id, models.Entity.kind, models.Entity.value, models.Alert.severity
+        )
+        .order_by(func.count().desc(), models.Alert.entity_id.asc())
+        .limit(entity_limit)
+    )
+
+    # The mix keeps a blank family as a row: dropping it here would make the
+    # bars add up to less than the window, and the client is the place that
+    # decides how to label "the model attributed no family".
+    families = (
+        bounded(
+            select(
+                models.Alert.family,
+                models.Alert.severity,
+                func.count().label("alerts"),
+            ).select_from(models.Alert)
+        )
+        .group_by(models.Alert.family, models.Alert.severity)
+        .order_by(func.count().desc(), models.Alert.family.asc())
+        .limit(family_limit)
+    )
+
+    for statement in (totals, series, entities, families):
+        assert_time_bounded(statement)
+    return AggregateStatements(totals=totals, series=series, entities=entities, families=families)
+
+
 #: Partitioned table name to the model class that maps it.
 _MODEL_FOR_TABLE: dict[str, str] = {"alerts": "Alert", "ingest_stats": "IngestStat"}
 
 __all__ = [
     "MAX_QUERY_SPAN_DAYS",
+    "AggregateStatements",
+    "SelectAny",
     "TimeRange",
     "UnboundedScanError",
+    "alert_aggregate_statements",
     "assert_time_bounded",
     "query_partitioned",
 ]

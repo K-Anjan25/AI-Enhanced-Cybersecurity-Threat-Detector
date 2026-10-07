@@ -104,14 +104,35 @@ describe('kpiTiles', () => {
     ]);
   });
 
-  it('says the verdict tile has no source instead of showing a zero', () => {
-    // §4.1 draws "41 s" here; nothing in this build can compute it, and "0 s"
-    // would claim instant triage (T-416).
+  it('shows no mean when the window has no verdict to measure', () => {
+    // §4.1 draws "41 s" here. T-416 gave the tile a source; a window with no
+    // recorded verdict still has no mean, and "0 s" would claim instant triage.
     const verdict = tiles.at(-1);
 
     expect(verdict?.value).toBeNull();
-    expect(verdict?.caption).toContain('no verdict aggregation yet');
+    expect(verdict?.caption).toContain('no verdict recorded in this window');
     expect(verdict?.caption).toContain('≤ 60 s');
+  });
+
+  it('shows the mean with the number of verdicts it covers', () => {
+    // A mean of one verdict is not a trend, so the count travels with the figure.
+    const verdict = kpiTiles(emptyTally(), 0, 'Last 24 h', {
+      meanSeconds: 47.42,
+      measured: 4,
+    }).at(-1);
+
+    expect(verdict?.value).toBe(47);
+    expect(verdict?.unit).toBe('s');
+    expect(verdict?.caption).toBe('4 verdicts measured · target ≤ 60 s');
+  });
+
+  it('says "verdict", singular, when the mean covers exactly one', () => {
+    const verdict = kpiTiles(emptyTally(), 0, 'Last 24 h', {
+      meanSeconds: 12,
+      measured: 1,
+    }).at(-1);
+
+    expect(verdict?.caption).toBe('1 verdict measured · target ≤ 60 s');
   });
 
   it('carries the window as the caption of every counted tile', () => {

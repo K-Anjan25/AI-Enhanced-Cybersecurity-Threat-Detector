@@ -1,5 +1,5 @@
 /**
- * The log tail API's wire shapes and paths, in one place.
+ * The log read API's wire shapes and paths, in one place.
  *
  * `GET /api/v1/logs` folds a window's log lines into clusters and
  * `GET /api/v1/logs/lines` returns the raw lines behind one of them (T-407). Both
@@ -8,9 +8,11 @@
  *
  * Three things about these paths are rules rather than formatting:
  *
- *   * **`start` and `end` are mandatory** and the span is capped by the tail's
- *     retention (R-34). `LogParams` has no defaults for them, so no caller can
- *     produce a path that reads "the logs, as far as they go".
+ *   * **`start` and `end` are mandatory**, and the span is capped by whichever read
+ *     model answers — 15 minutes for the in-process tail, 92 days for the log store
+ *     (T-419, R-34). `LogParams` has no defaults for them, so no caller can produce a
+ *     path that reads "the logs, as far as they go"; and every response carries
+ *     `source`, so a caller knows which cap applied rather than inferring it.
  *   * **`key` is a digest, never a message.** An untemplated line's cluster key is a
  *     hash of its message, so no log content ends up in a query string, in a proxy's
  *     access log or in a browser's history (R-58).
@@ -50,12 +52,22 @@ export interface LogCluster {
   parameters: Record<string, string>;
 }
 
-/** The retention every read carries, so a screen cannot imply a complete log. */
+/** Which read model answered: the persistent log store, or the process's tail. */
+export type LogSource = 'store' | 'tail';
+
+/** What the source holds, so a screen cannot imply a complete log. */
 export interface LogRetention {
+  /** Which of the two read models answered (T-419). */
+  source: LogSource;
   retained_from: string | null;
   retained_to: string | null;
   retained_lines: number;
-  dropped_lines: number;
+  /**
+   * Lines evicted since the process started, or `null` when the source cannot report
+   * evictions — which is not the same as zero. A store's eviction is a retention job
+   * that is not built, and the API's caveats say so; nothing reads this as `0`.
+   */
+  dropped_lines: number | null;
 }
 
 /** The clustered tail, as `GET /api/v1/logs` returns it. */
