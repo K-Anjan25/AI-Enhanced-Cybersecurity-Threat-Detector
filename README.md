@@ -65,8 +65,8 @@ pip install -e "backend[dev]" -e "ml-service[dev]" -r requirements-dev.txt
 
 # backend
 cd backend
-cp .env.example .env                       # then set AEGIS_SECRET_KEY
-python -m pytest -q                        # 1370 tests, 13 skipped (need a live PostgreSQL)
+cp .env.example .env                       # set AEGIS_SECRET_KEY; for private local setup also set AEGIS_DEV_AUTH_SETUP_ENABLED=true
+python -m pytest -q                        # backend test suite (some require a live PostgreSQL)
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 #   GET /healthz                     liveness
 #   GET /readyz                      readiness (503 when a dependency probe is not ok)
@@ -101,7 +101,14 @@ uvicorn aegis_ml.serving.app:app --host 0.0.0.0 --port 8001
 ```
 
 `AEGIS_SECRET_KEY` is required and refuses placeholder values; generate one with
-`python -c "import secrets; print(secrets.token_urlsafe(48))"`. `torch` is the
+`python -c "import secrets; print(secrets.token_urlsafe(48))"`. To create the first
+administrator from the dashboard during private local development, set
+`AEGIS_DEV_AUTH_SETUP_ENABLED=true` in `backend/.env` before starting the backend. The
+operator chooses the password; it is Argon2id-hashed and the account is held in memory,
+so it is cleared when that process restarts. The switch is disabled by default and
+rejected outside `development`. Production must provision
+`AEGIS_BOOTSTRAP_ADMIN_EMAIL` and `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` through a secret
+manager; never commit them. `torch` is the
 `ml-service[training]` extra and the ONNX stack is `[onnx]`; neither is needed to run the
 service or the test suite, and both are absent from the sandbox by choice.
 

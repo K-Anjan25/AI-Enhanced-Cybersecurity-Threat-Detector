@@ -105,7 +105,7 @@ function renderShell(options: { pollIntervalMs?: number } = {}) {
           options={{ clock, random: () => 0, pollIntervalMs: options.pollIntervalMs ?? 15_000 }}
         >
           <MemoryRouter>
-            <AppShell onOpenPalette={openPalette}>
+            <AppShell onOpenPalette={openPalette} onSignOut={() => undefined}>
               <AlertList />
             </AppShell>
           </MemoryRouter>
@@ -465,7 +465,7 @@ describe('the stale age in the header', () => {
         <QueryClientProvider client={testQueryClient()}>
           <RealtimeProvider socketFactory={sockets.factory} options={{ random: () => 0 }}>
             <MemoryRouter>
-              <AppShell onOpenPalette={openPalette}>
+              <AppShell onOpenPalette={openPalette} onSignOut={() => undefined}>
                 <AlertList />
               </AppShell>
             </MemoryRouter>

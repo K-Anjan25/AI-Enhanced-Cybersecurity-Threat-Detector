@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AlertStreamClient, BEARER_PROTOCOL, NOTIFICATIONS_PATH, STREAM_PATH } from './realtime';
-import { resetSessionForTests, setSessionToken } from './session';
+import { resetSessionForTests, sessionToken, setSessionToken } from './session';
 import { jsonResponse, stubFetch } from '../test/query';
 import { fakeClock, fakeSockets, settle } from '../test/socket';
 import type { RealtimeFrame, RealtimeState } from '../lib/realtime';
@@ -108,6 +108,29 @@ describe('AlertStreamClient', () => {
 
     expect(currentState(states)).toBe('refused');
     expect(states.at(-1)?.detail).toBe('The session is not authenticated');
+  });
+
+  it('clears a refused 4401 session so the app can return to sign-in', () => {
+    setSessionToken('stale-session');
+    const { client, sockets, states } = build();
+
+    client.start();
+    sockets.last().open();
+    sockets.last().serverClose(4401);
+
+    expect(sessionToken()).toBeNull();
+    expect(currentState(states)).toBe('refused');
+  });
+
+  it('keeps a valid session on a 4403 permissions refusal', () => {
+    setSessionToken('valid-but-refused');
+    const { client, sockets } = build();
+
+    client.start();
+    sockets.last().open();
+    sockets.last().serverClose(4403);
+
+    expect(sessionToken()).toBe('valid-but-refused');
   });
 
   it('goes live on the ready frame, not on the socket opening', () => {

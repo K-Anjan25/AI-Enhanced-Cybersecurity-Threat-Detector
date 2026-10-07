@@ -65,6 +65,11 @@ if not API_DIR.is_dir():  # pragma: no cover - the monorepo always has it
 #: reviewable; fuzzy matching is not (it paired `AlertWindow`, a client-side walk,
 #: with nothing and said nothing about it).
 SHAPES: tuple[tuple[str, str], ...] = (
+    # --- authentication --------------------------------------------------------
+    ("AuthStatus", "AuthStatusOut"),
+    ("SessionCredentials", "TokenPairOut"),
+    # The refresh helper consumes the credential subset of the same token response.
+    ("RefreshedCredentials", "TokenPairOut"),
     # --- admin: users, keys, thresholds, retention, audit -----------------------
     ("AdminUser", "UserOut"),
     ("UserList", "UserListOut"),
@@ -116,6 +121,10 @@ SHAPES: tuple[tuple[str, str], ...] = (
     ("LogLines", "LogLinesOut"),
     # --- models ----------------------------------------------------------------
     ("MetricPoint", "MetricPointOut"),
+    ("ConfusionMatrix", "ConfusionMatrixOut"),
+    ("ScoreHistogramBin", "ScoreHistogramBinOut"),
+    ("ScoreHistogram", "ScoreHistogramOut"),
+    ("EvaluationDetails", "EvaluationDetailsOut"),
     ("ModelMetrics", "ModelMetricsOut"),
     ("ModelVersion", "ModelOut"),
     ("ModelList", "ModelListOut"),

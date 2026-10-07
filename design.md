@@ -190,9 +190,10 @@ Non-negotiables:
 
 ### 4.7 Model ops — `/models` and `/models/drift`
 
-- Version table: model ID, kind, status (`staging`/`active`/`retired`), metrics, promoted by/at.
+- Version table: model ID, kind, status (`staging`/`active`/`retired`), promoted by/at. Metrics are a separate per-version read so registry history stays lightweight.
 - Metric cards per active model: ROC-AUC, PR-AUC, precision, recall at the deployed threshold — each with the value from the recorded eval run and the run date (R-74).
-- Version comparison: two models side by side, delta per metric, confusion matrices, and score-distribution histograms.
+- Version comparison: two models side by side, delta per metric, each run's confusion matrix, and two overlaid score-distribution histograms on a shared 0–1 probability axis, with a legend and each recorded operating threshold marked.
+- Evaluation visuals come only from a recorded `eval@2` report: ten equal-width bins cover `[0, 1]` (lower-inclusive, with the final bin including `1.0`); each visual shows its exact run artifact and field. An older report or absent run renders as unavailable. Never derive histogram counts from scalar metrics or fill a missing matrix with zeros.
 - Promotion flow is a modal with an explicit confirm typing the model ID; shadow-mode is the default promotion target, direct-to-active requires `admin` plus a written justification field.
 - Drift page: PSI per feature as horizontal bars with the 0.25 threshold marked; features over threshold get a red bar and a "retrain recommended" badge.
 
@@ -204,6 +205,14 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 - **API keys:** secret shown exactly once, in a copy-to-clipboard field that is not re-renderable; only a prefix is stored.
 - **Thresholds:** current value, source (`default` | `calibrated` | `manual`), last changed by/at, and a preview of how many alerts the new value would have produced over the last 7 days **before** saving.
 - **Audit log:** append-only, filterable, exportable; visibly non-editable (no edit affordance anywhere).
+
+### 4.9 Authentication — session gate
+
+- With no valid session, show a focused sign-in surface instead of mounting data screens; after sign-in, preserve the requested route. Sign-out clears the tab-scoped session.
+- The form uses operator-provisioned credentials. Production bootstrap credentials come from a secret manager; there is no built-in demo user or default password.
+- A first-administrator setup form is offered only when `AEGIS_DEV_AUTH_SETUP_ENABLED=true` in a private development environment. It warns that the first account has admin permissions and that the in-memory account is cleared when the backend process restarts.
+- Access and refresh tokens live only in `sessionStorage`; refresh is single-use and rotates. A failed refresh or HTTP 401 returns to sign-in and reopens the stream with the new credential. A 403 or WebSocket 4403 is a permissions refusal and does not sign the operator out; WebSocket 4401 clears the session.
+- The sign-in screen follows the same dark/light tokens as the console, keeps visible labels and errors, and never echoes a password or token.
 
 ## 5. Design tokens
 
@@ -364,17 +373,20 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 
 | Deliverable | Owner | Status |
 |---|---|---|
-| Design tokens as Tailwind config + CSS variables | Design/FE | Not started — [task.md](task.md) T-401 |
-| UI primitive components (§6) | FE | Not started — T-402 |
-| Alert triage screen (highest value) | FE | Not started — T-404 |
-| Overview dashboard | FE | Not started — T-403 |
-| D3 entity graph + time-series | FE | Not started — T-406 |
-| Accessibility audit of the first three screens | Design | Blocked on T-402 |
+| Design tokens as Tailwind config + CSS variables | Design/FE | Built — T-401 DONE |
+| UI primitive components (§6) | FE | Built — T-402 DONE |
+| Alert triage screen (highest value) | FE | Built — T-404 DONE |
+| Overview dashboard | FE | Built — T-403 DONE |
+| D3 entity graph + time-series | FE | Built — T-406 DONE |
+| Accessibility audit of the first three screens | Design | Automated axe and keyboard checks complete (T-413); manual screen-reader pass remains unrun, see [release-note.md](release-note.md#accessibility-t-413-nfr-09) |
+| Authentication gate and first-admin setup (§4.9) | FE/platform | Sign-in/session flow built (T-417); human visual sign-off pending. Durable account and refresh state are follow-up infrastructure (D-081). |
 
-Until these exist, this document is the source of truth. A component that disagrees with §5 or §6 is wrong, not the document.
+Implementation status is tracked in [task.md](task.md); this document remains the source of truth for intended behaviour. A component that disagrees with §5 or §6 is wrong, not the document.
 
 ## 12. Change log
 
 | Date | Version | Change |
 |---|---|---|
 | 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
+| 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
+| 2026-10-07 | 0.3 | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081). |

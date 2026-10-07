@@ -43,6 +43,8 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from app.api.v1.deps import audit_trail, client_ip, model_ops
 from app.auth.rbac import Capability, Principal, require
 from app.schemas.model import (
+    ConfusionMatrixOut,
+    EvaluationDetailsOut,
     MetricPointOut,
     ModelListOut,
     ModelMetricsOut,
@@ -50,6 +52,8 @@ from app.schemas.model import (
     ModelTransitionOut,
     PromotionRequest,
     RollbackRequest,
+    ScoreHistogramBinOut,
+    ScoreHistogramOut,
 )
 from app.services.audit_log import AuditAction, record_action
 from app.services.model_ops import (
@@ -78,6 +82,34 @@ def _metrics_out(metrics: ModelMetrics) -> ModelMetricsOut:
             name: MetricPointOut(value=point.value, artifact=point.artifact, field=point.field)
             for name, point in metrics.points.items()
         },
+        evaluation=(
+            None
+            if metrics.evaluation is None
+            else EvaluationDetailsOut(
+                confusion=ConfusionMatrixOut(
+                    threshold=metrics.evaluation.confusion.threshold,
+                    tp=metrics.evaluation.confusion.tp,
+                    fp=metrics.evaluation.confusion.fp,
+                    tn=metrics.evaluation.confusion.tn,
+                    fn=metrics.evaluation.confusion.fn,
+                    artifact=metrics.evaluation.confusion.artifact,
+                    field=metrics.evaluation.confusion.field,
+                ),
+                score_histogram=ScoreHistogramOut(
+                    bins=[
+                        ScoreHistogramBinOut(
+                            lower=item.lower,
+                            upper=item.upper,
+                            benign=item.benign,
+                            threat=item.threat,
+                        )
+                        for item in metrics.evaluation.score_histogram.bins
+                    ],
+                    artifact=metrics.evaluation.score_histogram.artifact,
+                    field=metrics.evaluation.score_histogram.field,
+                ),
+            )
+        ),
     )
 
 
@@ -90,7 +122,6 @@ def _out(version: ModelVersion) -> ModelOut:
         artifact_uri=version.artifact_uri,
         sha256=version.sha256,
         manifest_present=version.manifest_present,
-        metrics=None if version.metrics is None else _metrics_out(version.metrics),
         promoted_at=version.promoted_at,
         promoted_by=version.promoted_by,
         justification=version.justification,
@@ -135,7 +166,7 @@ def list_models(
 @router.get(
     "/{model_id}/metrics",
     response_model=ModelMetricsOut,
-    summary="Held-out evaluation metrics for one version (FR-31)",
+    summary="Held-out metrics and recorded evaluation artifacts for one version (FR-31, T-420)",
     dependencies=[require(Capability.READ)],
 )
 def get_metrics(model_id: str, request: Request) -> ModelMetricsOut:

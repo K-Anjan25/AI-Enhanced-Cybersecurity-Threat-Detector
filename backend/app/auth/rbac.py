@@ -128,10 +128,23 @@ ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
 #: Routes that must be reachable without a token. Liveness and readiness only:
 #: an orchestrator that has to authenticate before it can learn the process is
 #: dead will restart it in a loop.
-#: Routes that answer without a credential. `/metrics` is here on purpose: a
-#: scraper is a process, and what it reads are counters and durations with no
-#: alert content and no identifiers (R-58, D-050). Everything else needs a token.
-UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset({"/healthz", "/readyz", "/metrics"})
+#: Routes that do not require an access bearer. `/metrics` is here on purpose:
+#: a scraper is a process, and what it reads are counters and durations with no
+#: alert content and no identifiers (R-58, D-050). Authentication routes are also
+#: public at the access-token layer, but require a password or refresh credential;
+#: `/auth/setup` is disabled unless explicitly enabled in development.
+UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
+    {
+        "/healthz",
+        "/readyz",
+        "/metrics",
+        "/api/v1/auth/status",
+        "/api/v1/auth/setup",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/logout",
+    }
+)
 
 #: Framework documentation endpoints. Excluded from the matrix because they are
 #: mounted by FastAPI itself and are disabled outside development.

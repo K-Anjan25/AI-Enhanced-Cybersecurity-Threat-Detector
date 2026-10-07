@@ -61,8 +61,9 @@ __all__ = [
 #: tables in the codebase, so a new write method is an explicit decision.
 WRITE_METHODS: frozenset[str] = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
-#: The unauthenticated endpoints R-56 covers: liveness, readiness and the
-#: framework's own documentation routes when they are mounted (development only).
+#: The unauthenticated endpoints R-56 covers: liveness, readiness, the public
+#: credential-exchange/bootstrap routes, and the framework's own documentation
+#: routes when they are mounted (development only).
 #: A test asserts this equals ``UNAUTHENTICATED_ROUTES | DOC_ROUTES`` from
 #: ``app.auth.rbac``, so the two cannot drift; it is written as literals here
 #: because ``app.services`` must not import from the HTTP layer.
@@ -71,6 +72,11 @@ LIMITED_UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
         "/healthz",
         "/readyz",
         "/metrics",
+        "/api/v1/auth/status",
+        "/api/v1/auth/setup",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/logout",
         "/openapi.json",
         "/docs",
         "/docs/oauth2-redirect",

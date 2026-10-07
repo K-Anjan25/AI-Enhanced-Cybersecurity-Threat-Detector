@@ -17,7 +17,10 @@ here is static YAML, applied with `kubectl apply -k .` or `kubectl apply -f .`.
   digest. `:latest` is rejected by the checker because a rollback to it is
   meaningless.
 - **Secrets.** `aegis-secrets` and `aegis-tls` are created out of band from the
-  cluster secret store. No key material is committed (R-50).
+  cluster secret store. `aegis-secrets` must include `AEGIS_SECRET_KEY`, the
+  database credentials, and the initial `AEGIS_BOOTSTRAP_ADMIN_EMAIL` plus
+  `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` required for production sign-in. No key material
+  or operator password is committed (R-50).
 
 ## Verification status
 

@@ -8,6 +8,9 @@
 # AEGIS_SECRET_KEY must come from the environment or a .env file next to this
 # compose file — it is deliberately not given a default here (R-50). Generate one:
 #   python -c "import secrets; print(secrets.token_urlsafe(48))"
+# AEGIS_DEV_AUTH_SETUP_ENABLED is false by default. Set it to true only on a
+# private development stack to allow one operator-chosen, in-memory first account:
+#   AEGIS_DEV_AUTH_SETUP_ENABLED=true docker compose -f docker/docker-compose.yml up
 
 name: aegis
 
@@ -115,6 +118,7 @@ services:
       AEGIS_ENV: development
       AEGIS_SERVICE_NAME: aegis-backend
       AEGIS_SECRET_KEY: ${AEGIS_SECRET_KEY:?set AEGIS_SECRET_KEY to a random value of at least 32 characters}
+      AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
       AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
       AEGIS_HOST: 0.0.0.0
