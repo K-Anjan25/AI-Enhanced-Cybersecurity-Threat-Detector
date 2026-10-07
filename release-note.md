@@ -15,12 +15,14 @@ reader might mistake for a pass. T-510 (v1.0) is the task that publishes this no
 
 ## Scope of the current build
 
-Every screen design.md §3 names except `/admin/connectors` (T-422) is built: the overview, alert
-triage with its batch export, the traffic explorer, the log explorer, the hunt console, model ops
-with drift, and the admin screens. E4's remaining work is the one screen design.md §3 still leaves unbuilt
-(**T-422**); the accessibility pass (T-413), the frontend-test rule (T-414), the overview's aggregate
-(T-416), the persistent log read model (T-419) and the flow read model (T-418) have landed. E5 — load, failure drills, Kubernetes, release engineering — is
-untouched.
+**Every screen design.md §3 names is built**: the overview, alert triage with its batch export, the
+traffic explorer, the log explorer, the hunt console, model ops with drift, and the six admin
+sections including `/admin/connectors` (T-422). The accessibility pass (T-413), the frontend-test rule
+(T-414), the overview's aggregate (T-416), the persistent log read model (T-419), the flow read model
+(T-418) and the connectors screen (T-422) have landed. E4's remaining rows — T-420's evaluation
+artifacts and T-421's drift gauge — add evidence to a screen that already renders what exists and
+names what does not, rather than routes to a console. E5 — load, failure drills, Kubernetes, release
+engineering — is untouched.
 
 ## Accessibility (T-413, NFR-09)
 
@@ -155,6 +157,46 @@ search over stored lines — the reads are by window, host, service, level and c
 hunt console's `message` term still carries the reason it is unsearchable; and the alert and
 threshold stores remain in-process until D-030's database session is wired into the request path.
 
+## The connectors screen (T-422, FR-21)
+
+Measured 2026-10-07. The webhook endpoints a deployment delivers to now have a screen: registering one
+shows its signing secret exactly once, the listing never carries it, and every delivery attempt has an
+outcome an operator can read.
+
+| Claim                                                               | Evidence                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A signing secret is shown exactly once, and never by the listing    | `ConnectorsPanel.test.tsx`: the create response renders it in the dialog, and closing and reopening that dialog leaves it nowhere in the document — text **and** field values read, since an `<input value>` is not `textContent` |
+| A lost secret is re-issued, not re-read                             | the server stores it sealed and has no route that opens it; the dialog says so, and the 409 on a rotated application key is a named refusal                                                                                       |
+| A delivery attempt's outcome is readable                            | `GET /api/v1/webhooks/deliveries` serves the records the sender's own sink writes, so a probe and a pipeline delivery appear the same way: outcome, HTTP status, short reason, attempt count with the backoff it waited           |
+| A test send is one attempt, not the retry policy                    | `POST /api/v1/webhooks/{webhook_id}/test`: `attempt_count == 1` and an empty transport history after a 500, asserted against a policy of five attempts                                                                            |
+| A test send is a real signed event, not a bespoke probe payload     | the receiver's own verifier accepts it (`verify_signature`), the alert family is "Connectivity test", and the target's severity floor is not consulted                                                                            |
+| The read route names its own limits                                 | `dispatch_configured`, `held` versus `recorded`, and the server's `caveats` are rendered verbatim; a deployment with no outbound transport says so in one sentence instead of showing an empty table                              |
+| A record carries no URL and no secret                               | asserted against the response body of the list route, not just the listing type                                                                                                                                                   |
+| Reading a record needs the webhook capability, not just "signed in" | `ROLE_MATRIX`: responder and admin read and test; analyst, viewer and anonymous do not                                                                                                                                            |
+| A test send is attributed                                           | `AuditAction.webhook_test` records the outcome and the attempt count, and neither the URL nor the secret                                                                                                                          |
+
+Reproduce with:
+
+```
+cd backend && ../.venv/bin/python -m pytest -q --no-cov tests/test_webhook_deliveries.py tests/test_webhooks.py
+cd dashboard && npx vitest run src/features/admin
+```
+
+Nine defects were planted in the backend's read model and route (an empty list in a deployment with
+no sender, the deduplication of a delivery, the refusal to record an attemptless report, the sink
+dropping what it must not record, the newest-first order, the sink's clock, the capped-list sentence,
+the empty-list caveat and the 503) and nine in the dashboard (the secret's one-rendering lifetime,
+the stamp a create response carries, the guard that stops rendering a dead secret, the join that
+names a removed endpoint, the urgency of a blocked delivery, the capped-window sentence, the
+dispatch flag, the caveats, and the duplicate-URL refusal): **18 planted, 18 killed**.
+
+What is **not** yet true: records live in this process's memory, so a restart forgets them and only
+the newest 200 are kept — the API says both in its own caveats; `POST …/test` answers **503 in a
+default deployment**, because T-311 deliberately left the HTTP transport unwritten (there is no
+network here to verify one against), so the screen is complete and the send path is what is missing;
+and the pipeline still does not dispatch on an alert — the sender has no caller outside these routes
+until the dispatch half of T-311 lands.
+
 ## Not yet recorded
 
 | Item                                                       | Owner       | Status       |
@@ -168,3 +210,4 @@ threshold stores remain in-process until D-030's database session is wired into 
 | Backup and restore rehearsal                               | T-507       | not run      |
 | Model metrics for the shipped model (release gate Q-07)    | T-202/T-208 | not measured |
 | Manual screen-reader pass                                  | T-510       | not run      |
+| Real outbound webhook delivery (an HTTP transport)         | T-311       | not wired    |

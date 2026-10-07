@@ -1,7 +1,7 @@
 /**
- * The admin screens' data wiring (T-410).
+ * The admin screens' data wiring (T-410, T-422).
  *
- * Six reads and five writes, with two properties that are decisions rather than
+ * Ten reads and ten writes, with two properties that are decisions rather than
  * plumbing:
  *
  *   * **A cookie-cutter cadence, and no polling.** Nothing here polls. An admin
@@ -10,12 +10,12 @@
  *     than aged. The one exception is the threshold preview, which is a *query* the
  *     operator drives and therefore keeps its previous value while the next one
  *     arrives — otherwise the panel blinks between numbers as the value is typed.
- *   * **The issued key's secret is never cached.** `useIssueKey` returns the
- *     response and invalidates the listing; the mutation itself is not kept, and no
+ *   * **An issued secret is never cached.** `useIssueKey` and `useCreateWebhook` return
+ *     the response and invalidate the listing; the mutation itself is not kept, and no
  *     query key holds a secret. React Query's devtools, its cache and a
- *     `staleTime`-driven refetch therefore have nothing to leak: the only place the
- *     secret exists is the value the caller got and the modal lifetime it was
- *     stamped with (see `keys.ts`).
+ *     `staleTime`-driven refetch therefore have nothing to leak: the only place a
+ *     secret exists is the value the caller got and the modal lifetime it was stamped
+ *     with (see `secrets.ts`).
  *
  * Refusals are mapped to sentences by status, because this client never parses an
  * error body (R-58: a body echoes the request back). The 409 on a role change is
@@ -62,6 +62,19 @@ import {
   type UserList,
 } from '../../api/admin';
 import { fetchScopes } from '../../api/admin';
+import {
+  DELIVERY_READ_LIMIT,
+  createWebhook,
+  deleteWebhook,
+  fetchDeliveries,
+  fetchWebhooks,
+  testWebhook,
+  type DeliveryList,
+  type DeliveryRecord,
+  type WebhookCreate,
+  type WebhookIssued,
+  type WebhookList,
+} from '../../api/webhooks';
 
 /** The directory and the count the last-admin rule is decided by. */
 export function useUsers(): UseQueryResult<UserList, Error> {
@@ -137,6 +150,79 @@ export function useRetention(): UseQueryResult<RetentionPlan, Error> {
   return useQuery({
     queryKey: ['admin', 'retention'],
     queryFn: ({ signal }) => fetchRetention(signal),
+  });
+}
+
+// --- connectors (T-422) ------------------------------------------------------
+
+/** The registered endpoints. The listing carries no secret: its type has no field. */
+export function useWebhooks(): UseQueryResult<WebhookList, Error> {
+  return useQuery({
+    queryKey: ['admin', 'connectors'],
+    queryFn: ({ signal }) => fetchWebhooks(signal),
+  });
+}
+
+/**
+ * The attempts this deployment has made, newest first.
+ *
+ * Its own key, so a test send refreshes the delivery table without re-reading (or
+ * re-rendering) the configuration beside it. The window is the server's: it says how
+ * much it holds and what it cannot see through `caveats`.
+ */
+export function useDeliveries(): UseQueryResult<DeliveryList, Error> {
+  return useQuery({
+    queryKey: ['admin', 'connectors', 'deliveries'],
+    queryFn: ({ signal }) => fetchDeliveries(DELIVERY_READ_LIMIT, signal),
+  });
+}
+
+/**
+ * Register an endpoint.
+ *
+ * The result is the signing secret and is **not** written to the query cache, for the
+ * same reason the issued key's is not: the mutation's own state holds it until the
+ * caller takes it, and the listing is invalidated so the new row appears without one.
+ */
+export function useCreateWebhook(): UseMutationResult<WebhookIssued, Error, WebhookCreate> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: WebhookCreate) => createWebhook(body),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['admin', 'connectors'] });
+      void client.invalidateQueries({ queryKey: ['admin', 'audit'] });
+    },
+  });
+}
+
+/** Remove an endpoint. Its past deliveries keep their records. */
+export function useDeleteWebhook(): UseMutationResult<void, Error, string> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (webhookId: string) => deleteWebhook(webhookId),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['admin', 'connectors'] });
+      void client.invalidateQueries({ queryKey: ['admin', 'audit'] });
+    },
+  });
+}
+
+/**
+ * Attempt one delivery to a target.
+ *
+ * The attempt is recorded server-side by the sender's own sink, so the delivery table
+ * is invalidated rather than patched with the response: the row this returns and the
+ * row the list serves are the same record, and two sources for one attempt is one
+ * source too many.
+ */
+export function useTestWebhook(): UseMutationResult<DeliveryRecord, Error, string> {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (webhookId: string) => testWebhook(webhookId),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['admin', 'connectors', 'deliveries'] });
+      void client.invalidateQueries({ queryKey: ['admin', 'audit'] });
+    },
   });
 }
 
@@ -253,6 +339,48 @@ export function useEraseSubject(): UseMutationResult<
 }
 
 // --- refusal sentences -------------------------------------------------------
+
+/**
+ * What a failed connector action means, by status.
+ *
+ * The body is never read (R-58), so each sentence names the rule that produced the
+ * status. The two 409s are different rules and are told apart by the action: creating
+ * a duplicate URL, and opening a secret sealed under a different application key.
+ */
+export function connectorRefusalMessage(
+  error: Error | null,
+  what: 'create' | 'delete' | 'test',
+): string | null {
+  if (error === null) return null;
+  if (error instanceof ApiError) {
+    switch (error.status) {
+      case 403:
+        return 'Configuring endpoints needs the responder or admin role. Your account cannot read or change them (R-53).';
+      case 404:
+        return 'That endpoint is no longer registered. Reload to see what is.';
+      case 409:
+        return what === 'test'
+          ? 'The signing secret cannot be opened with the current application key: it was sealed with a different one. Re-issue the endpoint to give it a new secret.'
+          : 'An endpoint with that URL is already registered. A duplicate would deliver every alert twice.';
+      case 400:
+        return 'The server refused the endpoint. R-55 accepts only allowlisted destinations that resolve to public addresses, and the floor must be one of the five bands.';
+      case 422:
+        return 'The server refused the request as malformed: an endpoint needs an https:// URL and a known severity floor.';
+      case 503:
+        return 'This deployment has no outbound transport, so no delivery can be attempted. The server says so rather than reporting a send it did not make.';
+      default:
+        break;
+    }
+  }
+  switch (what) {
+    case 'create':
+      return 'The endpoint could not be registered. Nothing was created.';
+    case 'delete':
+      return 'The endpoint could not be removed. It is still registered.';
+    default:
+      return 'The test delivery could not be attempted.';
+  }
+}
 
 /** What a failed role change means, by status. The body is never read (R-58). */
 export function roleRefusalMessage(error: Error | null): string | null {

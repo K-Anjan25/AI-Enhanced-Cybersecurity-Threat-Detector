@@ -39,7 +39,9 @@ from app.db.models import AlertStatus
 from app.main import create_app
 from app.schemas.query import AlertRow
 from app.services.alert_stream import AlertNotification
+from app.services.audit_log import AuditAction
 from app.services.correlator import Severity
+from app.services.webhook_deliveries import sender_sink
 from app.services.webhook_delivery import (
     DELIVERY_HEADER,
     EVENT_HEADER,
@@ -78,6 +80,9 @@ SECRET = "s" * 48
 #: A settings-valid application secret (the entropy check in Settings refuses a
 #: repeated character), used wherever an application is built.
 APP_SECRET = "test-secret-key-that-is-long-enough-0123456789"  # pragma: allowlist secret
+#: A second application secret, for the case where the stored one no longer opens
+#: a target's sealed secret (T-422's test of the rotated-key refusal).
+OTHER_APP_SECRET = "another-test-secret-key-long-enough-9876543210"  # pragma: allowlist secret
 SIGNING_SECRET = "sign-this-please-0123456789abcdef"  # pragma: allowlist secret
 AT = datetime(2026, 3, 15, 10, 0, 0, tzinfo=UTC)
 PUBLIC_V4 = "93.184.216.34"
@@ -228,6 +233,7 @@ def sender_for(
     resolver: Any = None,  # noqa: ANN401 -- a stub
     policy: RetryPolicy | None = None,
     log: Any = None,  # noqa: ANN401 -- a list
+    on_report: Any = None,  # noqa: ANN401 -- a callable
 ) -> WebhookSender:
     """A sender wired for a test: no sleeping, no network, no real DNS."""
     return WebhookSender(
@@ -239,6 +245,7 @@ def sender_for(
         sleep=lambda seconds: None,
         jitter=lambda: 1.0,
         log=log,
+        on_report=on_report,
     )
 
 
@@ -1307,3 +1314,282 @@ def test_the_window_tolerates_clock_skew_in_both_directions() -> None:
     for drift in (-30, 0, 30):
         check = verify_signature(SIGNING_SECRET, body, header, now=AT + timedelta(seconds=drift))
         assert check.valid, drift
+
+
+# --- the delivery read model (T-422) -----------------------------------------
+
+
+def deliveries(client: TestClient, auth: TokenService, role: str = "responder") -> Any:
+    """Read the delivery list as one role."""
+    return client.get("/api/v1/webhooks/deliveries", headers=auth_headers(auth, role))
+
+
+def send_test(
+    client: TestClient, auth: TokenService, webhook_id: str, role: str = "responder"
+) -> Any:
+    """Ask the API to attempt one delivery to one target."""
+    return client.post(f"/api/v1/webhooks/{webhook_id}/test", headers=auth_headers(auth, role))
+
+
+def install_sender(
+    client: TestClient,
+    transport: RecordingTransport,
+    *,
+    policy: RetryPolicy | None = None,
+    resolver: Any = None,  # noqa: ANN401 -- a stub
+) -> WebhookSender:
+    """Give the application a sender, as a deployment with a transport would.
+
+    The sink is the one a deployment would wire: the sender records every attempt
+    it makes into the log the read route serves, so a probe appears in the list
+    without the route having to remember to record it.
+    """
+    sender = sender_for(
+        transport,
+        client.app.state.secret_vault,  # type: ignore[attr-defined]
+        allowlist=("hooks.example.com",),
+        resolver=resolver if resolver is not None else resolver_returning(PUBLIC_V4),
+        policy=policy,
+        on_report=sender_sink(client.app.state.webhook_deliveries),  # type: ignore[attr-defined]
+    )
+    client.app.state.webhook_sender = sender  # type: ignore[attr-defined]
+    return sender
+
+
+def test_a_deployment_without_a_transport_says_so_rather_than_failing_quietly(
+    client: TestClient, auth: TokenService
+) -> None:
+    """T-311 left the HTTP client unwritten, and this route reports that."""
+    created = register(client, auth).json()
+
+    response = send_test(client, auth, created["id"])
+
+    assert response.status_code == 503
+    assert "no outbound transport" in response.json()["detail"]
+    assert "deliveries" in response.json()["detail"]
+
+
+def test_the_read_route_is_empty_and_says_why_before_anything_is_attempted(
+    client: TestClient, auth: TokenService
+) -> None:
+    """An empty list in a deployment with no sender is not a quiet endpoint."""
+    body = deliveries(client, auth).json()
+
+    assert body["items"] == []
+    assert (body["held"], body["recorded"]) == (0, 0)
+    assert body["dispatch_configured"] is False
+    assert any("no outbound transport" in sentence for sentence in body["caveats"])
+
+
+def test_a_test_delivery_is_readable_afterwards(client: TestClient, auth: TokenService) -> None:
+    """The acceptance criterion: an attempt's outcome is readable."""
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([200]))
+
+    sent = send_test(client, auth, created["id"])
+    listed = deliveries(client, auth).json()
+
+    assert sent.status_code == 200
+    assert sent.json()["delivered"] is True
+    assert sent.json()["outcome"] == "delivered"
+    assert sent.json()["status"] == 200
+    assert listed["recorded"] == 1
+    assert listed["dispatch_configured"] is True
+    assert [item["delivery_id"] for item in listed["items"]] == [sent.json()["delivery_id"]]
+    assert listed["items"][0]["target_id"] == created["id"]
+
+
+def test_a_refusal_by_the_receiver_is_readable_too(client: TestClient, auth: TokenService) -> None:
+    """A 500 is a retryable outcome, and the record says what the last one was."""
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([500]))
+
+    sent = send_test(client, auth, created["id"]).json()
+    listed = deliveries(client, auth).json()["items"][0]
+
+    assert sent["delivered"] is False
+    assert (sent["outcome"], sent["status"]) == ("retry", 500)
+    assert listed["delivery_id"] == sent["delivery_id"]
+    assert listed["outcome"] == "retry"
+
+
+def test_an_unreachable_endpoint_is_readable_as_a_transport_error(
+    client: TestClient, auth: TokenService
+) -> None:
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([WebhookTransportError("connection_refused")]))
+
+    sent = send_test(client, auth, created["id"]).json()
+
+    assert (sent["outcome"], sent["status"], sent["reason"]) == (
+        "transport_error",
+        None,
+        "connection_refused",
+    )
+
+
+def test_a_test_delivery_is_one_attempt_not_the_policy(
+    client: TestClient, auth: TokenService
+) -> None:
+    """A probe answers a question the first response already answered."""
+    created = register(client, auth).json()
+    transport = RecordingTransport([500])
+    install_sender(client, transport, policy=RetryPolicy(max_attempts=5, base_seconds=1.0))
+
+    sent = send_test(client, auth, created["id"]).json()
+
+    assert sent["attempt_count"] == 1
+    assert sent["waited_seconds"] == 0.0
+    assert len(transport.requests) == 1
+
+
+def test_a_test_delivery_is_a_real_signed_alert_event(
+    client: TestClient, auth: TokenService
+) -> None:
+    """The receiver's own checks are exercised, not a bespoke test payload."""
+    created = register(client, auth).json()
+    transport = RecordingTransport([200])
+    install_sender(client, transport)
+
+    send_test(client, auth, created["id"])
+
+    request = transport.requests[0]
+    assert request.headers[EVENT_HEADER] == EVENT_NAME
+    check = verify_signature(
+        created["secret"],
+        request.body,
+        request.headers[SIGNATURE_HEADER],
+        now=datetime.fromtimestamp(int(request.headers[TIMESTAMP_HEADER]), tz=UTC),
+    )
+    assert check.valid, check.reason
+    assert json.loads(request.body)["alert"]["family"] == "Connectivity test"
+
+
+def test_a_test_delivery_is_not_filtered_by_the_targets_floor(
+    client: TestClient, auth: TokenService
+) -> None:
+    """The operator asked for this send; a floor is about alerts, not probes."""
+    created = client.post(
+        "/api/v1/webhooks",
+        json={"url": "https://hooks.example.com/critical", "severity_floor": "critical"},
+        headers=auth_headers(auth),
+    ).json()
+    transport = RecordingTransport([200])
+    install_sender(client, transport)
+
+    assert send_test(client, auth, created["id"]).status_code == 200
+    assert len(transport.requests) == 1
+
+
+def test_a_record_never_carries_the_url_or_the_secret(
+    client: TestClient, auth: TokenService
+) -> None:
+    """R-58: every responder may read this list, so it names no address."""
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([200]))
+    send_test(client, auth, created["id"])
+
+    listed = deliveries(client, auth)
+
+    assert created["secret"] not in listed.text
+    assert "secret" not in listed.json()["items"][0]
+    assert "secret_token" not in listed.text
+    assert "hooks.example.com" not in listed.text
+    assert created["url"] not in listed.text
+
+
+def test_testing_an_unknown_target_is_404(client: TestClient, auth: TokenService) -> None:
+    install_sender(client, RecordingTransport([200]))
+
+    assert send_test(client, auth, "wh_404").status_code == 404
+
+
+def test_a_secret_that_cannot_be_opened_is_a_named_refusal(
+    client: TestClient, auth: TokenService
+) -> None:
+    """A rotated application key is a re-issue, not something a retry fixes."""
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([200]))
+    # Re-seal the stored target's secret under a different application key, which
+    # is what the deployment looks like after AEGIS_SECRET_KEY is rotated.
+    store = client.app.state.webhook_store  # type: ignore[attr-defined]
+    stored = store.list()[0]
+    store.remove(stored.id)
+    store.add(
+        WebhookTarget(
+            id=stored.id,
+            url=stored.url,
+            description=stored.description,
+            severity_floor=stored.severity_floor,
+            secret_token=SecretVault(OTHER_APP_SECRET).seal("rotated"),
+            created_at=stored.created_at,
+        )
+    )
+
+    response = send_test(client, auth, created["id"])
+
+    assert response.status_code == 409
+    assert "re-issue the target" in response.json()["detail"]
+    assert "rotated" not in response.text
+
+
+def test_a_test_delivery_is_attributed_in_the_audit_trail(
+    client: TestClient, auth: TokenService
+) -> None:
+    """A request that left the building by hand is answerable for."""
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([200]))
+
+    send_test(client, auth, created["id"])
+
+    entries = client.app.state.audit_trail.entries(  # type: ignore[attr-defined]
+        start=datetime.now(UTC) - timedelta(minutes=1),
+        end=datetime.now(UTC) + timedelta(minutes=1),
+    )
+    recorded = [entry for entry in entries if entry.record.action is AuditAction.webhook_test]
+    assert len(recorded) == 1
+    assert recorded[0].record.target_id == created["id"]
+    assert recorded[0].record.actor == "responder@corp"
+    detail = dict(recorded[0].record.detail)
+    assert created["secret"] not in json.dumps(detail)
+    assert "hooks.example.com" not in json.dumps(detail)
+    assert detail == {"delivered": True, "attempts": 1}
+
+
+def test_the_delivery_list_needs_the_webhook_capability(
+    client: TestClient, auth: TokenService
+) -> None:
+    """R-53: a record names a target, so reading it is config-level too."""
+    created = register(client, auth).json()
+    install_sender(client, RecordingTransport([200]))
+
+    for role, allowed in (
+        ("responder", True),
+        ("admin", True),
+        ("analyst", False),
+        ("viewer", False),
+    ):
+        read = deliveries(client, auth, role)
+        sent = send_test(client, auth, created["id"], role)
+        expected = 200 if allowed else 403
+        assert (read.status_code, sent.status_code) == (expected, expected), role
+
+
+def test_the_delivery_routes_are_closed_to_anonymous_callers(client: TestClient) -> None:
+    assert client.get("/api/v1/webhooks/deliveries").status_code == 401
+    assert client.post("/api/v1/webhooks/wh_1/test").status_code == 401
+
+
+def test_a_test_delivery_to_a_forbidden_address_is_recorded_as_blocked(
+    client: TestClient, auth: TokenService
+) -> None:
+    """R-55 is re-checked per attempt, and its refusal is an outcome, not a 500."""
+    created = register(client, auth).json()
+    transport = RecordingTransport([200])
+    install_sender(client, transport, resolver=resolver_returning("169.254.169.254"))
+
+    sent = send_test(client, auth, created["id"]).json()
+
+    assert sent["outcome"] == "blocked"
+    assert sent["status"] is None
+    assert transport.requests == []

@@ -176,6 +176,12 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # as sensitive as writing it: a target's URL names internal infrastructure.
     "/api/v1/webhooks": frozenset({Role.RESPONDER, Role.ADMIN}),
     "/api/v1/webhooks/{webhook_id}": frozenset({Role.RESPONDER, Role.ADMIN}),
+    # T-422's two routes: the delivery list and a test send. Both are webhook
+    # configuration by another name -- a record names a target, and a test send
+    # points the deployment at it -- so both carry R-53's capability rather than
+    # widening the delivery list to every reader.
+    "/api/v1/webhooks/deliveries": frozenset({Role.RESPONDER, Role.ADMIN}),
+    "/api/v1/webhooks/{webhook_id}/test": frozenset({Role.RESPONDER, Role.ADMIN}),
     # API key management is admin-only (D-042). A key is a credential, and
     # issuing one is minting authority: the same decision as creating a user,
     # which R-53 already reserves for admin.

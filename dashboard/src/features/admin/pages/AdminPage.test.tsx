@@ -15,7 +15,7 @@ import { ToastProvider } from '../../../components/ui';
 import { jsonResponse, renderWithProviders, stubFetch } from '../../../test/query';
 import { AdminPage } from './AdminPage';
 
-/** Every read the five panels can issue, so a route can render without a 404. */
+/** Every read the six panels can issue, so a route can render without a 404. */
 function stubs() {
   return [
     { match: '/api/v1/users/roles', respond: () => jsonResponse({ items: [] }) },
@@ -25,6 +25,20 @@ function stubs() {
     },
     { match: '/api/v1/keys/scopes', respond: () => jsonResponse({ items: [] }) },
     { match: '/api/v1/keys', respond: () => jsonResponse({ items: [] }) },
+    // Specific before collection: `stubFetch` matches by prefix in list order, and
+    // `/api/v1/webhooks` is a prefix of the deliveries path.
+    {
+      match: '/api/v1/webhooks/deliveries',
+      respond: () =>
+        jsonResponse({
+          items: [],
+          held: 0,
+          recorded: 0,
+          dispatch_configured: false,
+          caveats: [],
+        }),
+    },
+    { match: '/api/v1/webhooks', respond: () => jsonResponse({ items: [] }) },
     {
       match: '/api/v1/thresholds',
       respond: () => jsonResponse({ tenant_id: 't1', defaults: {}, items: [] }),
@@ -72,19 +86,18 @@ describe('AdminPage', () => {
     renderAdmin('/admin');
     const heading = await screen.findByRole('heading', { name: 'Sections' });
     expect(heading).toBeInTheDocument();
+    // All six of design.md §3's admin children, connectors included: T-422 built the
+    // last one, so the index is now a map of real routes and nothing says "not built".
     for (const label of [
       'Users & roles',
       'API keys',
+      'Connectors',
       'Thresholds',
       'Retention & GDPR',
       'Audit log',
     ]) {
       expect(screen.getAllByRole('link', { name: label }).length).toBeGreaterThan(0);
     }
-    // The one section design.md §3 lists that no task has built: it says so with the
-    // task that will build it rather than pretending the screen exists.
-    expect(screen.getByText('Connectors')).toBeInTheDocument();
-    expect(screen.getByText(/T-422/)).toBeInTheDocument();
   });
 
   it('marks the current section in the nav', async () => {
@@ -103,6 +116,7 @@ describe('AdminPage', () => {
   it.each([
     ['/admin/users', 'Users and roles'],
     ['/admin/keys', 'API keys'],
+    ['/admin/connectors', 'Endpoints'],
     ['/admin/thresholds', 'Thresholds'],
     ['/admin/retention', 'Retention'],
     ['/admin/audit', 'Audit log'],

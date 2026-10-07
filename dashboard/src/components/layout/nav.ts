@@ -41,7 +41,8 @@ export interface NavItem {
 }
 
 /** The relative path of one admin section, as a union, so the page's map is total. */
-export type AdminSectionPath = 'users' | 'keys' | 'thresholds' | 'retention' | 'audit';
+export type AdminSectionPath =
+  'users' | 'keys' | 'connectors' | 'thresholds' | 'retention' | 'audit';
 
 /** An admin section: a nav destination whose `path` is a known relative route. */
 export interface AdminNavLeaf extends NavLeaf {
@@ -52,10 +53,10 @@ export interface AdminNavLeaf extends NavLeaf {
  * Admin's sections, which the page renders as its own nav and the palette lists as
  * destinations.
  *
- * `connectors` is deliberately absent: design.md §3 gives it a route, no task row
- * existed for the screen until T-422, and `/admin/connectors` renders the honest
- * "not built" state. A palette entry for a screen that is not built would be a
- * command that navigates to an apology.
+ * All six of design.md §3's children are here now. `connectors` was absent until T-422
+ * built the screen — a palette entry for a screen that did not exist would have been a
+ * command that navigated to an apology — and it is listed in the design's own order,
+ * between the credentials and the thresholds.
  *
  * Declared before `NAV_ITEMS`, which embeds it: a `const` is not readable above its
  * own initialisation.
@@ -63,6 +64,12 @@ export interface AdminNavLeaf extends NavLeaf {
 export const ADMIN_SECTIONS: readonly AdminNavLeaf[] = [
   { path: 'users', to: '/admin/users', label: 'Users & roles', keywords: ['roles', 'people'] },
   { path: 'keys', to: '/admin/keys', label: 'API keys', keywords: ['token', 'credential'] },
+  {
+    path: 'connectors',
+    to: '/admin/connectors',
+    label: 'Connectors',
+    keywords: ['webhook', 'endpoint', 'signing', 'delivery', 'hmac'],
+  },
   {
     path: 'thresholds',
     to: '/admin/thresholds',
