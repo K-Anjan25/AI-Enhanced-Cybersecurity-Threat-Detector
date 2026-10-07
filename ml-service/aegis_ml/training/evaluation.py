@@ -1,8 +1,8 @@
 """Evaluation harness (T-112).
 
 One entrypoint — :func:`evaluate` — turns a scored artifact into the full metric
-set: precision, recall, F1, ROC-AUC, PR-AUC, a confusion matrix and a threshold
-sweep, as a validated ``eval@1`` document.
+set: precision, recall, F1, ROC-AUC, PR-AUC, a confusion matrix, score histogram
+and threshold sweep, as a validated ``eval@2`` document.
 
 Why the metrics are computed here rather than imported
 -----------------------------------------------------
@@ -31,13 +31,16 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 #: Schema contract for the report this module produces.
-EVAL_SCHEMA_VERSION: Literal["eval@1"] = "eval@1"
+EVAL_SCHEMA_VERSION: Literal["eval@2"] = "eval@2"
 
 #: Number of points in a default threshold sweep, inclusive of 0.0 and 1.0.
 DEFAULT_SWEEP_STEPS = 21
+
+#: Fixed-width bins for the recorded score distribution, covering [0, 1].
+DEFAULT_SCORE_HISTOGRAM_BINS = 10
 
 
 class ConfusionCounts(BaseModel):
@@ -49,6 +52,24 @@ class ConfusionCounts(BaseModel):
     fp: int = Field(ge=0)
     tn: int = Field(ge=0)
     fn: int = Field(ge=0)
+
+
+class ScoreHistogramBin(BaseModel):
+    """One lower-inclusive score interval and its recorded class counts."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    lower: float = Field(ge=0.0, le=1.0)
+    upper: float = Field(gt=0.0, le=1.0)
+    benign: int = Field(ge=0)
+    threat: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def upper_exceeds_lower(self) -> ScoreHistogramBin:
+        """Reject empty or reversed intervals."""
+        if self.upper <= self.lower:
+            raise ValueError("score histogram bin upper must exceed lower")
+        return self
 
 
 class Metrics(BaseModel):
@@ -79,7 +100,7 @@ class EvalReport(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    schema_version: Literal["eval@1"] = EVAL_SCHEMA_VERSION
+    schema_version: Literal["eval@2"] = EVAL_SCHEMA_VERSION
     model_id: str = Field(min_length=1)
     threshold: float = Field(
         ge=0.0, le=1.0, description="Operating point the confusion matrix uses"
@@ -87,12 +108,35 @@ class EvalReport(BaseModel):
     positives: int = Field(ge=0)
     negatives: int = Field(ge=0)
     confusion: ConfusionCounts
+    score_histogram: tuple[ScoreHistogramBin, ...]
     precision: float = Field(ge=0.0, le=1.0)
     recall: float = Field(ge=0.0, le=1.0)
     f1: float = Field(ge=0.0, le=1.0)
     metrics: Metrics
     sweep: tuple[SweepPoint, ...]
     best_f1: SweepPoint
+
+    @model_validator(mode="after")
+    def histogram_matches_evaluation(self) -> EvalReport:
+        """Keep the matrix and distribution tied to the same scored examples."""
+        bins = self.score_histogram
+        if len(bins) != DEFAULT_SCORE_HISTOGRAM_BINS:
+            raise ValueError(
+                f"score histogram needs {DEFAULT_SCORE_HISTOGRAM_BINS} bins, got {len(bins)}"
+            )
+        if bins[0].lower != 0.0 or bins[-1].upper != 1.0:
+            raise ValueError("score histogram must cover [0, 1]")
+        if any(left.upper != right.lower for left, right in zip(bins, bins[1:], strict=False)):
+            raise ValueError("score histogram bins must be contiguous and ordered")
+        if sum(item.threat for item in bins) != self.positives:
+            raise ValueError("score histogram threat count does not match positives")
+        if sum(item.benign for item in bins) != self.negatives:
+            raise ValueError("score histogram benign count does not match negatives")
+        if self.confusion.tp + self.confusion.fn != self.positives:
+            raise ValueError("confusion matrix positive count does not match positives")
+        if self.confusion.tn + self.confusion.fp != self.negatives:
+            raise ValueError("confusion matrix negative count does not match negatives")
+        return self
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +194,35 @@ def _check_inputs(scores: Sequence[float], labels: Sequence[bool]) -> tuple[int,
         raise ValueError(f"got {len(scores)} scores but {len(labels)} labels")
     positives = sum(1 for label in labels if label)
     return positives, len(labels) - positives
+
+
+def _score_histogram(
+    scores: Sequence[float], labels: Sequence[bool]
+) -> tuple[ScoreHistogramBin, ...]:
+    """Count benign and threat scores in fixed-width intervals over [0, 1].
+
+    The intervals are lower-inclusive and upper-exclusive, except the last one
+    which includes 1.0. Scores outside the probability range are rejected rather
+    than silently omitted from the distribution.
+    """
+    counts = [[0, 0] for _ in range(DEFAULT_SCORE_HISTOGRAM_BINS)]
+    for score, label in zip(scores, labels, strict=True):
+        if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+            raise ValueError(
+                f"score histogram requires finite probabilities in [0, 1], got {score}"
+            )
+        index = min(int(score * DEFAULT_SCORE_HISTOGRAM_BINS), DEFAULT_SCORE_HISTOGRAM_BINS - 1)
+        counts[index][1 if label else 0] += 1
+
+    return tuple(
+        ScoreHistogramBin(
+            lower=index / DEFAULT_SCORE_HISTOGRAM_BINS,
+            upper=(index + 1) / DEFAULT_SCORE_HISTOGRAM_BINS,
+            benign=count[0],
+            threat=count[1],
+        )
+        for index, count in enumerate(counts)
+    )
 
 
 def confusion_at(
@@ -295,6 +368,7 @@ def evaluate(
             the rank-based metrics are undefined.
     """
     positives, negatives = _check_inputs(scores, labels)
+    histogram = _score_histogram(scores, labels)
     counts = confusion_at(scores, labels, threshold)
     operating = _Point(threshold=threshold, tp=counts.tp, fp=counts.fp, tn=counts.tn, fn=counts.fn)
     sweep = threshold_sweep(scores, labels, steps=steps)
@@ -305,6 +379,7 @@ def evaluate(
         positives=positives,
         negatives=negatives,
         confusion=counts,
+        score_histogram=histogram,
         precision=operating.precision,
         recall=operating.recall,
         f1=operating.f1,

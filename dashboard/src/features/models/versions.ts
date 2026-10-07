@@ -23,11 +23,10 @@
  *     than reusing that component is not a second rule — the promotion modal also
  *     collects a justification, which `ConfirmDialog` has no field for, so the
  *     comparison is exposed as a function and tested against the same cases.
- *   * **What the API cannot supply is named, not omitted.** FR-31's read model is
- *     five scalars with provenance: there is no confusion matrix and no score
- *     distribution in it, and design.md §4.7 asks for both. The comparison panel
- *     says so, and the gap is filed as a task rather than filled with a drawing of
- *     numbers nobody measured.
+ *   * **Evaluation visuals are optional recorded evidence.** A confusion matrix
+ *     and histogram render only when the per-version endpoint returns them from an
+ *     eval@2 artifact; older reports remain explicitly unavailable rather than
+ *     being reverse-engineered from scalar metrics.
  */
 import type { BadgeTone } from '../../components/ui';
 import { formatStamp } from '../../lib/format';
@@ -263,8 +262,6 @@ export interface ComparisonCell {
 
 export interface Comparison {
   cells: ComparisonCell[];
-  /** What the read model cannot answer, said once (R-70's discipline). */
-  note: string;
 }
 
 /** A delta rendered with its sign, so "up" and "down" are visible at a glance. */
@@ -298,14 +295,7 @@ export function compareVersions(left: ModelMetrics | null, right: ModelMetrics |
       direction: delta === null ? 'unknown' : delta > 0 ? 'up' : delta < 0 ? 'down' : 'equal',
     };
   });
-  return {
-    cells,
-    note:
-      'Confusion matrices and score-distribution histograms are part of design.md §4.7 but not ' +
-      'of the recorded metrics: FR-31\u2019s read model is five scalars, each with the run it came ' +
-      'from. Drawing either from these numbers would be inventing data, so the comparison shows ' +
-      'the deltas it can support (filed as T-420).',
-  };
+  return { cells };
 }
 
 export interface PromotionDraft {

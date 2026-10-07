@@ -190,9 +190,10 @@ Non-negotiables:
 
 ### 4.7 Model ops — `/models` and `/models/drift`
 
-- Version table: model ID, kind, status (`staging`/`active`/`retired`), metrics, promoted by/at.
+- Version table: model ID, kind, status (`staging`/`active`/`retired`), promoted by/at. Metrics are a separate per-version read so registry history stays lightweight.
 - Metric cards per active model: ROC-AUC, PR-AUC, precision, recall at the deployed threshold — each with the value from the recorded eval run and the run date (R-74).
-- Version comparison: two models side by side, delta per metric, confusion matrices, and score-distribution histograms.
+- Version comparison: two models side by side, delta per metric, each run's confusion matrix, and two overlaid score-distribution histograms on a shared 0–1 probability axis, with a legend and each recorded operating threshold marked.
+- Evaluation visuals come only from a recorded `eval@2` report: ten equal-width bins cover `[0, 1]` (lower-inclusive, with the final bin including `1.0`); each visual shows its exact run artifact and field. An older report or absent run renders as unavailable. Never derive histogram counts from scalar metrics or fill a missing matrix with zeros.
 - Promotion flow is a modal with an explicit confirm typing the model ID; shadow-mode is the default promotion target, direct-to-active requires `admin` plus a written justification field.
 - Drift page: PSI per feature as horizontal bars with the 0.25 threshold marked; features over threshold get a red bar and a "retrain recommended" badge.
 

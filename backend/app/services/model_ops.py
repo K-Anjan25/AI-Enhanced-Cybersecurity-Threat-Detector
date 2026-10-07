@@ -45,13 +45,17 @@ with the split named on every set so a reader can see which numbers they are.
 
 from __future__ import annotations
 
+import math
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
 
 __all__ = [
     "FORBIDDEN_MODEL_IDS",
+    "ConfusionMatrix",
+    "EvaluationDetails",
     "FloatingModelId",
     "ImmutableArtifact",
     "MetricPoint",
@@ -63,6 +67,8 @@ __all__ = [
     "ModelVersion",
     "NothingToRollBack",
     "RefusedTransition",
+    "ScoreHistogram",
+    "ScoreHistogramBin",
     "TransitionOutcome",
     "UnknownModel",
 ]
@@ -175,6 +181,113 @@ class MetricPoint:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfusionMatrix:
+    """A recorded binary confusion matrix and the exact run field it came from."""
+
+    threshold: float
+    tp: int
+    fp: int
+    tn: int
+    fn: int
+    artifact: str
+    field: str
+
+    def __post_init__(self) -> None:
+        """Refuse unmeasured counts, invalid thresholds, or missing provenance."""
+        _validate_counts(("tp", self.tp), ("fp", self.fp), ("tn", self.tn), ("fn", self.fn))
+        if not math.isfinite(self.threshold) or not 0.0 <= self.threshold <= 1.0:
+            raise ValueError("confusion threshold must be a finite value in [0, 1]")
+        _validate_evaluation_source(self.artifact, self.field)
+        if self.tp + self.fp + self.tn + self.fn == 0:
+            raise ValueError("a confusion matrix must contain recorded examples")
+
+
+@dataclass(frozen=True, slots=True)
+class ScoreHistogramBin:
+    """One lower-inclusive score interval and its benign/threat counts."""
+
+    lower: float
+    upper: float
+    benign: int
+    threat: int
+
+    def __post_init__(self) -> None:
+        """Reject empty intervals and counts that could not come from an eval run."""
+        if (
+            not math.isfinite(self.lower)
+            or not math.isfinite(self.upper)
+            or not 0.0 <= self.lower < self.upper <= 1.0
+        ):
+            raise ValueError("score histogram intervals must be finite and inside [0, 1]")
+        _validate_counts(("benign", self.benign), ("threat", self.threat))
+
+
+@dataclass(frozen=True, slots=True)
+class ScoreHistogram:
+    """The complete, provenance-bearing score distribution for one evaluation."""
+
+    bins: tuple[ScoreHistogramBin, ...]
+    artifact: str
+    field: str
+
+    def __post_init__(self) -> None:
+        """Require an ordered, gap-free histogram covering the probability range."""
+        _validate_evaluation_source(self.artifact, self.field)
+        if len(self.bins) != 10:
+            raise ValueError(f"eval@2 score histogram needs 10 bins, got {len(self.bins)}")
+        if self.bins[0].lower != 0.0 or self.bins[-1].upper != 1.0:
+            raise ValueError("score histogram must cover [0, 1]")
+        if any(
+            left.upper != right.lower for left, right in zip(self.bins, self.bins[1:], strict=False)
+        ):
+            raise ValueError("score histogram bins must be contiguous and ordered")
+        if self.benign_count + self.threat_count == 0:
+            raise ValueError("score histogram must contain recorded examples")
+
+    @property
+    def benign_count(self) -> int:
+        """Number of benign examples represented by the histogram."""
+        return sum(item.benign for item in self.bins)
+
+    @property
+    def threat_count(self) -> int:
+        """Number of threat examples represented by the histogram."""
+        return sum(item.threat for item in self.bins)
+
+
+def _validate_counts(*counts: tuple[str, int]) -> None:
+    """Reject negative, non-integer, or boolean counts at the in-memory boundary."""
+    for name, count in counts:
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise ValueError(f"evaluation count {name!r} must be a non-negative integer")
+
+
+def _validate_evaluation_source(artifact: str, field: str) -> None:
+    """Require source artifact and field names for every evaluation visual."""
+    if not isinstance(artifact, str) or not artifact.strip():
+        raise ValueError("evaluation evidence must name its recorded artifact")
+    if not isinstance(field, str) or not field.strip():
+        raise ValueError("evaluation evidence must name its artifact field")
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationDetails:
+    """The confusion matrix and histogram read from one recorded eval artifact."""
+
+    confusion: ConfusionMatrix
+    score_histogram: ScoreHistogram
+
+    def __post_init__(self) -> None:
+        """Keep both views on the same run and the same scored examples."""
+        if self.confusion.artifact != self.score_histogram.artifact:
+            raise ValueError("confusion matrix and score histogram must name the same artifact")
+        if self.confusion.tp + self.confusion.fn != self.score_histogram.threat_count:
+            raise ValueError("score histogram threat count does not match confusion matrix")
+        if self.confusion.tn + self.confusion.fp != self.score_histogram.benign_count:
+            raise ValueError("score histogram benign count does not match confusion matrix")
+
+
+@dataclass(frozen=True, slots=True)
 class ModelMetrics:
     """The held-out evaluation metrics for one version (FR-31).
 
@@ -186,11 +299,137 @@ class ModelMetrics:
             0.91" without it is not a claim anyone can check (R-74).
         evaluated_at: when the evaluation run happened. Rendered beside the value
             so a stale number is visibly stale.
+        evaluation: optional confusion matrix and score histogram read from the
+            same recorded ``eval@2`` artifact. ``None`` is an honest state for
+            older reports that did not contain these fields.
     """
 
     points: dict[str, MetricPoint]
     split: str
     evaluated_at: datetime
+    evaluation: EvaluationDetails | None = None
+
+    @classmethod
+    def from_eval_report(
+        cls,
+        report: Mapping[str, object],
+        *,
+        model_id: str,
+        artifact: str,
+        split: str,
+        evaluated_at: datetime,
+    ) -> ModelMetrics:
+        """Adapt a recorded ``eval@2`` JSON report into the backend read model.
+
+        This is the ingestion seam between a training run log and the in-memory
+        model registry. It accepts the report's actual serialized fields, rejects
+        a report for another model or schema, and stamps every scalar and visual
+        with the same artifact path and source field. It never supplies defaults
+        for absent measurements.
+        """
+        if report.get("schema_version") != "eval@2":
+            schema = report.get("schema_version")
+            raise ValueError(f"expected a recorded eval@2 report, got {schema!r}")
+        if report.get("model_id") != model_id:
+            raise ValueError(
+                f"evaluation report model_id {report.get('model_id')!r} does not match {model_id!r}"
+            )
+        _validate_evaluation_source(artifact, "report")
+
+        def mapping(value: object, name: str) -> Mapping[str, object]:
+            if not isinstance(value, Mapping):
+                raise ValueError(f"evaluation report field {name!r} must be an object")
+            return value
+
+        def integer(value: object, name: str) -> int:
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"evaluation report field {name!r} must be a non-negative integer")
+            return value
+
+        def number(value: object, name: str) -> float:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"evaluation report field {name!r} must be a number")
+            result = float(value)
+            if not math.isfinite(result):
+                raise ValueError(f"evaluation report field {name!r} must be finite")
+            return result
+
+        report_metrics = mapping(report.get("metrics"), "metrics")
+        field_paths = {
+            "precision": (report, "precision", "precision"),
+            "recall": (report, "recall", "recall"),
+            "f1": (report, "f1", "f1"),
+            "roc_auc": (report_metrics, "roc_auc", "metrics.roc_auc"),
+            "pr_auc": (report_metrics, "pr_auc", "metrics.pr_auc"),
+        }
+        points = {
+            name: MetricPoint(
+                value=number(source.get(source_key), field_path),
+                artifact=artifact,
+                field=field_path,
+            )
+            for name, (source, source_key, field_path) in field_paths.items()
+        }
+
+        raw_confusion = mapping(report.get("confusion"), "confusion")
+        confusion = ConfusionMatrix(
+            threshold=number(report.get("threshold"), "threshold"),
+            tp=integer(raw_confusion.get("tp"), "confusion.tp"),
+            fp=integer(raw_confusion.get("fp"), "confusion.fp"),
+            tn=integer(raw_confusion.get("tn"), "confusion.tn"),
+            fn=integer(raw_confusion.get("fn"), "confusion.fn"),
+            artifact=artifact,
+            field="confusion",
+        )
+        raw_bins = report.get("score_histogram")
+        if not isinstance(raw_bins, (list, tuple)):
+            raise ValueError("evaluation report field 'score_histogram' must be an array")
+        bins: list[ScoreHistogramBin] = []
+        for index, raw_bin in enumerate(raw_bins):
+            raw = mapping(raw_bin, f"score_histogram[{index}]")
+            bins.append(
+                ScoreHistogramBin(
+                    lower=number(raw.get("lower"), f"score_histogram[{index}].lower"),
+                    upper=number(raw.get("upper"), f"score_histogram[{index}].upper"),
+                    benign=integer(raw.get("benign"), f"score_histogram[{index}].benign"),
+                    threat=integer(raw.get("threat"), f"score_histogram[{index}].threat"),
+                )
+            )
+        histogram = ScoreHistogram(bins=tuple(bins), artifact=artifact, field="score_histogram")
+        evaluation = EvaluationDetails(confusion=confusion, score_histogram=histogram)
+        positives = integer(report.get("positives"), "positives")
+        negatives = integer(report.get("negatives"), "negatives")
+        if confusion.tp + confusion.fn != positives:
+            raise ValueError("confusion matrix does not match report positives")
+        if confusion.tn + confusion.fp != negatives:
+            raise ValueError("confusion matrix does not match report negatives")
+        if histogram.threat_count != positives or histogram.benign_count != negatives:
+            raise ValueError("score histogram does not match report class counts")
+        expected_precision = (
+            confusion.tp / (confusion.tp + confusion.fp) if (confusion.tp + confusion.fp) else 0.0
+        )
+        expected_recall = (
+            confusion.tp / (confusion.tp + confusion.fn) if (confusion.tp + confusion.fn) else 0.0
+        )
+        expected_f1 = (
+            2 * expected_precision * expected_recall / (expected_precision + expected_recall)
+            if expected_precision + expected_recall
+            else 0.0
+        )
+        for name, expected in (
+            ("precision", expected_precision),
+            ("recall", expected_recall),
+            ("f1", expected_f1),
+        ):
+            if not math.isclose(points[name].value, expected, rel_tol=1e-8, abs_tol=1e-8):
+                raise ValueError(f"evaluation report {name} does not match its confusion matrix")
+
+        return cls(
+            points=points,
+            split=split,
+            evaluated_at=evaluated_at,
+            evaluation=evaluation,
+        )
 
     def __post_init__(self) -> None:
         """Refuse a set that is missing a metric FR-31 requires, or names no split.
@@ -215,6 +454,12 @@ class ModelMetrics:
         if extra:
             msg = f"unknown metrics {extra}; FR-31 defines {list(REQUIRED_METRICS)}"
             raise ValueError(msg)
+        if self.evaluation is not None:
+            source = self.evaluation.confusion.artifact
+            if any(point.artifact != source for point in self.points.values()):
+                raise ValueError(
+                    "scalar metrics and evaluation details must name the same artifact"
+                )
 
     def get(self, name: str) -> MetricPoint:
         """The point for ``name``.
@@ -398,6 +643,49 @@ class ModelOpsService:
                 )
                 raise ValueError(msg)
         self._versions[version.model_id] = version
+
+    def record_evaluation(
+        self,
+        model_id: str,
+        report: Mapping[str, object],
+        *,
+        artifact: str,
+        split: str,
+        evaluated_at: datetime,
+    ) -> ModelVersion:
+        """Attach one actual ``eval@2`` run to a registered model version.
+
+        The first report is adapted and stored; an identical retry is idempotent.
+        A different run cannot silently replace the evidence for an immutable
+        model id. The caller must register a new model version for new bytes or
+        evaluation results.
+
+        Raises:
+            FloatingModelId: for a floating id (R-68).
+            UnknownModel: if the version is not registered.
+            ImmutableArtifact: if different evaluation evidence is already attached.
+            ValueError: if the report is malformed, for another model, or not eval@2.
+        """
+        version = self.get(model_id)
+        metrics = ModelMetrics.from_eval_report(
+            report,
+            model_id=model_id,
+            artifact=artifact,
+            split=split,
+            evaluated_at=evaluated_at,
+        )
+        if version.metrics is not None:
+            if version.metrics == metrics:
+                return version
+            msg = (
+                f"model {model_id!r} already has evaluation evidence and cannot be "
+                "rewritten; register a new immutable model version instead"
+            )
+            raise ImmutableArtifact(msg)
+
+        updated = _with_metrics(version, metrics)
+        self._versions[model_id] = updated
+        return updated
 
     def get(self, model_id: str) -> ModelVersion:
         """One version by id.
@@ -600,6 +888,22 @@ class ModelOpsService:
             if entry.kind == kind and entry.rolled_back_at is None:
                 return entry
         return None
+
+
+def _with_metrics(version: ModelVersion, metrics: ModelMetrics) -> ModelVersion:
+    """A copy with the one evaluation artifact registered for its version."""
+    return ModelVersion(
+        model_id=version.model_id,
+        kind=version.kind,
+        status=version.status,
+        artifact_uri=version.artifact_uri,
+        sha256=version.sha256,
+        manifest_present=version.manifest_present,
+        metrics=metrics,
+        promoted_at=version.promoted_at,
+        promoted_by=version.promoted_by,
+        justification=version.justification,
+    )
 
 
 def _with_status(

@@ -46,7 +46,6 @@ function version(overrides: Partial<ModelVersion> = {}): ModelVersion {
     artifact_uri: 's3://aegis/models/flow/1',
     sha256: 'c'.repeat(64),
     manifest_present: true,
-    metrics: null,
     promoted_at: null,
     promoted_by: null,
     justification: '',
@@ -64,6 +63,7 @@ function metrics(values: Record<string, number>): ModelMetrics {
         { value, artifact: `runs/${name}.json`, field: `test.${name}` },
       ]),
     ),
+    evaluation: null,
   };
 }
 
@@ -277,6 +277,7 @@ describe('metricPanel', () => {
       split: 'temporal:2025-Q4',
       evaluated_at: '2026-09-30T12:00:00Z',
       metrics: { f1: { value: 0.5, artifact: 'a', field: 'b' } },
+      evaluation: null,
     };
     expect(metricPanel(sparse).cards.map((card) => card.name)).toEqual(['f1']);
   });
@@ -305,12 +306,6 @@ describe('compareVersions', () => {
     const comparison = compareVersions(null, metrics({ roc_auc: 0.9 }));
     expect(comparison.cells[0]?.delta).toBeNull();
     expect(comparison.cells[0]?.right).toBe(0.9);
-  });
-
-  it('names what the read model cannot supply', () => {
-    const comparison = compareVersions(metrics({ f1: 0.5 }), metrics({ f1: 0.6 }));
-    expect(comparison.note).toContain('Confusion matrices');
-    expect(comparison.note).toContain('T-420');
   });
 
   it('renders a signed delta with a real minus sign', () => {

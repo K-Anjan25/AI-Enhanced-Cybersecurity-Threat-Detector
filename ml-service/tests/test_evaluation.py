@@ -122,9 +122,12 @@ def test_best_f1_ties_break_toward_the_higher_threshold() -> None:
 def test_the_report_is_a_validated_schema() -> None:
     report = evaluate(SCORES, LABELS, model_id="m1")
 
-    assert report.schema_version == EVAL_SCHEMA_VERSION == "eval@1"
+    assert report.schema_version == EVAL_SCHEMA_VERSION == "eval@2"
     assert report.positives == 2 and report.negatives == 2
     assert report.metrics.accuracy == pytest.approx(0.75)
+    assert len(report.score_histogram) == 10
+    assert sum(item.benign for item in report.score_histogram) == report.negatives
+    assert sum(item.threat for item in report.score_histogram) == report.positives
 
     payload = json.loads(report.model_dump_json())
     with pytest.raises(ValidationError):
@@ -136,13 +139,53 @@ def test_the_schema_rejects_impossible_values() -> None:
     payload = json.loads(report.model_dump_json())
 
     with pytest.raises(ValidationError):
-        EvalReport.model_validate({**payload, "schema_version": "eval@2"})
+        EvalReport.model_validate({**payload, "schema_version": "eval@1"})
     with pytest.raises(ValidationError):
         EvalReport.model_validate({**payload, "metrics": {**payload["metrics"], "roc_auc": 1.4}})
     with pytest.raises(ValidationError):
         EvalReport.model_validate({**payload, "model_id": ""})
     with pytest.raises(ValidationError):
         EvalReport.model_validate({**payload, "confusion": {**payload["confusion"], "tp": -1}})
+    with pytest.raises(ValidationError, match="needs 10 bins"):
+        EvalReport.model_validate({**payload, "score_histogram": payload["score_histogram"][:-1]})
+    with pytest.raises(ValidationError, match="threat count"):
+        EvalReport.model_validate(
+            {
+                **payload,
+                "score_histogram": [
+                    {**payload["score_histogram"][0], "threat": 1},
+                    *payload["score_histogram"][1:],
+                ],
+            }
+        )
+
+
+def test_score_histogram_uses_ten_lower_inclusive_bins() -> None:
+    report = evaluate(SCORES, LABELS, model_id="m1")
+
+    assert [(item.benign, item.threat) for item in report.score_histogram] == [
+        (0, 0),
+        (1, 0),
+        (0, 0),
+        (0, 1),
+        (1, 0),
+        (0, 0),
+        (0, 0),
+        (0, 0),
+        (0, 1),
+        (0, 0),
+    ]
+    assert (report.score_histogram[0].lower, report.score_histogram[-1].upper) == (0.0, 1.0)
+
+
+def test_histogram_includes_score_one_and_rejects_non_probabilities() -> None:
+    report = evaluate([0.0, 1.0], [False, True], model_id="boundaries")
+    assert report.score_histogram[0].benign == 1
+    assert report.score_histogram[-1].threat == 1
+
+    for invalid in (-0.01, 1.01, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="finite probabilities in \\[0, 1\\]"):
+            evaluate([0.2, invalid], [False, True], model_id="invalid")
 
 
 def test_running_twice_yields_identical_bytes() -> None:
@@ -166,6 +209,7 @@ def test_reordering_the_input_does_not_change_the_metrics() -> None:
 
     assert a.metrics == b.metrics
     assert a.confusion == b.confusion
+    assert a.score_histogram == b.score_histogram
 
 
 def test_inputs_are_validated() -> None:
