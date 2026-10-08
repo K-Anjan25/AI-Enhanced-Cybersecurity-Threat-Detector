@@ -32,6 +32,8 @@ import {
   useReadiness,
   type RangeKey,
 } from '../hooks';
+import { fetchDetectionStatus, type DetectionStatus } from '../api';
+import { useQuery } from '@tanstack/react-query';
 import { useChartPalette } from '../palette';
 import { readPipeline } from '../pipeline';
 import { bucketLabel, connectionState, kpiTiles, panelState, staleness } from '../view';
@@ -71,6 +73,13 @@ export function CyberpunkOverviewPage() {
     metricsFailed: metrics.isError,
     stale: age.stale,
   });
+
+  const detectionStatus = useQuery<DetectionStatus>({
+    queryKey: ['detection-status'],
+    queryFn: ({ signal }) => fetchDetectionStatus(signal),
+    refetchInterval: 5_000,
+  });
+  const det = detectionStatus.data;
 
   const stages =
     metrics.data === undefined ? [] : readPipeline(metrics.data, previousMetrics ?? null);
@@ -160,6 +169,43 @@ export function CyberpunkOverviewPage() {
           )}
         </NeonCard>
       </div>
+
+      {/* Detection Engine Status */}
+      <NeonCard title="DETECTION ENGINE" subtitle="Rule-based threat detection" color={det?.running ? 'green' : 'yellow'}>
+        <div className="grid grid-cols-2 gap-3 font-mono text-caption md:grid-cols-4">
+          <div>
+            <span className="text-muted">STATUS</span>
+            <div className={det?.running ? 'text-green text-body' : 'text-yellow text-body'}>
+              {det?.running ? 'ACTIVE' : det ? 'STOPPED' : 'LOADING...'}
+            </div>
+          </div>
+          <div>
+            <span className="text-muted">DETECTIONS</span>
+            <div className="text-cyan text-body">{det?.total_detections ?? 0}</div>
+          </div>
+          <div>
+            <span className="text-muted">ALERTS</span>
+            <div className="text-magenta text-body">{det?.total_alerts ?? 0}</div>
+          </div>
+          <div>
+            <span className="text-muted">BUFFER</span>
+            <div className="text-yellow text-body">{det?.buffer_size ?? 0} flows</div>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-caption">
+          <div>
+            <span className="text-muted">CYCLES</span>
+            <div className="text-ink">{det?.cycle_count ?? 0}</div>
+          </div>
+          <div>
+            <span className="text-muted">LAST CYCLE</span>
+            <div className="text-ink">{det?.last_cycle_alerts ?? 0} alerts</div>
+          </div>
+        </div>
+        <p className="mt-3 text-caption text-muted">
+          Monitors incoming flows for: port scans, C2 beacons, data exfiltration, brute force, DNS tunneling, lateral movement.
+        </p>
+      </NeonCard>
 
       {/* Real KPI Tiles */}
       <KpiTiles

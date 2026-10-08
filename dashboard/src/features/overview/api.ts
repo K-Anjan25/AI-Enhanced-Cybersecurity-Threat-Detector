@@ -138,3 +138,19 @@ export interface Readiness {
 export async function fetchReadiness(signal?: AbortSignal): Promise<Readiness> {
   return getJson<Readiness>('/readyz', { signal, okStatuses: [503] });
 }
+
+/** Detection engine status. */
+export interface DetectionStatus {
+  status?: string;
+  total_detections?: number;
+  total_alerts?: number;
+  buffer_size?: number;
+  cycle_count?: number;
+  last_cycle_alerts?: number;
+  running?: boolean;
+}
+
+/** Read the rule-based detection engine status. */
+export async function fetchDetectionStatus(signal?: AbortSignal): Promise<DetectionStatus> {
+  return getJson<DetectionStatus>('/api/v1/detection/status', { signal });
+}
