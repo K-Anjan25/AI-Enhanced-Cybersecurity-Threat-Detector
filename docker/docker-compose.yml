@@ -160,6 +160,27 @@ services:
       timeout: 5s
       retries: 6
 
+  # Network capture service — captures REAL traffic from the host network.
+  # Requires: --cap-add=NET_ADMIN or --privileged
+  # Override interface with: AEGIS_CAPTURE_INTERFACE=Wi-Fi docker compose up
+  capture:
+    build:
+      context: ../backend
+      dockerfile: app/services/capture/Dockerfile
+    environment:
+      AEGIS_API_URL: http://backend:8000
+      AEGIS_EMAIL: admin@aegis.local
+      AEGIS_PASSWORD: admin123456789
+      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
+      AEGIS_FLUSH_INTERVAL: "10"
+    network_mode: host
+    depends_on:
+      backend:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:
