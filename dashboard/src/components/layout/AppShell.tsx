@@ -38,6 +38,7 @@ import { ConnectionBanner } from '../realtime/ConnectionBanner';
 import { useConnectionView } from '../realtime/useConnectionView';
 import { ConnectionStatus, type ConnectionState } from '../ui/ConnectionStatus';
 import { NAV_ITEMS } from './nav';
+import { MatrixRain } from '../cyberpunk/MatrixRain';
 
 interface AppShellProps {
   /** Connection state for the top-bar indicator. */
@@ -71,6 +72,10 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
 
   return (
     <div className="flex min-h-screen bg-base text-ink">
+      {/* Cyberpunk background effects */}
+      <MatrixRain opacity={0.06} />
+      <div className="cyber-grid-bg" aria-hidden="true" />
+
       {narrow ? null : (
         <nav
           aria-label="Primary"

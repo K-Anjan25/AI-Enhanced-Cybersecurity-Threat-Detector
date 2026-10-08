@@ -43,7 +43,7 @@ import { HuntPage } from './features/hunt/pages/HuntPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
 import { DriftPage } from './features/models/pages/DriftPage';
 import { ModelsPage } from './features/models/pages/ModelsPage';
-import { OverviewPage } from './features/overview/pages/OverviewPage';
+import { CyberpunkOverviewPage } from './features/overview/pages/CyberpunkOverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
@@ -82,7 +82,7 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
           index
           element={
             <Offered>
-              <OverviewPage />
+              <CyberpunkOverviewPage />
             </Offered>
           }
         />
