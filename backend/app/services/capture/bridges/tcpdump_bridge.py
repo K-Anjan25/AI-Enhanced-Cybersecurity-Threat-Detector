@@ -224,11 +224,20 @@ def parse_tshark_line(line, aggregator):
 
 
 def main():
+    global API_URL, EMAIL, PASSWORD
+
     parser = argparse.ArgumentParser(description="tcpdump/tshark → AEGIS bridge")
-    parser.add_argument("--format", choices=["tcpdump", "tshark"], default="tcpdump")
+    parser.add_argument("--format", choices=["tcpdump", "tshark"], default="tshark")
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
+    parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
+    parser.add_argument("--email", help="Login email", default=EMAIL)
+    parser.add_argument("--password", help="Login password", default=PASSWORD)
     parser.add_argument("--batch-size", "-b", type=int, default=BATCH_SIZE)
     args = parser.parse_args()
+
+    API_URL = args.api
+    EMAIL = args.email
+    PASSWORD = args.password
 
     if not authenticate():
         sys.exit(1)
