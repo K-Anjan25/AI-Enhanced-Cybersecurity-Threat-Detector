@@ -145,6 +145,10 @@ async def _ingest(
             # batch quietly -- the records were enqueued, so a retry duplicates
             # rather than loses, which is T-307's rule for the worker applied here.
             await keep(accepted)
+        # Feed accepted flows to the rule-based detection engine.
+        detection_engine = getattr(request.app.state, "detection_engine", None)
+        if detection_engine is not None and modality == "flow" and accepted:
+            detection_engine.feed([r.model_dump() for r in accepted])
         record_action(
             audit_trail(request),
             action=action,

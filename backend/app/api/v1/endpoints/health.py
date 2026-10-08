@@ -14,6 +14,15 @@ from app.services import health_service
 router = APIRouter(tags=["health"])
 
 
+@router.get("/api/v1/detection/status", summary="Rule-based detection engine status")
+def detection_status(request: Request) -> dict[str, object]:
+    """Return the detection engine's current stats."""
+    engine = getattr(request.app.state, "detection_engine", None)
+    if engine is None:
+        return {"status": "not_configured"}
+    return engine.stats
+
+
 @router.get("/healthz", response_model=HealthResponse, summary="Liveness probe")
 def healthz(request: Request) -> HealthResponse:
     """Report that the process is alive.

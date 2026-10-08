@@ -52,6 +52,7 @@ from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
+from app.services.detection_engine import DetectionEngine
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.auth_accounts import AuthAccountStore
 from app.services.entity_registry import EntityRegistry
@@ -156,9 +157,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         environment=settings.env.value,
         version=__version__,
     )
+    # Start the rule-based detection engine
+    detection_engine = getattr(app.state, "detection_engine", None)
+    if detection_engine is not None:
+        detection_engine.start()
+        logger.info("detection_engine_started", interval=15)
     try:
         yield
     finally:
+        # Stop the detection engine
+        if detection_engine is not None:
+            detection_engine.stop()
         # Drop connected dashboards so they fall back to REST rather than
         # holding a socket that will never speak again (FR-20).
         app.state.alert_hub.close()
@@ -265,6 +274,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # here, like every other store in this environment; D-053 records the
     # PostgreSQL adapter as unwired and the case-id column it would need.
     app.state.alert_store = InMemoryAlertStore()
+    # Rule-based detection engine: runs in background, reads buffered flows,
+    # applies heuristic rules, and writes alerts to the alert store.
+    app.state.detection_engine = DetectionEngine(
+        app.state.alert_store,
+        interval=15.0,
+        max_buffer=10_000,
+    )
     # The entity registry (T-416). The same object type the pipeline allocates ids
     # from, so an alert written by this process can be rendered by name: the
     # overview resolves `entity_id` through it. D-053 records the persistent
