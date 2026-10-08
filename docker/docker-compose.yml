@@ -168,7 +168,7 @@ services:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile
     environment:
-      AEGIS_API_URL: http://backend:8000
+      AEGIS_API_URL: http://localhost:8000
       AEGIS_EMAIL: admin@aegis.local
       AEGIS_PASSWORD: admin123456789
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
@@ -188,7 +188,7 @@ services:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile.zeek
     environment:
-      AEGIS_API_URL: http://backend:8000
+      AEGIS_API_URL: http://localhost:8000
       AEGIS_EMAIL: admin@aegis.local
       AEGIS_PASSWORD: admin123456789
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
@@ -207,7 +207,7 @@ services:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile.suricata
     environment:
-      AEGIS_API_URL: http://backend:8000
+      AEGIS_API_URL: http://localhost:8000
       AEGIS_EMAIL: admin@aegis.local
       AEGIS_PASSWORD: admin123456789
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
@@ -225,7 +225,7 @@ services:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile.tshark
     environment:
-      AEGIS_API_URL: http://backend:8000
+      AEGIS_API_URL: http://localhost:8000
       AEGIS_EMAIL: admin@aegis.local
       AEGIS_PASSWORD: admin123456789
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
