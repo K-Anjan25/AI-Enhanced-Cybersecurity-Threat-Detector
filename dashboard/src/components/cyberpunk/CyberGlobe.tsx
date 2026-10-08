@@ -93,17 +93,17 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
   }, []);
 
   useEffect(() => {
-    // Initial arcs
-    const initial = Array.from({ length: 6 }, generateArc);
+    // Initial arcs — fewer
+    const initial = Array.from({ length: 4 }, generateArc);
     setArcs(initial);
 
-    // Add new arcs periodically
+    // Add new arcs less frequently
     const interval = setInterval(() => {
       setArcs((prev) => {
         const updated = [...prev, generateArc()];
-        return updated.slice(-15); // Keep last 15 arcs
+        return updated.slice(-8); // Keep last 8 arcs (was 15)
       });
-    }, 2500);
+    }, 4000); // was 2500ms
 
     return () => clearInterval(interval);
   }, [generateArc]);

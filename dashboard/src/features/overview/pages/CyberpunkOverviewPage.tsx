@@ -1,8 +1,14 @@
 /**
  * CyberpunkOverviewPage — Full cyberpunk-styled overview dashboard.
  *
- * Integrates: 3D Globe, Threat Radar, Pulse Waves, GlitchText,
- * NeonCards, ThreatLevelBar, DataStream, VectorShield, KPI Tiles.
+ * Performance-aware: heavy animations (globe, radar, pulse waves, data streams)
+ * are conditionally rendered based on the PerformanceContext toggle.
+ *
+ * DATA SOURCE CLARIFICATION:
+ * - KPI tiles, severity chart, entities, families: from GET /api/v1/overview (backend)
+ * - Pipeline strip: from GET /metrics (backend)
+ * - Globe arcs, radar blips, live stats strip, threat level: SIMULATED (demo data)
+ * - Pulse waves: purely decorative animation
  */
 import { useEffect, useState, useMemo } from 'react';
 
@@ -16,6 +22,7 @@ import {
   CyberGlobe,
   DataStream,
 } from '../../../components/cyberpunk';
+import { usePerformance } from '../../../components/cyberpunk/PerformanceContext';
 import { Card, ConnectionStatus, EmptyState } from '../../../components/ui';
 import {
   emptyTally,
@@ -45,8 +52,11 @@ import { useChartPalette } from '../palette';
 import { readPipeline } from '../pipeline';
 import { bucketLabel, connectionState, kpiTiles, panelState, staleness } from '../view';
 
-/** Fake live stats for the cyberpunk HUD header */
-function useLiveStats() {
+/**
+ * Fake live stats — purely decorative, not connected to any real data source.
+ * Updates every 3s to simulate activity.
+ */
+function useSimulatedStats(enabled: boolean) {
   const [stats, setStats] = useState({
     packetsPerSec: 14523,
     activeConnections: 892,
@@ -55,6 +65,7 @@ function useLiveStats() {
   });
 
   useEffect(() => {
+    if (!enabled) return;
     const interval = setInterval(() => {
       setStats((prev) => ({
         packetsPerSec: prev.packetsPerSec + Math.floor(Math.random() * 200 - 80),
@@ -62,9 +73,9 @@ function useLiveStats() {
         threatsBlocked: prev.threatsBlocked + (Math.random() > 0.85 ? 1 : 0),
         uptime: '99.97%',
       }));
-    }, 2000);
+    }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [enabled]);
 
   return stats;
 }
@@ -72,6 +83,7 @@ function useLiveStats() {
 export function CyberpunkOverviewPage() {
   const [rangeKey, setRangeKey] = useState<RangeKey>('24h');
   const range = rangeSpec(rangeKey);
+  const perf = usePerformance();
 
   const visible = useDocumentVisible();
   const now = useNow(1_000, visible);
@@ -81,7 +93,7 @@ export function CyberpunkOverviewPage() {
   const previousMetrics = usePrevious(metrics.data);
   const palette = useChartPalette();
   const reducedMotion = usePrefersReducedMotion();
-  const liveStats = useLiveStats();
+  const liveStats = useSimulatedStats(perf.showAnimations);
 
   const summary = overview.data;
   const tally = summary === undefined ? emptyTally() : tallyFromOverview(summary.totals);
@@ -109,7 +121,6 @@ export function CyberpunkOverviewPage() {
   const stages =
     metrics.data === undefined ? [] : readPipeline(metrics.data, previousMetrics ?? null);
 
-  // Simulated threat level for the cyberpunk display
   const threatLevel = useMemo(() => {
     if (alerts === 0) return 8;
     if (alerts < 10) return 15 + alerts * 3;
@@ -119,17 +130,33 @@ export function CyberpunkOverviewPage() {
 
   return (
     <div className="relative flex flex-col gap-6">
-      {/* HUD Data Stream (decorative) */}
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-16 overflow-hidden opacity-20">
-        <DataStream columns={4} speed="slow" />
+      {/* Decorative data stream — hidden in performance mode */}
+      {perf.showAnimations && (
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-16 overflow-hidden opacity-20">
+          <DataStream columns={4} speed="slow" />
+        </div>
+      )}
+
+      {/* Data source indicator */}
+      <div className="flex items-center gap-2 rounded border border-line bg-surface/50 px-3 py-2 font-mono text-caption text-muted">
+        <span className="inline-block h-2 w-2 rounded-full bg-green" />
+        <span>
+          Dashboard connected to backend API. KPI/chart data is live from{' '}
+          <code className="text-accent">/api/v1/overview</code>. Globe, radar, and stats strip
+          below are <span className="text-yellow">simulated demo visuals</span> — not real network traffic.
+        </span>
+        {!perf.showAnimations && (
+          <span className="ml-auto text-green">⚡ Performance mode ON</span>
+        )}
       </div>
 
-      {/* Page Header with Cyberpunk styling */}
+      {/* Page Header */}
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <VectorShield
             size={48}
             status={threatLevel > 60 ? 'breach' : threatLevel > 30 ? 'warning' : 'secure'}
+            animate={perf.showAnimations}
           />
           <div>
             <GlitchText as="h1" intensity="subtle">
@@ -166,21 +193,21 @@ export function CyberpunkOverviewPage() {
         </div>
       </header>
 
-      {/* Cyberpunk HUD Stats Strip */}
+      {/* HUD Stats Strip — simulated */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { label: 'PACKETS/SEC', value: liveStats.packetsPerSec.toLocaleString(), color: '#00f0ff' },
-          { label: 'ACTIVE CONN', value: liveStats.activeConnections.toLocaleString(), color: '#05ffa1' },
-          { label: 'THREATS BLOCKED', value: String(liveStats.threatsBlocked), color: '#ff2a6d' },
-          { label: 'UPTIME', value: liveStats.uptime, color: '#fcee0a' },
+          { label: 'PACKETS/SEC', value: liveStats.packetsPerSec.toLocaleString(), color: '#00f0ff', neon: 'cyan' as const },
+          { label: 'ACTIVE CONN', value: liveStats.activeConnections.toLocaleString(), color: '#05ffa1', neon: 'green' as const },
+          { label: 'THREATS BLOCKED', value: String(liveStats.threatsBlocked), color: '#ff2a6d', neon: 'magenta' as const },
+          { label: 'UPTIME', value: liveStats.uptime, color: '#fcee0a', neon: 'yellow' as const },
         ].map((stat) => (
-          <NeonCard key={stat.label} color={stat.label === 'THREATS BLOCKED' ? 'magenta' : stat.label === 'UPTIME' ? 'yellow' : stat.label === 'ACTIVE CONN' ? 'green' : 'cyan'}>
+          <NeonCard key={stat.label} color={stat.neon}>
             <div className="flex flex-col items-center py-1">
               <span className="font-mono text-caption uppercase tracking-widest text-muted">
                 {stat.label}
               </span>
               <span
-                className="font-mono text-h1 tabular neon-glow-cyan"
+                className="font-mono text-h1 tabular"
                 style={{ color: stat.color, fontSize: '28px' }}
               >
                 {stat.value}
@@ -190,42 +217,62 @@ export function CyberpunkOverviewPage() {
         ))}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {/* 3D Globe — spans 2 columns */}
-        <div className="xl:col-span-2">
-          <NeonCard title="GLOBAL NETWORK TRAFFIC" subtitle="Live threat visualization" color="cyan" animate>
-            <div className="flex justify-center">
-              <CyberGlobe width={520} height={380} />
+      {/* Globe + Radar — heaviest components, gated */}
+      {perf.showGlobe && (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <NeonCard title="GLOBAL NETWORK TRAFFIC" subtitle="Simulated threat visualization — not real data" color="cyan" animate={perf.showAnimations}>
+              <div className="flex justify-center">
+                <CyberGlobe width={520} height={380} />
+              </div>
+            </NeonCard>
+          </div>
+
+          <div>
+            <NeonCard title="THREAT RADAR" subtitle="Simulated sweep" color="magenta" animate={perf.showAnimations}>
+              <div className="flex flex-col items-center gap-3">
+                <ThreatRadar size={240} />
+                <ThreatLevelBar level={threatLevel} animated={perf.showAnimations} />
+              </div>
+            </NeonCard>
+          </div>
+        </div>
+      )}
+
+      {!perf.showGlobe && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <NeonCard title="THREAT LEVEL" color="magenta">
+            <ThreatLevelBar level={threatLevel} animated={false} />
+          </NeonCard>
+          <NeonCard title="SYSTEM STATUS" color="green">
+            <div className="flex items-center gap-3 py-2">
+              <VectorShield size={40} status="secure" animate={false} />
+              <div>
+                <p className="font-mono text-body text-green">ALL SYSTEMS OPERATIONAL</p>
+                <p className="font-mono text-caption text-muted">Globe disabled (performance mode)</p>
+              </div>
             </div>
           </NeonCard>
         </div>
+      )}
 
-        {/* Threat Radar */}
-        <div>
-          <NeonCard title="THREAT RADAR" subtitle="Real-time sweep" color="magenta" animate>
-            <div className="flex flex-col items-center gap-3">
-              <ThreatRadar size={240} />
-              <ThreatLevelBar level={threatLevel} />
-            </div>
+      {/* System Vitals — decorative pulse waves, gated */}
+      {perf.showAnimations && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <NeonCard title="NETWORK PULSE" color="cyan">
+            <PulseWave width={280} height={50} color="#00f0ff" speed={2} />
+          </NeonCard>
+          <NeonCard title="CPU UTILIZATION" color="green">
+            <PulseWave width={280} height={50} color="#05ffa1" speed={1.5} amplitude={0.4} />
+          </NeonCard>
+          <NeonCard title="MEMORY FLOW" color="magenta">
+            <PulseWave width={280} height={50} color="#ff2a6d" speed={1} amplitude={0.3} />
           </NeonCard>
         </div>
-      </div>
+      )}
 
-      {/* System Vitals Row */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <NeonCard title="NETWORK PULSE" color="cyan">
-          <PulseWave width={280} height={50} color="#00f0ff" speed={2} />
-        </NeonCard>
-        <NeonCard title="CPU UTILIZATION" color="green">
-          <PulseWave width={280} height={50} color="#05ffa1" speed={1.5} amplitude={0.4} />
-        </NeonCard>
-        <NeonCard title="MEMORY FLOW" color="magenta">
-          <PulseWave width={280} height={50} color="#ff2a6d" speed={1} amplitude={0.3} />
-        </NeonCard>
-      </div>
+      {/* === REAL DATA from backend API below === */}
 
-      {/* Standard KPI Tiles from the original overview */}
       <KpiTiles
         tiles={kpiTiles(tally, summary?.totals.open ?? 0, range.label, {
           meanSeconds: summary?.totals.mean_time_to_verdict_seconds ?? null,
@@ -233,7 +280,6 @@ export function CyberpunkOverviewPage() {
         })}
       />
 
-      {/* Severity Chart */}
       <SeverityAreaChart
         points={points}
         windowLabel={windowLabel}
@@ -244,7 +290,6 @@ export function CyberpunkOverviewPage() {
         onRetry={() => void overview.refetch()}
       />
 
-      {/* Entities + Family Mix */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card
           title="Top attacked entities"
@@ -276,7 +321,6 @@ export function CyberpunkOverviewPage() {
         />
       </div>
 
-      {/* Pipeline Strip */}
       {stages.length === 0 ? (
         <section className="rounded-card border border-line bg-base p-4">
           <h2 className="text-h2">Detection pipeline health</h2>

@@ -38,7 +38,7 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
       severity: severities[Math.floor(Math.random() * severities.length)] ?? 'low',
       opacity: 1,
     };
-    setBlips((prev) => [...prev.slice(-12), newBlip]);
+    setBlips((prev) => [...prev.slice(-6), newBlip]); // was 12, now 6
   }, []);
 
   useEffect(() => {
@@ -48,18 +48,18 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
     let lastTime = 0;
     function animate(time: number) {
       const delta = time - lastTime;
-      if (delta > 16) {
-        setSweepAngle((prev) => (prev + 1.5) % 360);
+      if (delta > 33) { // ~30fps instead of 60fps
+        setSweepAngle((prev) => (prev + 2) % 360);
 
         // Fade blips
         setBlips((prev) =>
           prev
-            .map((b) => ({ ...b, opacity: b.opacity - 0.004 }))
+            .map((b) => ({ ...b, opacity: b.opacity - 0.008 }))
             .filter((b) => b.opacity > 0),
         );
 
-        // Random new blips
-        if (time - lastBlipRef.current > 800 + Math.random() * 2000) {
+        // Random new blips — less frequent
+        if (time - lastBlipRef.current > 1500 + Math.random() * 3000) {
           addBlip();
           lastBlipRef.current = time;
         }
