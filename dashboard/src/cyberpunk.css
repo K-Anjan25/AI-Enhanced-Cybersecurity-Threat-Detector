@@ -1,25 +1,13 @@
 /**
- * CYBERPUNK THEME — AEGIS Cybersecurity Dashboard
+ * CYBERPUNK THEME — Pure CSS, zero JavaScript overhead.
  *
- * Neon colors, glitch effects, scanlines, HUD elements, angled corners,
- * chromatic aberration, and all the futuristic aesthetics.
+ * All effects are CSS-only: no canvas, no requestAnimationFrame,
+ * no setInterval, no heavy JS animations. Memory-safe.
  *
- * Design Language:
- *   - Base: Deep void black (#050510)
- *   - Primary Cyan: #00f0ff
- *   - Magenta/Pink: #ff2a6d
- *   - Acid Green: #05ffa1
- *   - Neon Yellow: #fcee0a
- *   - Electric Purple: #8b72ff
- *   - Typography: JetBrains Mono (mono) + Rajdhani (display)
+ * Colors: Neon Cyan #00f0ff, Magenta #ff2a6d, Green #05ffa1, Yellow #fcee0a
  */
 
-/* Font imports — MUST be at top before any other rules */
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-
-/* ============================================
-   CYBERPUNK COLOR OVERRIDES
-   ============================================ */
 
 :root,
 [data-theme='dark'] {
@@ -30,34 +18,25 @@
   --color-text-muted: #5a6b8a;
   --color-accent: #00f0ff;
   --color-on-accent: #050510;
-
   --severity-critical: #ff2a6d;
   --severity-high: #ff6b35;
   --severity-medium: #fcee0a;
   --severity-low: #00f0ff;
   --severity-info: #8b72ff;
   --severity-benign: #05ffa1;
-
   --severity-text-critical: #ff5c8a;
   --severity-text-high: #ff9e6b;
   --severity-text-medium: #fcee0a;
   --severity-text-low: #4df7ff;
   --severity-text-info: #b69fff;
   --severity-text-benign: #4dffc2;
-
   --focus-ring: #00f0ff;
-  --shadow-overlay: 0 8px 32px rgba(0, 240, 255, 0.15), 0 0 60px rgba(0, 240, 255, 0.05);
-
-  /* Cyberpunk-specific tokens */
+  --shadow-overlay: 0 8px 32px rgba(0, 240, 255, 0.15);
   --neon-cyan: #00f0ff;
   --neon-magenta: #ff2a6d;
   --neon-green: #05ffa1;
   --neon-yellow: #fcee0a;
   --neon-purple: #8b72ff;
-  --neon-orange: #ff6b35;
-  --glow-cyan: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 30px rgba(0, 240, 255, 0.2);
-  --glow-magenta: 0 0 10px rgba(255, 42, 109, 0.5), 0 0 30px rgba(255, 42, 109, 0.2);
-  --glow-green: 0 0 10px rgba(5, 255, 161, 0.5), 0 0 30px rgba(5, 255, 161, 0.2);
 }
 
 [data-theme='light'] {
@@ -70,74 +49,49 @@
   --color-on-accent: #050510;
 }
 
-/* ============================================
-   BASE CYBERPUNK BODY
-   ============================================ */
+/* ===== BODY — Static gradient, no animation ===== */
 
 body {
   background: var(--color-bg-base) !important;
   background-image:
     radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(255, 42, 109, 0.02) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(139, 114, 255, 0.02) 0%, transparent 50%) !important;
+    radial-gradient(ellipse at 80% 20%, rgba(255, 42, 109, 0.02) 0%, transparent 50%) !important;
   font-family: 'Rajdhani', 'Inter', system-ui, sans-serif !important;
 }
 
-/* Scanline overlay on body */
+/* Scanlines — static, no animation */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
+    0deg, transparent, transparent 2px,
+    rgba(0, 0, 0, 0.02) 2px, rgba(0, 0, 0, 0.02) 4px
   );
   pointer-events: none;
   z-index: 9999;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  body::after {
-    display: none;
-  }
+/* ===== GRID BACKGROUND — Static ===== */
+
+.cyber-grid-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
-/* ============================================
-   NAVIGATION RAIL — CYBERPUNK STYLE
-   ============================================ */
+/* ===== NAVIGATION ===== */
 
 nav[aria-label='Primary'] {
   background: linear-gradient(180deg, #0a0a1a 0%, #050510 50%, #0a0a1a 100%) !important;
   border-right: 1px solid rgba(0, 240, 255, 0.1) !important;
-  position: relative;
 }
 
-nav[aria-label='Primary']::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(0, 240, 255, 0.4) 30%,
-    rgba(0, 240, 255, 0.4) 70%,
-    transparent 100%
-  );
-  animation: neonPulse 3s ease-in-out infinite;
-}
-
-@keyframes neonPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-/* Nav header "AEGIS" */
 nav[aria-label='Primary'] .text-h2 {
   font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
   font-weight: 700 !important;
@@ -146,15 +100,6 @@ nav[aria-label='Primary'] .text-h2 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-shadow: none;
-  position: relative;
-}
-
-/* Nav items */
-nav[aria-label='Primary'] a {
-  transition: all 0.2s ease !important;
-  position: relative;
-  border-left: 2px solid transparent !important;
 }
 
 nav[aria-label='Primary'] a:hover {
@@ -168,19 +113,6 @@ nav[aria-label='Primary'] a[class*='border-accent'] {
   color: #00f0ff !important;
 }
 
-nav[aria-label='Primary'] a[class*='border-accent']::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 60%;
-  background: #00f0ff;
-  box-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
-}
-
-/* Section labels */
 nav[aria-label='Primary'] .text-caption {
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 10px !important;
@@ -188,14 +120,11 @@ nav[aria-label='Primary'] .text-caption {
   color: rgba(0, 240, 255, 0.4) !important;
 }
 
-/* ============================================
-   TOP BAR — CYBERPUNK HEADER
-   ============================================ */
+/* ===== TOP BAR ===== */
 
 header {
   background: linear-gradient(90deg, #0a0a1a 0%, #0d0d25 50%, #0a0a1a 100%) !important;
   border-bottom: 1px solid rgba(0, 240, 255, 0.1) !important;
-  position: relative;
 }
 
 header::after {
@@ -205,39 +134,16 @@ header::after {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 240, 255, 0.3) 20%,
-    rgba(255, 42, 109, 0.3) 50%,
-    rgba(0, 240, 255, 0.3) 80%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.3) 20%, rgba(255, 42, 109, 0.3) 50%, rgba(0, 240, 255, 0.3) 80%, transparent);
 }
 
-/* "AI-Enhanced Cybersecurity Threat Detector" header text */
 header .text-caption {
   font-family: 'JetBrains Mono', monospace !important;
   letter-spacing: 0.15em !important;
   color: rgba(0, 240, 255, 0.5) !important;
 }
 
-/* Search bar */
-header input,
-header button[class*='border-line'] {
-  border-color: rgba(0, 240, 255, 0.2) !important;
-  background: rgba(0, 240, 255, 0.03) !important;
-}
-
-header input:focus,
-header button[class*='border-line']:hover {
-  border-color: rgba(0, 240, 255, 0.5) !important;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1) !important;
-}
-
-/* ============================================
-   GLITCH TEXT EFFECT
-   ============================================ */
+/* ===== GLITCH TEXT — Pure CSS, no JS ===== */
 
 .glitch-text {
   font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
@@ -260,211 +166,69 @@ header button[class*='border-line']:hover {
 .glitch-text--subtle::before {
   color: #ff2a6d;
   z-index: -1;
-  animation: glitchSubtle1 3s infinite linear alternate-reverse;
+  animation: glitch1 4s infinite linear alternate-reverse;
 }
 
 .glitch-text--subtle::after {
   color: #00f0ff;
   z-index: -2;
-  animation: glitchSubtle2 2s infinite linear alternate-reverse;
-}
-
-.glitch-text--medium::before,
-.glitch-text--medium::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.glitch-text--medium::before {
-  color: #ff2a6d;
-  z-index: -1;
-  animation: glitchMedium1 1.5s infinite;
-}
-
-.glitch-text--medium::after {
-  color: #00f0ff;
-  z-index: -2;
-  animation: glitchMedium2 1.5s infinite;
-}
-
-.glitch-text--intense:hover::before,
-.glitch-text--intense:hover::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.glitch-text--intense:hover::before {
-  color: #ff2a6d;
-  z-index: -1;
-  animation: glitchIntense 0.3s infinite;
-}
-
-.glitch-text--intense:hover::after {
-  color: #00f0ff;
-  z-index: -2;
-  animation: glitchIntense 0.3s infinite reverse;
-}
-
-@keyframes glitchSubtle1 {
-  0% { clip-path: inset(0 0 95% 0); transform: translate(-1px, 0); }
-  20% { clip-path: inset(40% 0 30% 0); transform: translate(1px, 0); }
-  40% { clip-path: inset(80% 0 5% 0); transform: translate(-1px, 0); }
-  60% { clip-path: inset(10% 0 60% 0); transform: translate(1px, 0); }
-  80% { clip-path: inset(50% 0 20% 0); transform: translate(-1px, 0); }
-  100% { clip-path: inset(0 0 95% 0); transform: translate(1px, 0); }
-}
-
-@keyframes glitchSubtle2 {
-  0% { clip-path: inset(95% 0 0 0); transform: translate(1px, 0); }
-  20% { clip-path: inset(30% 0 40% 0); transform: translate(-1px, 0); }
-  40% { clip-path: inset(5% 0 80% 0); transform: translate(1px, 0); }
-  60% { clip-path: inset(60% 0 10% 0); transform: translate(-1px, 0); }
-  80% { clip-path: inset(20% 0 50% 0); transform: translate(1px, 0); }
-  100% { clip-path: inset(95% 0 0 0); transform: translate(-1px, 0); }
-}
-
-@keyframes glitchMedium1 {
-  0% { clip-path: inset(0 0 90% 0); transform: translate(-2px, -1px); }
-  25% { clip-path: inset(20% 0 50% 0); transform: translate(2px, 1px); }
-  50% { clip-path: inset(70% 0 10% 0); transform: translate(-1px, 2px); }
-  75% { clip-path: inset(40% 0 30% 0); transform: translate(1px, -2px); }
-  100% { clip-path: inset(0 0 90% 0); transform: translate(-2px, -1px); }
-}
-
-@keyframes glitchMedium2 {
-  0% { clip-path: inset(90% 0 0 0); transform: translate(2px, 1px); }
-  25% { clip-path: inset(50% 0 20% 0); transform: translate(-2px, -1px); }
-  50% { clip-path: inset(10% 0 70% 0); transform: translate(1px, -2px); }
-  75% { clip-path: inset(30% 0 40% 0); transform: translate(-1px, 2px); }
-  100% { clip-path: inset(90% 0 0 0); transform: translate(2px, 1px); }
-}
-
-@keyframes glitchIntense {
-  0% { clip-path: inset(0 0 85% 0); transform: translate(-4px, -2px) skewX(-2deg); }
-  20% { clip-path: inset(15% 0 60% 0); transform: translate(4px, 2px) skewX(2deg); }
-  40% { clip-path: inset(70% 0 5% 0); transform: translate(-3px, 3px) skewX(-1deg); }
-  60% { clip-path: inset(30% 0 40% 0); transform: translate(3px, -3px) skewX(1deg); }
-  80% { clip-path: inset(55% 0 15% 0); transform: translate(-2px, -4px) skewX(-2deg); }
-  100% { clip-path: inset(0 0 85% 0); transform: translate(4px, -2px) skewX(2deg); }
+  animation: glitch2 3s infinite linear alternate-reverse;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glitch-text::before,
-  .glitch-text::after {
-    animation: none !important;
-  }
+  .glitch-text::before, .glitch-text::after { animation: none !important; }
 }
 
-/* ============================================
-   NEON CARD
-   ============================================ */
+@keyframes glitch1 {
+  0%, 90% { clip-path: inset(0 0 95% 0); transform: translate(-1px, 0); }
+  92% { clip-path: inset(40% 0 30% 0); transform: translate(1px, 0); }
+  94% { clip-path: inset(80% 0 5% 0); transform: translate(-1px, 0); }
+  96% { clip-path: inset(10% 0 60% 0); transform: translate(1px, 0); }
+  98% { clip-path: inset(50% 0 20% 0); transform: translate(-1px, 0); }
+  100% { clip-path: inset(0 0 95% 0); transform: translate(1px, 0); }
+}
+
+@keyframes glitch2 {
+  0%, 90% { clip-path: inset(95% 0 0 0); transform: translate(1px, 0); }
+  92% { clip-path: inset(30% 0 40% 0); transform: translate(-1px, 0); }
+  94% { clip-path: inset(5% 0 80% 0); transform: translate(1px, 0); }
+  96% { clip-path: inset(60% 0 10% 0); transform: translate(-1px, 0); }
+  98% { clip-path: inset(20% 0 50% 0); transform: translate(1px, 0); }
+  100% { clip-path: inset(95% 0 0 0); transform: translate(-1px, 0); }
+}
+
+/* ===== NEON CARD — Pure CSS ===== */
 
 .neon-card {
   position: relative;
-  background: linear-gradient(135deg, rgba(10, 10, 26, 0.9) 0%, rgba(5, 5, 16, 0.95) 100%);
-  border: 1px solid var(--neon-border, rgba(0, 240, 255, 0.2));
+  background: linear-gradient(135deg, rgba(10, 10, 26, 0.95) 0%, rgba(5, 5, 16, 0.98) 100%);
+  border: 1px solid var(--neon-border, rgba(0, 240, 255, 0.15));
   padding: 20px;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 12px) 0,
-    100% 12px,
-    100% 100%,
-    12px 100%,
-    0 calc(100% - 12px)
-  );
-  transition: all 0.3s ease;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  transition: border-color 0.2s ease;
   overflow: hidden;
 }
 
 .neon-card:hover {
-  border-color: var(--neon-border, rgba(0, 240, 255, 0.5));
-  box-shadow:
-    0 0 15px var(--neon-glow, rgba(0, 240, 255, 0.2)),
-    inset 0 0 15px var(--neon-glow, rgba(0, 240, 255, 0.05));
+  border-color: var(--neon-border, rgba(0, 240, 255, 0.4));
 }
 
-.neon-card--animated {
-  animation: cardFlicker 4s infinite;
-}
-
-@keyframes cardFlicker {
-  0%, 100% { opacity: 1; }
-  97% { opacity: 1; }
-  97.5% { opacity: 0.8; }
-  98% { opacity: 1; }
-  98.5% { opacity: 0.9; }
-  99% { opacity: 1; }
-}
-
-/* Scanlines overlay */
 .neon-card__scanlines {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.05) 2px,
-    rgba(0, 0, 0, 0.05) 4px
-  );
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
   pointer-events: none;
   z-index: 1;
 }
 
-/* HUD corner decorations */
-.neon-card__corner {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  z-index: 2;
-}
+.neon-card__corner { position: absolute; width: 12px; height: 12px; z-index: 2; }
+.neon-card__corner--tl { top: 0; left: 0; border-top: 2px solid var(--neon-border); border-left: 2px solid var(--neon-border); }
+.neon-card__corner--tr { top: 0; right: 0; border-top: 2px solid var(--neon-border); border-right: 2px solid var(--neon-border); }
+.neon-card__corner--bl { bottom: 0; left: 0; border-bottom: 2px solid var(--neon-border); border-left: 2px solid var(--neon-border); }
+.neon-card__corner--br { bottom: 0; right: 0; border-bottom: 2px solid var(--neon-border); border-right: 2px solid var(--neon-border); }
+.neon-card__content { position: relative; z-index: 3; }
 
-.neon-card__corner--tl {
-  top: 0;
-  left: 0;
-  border-top: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-  border-left: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-}
-
-.neon-card__corner--tr {
-  top: 0;
-  right: 0;
-  border-top: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-  border-right: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-}
-
-.neon-card__corner--bl {
-  bottom: 0;
-  left: 0;
-  border-bottom: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-  border-left: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-}
-
-.neon-card__corner--br {
-  bottom: 0;
-  right: 0;
-  border-bottom: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-  border-right: 2px solid var(--neon-border, rgba(0, 240, 255, 0.5));
-}
-
-.neon-card__content {
-  position: relative;
-  z-index: 3;
-}
-
-/* ============================================
-   CYBER BUTTON
-   ============================================ */
+/* ===== CYBER BUTTON — Pure CSS ===== */
 
 .cyber-btn {
   position: relative;
@@ -475,39 +239,20 @@ header button[class*='border-line']:hover {
   padding: 10px 24px;
   border: none;
   cursor: pointer;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 8px) 0,
-    100% 8px,
-    100% 100%,
-    8px 100%,
-    0 calc(100% - 8px)
-  );
-  transition: all 0.2s ease;
-  overflow: hidden;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  transition: box-shadow 0.2s ease;
 }
 
 .cyber-btn--primary {
   background: linear-gradient(135deg, #00f0ff 0%, #00a8cc 100%);
   color: #050510;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
 }
 
-.cyber-btn--primary:hover {
-  background: linear-gradient(135deg, #4df7ff 0%, #00c8ee 100%);
-  box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
-  transform: translateY(-1px);
-}
+.cyber-btn--primary:hover { box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); }
 
 .cyber-btn--danger {
   background: linear-gradient(135deg, #ff2a6d 0%, #cc2257 100%);
   color: #ffffff;
-  box-shadow: 0 0 15px rgba(255, 42, 109, 0.3);
-}
-
-.cyber-btn--danger:hover {
-  box-shadow: 0 0 25px rgba(255, 42, 109, 0.5);
-  transform: translateY(-1px);
 }
 
 .cyber-btn--ghost {
@@ -517,53 +262,12 @@ header button[class*='border-line']:hover {
   clip-path: none;
 }
 
-.cyber-btn--ghost:hover {
-  background: rgba(0, 240, 255, 0.1);
-  border-color: rgba(0, 240, 255, 0.6);
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-}
+.cyber-btn--ghost:hover { background: rgba(0, 240, 255, 0.1); border-color: rgba(0, 240, 255, 0.6); }
+.cyber-btn--sm { padding: 6px 14px; font-size: 11px; }
+.cyber-btn--md { padding: 10px 24px; font-size: 13px; }
+.cyber-btn--lg { padding: 14px 32px; font-size: 15px; }
 
-.cyber-btn--sm {
-  padding: 6px 14px;
-  font-size: 11px;
-}
-
-.cyber-btn--md {
-  padding: 10px 24px;
-  font-size: 13px;
-}
-
-.cyber-btn--lg {
-  padding: 14px 32px;
-  font-size: 15px;
-}
-
-.cyber-btn__text {
-  position: relative;
-  z-index: 1;
-}
-
-.cyber-btn__glitch {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.4s ease;
-}
-
-.cyber-btn:hover .cyber-btn__glitch {
-  transform: translateX(100%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cyber-btn__glitch {
-    display: none;
-  }
-}
-
-/* ============================================
-   THREAT LEVEL BAR
-   ============================================ */
+/* ===== THREAT LEVEL BAR ===== */
 
 .threat-level-bar__segment {
   flex: 1;
@@ -571,36 +275,11 @@ header button[class*='border-line']:hover {
   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
 }
 
-/* ============================================
-   CYBER GLOBE WRAPPER
-   ============================================ */
+/* ===== VECTOR SHIELD — Static SVG, no animation ===== */
 
-.cyber-globe {
-  border: 1px solid rgba(0, 240, 255, 0.15);
-  background: radial-gradient(ellipse at center, rgba(0, 240, 255, 0.02) 0%, transparent 70%);
-  clip-path: polygon(
-    0 0,
-    calc(100% - 16px) 0,
-    100% 16px,
-    100% 100%,
-    16px 100%,
-    0 calc(100% - 16px)
-  );
-  overflow: hidden;
-}
+/* (No CSS needed — SVG handles its own rendering) */
 
-/* ============================================
-   DATA STREAM SCROLL ANIMATION
-   ============================================ */
-
-@keyframes dataStreamScroll {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(-50%); }
-}
-
-/* ============================================
-   CYBERPUNK INPUTS / SELECTS
-   ============================================ */
+/* ===== INPUTS / SELECTS ===== */
 
 input, select, textarea {
   font-family: 'JetBrains Mono', monospace !important;
@@ -611,169 +290,40 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: #00f0ff !important;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15) !important;
-  outline: none !important;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.1) !important;
 }
 
 select {
-  clip-path: polygon(
-    0 0,
-    calc(100% - 6px) 0,
-    100% 6px,
-    100% 100%,
-    6px 100%,
-    0 calc(100% - 6px)
-  );
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
 }
 
-/* ============================================
-   CYBERPUNK CARDS (existing Card component)
-   ============================================ */
+/* ===== CARDS ===== */
 
 [class*='rounded-card'] {
   border-color: rgba(0, 240, 255, 0.1) !important;
   background: linear-gradient(135deg, rgba(10, 10, 26, 0.95) 0%, rgba(5, 5, 16, 0.98) 100%) !important;
-  position: relative;
 }
 
-[class*='rounded-card']::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.02) 3px,
-    rgba(0, 0, 0, 0.02) 6px
-  );
-  pointer-events: none;
-  border-radius: inherit;
-}
+/* ===== TABLES ===== */
 
-/* ============================================
-   CYBERPUNK TABLES
-   ============================================ */
+table { font-family: 'JetBrains Mono', monospace !important; }
+table thead { background: rgba(0, 240, 255, 0.03) !important; }
+table th { color: rgba(0, 240, 255, 0.6) !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; border-bottom-color: rgba(0, 240, 255, 0.15) !important; }
+table td { border-bottom-color: rgba(0, 240, 255, 0.05) !important; }
+table tbody tr:hover { background: rgba(0, 240, 255, 0.03) !important; }
 
-table {
-  font-family: 'JetBrains Mono', monospace !important;
-}
+/* ===== SCROLLBAR ===== */
 
-table thead {
-  background: rgba(0, 240, 255, 0.03) !important;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(5, 5, 16, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.4); }
 
-table th {
-  color: rgba(0, 240, 255, 0.6) !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 11px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.1em !important;
-  border-bottom-color: rgba(0, 240, 255, 0.15) !important;
-}
+/* ===== SELECTION ===== */
 
-table td {
-  border-bottom-color: rgba(0, 240, 255, 0.05) !important;
-}
+::selection { background: rgba(0, 240, 255, 0.3); color: #ffffff; }
 
-table tbody tr:hover {
-  background: rgba(0, 240, 255, 0.03) !important;
-}
-
-/* ============================================
-   CYBERPUNK BADGES / PILLS
-   ============================================ */
-
-[class*='rounded-pill'] {
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 10px !important;
-  letter-spacing: 0.05em !important;
-}
-
-/* ============================================
-   ANIMATED GRID BACKGROUND
-   ============================================ */
-
-.cyber-grid-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image:
-    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  animation: gridScroll 20s linear infinite;
-}
-
-@keyframes gridScroll {
-  0% { background-position: 0 0; }
-  100% { background-position: 40px 40px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cyber-grid-bg {
-    animation: none;
-  }
-}
-
-/* ============================================
-   CHART.JS OVERRIDES — CYBERPUNK STYLE
-   ============================================ */
-
-canvas {
-  filter: drop-shadow(0 0 4px rgba(0, 240, 255, 0.1));
-}
-
-/* ============================================
-   CONNECTION STATUS — NEON DOT
-   ============================================ */
-
-.connection-dot--live {
-  background: #05ffa1 !important;
-  box-shadow: 0 0 6px rgba(5, 255, 161, 0.6) !important;
-  animation: dotPulse 2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(5, 255, 161, 0.6); }
-  50% { box-shadow: 0 0 12px rgba(5, 255, 161, 0.9), 0 0 20px rgba(5, 255, 161, 0.3); }
-}
-
-/* ============================================
-   SCROLLBAR — CYBERPUNK
-   ============================================ */
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(5, 5, 16, 0.5);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 240, 255, 0.2);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 240, 255, 0.4);
-}
-
-/* ============================================
-   SELECTION — NEON HIGHLIGHT
-   ============================================ */
-
-::selection {
-  background: rgba(0, 240, 255, 0.3);
-  color: #ffffff;
-}
-
-/* ============================================
-   TYPOGRAPHY OVERRIDES
-   ============================================ */
+/* ===== TYPOGRAPHY ===== */
 
 .text-h1 {
   font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
@@ -792,79 +342,37 @@ canvas {
   color: #e0e6ff !important;
 }
 
-/* ============================================
-   UTILITY: NEON TEXT GLOW
-   ============================================ */
+/* ===== NEON TEXT GLOW (static) ===== */
 
-.neon-glow-cyan {
-  text-shadow: 0 0 7px rgba(0, 240, 255, 0.8), 0 0 20px rgba(0, 240, 255, 0.4);
+.neon-glow-cyan { text-shadow: 0 0 7px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.2); }
+.neon-glow-magenta { text-shadow: 0 0 7px rgba(255, 42, 109, 0.6), 0 0 20px rgba(255, 42, 109, 0.2); }
+.neon-glow-green { text-shadow: 0 0 7px rgba(5, 255, 161, 0.6), 0 0 20px rgba(5, 255, 161, 0.2); }
+
+/* ===== CONNECTION DOT ===== */
+
+.connection-dot--live {
+  background: #05ffa1 !important;
+  box-shadow: 0 0 6px rgba(5, 255, 161, 0.6);
 }
 
-.neon-glow-magenta {
-  text-shadow: 0 0 7px rgba(255, 42, 109, 0.8), 0 0 20px rgba(255, 42, 109, 0.4);
+/* ===== BADGES ===== */
+
+[class*='rounded-pill'] {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.05em !important;
 }
 
-.neon-glow-green {
-  text-shadow: 0 0 7px rgba(5, 255, 161, 0.8), 0 0 20px rgba(5, 255, 161, 0.4);
-}
-
-.neon-glow-yellow {
-  text-shadow: 0 0 7px rgba(252, 238, 10, 0.8), 0 0 20px rgba(252, 238, 10, 0.4);
-}
-
-/* ============================================
-   CHROMATIC ABERRATION HOVER EFFECT
-   ============================================ */
-
-.chromatic-hover:hover {
-  animation: chromatic 0.15s ease;
-}
-
-@keyframes chromatic {
-  0% { filter: none; }
-  25% { filter: drop-shadow(-2px 0 0 rgba(255, 42, 109, 0.5)) drop-shadow(2px 0 0 rgba(0, 240, 255, 0.5)); }
-  50% { filter: drop-shadow(1px 0 0 rgba(255, 42, 109, 0.3)) drop-shadow(-1px 0 0 rgba(0, 240, 255, 0.3)); }
-  100% { filter: none; }
-}
-
-/* ============================================
-   LOADING / SKELETON — CYBERPUNK
-   ============================================ */
+/* ===== SKELETON LOADING ===== */
 
 [class*='animate-pulse'] {
-  background: linear-gradient(
-    90deg,
-    rgba(0, 240, 255, 0.03) 0%,
-    rgba(0, 240, 255, 0.08) 50%,
-    rgba(0, 240, 255, 0.03) 100%
-  ) !important;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.03) 0%, rgba(0, 240, 255, 0.06) 50%, rgba(0, 240, 255, 0.03) 100%) !important;
   background-size: 200% 100% !important;
-  animation: cyberSkeleton 1.5s ease-in-out infinite !important;
 }
 
-@keyframes cyberSkeleton {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* ============================================
-   MODAL — CYBERPUNK
-   ============================================ */
-
-.fixed.inset-0 {
-  backdrop-filter: blur(4px);
-}
-
-/* ============================================
-   RESPONSIVE ADJUSTMENTS
-   ============================================ */
+/* ===== RESPONSIVE ===== */
 
 @media (max-width: 767px) {
-  body::after {
-    display: none; /* Remove scanlines on mobile for performance */
-  }
-
-  .cyber-grid-bg {
-    display: none;
-  }
+  body::after { display: none; }
+  .cyber-grid-bg { display: none; }
 }

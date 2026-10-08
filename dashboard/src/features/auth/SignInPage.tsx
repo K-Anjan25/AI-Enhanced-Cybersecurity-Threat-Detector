@@ -6,9 +6,7 @@ import { ApiError } from '../../api/client';
 import { getAuthStatus, signIn, setupLocalAdmin } from '../../api/auth';
 import { Button, Spinner } from '../../components/ui';
 import { useTheme } from '../../theme/ThemeProvider';
-import { MatrixRain } from '../../components/cyberpunk/MatrixRain';
 import { VectorShield } from '../../components/cyberpunk/VectorShield';
-import { PulseWave } from '../../components/cyberpunk/PulseWave';
 import { GlitchText } from '../../components/cyberpunk/GlitchText';
 
 export function SignInPage() {
@@ -47,8 +45,7 @@ export function SignInPage() {
 
   return (
     <main className="relative flex min-h-screen bg-base text-ink">
-      {/* Cyberpunk background effects */}
-      <MatrixRain opacity={0.05} />
+      {/* Cyberpunk static grid — zero JS */}
       <div className="cyber-grid-bg" aria-hidden="true" />
 
       <button
@@ -108,7 +105,6 @@ export function SignInPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <PulseWave width={400} height={40} color="#00f0ff" speed={1.5} amplitude={0.3} />
           <p className="font-mono text-caption text-muted">AEGIS / ACCESS CONTROL / SECURE CHANNEL</p>
         </div>
       </section>

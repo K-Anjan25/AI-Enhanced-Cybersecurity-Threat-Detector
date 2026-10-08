@@ -38,8 +38,6 @@ import { ConnectionBanner } from '../realtime/ConnectionBanner';
 import { useConnectionView } from '../realtime/useConnectionView';
 import { ConnectionStatus, type ConnectionState } from '../ui/ConnectionStatus';
 import { NAV_ITEMS } from './nav';
-import { MatrixRain } from '../cyberpunk/MatrixRain';
-import { usePerformance } from '../cyberpunk/PerformanceContext';
 
 interface AppShellProps {
   /** Connection state for the top-bar indicator. */
@@ -64,7 +62,6 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
   // back to its default under the cursor would be the shell arguing with them.
   const [collapsedByHand, setCollapsedByHand] = useState<boolean | null>(null);
   const { theme, toggleTheme } = useTheme();
-  const perf = usePerformance();
   const view = useConnectionView(connection);
   const viewport = useViewportClass();
   const narrow = viewport === 'narrow';
@@ -74,8 +71,7 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
 
   return (
     <div className="flex min-h-screen bg-base text-ink">
-      {/* Cyberpunk background effects — disabled in performance mode */}
-      {perf.showMatrixRain && <MatrixRain opacity={0.06} />}
+      {/* Cyberpunk static grid — zero JS */}
       <div className="cyber-grid-bg" aria-hidden="true" />
 
       {narrow ? null : (
@@ -182,19 +178,6 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
               className="rounded-input border border-line px-3 py-1 font-mono text-caption hover:text-accent"
             >
               {theme === 'dark' ? 'Light' : 'Dark'}
-            </button>
-            <button
-              type="button"
-              onClick={perf.togglePerformanceMode}
-              aria-label={perf.performanceMode ? 'Enable effects' : 'Performance mode'}
-              className={`rounded-input border px-3 py-1 font-mono text-caption ${
-                perf.performanceMode
-                  ? 'border-neon-green/50 text-neon-green'
-                  : 'border-line text-muted hover:text-ink'
-              }`}
-              title={perf.performanceMode ? 'Effects off (low RAM)' : 'Effects on (high RAM)'}
-            >
-              {perf.performanceMode ? '⚡ Lite' : '✨ FX'}
             </button>
           </div>
         </header>

@@ -47,7 +47,6 @@ import { CyberpunkOverviewPage } from './features/overview/pages/CyberpunkOvervi
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
-import { PerformanceProvider } from './components/cyberpunk/PerformanceContext';
 
 /**
  * A screen, when the window is wide enough for it to be offered (§8.3).
@@ -167,7 +166,6 @@ export function App() {
   if (token === null) return <SignInPage />;
 
   return (
-    <PerformanceProvider>
     <ToastProvider>
       <CommandProvider
         listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}
@@ -175,6 +173,5 @@ export function App() {
         <Shell onSignOut={handleSignOut} />
       </CommandProvider>
     </ToastProvider>
-    </PerformanceProvider>
   );
 }
