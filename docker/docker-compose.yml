@@ -181,6 +181,62 @@ services:
       - NET_ADMIN
     restart: unless-stopped
 
+  # Zeek network analyzer — deep protocol analysis + flow logging
+  # Produces conn.log with detailed connection metadata
+  zeek:
+    build:
+      context: ../backend
+      dockerfile: app/services/capture/Dockerfile.zeek
+    environment:
+      AEGIS_API_URL: http://backend:8000
+      AEGIS_EMAIL: admin@aegis.local
+      AEGIS_PASSWORD: admin123456789
+      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
+    network_mode: host
+    depends_on:
+      backend:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  # Suricata IDS — signature-based threat detection
+  # Produces eve.json with alerts, flows, DNS events
+  suricata:
+    build:
+      context: ../backend
+      dockerfile: app/services/capture/Dockerfile.suricata
+    environment:
+      AEGIS_API_URL: http://backend:8000
+      AEGIS_EMAIL: admin@aegis.local
+      AEGIS_PASSWORD: admin123456789
+      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
+    network_mode: host
+    depends_on:
+      backend:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  # tshark packet capture — lightweight packet-level flow extraction
+  tshark:
+    build:
+      context: ../backend
+      dockerfile: app/services/capture/Dockerfile.tshark
+    environment:
+      AEGIS_API_URL: http://backend:8000
+      AEGIS_EMAIL: admin@aegis.local
+      AEGIS_PASSWORD: admin123456789
+      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
+    network_mode: host
+    depends_on:
+      backend:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:

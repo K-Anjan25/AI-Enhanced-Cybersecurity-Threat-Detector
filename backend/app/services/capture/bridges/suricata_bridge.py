@@ -161,10 +161,20 @@ def parse_dns_event(event):
 
 
 def main():
+    global API_URL, EMAIL, PASSWORD
+
     parser = argparse.ArgumentParser(description="Suricata → AEGIS bridge")
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
+    parser.add_argument("--log", help="Path to eve.json to tail (follows file)")
+    parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
+    parser.add_argument("--email", help="Login email", default=EMAIL)
+    parser.add_argument("--password", help="Login password", default=PASSWORD)
     parser.add_argument("--batch-size", "-b", type=int, default=BATCH_SIZE)
     args = parser.parse_args()
+
+    API_URL = args.api
+    EMAIL = args.email
+    PASSWORD = args.password
 
     if not authenticate():
         sys.exit(1)
@@ -177,7 +187,17 @@ def main():
     total_flows = 0
     total_logs = 0
 
-    source = open(args.file, "r") if args.file else sys.stdin
+    if args.log:
+        import subprocess
+        source = subprocess.Popen(
+            ["tail", "-f", "-n", "+1", args.log],
+            stdout=subprocess.PIPE,
+            text=True,
+        ).stdout
+    elif args.file:
+        source = open(args.file, "r")
+    else:
+        source = sys.stdin
 
     try:
         for line in source:

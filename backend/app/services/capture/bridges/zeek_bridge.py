@@ -166,22 +166,44 @@ def parse_zeek_line(line):
 
 
 def main():
+    global API_URL, EMAIL, PASSWORD
+
     parser = argparse.ArgumentParser(description="Zeek → AEGIS bridge")
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
+    parser.add_argument("--log", help="Path to conn.log to tail (follows file)")
+    parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
+    parser.add_argument("--email", help="Login email", default=EMAIL)
+    parser.add_argument("--password", help="Login password", default=PASSWORD)
     parser.add_argument("--batch-size", "-b", type=int, default=BATCH_SIZE)
     args = parser.parse_args()
+
+    API_URL = args.api
+    EMAIL = args.email
+    PASSWORD = args.password
 
     if not authenticate():
         sys.exit(1)
 
     print(f"[ZEEK] Bridge started. API={API_URL}", file=sys.stderr)
-    print(f"[ZEEK] Reading from {'file: ' + args.file if args.file else 'stdin'}", file=sys.stderr)
+    source_name = args.log or args.file or "stdin"
+    print(f"[ZEEK] Reading from {source_name}", file=sys.stderr)
 
     batch = []
     last_flush = time.time()
     total_sent = 0
 
-    source = open(args.file, "r") if args.file else sys.stdin
+    if args.log:
+        # Tail mode: follow the file
+        import subprocess
+        source = subprocess.Popen(
+            ["tail", "-f", "-n", "+1", args.log],
+            stdout=subprocess.PIPE,
+            text=True,
+        ).stdout
+    elif args.file:
+        source = open(args.file, "r")
+    else:
+        source = sys.stdin
 
     try:
         for line in source:

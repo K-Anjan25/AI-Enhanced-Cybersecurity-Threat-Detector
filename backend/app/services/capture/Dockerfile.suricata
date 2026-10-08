@@ -1,0 +1,24 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Suricata and Python
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        suricata \
+        suricata-update \
+        python3 python3-pip \
+        curl libpcap-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Update Suricata rules
+RUN suricata-update 2>/dev/null || true
+
+WORKDIR /app
+
+COPY app/services/capture/bridges/suricata_bridge.py .
+COPY app/services/capture/suricata_entrypoint.sh .
+RUN chmod +x suricata_entrypoint.sh
+
+# Capture needs host network + NET_ADMIN
+CMD ["./suricata_entrypoint.sh"]
