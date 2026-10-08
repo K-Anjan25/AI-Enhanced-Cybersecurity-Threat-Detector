@@ -33,6 +33,7 @@ or body do not match the schema below.
 | `POST` | `/api/v1/auth/login` | Sign in with an account password | unauthenticated | `200` `TokenPairOut` | `CredentialsIn` |
 | `POST` | `/api/v1/auth/logout` | Revoke the refresh-token family | unauthenticated | `204` | `RefreshIn` |
 | `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
+| `POST` | `/api/v1/auth/register` | Create an account with a chosen password | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |
 | `GET` | `/api/v1/flows` | Count one window of traffic: volume, addresses and relationships (FR-52) | admin, analyst, responder, viewer | `200` `FlowAggregateOut` | — |
@@ -224,7 +225,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.login` or `auth.refresh` or `auth.logout`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.register` or `auth.login` or `auth.refresh` or `auth.logout`.
 
 ### `AuditEntryOut`
 
@@ -276,7 +277,7 @@ Recorded TP/FP/TN/FN counts, threshold and exact artifact provenance.
 
 ### `CredentialsIn`
 
-Email and password for local account setup or sign-in.
+Email and password for local account setup, sign-in, or registration.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
@@ -1166,7 +1167,7 @@ A hand-set threshold (design.md §4.8's manual edit).
 
 ### `TokenPairOut`
 
-The bearer pair returned after setup, login or refresh rotation.
+The bearer pair returned after setup, registration, login or refresh rotation.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |

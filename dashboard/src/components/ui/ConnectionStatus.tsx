@@ -3,8 +3,8 @@
  *
  * design.md principle 5 and §8.1: a quiet screen must never be ambiguous. The
  * analyst has to be able to tell "nothing is happening" from "we stopped
- * hearing from the server", so the state is always rendered explicitly and is
- * encoded by colour AND label AND glyph (never colour alone, NFR-09).
+ * hearing from the server", so the state is always rendered explicitly: a
+ * status dot and the state's word, never colour alone (NFR-09).
  */
 import { useTheme } from '../../theme/ThemeProvider';
 
@@ -20,12 +20,6 @@ const LABELS: Record<ConnectionState, string> = {
   live: 'Live',
   degraded: 'Degraded',
   disconnected: 'Disconnected',
-};
-
-const GLYPHS: Record<ConnectionState, string> = {
-  live: '\u25CF', // filled circle
-  degraded: '\u25D0', // half circle
-  disconnected: '\u25CB', // hollow circle
 };
 
 const TEXT_CLASSES: Record<ConnectionState, string> = {
@@ -52,10 +46,7 @@ export function ConnectionStatus({ state, detail }: ConnectionStatusProps) {
       className="flex items-center gap-2 rounded-pill border border-line px-3 py-1"
     >
       <span aria-hidden="true" className={`h-2 w-2 rounded-pill ${FILL_CLASSES[state]}`} />
-      <span className={`text-caption font-semibold ${TEXT_CLASSES[state]}`}>
-        <span aria-hidden="true">{GLYPHS[state]} </span>
-        {LABELS[state]}
-      </span>
+      <span className={`text-caption font-semibold ${TEXT_CLASSES[state]}`}>{LABELS[state]}</span>
       {detail !== undefined ? <span className="text-caption text-muted">{detail}</span> : null}
     </div>
   );

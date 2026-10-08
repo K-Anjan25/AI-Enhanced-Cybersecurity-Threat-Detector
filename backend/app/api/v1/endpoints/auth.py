@@ -1,10 +1,12 @@
-"""Password sign-in, refresh rotation, and first-admin setup (T-417).
+"""Password sign-in, self-service registration, refresh rotation, and first-admin setup (T-417, T-424).
 
 The first administrator either comes from deployment-supplied bootstrap
 credentials or from the one-shot setup route, which is disabled unless an
-operator explicitly enables it in development. Login and refresh are public
-routes in the RBAC sense, but each requires a password or a single-use refresh
-token; there is no anonymous session or demo credential.
+operator explicitly enables it in development. After that, registration (FR-45)
+lets anyone create their own account in the least-privileged role. Login,
+registration and refresh are public routes in the RBAC sense, but each requires
+a password or a single-use refresh token; there is no anonymous session or
+demo credential.
 """
 
 from __future__ import annotations
@@ -20,7 +22,12 @@ from app.auth.tokens import MalformedToken, TokenPair, TokenService
 from app.core.config import Environment
 from app.schemas.auth import AuthStatusOut, CredentialsIn, RefreshIn, TokenPairOut
 from app.services.audit_log import AuditAction, record_action
-from app.services.auth_accounts import AccountAlreadyProvisioned, AuthAccountStore
+from app.services.auth_accounts import (
+    AccountAlreadyExists,
+    AccountAlreadyProvisioned,
+    AuthAccountStore,
+    RegistrationRefused,
+)
 from app.services.user_directory import UserRecord
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -113,6 +120,60 @@ def setup_first_admin(
     record_action(
         audit_trail(request),
         action=AuditAction.auth_setup,
+        actor=account.email,
+        target_type="user",
+        target_id=str(account.id),
+        at=datetime.now(UTC),
+        detail={"role": account.role.value},
+        ip=client_ip(request),
+    )
+    return _token_response(pair, account)
+
+
+@router.post(
+    "/register",
+    response_model=TokenPairOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an account with a chosen password",
+)
+def register(
+    body: CredentialsIn,
+    request: Request,
+    response: Response,
+) -> TokenPairOut:
+    """Create a self-service account in the least-privileged role and sign it in (FR-45).
+
+    Closed until an account exists: a registration made before bootstrap would
+    consume the one-shot first-admin setup, so the deployment could be locked
+    out of creating its own administrator. The new account is a ``viewer`` —
+    R-53's read-only role — and promotion happens through the audited role
+    change, never through registration.
+
+    A duplicate address answers 409 by name. That discloses account existence,
+    which login deliberately does not; a signup form that refused to say
+    "already registered" cannot be used, so the route accepts the disclosure
+    and the anonymous rate limit is what bounds enumeration of it.
+    """
+    _no_store(response)
+    try:
+        account = _accounts(request).sign_up(
+            body.email,
+            body.password.get_secret_value(),
+        )
+    except RegistrationRefused as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="no account is provisioned yet",
+        ) from exc
+    except AccountAlreadyExists as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="an account with that email already exists",
+        ) from exc
+    pair = _tokens(request).issue(account.email, account.role.value)
+    record_action(
+        audit_trail(request),
+        action=AuditAction.auth_register,
         actor=account.email,
         target_type="user",
         target_id=str(account.id),

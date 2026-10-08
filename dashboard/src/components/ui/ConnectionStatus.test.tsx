@@ -38,11 +38,11 @@ describe('ConnectionStatus', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
   });
 
-  it('hides the decorative glyph from assistive technology', () => {
+  it('hides the decorative status dot from assistive technology', () => {
     const { container } = renderStatus('live');
 
-    const glyph = container.querySelector('[aria-hidden="true"]');
-    expect(glyph).not.toBeNull();
+    const dot = container.querySelector('[aria-hidden="true"]');
+    expect(dot).not.toBeNull();
   });
 
   it('has no serious accessibility violations', async () => {

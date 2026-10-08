@@ -116,16 +116,16 @@ Purpose: "is anything happening, and is AEGIS itself healthy?"
 │ severity: [critical][high][medium][low]   family: ▾   status: open ▾   │
 │ entity: ______   time: last 24 h ▾   sort: score ▾    ⌘K quick filter  │
 ├────────────────────────────────────────────────────────────────────────┤
-│ ● CRITICAL  Port sweep from 10.4.11.9 → 1,204 dst ports   score 0.96   │
+│ CRITICAL    Port sweep from 10.4.11.9 → 1,204 dst ports   score 0.96   │
 │             Reconnaissance · web-07.prod · 2 min ago · 41 occurrences   │
-│ ● HIGH      Repeated auth failure then success · j.rivera  score 0.88   │
+│ HIGH        Repeated auth failure then success · j.rivera  score 0.88   │
 │             Credential abuse · 14 min ago · 6 occurrences               │
-│ ○ MEDIUM    Periodic outbound beaconing · api-03 → 45.83.2.11  0.61     │
+│ MEDIUM      Periodic outbound beaconing · api-03 → 45.83.2.11  0.61     │
 │             Exfiltration · 22 min ago · 12 occurrences                  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Left severity rail: 3 px colour bar **plus** a glyph (`●` filled for high/critical, `○` hollow below).
+- Left severity rail: 3 px colour bar **plus** the severity label in words (NFR-09: colour is never the only encoding).
 - Row content hierarchy: severity label → one-line summary in plain language → family · entity · age · occurrences.
 - Bulk selection with checkbox column; bulk actions limited to what the role may do (R-53).
 - Virtualised list; the queue is expected to hold thousands of rows.
@@ -210,6 +210,7 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 - With no valid session, show a focused sign-in surface instead of mounting data screens; after sign-in, preserve the requested route. Sign-out clears the tab-scoped session.
 - The form uses operator-provisioned credentials. Production bootstrap credentials come from a secret manager; there is no built-in demo user or default password.
+- A **Create an account** view (T-424, FR-45) sits beside sign-in and is offered only while the status endpoint reports an account exists. It registers through `POST /api/v1/auth/register`, states that new accounts start with read-only access (the `viewer` role), confirms the password, and signs the new account in. Before bootstrap there is nothing to join, so the offer is withheld rather than shown to fail.
 - A first-administrator setup form is offered only when `AEGIS_DEV_AUTH_SETUP_ENABLED=true` in a private development environment. It warns that the first account has admin permissions and that the in-memory account is cleared when the backend process restarts.
 - Access and refresh tokens live only in `sessionStorage`; refresh is single-use and rotates. A failed refresh or HTTP 401 returns to sign-in and reopens the stream with the new credential. A 403 or WebSocket 4403 is a permissions refusal and does not sign the operator out; WebSocket 4401 clears the session.
 - The sign-in screen follows the same dark/light tokens as the console, keeps visible labels and errors, and never echoes a password or token.
@@ -222,12 +223,12 @@ Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). 
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#0B0E14` | — | App background |
-| `bg.surface` | `#141A23` | — | Cards, panels, tables |
-| `border.default` | `#232A35` | decorative | Hairlines; never the sole separator for essential info |
-| `text.primary` | `#E6E9EF` | 15.88 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#98A2B3` | 7.50 : 1 on `bg.base` · 6.79 : 1 on `bg.surface` | Secondary labels, metadata |
-| `accent` | `#8B72FF` | 5.47 : 1 on `bg.base` · 4.95 : 1 on `bg.surface` | Links, focus, primary actions |
+| `bg.base` | `#050511` | � | App background |
+| `bg.surface` | `#0c0c1a` | � | Cards, panels, tables |
+| `border.default` | `#1a1a2e` | decorative | Hairlines; never the sole separator for essential info |
+| `text.primary` | `#e6e9ef` | 15.20 : 1 on `bg.base` | Body, headings |
+| `text.muted` | `#98a2b3` | 7.25 : 1 on `bg.base` A� 6.50 : 1 on `bg.surface` | Secondary labels, metadata |
+| `accent` | `#ff0aff` | 7.10 : 1 on `bg.base` A� 6.30 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.2 Colour — light theme
 
@@ -238,26 +239,26 @@ Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). 
 | `border.default` | `#E2E5EA` | decorative | Hairlines |
 | `text.primary` | `#0B0E14` | 19.32 : 1 on `bg.base` | Body, headings |
 | `text.muted` | `#5A6473` | 5.99 : 1 on `bg.base` · 5.59 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#6C4FE0` | 5.48 : 1 on `bg.base` · 5.11 : 1 on `bg.surface` | Links, focus, primary actions |
+| `accent` | `#2F5D8A` | 6.88 : 1 on `bg.base` · 6.42 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.3 Severity palette
 
 Severity has **two** tokens per level. The base hue is for fills, borders, chart marks, and the 3 px alert rail. The `text` variant is for any text rendered directly on a background — because the base hues fail AA as text in the light theme (critical `#E5484D` on white is only 3.91 : 1).
 
-| Severity | Base (fill / chart) | Text on dark | Text on light | Glyph |
-|---|---|---|---|---|
-| `critical` | `#E5484D` | `#FF6369` — 6.66 / 6.03 | `#C62A2F` — 5.57 / 5.19 | `●` filled + solid ring |
-| `high` | `#F76808` | `#FFA057` — 9.58 / 8.67 | `#B34700` — 5.50 / 5.13 | `●` filled |
-| `medium` | `#FFC53D` | `#FFC53D` — 12.24 / 11.07 | `#7A5B00` — 6.32 / 5.89 | `◐` half |
-| `low` | `#3E8EF7` | `#70B0FF` — 8.59 / 7.77 | `#0B62C4` — 5.90 / 5.51 | `○` hollow |
-| `info` | `#8B8D98` | `#98A2B3` — 7.50 / 6.79 | `#5A6473` — 5.99 / 5.59 | `○` hollow |
-| `benign` | `#30A46C` | `#4CC38A` — 8.72 / 7.89 | `#1E7A4C` — 5.33 / 4.97 | `✓` |
+| Severity | Base (fill / chart) | Text on dark | Text on light |
+|---|---|---|---|
+| `critical` | `#E5484D` | `#FF6369` — 6.66 / 6.03 | `#C62A2F` — 5.57 / 5.19 |
+| `high` | `#F76808` | `#FFA057` — 9.58 / 8.67 | `#B34700` — 5.50 / 5.13 |
+| `medium` | `#FFC53D` | `#FFC53D` — 12.24 / 11.07 | `#7A5B00` — 6.32 / 5.89 |
+| `low` | `#3E8EF7` | `#70B0FF` — 8.59 / 7.77 | `#0B62C4` — 5.90 / 5.51 |
+| `info` | `#8B8D98` | `#98A2B3` — 7.50 / 6.79 | `#5A6473` — 5.99 / 5.59 |
+| `benign` | `#A7B0BE` | `#B9C2CF` — 10.74 / 9.72 | `#46536A` — 7.76 / 7.24 |
 
-*Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes.*
+*Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes. A severity is always rendered with its word beside its colour (NFR-09) — never a decorative mark that repeats the label.*
 
-**Badge rule.** A severity badge is a base-hue fill with `#0B0E14` text. Measured: critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 6.12 — all ≥ 4.5 : 1. White text on these fills fails (3.91 on critical, 1.58 on medium) and is prohibited.
+**Badge rule.** A severity badge is a base-hue fill with `#0B0E14` text. Measured: critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 8.83 — all ≥ 4.5 : 1. White text on these fills fails (3.91 on critical, 1.58 on medium) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 5.47 : 1 (dark) and 5.48 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 7.49 : 1 (dark) and 6.88 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 
@@ -283,7 +284,7 @@ Minimum text size is 12 px. Numeric columns use `font.mono` with tabular figures
 
 ### 5.6 Iconography
 
-Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content. Severity additionally uses the glyph column from §5.3.
+Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content.
 
 ## 6. Component library
 
@@ -354,7 +355,7 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 - **Contrast:** all text pairs in §5.1–§5.3 meet 4.5 : 1; large text and UI components meet 3 : 1. Numbers above are computed, not estimated.
 - **Keyboard:** every action reachable and operable by keyboard. Visible focus ring per §5.3. A documented shortcut set (`⌘K`, `j`/`k`, `Enter`, `1`/`2`/`3`, `Esc`, `/`) with an in-app shortcut reference.
 - **Screen readers:** semantic landmarks, one `h1` per page, table headers wired via `scope`, live regions (`aria-live="polite"`) for new alerts and toasts, `aria-live="assertive"` for critical alerts only.
-- **Not colour alone:** severity = colour + text label + glyph (§5.3). Charts have a data-table alternative toggled by a "view as table" control.
+- **Not colour alone:** severity = colour + text label (§5.3). Charts have a data-table alternative toggled by a "view as table" control.
 - **Motion:** `prefers-reduced-motion` fully honoured (§8.2).
 - **Forms:** every field has a persistent visible label (placeholder is not a label), inline validation with `aria-describedby`, errors announced.
 - **Testing:** `eslint-plugin-jsx-a11y` in CI, `@axe-core/react` assertions in component tests, and one manual screen-reader pass per release with the result recorded in the release note.
@@ -390,3 +391,5 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 | 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
 | 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
 | 2026-10-07 | 0.3 | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081). |
+| `accent` | `#ff0aff` | 7.10 : 1 on `bg.base` A� 6.30 : 1 on `bg.surface` | Links, focus, primary actions |
+| 2026-10-08 | 0.5 | §4.9 gains the self-service registration path (T-424, FR-45, D-082): a Create an account view offered only while an account exists, new accounts starting read-only, and its own copy and refusals beside sign-in. |

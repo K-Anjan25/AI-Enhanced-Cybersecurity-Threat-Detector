@@ -29,6 +29,7 @@ function authenticatedRoutes(setupAvailable: boolean): StubRoute[] {
     },
     { match: '/api/v1/auth/login', respond: () => jsonResponse(CREDENTIALS) },
     { match: '/api/v1/auth/setup', respond: () => jsonResponse(CREDENTIALS, 201) },
+    { match: '/api/v1/auth/register', respond: () => jsonResponse(CREDENTIALS, 201) },
     { match: '/api/v1/auth/logout', respond: () => new Response(null, { status: 204 }) },
     { match: '/api/v1/models', respond: () => jsonResponse({ items: [], count: 0 }) },
   ];
@@ -89,5 +90,71 @@ describe('the dashboard authentication gate', () => {
       email: 'operator@example.test',
       password: 'a-strong-local-password-42', // pragma: allowlist secret
     });
+  });
+
+  it('lets a new operator register their own account and lands them in the console', async () => {
+    const user = userEvent.setup();
+    const requests = stubFetch(authenticatedRoutes(false));
+    renderWithProviders(<App />, undefined, ['/models']);
+
+    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Create an account' }));
+
+    expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Email address'), 'newcomer@example.test');
+    await user.type(screen.getByLabelText('Password'), 'a-fresh-registration-password');
+    await user.type(screen.getByLabelText('Confirm password'), 'a-fresh-registration-password');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByRole('heading', { name: 'Model ops' })).toBeInTheDocument();
+    const registerRequest = requests.find(
+      (request) => new URL(request.url).pathname === '/api/v1/auth/register',
+    );
+    expect(registerRequest?.method).toBe('POST');
+    expect(registerRequest?.headers.get('authorization')).toBeNull();
+    await expect(registerRequest?.json()).resolves.toEqual({
+      email: 'newcomer@example.test',
+      password: 'a-fresh-registration-password', // pragma: allowlist secret
+    });
+  });
+
+  it('offers registration only while an account exists to join', async () => {
+    stubFetch([
+      {
+        match: '/api/v1/auth/status',
+        respond: () =>
+          jsonResponse({ setup_enabled: false, setup_available: false, account_exists: false }),
+      },
+    ]);
+    renderWithProviders(<App />, undefined, ['/models']);
+
+    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    expect(await screen.findByText(/No account is provisioned\./)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create an account' })).not.toBeInTheDocument();
+  });
+
+  it('reports a duplicate registration as already registered', async () => {
+    const user = userEvent.setup();
+    stubFetch([
+      {
+        match: '/api/v1/auth/status',
+        respond: () =>
+          jsonResponse({ setup_enabled: false, setup_available: false, account_exists: true }),
+      },
+      { match: '/api/v1/auth/register', respond: () => jsonResponse({ detail: 'duplicate' }, 409) },
+    ]);
+    renderWithProviders(<App />, undefined, ['/models']);
+
+    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Create an account' }));
+    await user.type(screen.getByLabelText('Email address'), 'taken@example.test');
+    await user.type(screen.getByLabelText('Password'), 'a-fresh-registration-password');
+    await user.type(screen.getByLabelText('Confirm password'), 'a-fresh-registration-password');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'An account with that email already exists. Sign in with it instead.',
+    );
+    expect(screen.getByRole('heading', { name: 'Create your account' })).toBeInTheDocument();
   });
 });

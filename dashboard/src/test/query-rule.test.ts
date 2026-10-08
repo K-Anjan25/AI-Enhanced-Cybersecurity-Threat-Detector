@@ -26,7 +26,7 @@
  * @vitest-environment node
  */
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /** The repository's `src/`, from this file's own location. */
@@ -81,7 +81,7 @@ const EXEMPTIONS: readonly Exemption[] = [
     file: 'components/ui/ConnectionStatus.test.tsx',
     pattern: /\[aria-hidden="true"\]/,
     reason:
-      'the glyph is hidden on purpose (the status region beside it carries the words), so the test has to look at the hidden element',
+      'the status dot is hidden on purpose (the status region beside it carries the words), so the test has to look at the hidden element',
   },
   {
     file: 'components/ui/ScoreMeter.test.tsx',
@@ -138,7 +138,10 @@ describe('R-87 — tests query what the user sees', () => {
   it('finds no test-id lookup, DOM query or class assertion outside the declared exemptions', () => {
     const undeclared: string[] = [];
     for (const file of files) {
-      const text = readFileSync(join(SRC.pathname, file), 'utf8');
+      // Resolved as a URL, not joined onto `SRC.pathname`: a pathname join
+      // produces a drive-relative path on Windows (`\C:\…`), which does not
+      // resolve. URL resolution is separator-agnostic on every platform.
+      const text = readFileSync(fileURLToPath(new URL(file, SRC)), 'utf8');
       for (const [index, line] of text.split('\n').entries()) {
         if (!IMPLEMENTATION_QUERY.test(line)) continue;
         const allowed = EXEMPTIONS.some(
@@ -156,7 +159,7 @@ describe('R-87 — tests query what the user sees', () => {
   it('uses every exemption, so the list cannot rot into a licence', () => {
     const unused: string[] = [];
     for (const exemption of EXEMPTIONS) {
-      const text = readFileSync(join(SRC.pathname, exemption.file), 'utf8');
+      const text = readFileSync(fileURLToPath(new URL(exemption.file, SRC)), 'utf8');
       const used = text
         .split('\n')
         .some((line) => IMPLEMENTATION_QUERY.test(line) && exemption.pattern.test(line));
@@ -168,7 +171,7 @@ describe('R-87 — tests query what the user sees', () => {
   it('never exempts a test from querying a role or a label as well', () => {
     const idOnly: string[] = [];
     for (const exemption of EXEMPTIONS) {
-      const text = readFileSync(join(SRC.pathname, exemption.file), 'utf8');
+      const text = readFileSync(fileURLToPath(new URL(exemption.file, SRC)), 'utf8');
       const queriesByRole = /(get|find|query)(All)?By(Role|LabelText)\(/.test(text);
       if (!queriesByRole) idOnly.push(`${exemption.file}: ${exemption.reason}`);
     }

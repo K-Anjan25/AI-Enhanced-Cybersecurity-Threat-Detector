@@ -108,7 +108,10 @@ operator chooses the password; it is Argon2id-hashed and the account is held in 
 so it is cleared when that process restarts. The switch is disabled by default and
 rejected outside `development`. Production must provision
 `AEGIS_BOOTSTRAP_ADMIN_EMAIL` and `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` through a secret
-manager; never commit them. `torch` is the
+manager; never commit them. Once any account exists, further operators can register
+themselves from the dashboard's **Create an account** view
+(`POST /api/v1/auth/register`); new accounts start with the read-only `viewer` role and
+an administrator promotes them under `/admin/users`. `torch` is the
 `ml-service[training]` extra and the ONNX stack is `[onnx]`; neither is needed to run the
 service or the test suite, and both are absent from the sandbox by choice.
 

@@ -1,17 +1,20 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Fingerprint, KeyRound, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, UserPlus } from 'lucide-react';
 
 import { ApiError } from '../../api/client';
-import { getAuthStatus, signIn, setupLocalAdmin } from '../../api/auth';
+import { getAuthStatus, signIn, signUp, setupLocalAdmin } from '../../api/auth';
 import { Button, Spinner } from '../../components/ui';
 import { useTheme } from '../../theme/ThemeProvider';
+
+type AuthMode = 'setup' | 'signin' | 'signup';
 
 export function SignInPage() {
   const { theme, toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [view, setView] = useState<'signin' | 'signup'>('signin');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const status = useQuery({
@@ -22,20 +25,38 @@ export function SignInPage() {
     refetchOnWindowFocus: false,
   });
   const setupAvailable = status.data?.setup_available === true;
+  const signupAvailable = status.data?.account_exists === true && !setupAvailable;
+  // The server's answers win over the local view: setup is forced while it is
+  // offered, and the signup view only renders while registration is open.
+  const mode: AuthMode = setupAvailable
+    ? 'setup'
+    : view === 'signup' && signupAvailable
+      ? 'signup'
+      : 'signin';
+  const needsConfirmation = mode !== 'signin';
+  const showSwitch = mode === 'signup' || signupAvailable;
+
+  function show(next: 'signin' | 'signup') {
+    setView(next);
+    setError(null);
+    setPassword('');
+    setConfirmation('');
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (setupAvailable && password !== confirmation) {
+    if (needsConfirmation && password !== confirmation) {
       setError('The passwords do not match.');
       return;
     }
     setPending(true);
     try {
-      if (setupAvailable) await setupLocalAdmin(email, password);
+      if (mode === 'setup') await setupLocalAdmin(email, password);
+      else if (mode === 'signup') await signUp(email, password);
       else await signIn(email, password);
     } catch (caught) {
-      setError(authErrorMessage(caught, setupAvailable));
+      setError(authErrorMessage(caught, mode));
     } finally {
       setPending(false);
     }
@@ -113,12 +134,18 @@ export function SignInPage() {
               AEGIS / Secure workspace
             </p>
             <h2 className="mt-2 text-h1">
-              {setupAvailable ? 'Create your administrator account' : 'Sign in to AEGIS'}
+              {mode === 'setup'
+                ? 'Create your administrator account'
+                : mode === 'signup'
+                  ? 'Create your account'
+                  : 'Sign in to AEGIS'}
             </h2>
             <p className="mt-2 text-body-sm text-muted">
-              {setupAvailable
+              {mode === 'setup'
                 ? 'Set up the first local administrator with a password you choose.'
-                : 'Use your provisioned operator account to continue.'}
+                : mode === 'signup'
+                  ? 'Register with your work email. New accounts start with read-only access; an administrator grants roles.'
+                  : 'Use your provisioned operator account to continue.'}
             </p>
 
             {status.isPending ? (
@@ -134,13 +161,13 @@ export function SignInPage() {
                 The authentication service could not be reached. Check that the backend is running
                 and the dashboard API proxy is connected.
               </div>
-            ) : setupAvailable ? (
+            ) : mode === 'setup' ? (
               <div className="mt-6 rounded-card border border-line bg-base p-4 text-body-sm text-severityText-high">
                 The first account receives administrator permissions. Local setup is
                 development-only; this account is held in memory and is cleared when the backend
                 restarts.
               </div>
-            ) : status.data?.account_exists === false ? (
+            ) : mode === 'signin' && status.data?.account_exists === false ? (
               <div className="mt-6 rounded-card border border-line bg-base p-4 text-body-sm text-muted">
                 No account is provisioned. For a private local development instance, enable
                 <code className="mx-1 rounded-input border border-line px-1 py-0.5 font-mono text-caption text-ink">
@@ -173,7 +200,7 @@ export function SignInPage() {
                 </label>
                 <input
                   id="auth-password"
-                  autoComplete={setupAvailable ? 'new-password' : 'current-password'}
+                  autoComplete={needsConfirmation ? 'new-password' : 'current-password'}
                   type="password"
                   required
                   minLength={12}
@@ -182,11 +209,11 @@ export function SignInPage() {
                   onChange={(event) => setPassword(event.currentTarget.value)}
                   className="mt-2 h-row-comfortable w-full rounded-input border border-line bg-base px-3 text-body text-ink"
                 />
-                {setupAvailable ? (
+                {needsConfirmation ? (
                   <p className="mt-2 text-caption text-muted">Use at least 12 characters.</p>
                 ) : null}
               </div>
-              {setupAvailable ? (
+              {needsConfirmation ? (
                 <div>
                   <label className="text-caption font-semibold text-ink" htmlFor="auth-confirm">
                     Confirm password
@@ -219,12 +246,49 @@ export function SignInPage() {
                 loading={pending}
                 className="mt-2 h-row-comfortable w-full justify-center"
               >
-                {setupAvailable ? 'Create administrator' : 'Sign in'}
+                {mode === 'setup'
+                  ? 'Create administrator'
+                  : mode === 'signup'
+                    ? 'Create account'
+                    : 'Sign in'}
                 <ArrowRight aria-hidden="true" className="size-icon-sm" />
               </Button>
             </form>
 
-            <div className="mt-6 flex items-center justify-center gap-2 border-t border-line pt-4 text-caption text-muted">
+            {showSwitch ? (
+              <div className="mt-6 flex items-center justify-center gap-2 border-t border-line pt-4 text-caption text-muted">
+                {mode === 'signup' ? (
+                  <>
+                    <span>Already have an account?</span>
+                    <button
+                      type="button"
+                      onClick={() => show('signin')}
+                      className="font-semibold text-accent underline-offset-2 hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus aria-hidden="true" className="size-icon-sm" />
+                    <span>New to AEGIS?</span>
+                    <button
+                      type="button"
+                      onClick={() => show('signup')}
+                      className="font-semibold text-accent underline-offset-2 hover:underline"
+                    >
+                      Create an account
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
+
+            <div
+              className={`flex items-center justify-center gap-2 text-caption text-muted ${
+                showSwitch ? 'mt-4' : 'mt-6 border-t border-line pt-4'
+              }`}
+            >
               <KeyRound aria-hidden="true" className="size-icon-sm" />
               Passwords are protected with Argon2id; tokens stay in this tab.
             </div>
@@ -235,13 +299,18 @@ export function SignInPage() {
   );
 }
 
-function authErrorMessage(error: unknown, setup: boolean): string {
+function authErrorMessage(error: unknown, mode: AuthMode): string {
   if (error instanceof ApiError) {
     if (error.status === 401)
       return 'Email or password is incorrect. Check your details and try again.';
-    if (error.status === 409)
+    if (error.status === 409) {
+      // The signup link only renders while registration is open, so a 409 here
+      // is the duplicate-address refusal rather than the pre-bootstrap one.
+      if (mode === 'signup')
+        return 'An account with that email already exists. Sign in with it instead.';
       return 'An administrator has already been created. Sign in with that account.';
-    if (error.status === 404 && setup) {
+    }
+    if (error.status === 404 && mode === 'setup') {
       return 'Local setup is disabled by the backend. Enable it only for a private development instance.';
     }
     if (error.failure === 'unreachable' || error.failure === 'timeout') {
