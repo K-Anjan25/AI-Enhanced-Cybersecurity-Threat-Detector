@@ -10,6 +10,7 @@ RUN npm run build
 # needs root. Plain nginx:alpine would run as root to bind port 80.
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# The image renders /etc/nginx/templates/*.template into conf.d at start.
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 USER 101
 EXPOSE 8080

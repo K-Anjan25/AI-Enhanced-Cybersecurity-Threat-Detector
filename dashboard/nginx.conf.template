@@ -10,10 +10,15 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Resolve the backend per request, not at startup. A static proxy_pass to
+    # `backend` makes nginx exit if that name is not resolvable yet.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+    set $backend_upstream http://backend:8000;
+
     # WebSocket endpoint — must come before the generic /api/ location
     # so nginx applies upgrade headers to the actual WS path.
     location /api/v1/alerts/ws {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend_upstream;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -25,7 +30,7 @@ server {
 
     # REST API — all other /api/ requests
     location /api/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Request-ID $request_id;
         proxy_read_timeout 30s;
@@ -33,13 +38,13 @@ server {
 
     # Prometheus metrics scrape endpoint (read by dashboard drift page)
     location /metrics {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend_upstream;
         proxy_set_header Host $host;
     }
 
     # Health check endpoint
     location /healthz {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend_upstream;
         proxy_set_header Host $host;
     }
 
