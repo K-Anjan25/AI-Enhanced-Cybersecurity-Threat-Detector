@@ -128,27 +128,63 @@ export function AdminPage() {
   );
 }
 
-/** `/admin` itself: the map of what is behind each section. */
+/** `/admin` itself: system governance overview — not a duplicate of the nav. */
 function AdminIndex() {
   return (
-    <section aria-labelledby="admin-index-heading" className="flex flex-col gap-3">
+    <section aria-labelledby="admin-index-heading" className="flex flex-col gap-4">
       <h2 id="admin-index-heading" className="text-h2">
-        Sections
+        Governance Overview
       </h2>
-      <ul className="flex flex-col gap-2">
-        {SECTIONS.map((section) => (
-          <li key={section.to} className="flex flex-col">
-            <NavLink
-              className="flex items-center gap-2 text-body text-accent underline"
-              to={section.to}
-            >
-              <section.icon aria-hidden="true" className="size-icon-sm shrink-0" />
-              {section.label}
-            </NavLink>
-            <span className="text-body-sm text-muted">{section.summary}</span>
-          </li>
-        ))}
-      </ul>
+
+      <div className="rounded-card border border-line bg-surface p-4">
+        <p className="text-body-sm text-muted">
+          Select a section from the navigation to manage governance settings.
+          All changes are audited (FR-42) and require the admin role (R-53).
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-card border border-line bg-surface p-3">
+          <h3 className="text-body font-semibold text-accent">Access Control</h3>
+          <p className="text-body-sm text-muted mt-1">
+            Manage user roles and API keys. One admin must always exist.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <NavLink to="users" className="text-body-sm text-accent underline">Users</NavLink>
+            <NavLink to="keys" className="text-body-sm text-accent underline">API Keys</NavLink>
+          </div>
+        </div>
+
+        <div className="rounded-card border border-line bg-surface p-3">
+          <h3 className="text-body font-semibold text-accent">Detection Tuning</h3>
+          <p className="text-body-sm text-muted mt-1">
+            Adjust thresholds and review how changes affect alert volume.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <NavLink to="thresholds" className="text-body-sm text-accent underline">Thresholds</NavLink>
+          </div>
+        </div>
+
+        <div className="rounded-card border border-line bg-surface p-3">
+          <h3 className="text-body font-semibold text-accent">Data Lifecycle</h3>
+          <p className="text-body-sm text-muted mt-1">
+            Retention policies, GDPR erasure, and data governance.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <NavLink to="retention" className="text-body-sm text-accent underline">Retention</NavLink>
+          </div>
+        </div>
+
+        <div className="rounded-card border border-line bg-surface p-3">
+          <h3 className="text-body font-semibold text-accent">Audit Trail</h3>
+          <p className="text-body-sm text-muted mt-1">
+            Every recorded change, filterable and exportable. Append-only.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <NavLink to="audit" className="text-body-sm text-accent underline">Audit Log</NavLink>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Fingerprint, KeyRound, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Fingerprint, KeyRound } from 'lucide-react';
 
 import { ApiError } from '../../api/client';
 import { getAuthStatus, signIn, setupLocalAdmin } from '../../api/auth';
 import { Button, Spinner } from '../../components/ui';
 import { useTheme } from '../../theme/ThemeProvider';
+import { VectorShield } from '../../components/cyberpunk/VectorShield';
+import { GlitchText } from '../../components/cyberpunk/GlitchText';
 
 export function SignInPage() {
   const { theme, toggleTheme } = useTheme();
@@ -43,28 +45,31 @@ export function SignInPage() {
 
   return (
     <main className="relative flex min-h-screen bg-base text-ink">
+      {/* Cyberpunk static grid — zero JS */}
+      <div className="cyber-grid-bg" aria-hidden="true" />
+
       <button
         type="button"
         onClick={toggleTheme}
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-        className="absolute right-6 top-6 z-10 rounded-input border border-line bg-surface px-3 py-2 text-caption text-muted transition-colors hover:text-ink"
+        className="absolute right-6 top-6 z-10 rounded-input border border-line bg-surface px-3 py-2 font-mono text-caption text-muted transition-colors hover:text-ink"
       >
         {theme === 'dark' ? 'Light theme' : 'Dark theme'}
       </button>
 
       <section className="hidden w-1/2 flex-col justify-between border-r border-line bg-surface p-8 xl:flex">
         <div className="flex items-center gap-3">
-          <span className="flex size-12 items-center justify-center rounded-card bg-accent text-onAccent">
-            <ShieldCheck aria-hidden="true" className="h-6 w-6" />
-          </span>
+          <VectorShield size={48} status="secure" />
           <div>
-            <p className="text-h2 tracking-wide">AEGIS</p>
-            <p className="text-caption uppercase tracking-wider text-muted">Security operations</p>
+            <GlitchText as="h2" intensity="subtle" className="text-h2 tracking-wide">
+              AEGIS
+            </GlitchText>
+            <p className="font-mono text-caption uppercase tracking-wider text-muted">Security operations</p>
           </div>
         </div>
 
         <div className="max-w-xl">
-          <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-base px-3 py-2 text-caption text-accent">
+          <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-base px-3 py-2 font-mono text-caption text-accent">
             <Fingerprint aria-hidden="true" className="size-icon-sm" />
             AI-enhanced threat detection
           </span>
@@ -99,22 +104,25 @@ export function SignInPage() {
           </ul>
         </div>
 
-        <p className="font-mono text-caption text-muted">AEGIS / ACCESS CONTROL</p>
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-caption text-muted">AEGIS / ACCESS CONTROL / SECURE CHANNEL</p>
+        </div>
       </section>
 
       <section className="flex min-w-0 flex-1 items-center justify-center px-4 py-16 md:px-8">
-        <div className="w-full max-w-md overflow-hidden rounded-modal border border-line bg-surface shadow-overlay">
-          <div className="h-1 bg-accent" />
-          <div className="p-6 md:p-8">
-            <div className="mb-6 flex size-11 items-center justify-center rounded-card border border-line bg-base text-accent xl:hidden">
-              <ShieldCheck aria-hidden="true" className="h-6 w-6" />
+        <div className="neon-card w-full max-w-md overflow-hidden" style={{ '--neon-border': 'rgba(0, 240, 255, 0.3)', '--neon-glow': 'rgba(0, 240, 255, 0.15)', '--neon-text': '#00f0ff' } as React.CSSProperties}>
+          <div className="h-1" style={{ background: 'linear-gradient(90deg, #00f0ff, #8b72ff, #ff2a6d)' }} />
+          <div className="neon-card__content p-6 md:p-8">
+            <div className="mb-6 flex items-center gap-3 xl:hidden">
+              <VectorShield size={40} status="secure" />
+              <span className="font-mono text-caption uppercase tracking-widest text-accent">AEGIS</span>
             </div>
-            <p className="text-caption font-semibold uppercase tracking-wider text-accent">
-              AEGIS / Secure workspace
+            <p className="font-mono text-caption font-semibold uppercase tracking-wider text-accent">
+              // SECURE WORKSPACE LOGIN
             </p>
-            <h2 className="mt-2 text-h1">
-              {setupAvailable ? 'Create your administrator account' : 'Sign in to AEGIS'}
-            </h2>
+            <GlitchText as="h2" intensity="subtle" className="mt-2 text-h1">
+              {setupAvailable ? 'CREATE ADMINISTRATOR' : 'ACCESS TERMINAL'}
+            </GlitchText>
             <p className="mt-2 text-body-sm text-muted">
               {setupAvailable
                 ? 'Set up the first local administrator with a password you choose.'
