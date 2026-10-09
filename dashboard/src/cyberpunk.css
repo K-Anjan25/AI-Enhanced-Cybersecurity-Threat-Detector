@@ -297,6 +297,30 @@ select {
   clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
 }
 
+/* ===== BUTTONS — Ensure proper contrast in cyberpunk theme ===== */
+
+/* Primary buttons: dark text on cyan accent for readability */
+button.bg-accent,
+button[class*="bg-accent"] {
+  color: #050510 !important;
+}
+
+/* Danger buttons: white text on red */
+button.bg-severity-critical,
+button[class*="bg-severity-critical"] {
+  color: #ffffff !important;
+}
+
+/* Disabled buttons: ensure text remains visible */
+button:disabled {
+  opacity: 0.6 !important;
+}
+
+/* Secondary buttons: cyan text on dark surface */
+button.border-line {
+  color: #00f0ff !important;
+}
+
 /* ===== CARDS ===== */
 
 [class*='rounded-card'] {
