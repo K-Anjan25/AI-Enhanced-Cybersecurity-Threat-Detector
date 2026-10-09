@@ -21,3 +21,6 @@ rules.md
 design.md
 task.md
 memory.md
+
+# Helm templates are Go-templated, not YAML or JSON; `helm lint` checks them.
+helm/**/templates/

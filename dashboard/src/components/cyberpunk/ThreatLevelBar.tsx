@@ -4,7 +4,7 @@
  * Shows the current system threat level with color-coded segments,
  * pulsing glow, and a numeric readout.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ThreatLevelBarProps {
   level: number; // 0-100
@@ -20,6 +20,10 @@ export function ThreatLevelBar({
   className = '',
 }: ThreatLevelBarProps) {
   const [displayLevel, setDisplayLevel] = useState(0);
+  // Mirrors displayLevel so the animation can start from the value on screen without
+  // making it an effect dependency (which would restart the animation every frame).
+  const displayRef = useRef(0);
+  displayRef.current = displayLevel;
 
   useEffect(() => {
     if (!animated) {
@@ -28,7 +32,7 @@ export function ThreatLevelBar({
     }
     const duration = 1500;
     const startTime = Date.now();
-    const startLevel = displayLevel;
+    const startLevel = displayRef.current;
 
     function animate() {
       const elapsed = Date.now() - startTime;
@@ -39,7 +43,7 @@ export function ThreatLevelBar({
     }
 
     requestAnimationFrame(animate);
-  }, [level]);
+  }, [level, animated]);
 
   const getColor = (pct: number) => {
     if (pct < 25) return '#05ffa1';
@@ -55,13 +59,8 @@ export function ThreatLevelBar({
   return (
     <div className={`threat-level-bar ${className}`}>
       <div className="flex items-center justify-between mb-1">
-        <span className="font-mono text-caption uppercase tracking-widest text-muted">
-          {label}
-        </span>
-        <span
-          className="font-mono text-h2 tabular"
-          style={{ color }}
-        >
+        <span className="font-mono text-caption uppercase tracking-widest text-muted">{label}</span>
+        <span className="font-mono text-h2 tabular" style={{ color }}>
           {Math.round(displayLevel)}%
         </span>
       </div>
@@ -73,17 +72,17 @@ export function ThreatLevelBar({
             className="threat-level-bar__segment"
             style={{
               backgroundColor: i < filledSegments ? color : 'rgba(255,255,255,0.05)',
-              boxShadow:
-                i < filledSegments
-                  ? `0 0 6px ${color}40`
-                  : 'none',
+              boxShadow: i < filledSegments ? `0 0 6px ${color}40` : 'none',
               transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
             }}
           />
         ))}
       </div>
 
-      <div className="mt-1 flex justify-between font-mono text-caption" style={{ color: 'rgba(255,255,255,0.3)' }}>
+      <div
+        className="mt-1 flex justify-between font-mono text-caption"
+        style={{ color: 'rgba(255,255,255,0.3)' }}
+      >
         <span>LOW</span>
         <span>MEDIUM</span>
         <span>HIGH</span>

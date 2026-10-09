@@ -1,7 +1,7 @@
 # AEGIS Helm values — defaults (development/staging).
 
 global:
-  imageRegistry: ""
+  imageRegistry: ''
   imagePullSecrets: []
 
 # ──────────────────────────────────────────────
@@ -11,7 +11,7 @@ backend:
   replicaCount: 1
   image:
     repository: aegis-backend
-    tag: "0.1.0"
+    tag: '0.1.0'
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -21,12 +21,12 @@ backend:
       cpu: 250m
       memory: 512Mi
     limits:
-      cpu: "1"
+      cpu: '1'
       memory: 1Gi
   env:
     AEGIS_ENV: production
-    AEGIS_PORT: "8000"
-    AEGIS_HOST: "0.0.0.0"
+    AEGIS_PORT: '8000'
+    AEGIS_HOST: '0.0.0.0'
     AEGIS_LOG_LEVEL: INFO
   secretEnv:
     - AEGIS_SECRET_KEY
@@ -48,7 +48,7 @@ mlService:
   replicaCount: 1
   image:
     repository: aegis-ml-service
-    tag: "0.1.0"
+    tag: '0.1.0'
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -58,7 +58,7 @@ mlService:
       cpu: 500m
       memory: 1Gi
     limits:
-      cpu: "2"
+      cpu: '2'
       memory: 2Gi
   env:
     AEGIS_ENV: production
@@ -78,11 +78,11 @@ scoringWorker:
     enabled: true
     minReplicas: 2
     maxReplicas: 10
-    targetConsumerLag: 1000  # Scale up when Kafka lag exceeds this
+    targetConsumerLag: 1000 # Scale up when Kafka lag exceeds this
   image:
     repository: aegis-backend
-    tag: "0.1.0"
-    command: ["python", "-m", "app.workers.scoring"]
+    tag: '0.1.0'
+    command: ['python', '-m', 'app.workers.scoring']
   resources:
     requests:
       cpu: 250m
@@ -95,7 +95,7 @@ dashboard:
   replicaCount: 1
   image:
     repository: aegis-dashboard
-    tag: "0.1.0"
+    tag: '0.1.0'
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -137,7 +137,7 @@ secrets:
   #   AEGIS_DATABASE_URL (postgresql+psycopg://...)
   #   AEGIS_BOOTSTRAP_ADMIN_EMAIL
   #   AEGIS_BOOTSTRAP_ADMIN_PASSWORD
-  existingSecret: aegis-secrets
+  existingSecret: aegis-secrets # pragma: allowlist secret  (a Secret object's name, not a value)
 
 # ──────────────────────────────────────────────
 # Ingress

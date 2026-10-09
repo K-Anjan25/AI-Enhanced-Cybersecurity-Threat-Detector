@@ -6,7 +6,7 @@
  * The globe auto-rotates and responds to mouse interaction.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import Globe from 'react-globe.gl';
+import Globe, { type GlobeMethods } from 'react-globe.gl';
 
 // Major global cities for demo threat arcs
 const CITIES = [
@@ -57,7 +57,7 @@ const ARC_COLORS = [
 ];
 
 export function CyberGlobe({ width = 600, height = 500 }: { width?: number; height?: number }) {
-  const globeRef = useRef<any>(null);
+  const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const [arcs, setArcs] = useState<ArcData[]>([]);
   const [points, setPoints] = useState<PointData[]>([]);
   const [hoverArc, setHoverArc] = useState<ArcData | null>(null);
@@ -66,7 +66,8 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
       lat: city.lat,
       lng: city.lng,
       size: 0.3 + Math.random() * 0.4,
-      color: ['#00f0ff', '#ff2a6d', '#05ffa1', '#fcee0a'][Math.floor(Math.random() * 4)] ?? '#00f0ff',
+      color:
+        ['#00f0ff', '#ff2a6d', '#05ffa1', '#fcee0a'][Math.floor(Math.random() * 4)] ?? '#00f0ff',
       name: city.name,
     }));
     setPoints(cityPoints);
@@ -149,7 +150,7 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
         pointAltitude={0.01}
         pointRadius="size"
         pointsMerge={false}
-        onArcHover={(arc: any) => setHoverArc(arc)}
+        onArcHover={(arc: object | null) => setHoverArc(arc as ArcData | null)}
         showGraticules={false}
         showAtmosphere={true}
       />

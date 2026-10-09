@@ -38,9 +38,7 @@ export function HexGrid({
 
     const fadeInterval = setInterval(() => {
       setHighlights((prev) =>
-        prev
-          .map((h) => ({ ...h, opacity: h.opacity - 0.05 }))
-          .filter((h) => h.opacity > 0),
+        prev.map((h) => ({ ...h, opacity: h.opacity - 0.05 })).filter((h) => h.opacity > 0),
       );
     }, 100);
 
@@ -72,7 +70,10 @@ export function HexGrid({
       {Array.from({ length: cols }, (_, col) =>
         Array.from({ length: rows }, (_, row) => {
           const cx = col * cellSize * 1.5 + cellSize;
-          const cy = row * cellSize * Math.sqrt(3) + (col % 2 ? cellSize * Math.sqrt(3) / 2 : 0) + cellSize;
+          const cy =
+            row * cellSize * Math.sqrt(3) +
+            (col % 2 ? (cellSize * Math.sqrt(3)) / 2 : 0) +
+            cellSize;
           const isHighlighted = highlights.find((h) => h.col === col && h.row === row);
 
           return (

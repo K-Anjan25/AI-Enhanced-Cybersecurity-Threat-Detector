@@ -58,13 +58,26 @@ export function NeonCard({
   return (
     <div
       className={`neon-card ${animate ? 'neon-card--animated' : ''} ${className}`}
-      style={{
-        '--neon-border': palette.border,
-        '--neon-glow': palette.glow,
-        '--neon-glow-intense': palette.glowIntense,
-        '--neon-text': palette.text,
-      } as React.CSSProperties}
+      style={
+        {
+          '--neon-border': palette.border,
+          '--neon-glow': palette.glow,
+          '--neon-glow-intense': palette.glowIntense,
+          '--neon-text': palette.text,
+        } as React.CSSProperties
+      }
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              // A clickable card is a button: Enter and Space activate it, as a native one does.
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
@@ -87,9 +100,7 @@ export function NeonCard({
             >
               {title}
             </h3>
-            {subtitle && (
-              <p className="mt-1 text-body-sm text-muted">{subtitle}</p>
-            )}
+            {subtitle && <p className="mt-1 text-body-sm text-muted">{subtitle}</p>}
           </div>
         )}
         {children}
