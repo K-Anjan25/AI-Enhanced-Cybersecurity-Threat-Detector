@@ -308,7 +308,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # aegis_drift_psi{feature} gauges to /metrics so the DriftPage draws bars.
     ml_service_url = getattr(resolved, 'ml_service_url', None) or "http://ml-service:8001"
     app.state.drift_monitor = DriftMonitor(
-        interval=60.0,
+        interval=15.0,
         ml_service_url=ml_service_url,
     )
     # The entity registry (T-416). The same object type the pipeline allocates ids

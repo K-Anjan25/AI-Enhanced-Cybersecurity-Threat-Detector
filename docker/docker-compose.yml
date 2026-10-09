@@ -124,6 +124,7 @@ services:
       AEGIS_HOST: 0.0.0.0
       AEGIS_PORT: '8000'
       AEGIS_LOG_LEVEL: INFO
+      AEGIS_DEMO_THRESHOLD_DIVISOR: '5'
     ports:
       - '8000:8000'
     depends_on:

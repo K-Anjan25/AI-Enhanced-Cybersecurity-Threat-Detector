@@ -54,14 +54,18 @@ BEACON_INTERVALS = (60, 120, 300, 600, 900, 1800, 3600)
 # DNS port
 DNS_PORT = 53
 
-# Thresholds
-PORT_SCAN_THRESHOLD = 15       # unique dst_ports from one src in window
-BEACON_MIN_FLOWS = 5           # minimum flows to suspect beaconing
-BEACON_INTERVAL_TOLERANCE = 0.15  # 15% tolerance on interval
-EXFIL_BYTE_THRESHOLD = 50_000_000  # 50 MB outbound
-BRUTE_FORCE_THRESHOLD = 10     # failed connections to auth ports
-DNS_TUNNEL_SIZE = 512          # bytes — large DNS queries are suspicious
-LATERAL_THRESHOLD = 5          # connections to lateral ports
+# Thresholds — use AEGIS_DEMO_THRESHOLD_DIVISOR to lower all thresholds
+# (e.g. set to 5 in development so normal traffic triggers alerts for demo)
+import os
+_threshold_divisor = int(os.environ.get("AEGIS_DEMO_THRESHOLD_DIVISOR", "1"))
+
+PORT_SCAN_THRESHOLD = max(3, 15 // _threshold_divisor)     # unique dst_ports from one src in window
+BEACON_MIN_FLOWS = max(2, 5 // _threshold_divisor)         # minimum flows to suspect beaconing
+BEACON_INTERVAL_TOLERANCE = 0.15                            # 15% tolerance on interval
+EXFIL_BYTE_THRESHOLD = max(1_000_000, 50_000_000 // _threshold_divisor)  # outbound bytes
+BRUTE_FORCE_THRESHOLD = max(2, 10 // _threshold_divisor)   # failed connections to auth ports
+DNS_TUNNEL_SIZE = 512                                       # bytes — large DNS queries are suspicious
+LATERAL_THRESHOLD = max(2, 5 // _threshold_divisor)        # connections to lateral ports
 
 
 @dataclass(frozen=True, slots=True)

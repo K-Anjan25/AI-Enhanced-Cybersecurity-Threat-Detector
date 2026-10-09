@@ -107,7 +107,7 @@ class DriftMonitor:
             self._thread.join(timeout=5)
 
     def _loop(self) -> None:
-        time.sleep(10)
+        time.sleep(3)
         self._compute_and_publish()
         while self._running:
             time.sleep(self._interval)
@@ -117,7 +117,7 @@ class DriftMonitor:
         with self._lock:
             flows = list(self._flow_buffer[-2000:])
 
-        if len(flows) < 5:
+        if len(flows) < 2:
             logger.info("drift_monitor_insufficient_flows count=%d", len(flows))
             return
 
