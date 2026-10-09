@@ -222,23 +222,23 @@ Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). 
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#0B0E14` | — | App background |
-| `bg.surface` | `#141A23` | — | Cards, panels, tables |
-| `border.default` | `#232A35` | decorative | Hairlines; never the sole separator for essential info |
-| `text.primary` | `#E6E9EF` | 15.88 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#98A2B3` | 7.50 : 1 on `bg.base` · 6.79 : 1 on `bg.surface` | Secondary labels, metadata |
-| `accent` | `#8B72FF` | 5.47 : 1 on `bg.base` · 4.95 : 1 on `bg.surface` | Links, focus, primary actions |
+| `bg.base` | `#050510` | — | App background |
+| `bg.surface` | `#0A0A1A` | — | Cards, panels, tables |
+| `border.default` | `#082C3C` | decorative | Hairlines; never the sole separator for essential info |
+| `text.primary` | `#E0E6FF` | 16.35 : 1 on `bg.base` | Body, headings |
+| `text.muted` | `#8A98B8` | 7.01 : 1 on `bg.base` · 6.78 : 1 on `bg.surface` | Secondary labels, metadata |
+| `accent` | `#00F0FF` | 14.39 : 1 on `bg.base` · 13.92 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.2 Colour — light theme
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#FFFFFF` | — | App background |
-| `bg.surface` | `#F6F7F9` | — | Cards, panels, tables |
-| `border.default` | `#E2E5EA` | decorative | Hairlines |
-| `text.primary` | `#0B0E14` | 19.32 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#5A6473` | 5.99 : 1 on `bg.base` · 5.59 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#6C4FE0` | 5.48 : 1 on `bg.base` · 5.11 : 1 on `bg.surface` | Links, focus, primary actions |
+| `bg.base` | `#F4F6FF` | — | App background |
+| `bg.surface` | `#FFFFFF` | — | Cards, panels, tables |
+| `border.default` | `#C3DDEB` | decorative | Hairlines |
+| `text.primary` | `#0A0B1E` | 18.04 : 1 on `bg.base` | Body, headings |
+| `text.muted` | `#4A5378` | 6.96 : 1 on `bg.base` · 7.50 : 1 on `bg.surface` | Secondary labels |
+| `accent` | `#00758F` | 4.94 : 1 on `bg.base` · 5.33 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.3 Severity palette
 
@@ -246,24 +246,25 @@ Severity has **two** tokens per level. The base hue is for fills, borders, chart
 
 | Severity | Base (fill / chart) | Text on dark | Text on light | Glyph |
 |---|---|---|---|---|
-| `critical` | `#E5484D` | `#FF6369` — 6.66 / 6.03 | `#C62A2F` — 5.57 / 5.19 | `●` filled + solid ring |
-| `high` | `#F76808` | `#FFA057` — 9.58 / 8.67 | `#B34700` — 5.50 / 5.13 | `●` filled |
-| `medium` | `#FFC53D` | `#FFC53D` — 12.24 / 11.07 | `#7A5B00` — 6.32 / 5.89 | `◐` half |
-| `low` | `#3E8EF7` | `#70B0FF` — 8.59 / 7.77 | `#0B62C4` — 5.90 / 5.51 | `○` hollow |
-| `info` | `#8B8D98` | `#98A2B3` — 7.50 / 6.79 | `#5A6473` — 5.99 / 5.59 | `○` hollow |
-| `benign` | `#30A46C` | `#4CC38A` — 8.72 / 7.89 | `#1E7A4C` — 5.33 / 4.97 | `✓` |
+| `critical` | `#FF2A6D` | `#FF5C8A` — 6.90 / 6.67 | `#A8124A` — 6.83 / 7.37 | `●` filled + solid ring |
+| `high` | `#FF6B35` | `#FF9E6B` — 10.00 / 9.67 | `#9C3B00` — 6.41 / 6.91 | `●` filled |
+| `medium` | `#FCEE0A` | `#FCEE0A` — 16.78 / 16.22 | `#6B5000` — 7.02 / 7.57 | `◐` half |
+| `low` | `#00F0FF` | `#4DF7FF` — 15.51 / 15.00 | `#005F7F` — 6.62 / 7.13 | `○` hollow |
+| `info` | `#8B72FF` | `#B69FFF` — 9.07 / 8.77 | `#4A3FA0` — 7.76 / 8.37 | `○` hollow |
+| `benign` | `#05FFA1` | `#4DFFC2` — 15.83 / 15.31 | `#0A6B42` — 6.10 / 6.57 | `✓` |
 
 *Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes.*
 
-**Badge rule.** A severity badge is a base-hue fill with `#0B0E14` text. Measured: critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 6.12 — all ≥ 4.5 : 1. White text on these fills fails (3.91 on critical, 1.58 on medium) and is prohibited.
+**Badge rule.** A severity badge is a base-hue fill with `#050510` text. Measured: critical 5.60, high 7.15, medium 16.78, low 14.39, info 5.74, benign 15.28 — all ≥ 4.5 : 1. White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 5.47 : 1 (dark) and 5.48 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 14.39 : 1 (dark) and 4.94 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 
 | Token | Size / line-height | Weight | Use |
 |---|---|---|---|
-| `font.sans` | Inter, system-ui fallback | — | All UI text |
+| `font.display` | Orbitron, Rajdhani, system-ui fallback | — | Display headings and KPI titles |
+| `font.sans` | Rajdhani, Inter, system-ui fallback | — | All UI text |
 | `font.mono` | JetBrains Mono, ui-monospace fallback | — | IPs, ports, hashes, log lines, scores |
 | `type.display` | 32 / 36 | 600 | KPI values |
 | `type.h1` | 24 / 32 | 600 | Page titles |

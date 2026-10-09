@@ -28,7 +28,7 @@ function randomBinary(length: number): string {
 export function DataStream({
   columns = 8,
   speed = 'medium',
-  color = 'rgba(0, 240, 255, 0.3)',
+  color = 'color-mix(in srgb, var(--color-accent) 30%, transparent)',
   className = '',
 }: DataStreamProps) {
   const [data, setData] = useState<string[]>([]);

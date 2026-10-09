@@ -118,17 +118,20 @@ export function SignInPage() {
           className="neon-card w-full max-w-md overflow-hidden"
           style={
             {
-              '--neon-border': 'rgba(0, 240, 255, 0.3)',
-              '--neon-glow': 'rgba(0, 240, 255, 0.15)',
-              '--neon-text': '#00f0ff',
+              '--neon-border': 'color-mix(in srgb, var(--color-accent) 30%, transparent)',
+              '--neon-glow': 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+              '--neon-text': 'var(--color-accent)',
             } as React.CSSProperties
           }
         >
           <div
             className="h-1"
-            style={{ background: 'linear-gradient(90deg, #00f0ff, #8b72ff, #ff2a6d)' }}
+            style={{
+              background:
+                'linear-gradient(90deg, var(--color-accent), var(--severity-info), var(--severity-critical))',
+            }}
           />
-          <div className="neon-card__content p-6 md:p-8">
+          <div className="neon-card-content p-6 md:p-8">
             <div className="mb-6 flex items-center gap-3 xl:hidden">
               <VectorShield size={40} status="secure" />
               <span className="font-mono text-caption uppercase tracking-widest text-accent">

@@ -46,10 +46,10 @@ export function ThreatLevelBar({
   }, [level, animated]);
 
   const getColor = (pct: number) => {
-    if (pct < 25) return '#05ffa1';
-    if (pct < 50) return '#fcee0a';
-    if (pct < 75) return '#f76808';
-    return '#ff2a6d';
+    if (pct < 25) return 'var(--severity-benign)';
+    if (pct < 50) return 'var(--severity-medium)';
+    if (pct < 75) return 'var(--severity-high)';
+    return 'var(--severity-critical)';
   };
 
   const color = getColor(displayLevel);
@@ -69,9 +69,12 @@ export function ThreatLevelBar({
         {Array.from({ length: segments }, (_, i) => (
           <div
             key={i}
-            className="threat-level-bar__segment"
+            className="threat-level-bar-segment"
             style={{
-              backgroundColor: i < filledSegments ? color : 'rgba(255,255,255,0.05)',
+              backgroundColor:
+                i < filledSegments
+                  ? color
+                  : 'color-mix(in srgb, var(--color-text-primary) 5%, transparent)',
               boxShadow: i < filledSegments ? `0 0 6px ${color}40` : 'none',
               transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
             }}
@@ -81,7 +84,7 @@ export function ThreatLevelBar({
 
       <div
         className="mt-1 flex justify-between font-mono text-caption"
-        style={{ color: 'rgba(255,255,255,0.3)' }}
+        style={{ color: 'color-mix(in srgb, var(--color-text-primary) 30%, transparent)' }}
       >
         <span>LOW</span>
         <span>MEDIUM</span>

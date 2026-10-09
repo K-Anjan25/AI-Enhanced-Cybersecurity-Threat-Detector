@@ -18,7 +18,7 @@ interface PulseWaveProps {
 export function PulseWave({
   width = 300,
   height = 60,
-  color = '#00f0ff',
+  color = 'var(--color-accent)',
   speed = 2,
   amplitude = 0.6,
   className = '',
@@ -76,10 +76,10 @@ export function PulseWave({
     >
       <defs>
         <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={color} stopOpacity="0" />
-          <stop offset="20%" stopColor={color} stopOpacity="0.8" />
-          <stop offset="80%" stopColor={color} stopOpacity="0.8" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
+          <stop offset="0%" stopOpacity="0" style={{ stopColor: color }} />
+          <stop offset="20%" stopOpacity="0.8" style={{ stopColor: color }} />
+          <stop offset="80%" stopOpacity="0.8" style={{ stopColor: color }} />
+          <stop offset="100%" stopOpacity="0" style={{ stopColor: color }} />
         </linearGradient>
         <filter id="pulseGlow">
           <feGaussianBlur stdDeviation="2" result="blur" />
@@ -98,8 +98,9 @@ export function PulseWave({
           y1={(height / 4) * i}
           x2={width}
           y2={(height / 4) * i}
-          stroke="rgba(0, 240, 255, 0.06)"
+
           strokeWidth="0.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 6%, transparent)' }}
         />
       ))}
       {Array.from({ length: Math.floor(width / 20) + 1 }, (_, i) => (
@@ -109,8 +110,9 @@ export function PulseWave({
           y1="0"
           x2={i * 20}
           y2={height}
-          stroke="rgba(0, 240, 255, 0.06)"
+
           strokeWidth="0.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 6%, transparent)' }}
         />
       ))}
 
@@ -120,18 +122,20 @@ export function PulseWave({
         y1={height / 2}
         x2={width}
         y2={height / 2}
-        stroke="rgba(0, 240, 255, 0.15)"
+
         strokeWidth="0.5"
         strokeDasharray="4 4"
+        style={{ stroke: 'color-mix(in srgb, var(--color-accent) 15%, transparent)' }}
       />
 
       {/* Waveform */}
       <path
         ref={pathRef}
-        fill="none"
+
         stroke="url(#pulseGrad)"
         strokeWidth="1.5"
         filter="url(#pulseGlow)"
+        style={{ fill: 'none' }}
       />
     </svg>
   );

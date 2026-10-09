@@ -22,7 +22,7 @@ export function GlitchText({
 }: GlitchTextProps) {
   return (
     <Tag
-      className={`glitch-text glitch-text--${intensity} ${className}`}
+      className={`glitch-text glitch-text-${intensity} ${className}`}
       data-text={typeof children === 'string' ? children : ''}
     >
       {children}

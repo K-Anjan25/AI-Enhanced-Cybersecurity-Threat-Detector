@@ -11,36 +11,36 @@ interface NeonCardProps {
   children: ReactNode;
   title?: string;
   subtitle?: string;
-  color?: 'cyan' | 'magenta' | 'green' | 'yellow';
+  color?: 'accent' | 'critical' | 'benign' | 'medium';
   className?: string;
   animate?: boolean;
   onClick?: () => void;
 }
 
 const COLOR_MAP = {
-  cyan: {
-    border: '#00f0ff',
-    glow: 'rgba(0, 240, 255, 0.3)',
-    glowIntense: 'rgba(0, 240, 255, 0.6)',
-    text: '#00f0ff',
+  accent: {
+    border: 'var(--color-accent)',
+    glow: 'color-mix(in srgb, var(--color-accent) 30%, transparent)',
+    glowIntense: 'color-mix(in srgb, var(--color-accent) 60%, transparent)',
+    text: 'var(--color-accent)',
   },
-  magenta: {
-    border: '#ff2a6d',
-    glow: 'rgba(255, 42, 109, 0.3)',
-    glowIntense: 'rgba(255, 42, 109, 0.6)',
-    text: '#ff2a6d',
+  critical: {
+    border: 'var(--severity-critical)',
+    glow: 'color-mix(in srgb, var(--severity-critical) 30%, transparent)',
+    glowIntense: 'color-mix(in srgb, var(--severity-critical) 60%, transparent)',
+    text: 'var(--severity-critical)',
   },
-  green: {
-    border: '#05ffa1',
-    glow: 'rgba(5, 255, 161, 0.3)',
-    glowIntense: 'rgba(5, 255, 161, 0.6)',
-    text: '#05ffa1',
+  benign: {
+    border: 'var(--severity-benign)',
+    glow: 'color-mix(in srgb, var(--severity-benign) 30%, transparent)',
+    glowIntense: 'color-mix(in srgb, var(--severity-benign) 60%, transparent)',
+    text: 'var(--severity-benign)',
   },
-  yellow: {
-    border: '#fcee0a',
-    glow: 'rgba(252, 238, 10, 0.3)',
-    glowIntense: 'rgba(252, 238, 10, 0.6)',
-    text: '#fcee0a',
+  medium: {
+    border: 'var(--severity-medium)',
+    glow: 'color-mix(in srgb, var(--severity-medium) 30%, transparent)',
+    glowIntense: 'color-mix(in srgb, var(--severity-medium) 60%, transparent)',
+    text: 'var(--severity-medium)',
   },
 };
 
@@ -48,7 +48,7 @@ export function NeonCard({
   children,
   title,
   subtitle,
-  color = 'cyan',
+  color = 'accent',
   className = '',
   animate = false,
   onClick,
@@ -57,7 +57,7 @@ export function NeonCard({
 
   return (
     <div
-      className={`neon-card ${animate ? 'neon-card--animated' : ''} ${className}`}
+      className={`neon-card ${animate ? 'neon-card-animated' : ''} ${className}`}
       style={
         {
           '--neon-border': palette.border,
@@ -82,16 +82,16 @@ export function NeonCard({
       tabIndex={onClick ? 0 : undefined}
     >
       {/* Scanline overlay */}
-      <div className="neon-card__scanlines" aria-hidden="true" />
+      <div className="neon-card-scanlines" aria-hidden="true" />
 
       {/* HUD corners */}
-      <div className="neon-card__corner neon-card__corner--tl" aria-hidden="true" />
-      <div className="neon-card__corner neon-card__corner--tr" aria-hidden="true" />
-      <div className="neon-card__corner neon-card__corner--bl" aria-hidden="true" />
-      <div className="neon-card__corner neon-card__corner--br" aria-hidden="true" />
+      <div className="neon-card-corner neon-card-corner-tl" aria-hidden="true" />
+      <div className="neon-card-corner neon-card-corner-tr" aria-hidden="true" />
+      <div className="neon-card-corner neon-card-corner-bl" aria-hidden="true" />
+      <div className="neon-card-corner neon-card-corner-br" aria-hidden="true" />
 
       {/* Content */}
-      <div className="neon-card__content">
+      <div className="neon-card-content">
         {title && (
           <div className="mb-3">
             <h3

@@ -15,10 +15,10 @@ interface ThreatBlip {
 }
 
 const SEVERITY_COLORS = {
-  critical: '#e5484d',
-  high: '#f76808',
-  medium: '#ffc53d',
-  low: '#3e8ef7',
+  critical: 'var(--severity-critical)',
+  high: 'var(--severity-high)',
+  medium: 'var(--severity-medium)',
+  low: 'var(--severity-low)',
 };
 
 export function ThreatRadar({ size = 280 }: { size?: number }) {
@@ -82,9 +82,18 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
         <defs>
           {/* Sweep gradient */}
           <linearGradient id="sweepGrad" gradientTransform={`rotate(${sweepAngle}, 0.5, 0.5)`}>
-            <stop offset="0%" stopColor="rgba(0, 240, 255, 0.3)" />
-            <stop offset="50%" stopColor="rgba(0, 240, 255, 0)" />
-            <stop offset="100%" stopColor="rgba(0, 240, 255, 0)" />
+            <stop
+              offset="0%"
+              style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}
+            />
+            <stop
+              offset="50%"
+              style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 0%, transparent)' }}
+            />
+            <stop
+              offset="100%"
+              style={{ stopColor: 'color-mix(in srgb, var(--color-accent) 0%, transparent)' }}
+            />
           </linearGradient>
 
           {/* Glow filter */}
@@ -102,9 +111,12 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           cx={center}
           cy={center}
           r={radius}
-          fill="rgba(0, 240, 255, 0.02)"
-          stroke="rgba(0, 240, 255, 0.2)"
+
           strokeWidth="1"
+          style={{
+            fill: 'color-mix(in srgb, var(--color-accent) 2%, transparent)',
+            stroke: 'color-mix(in srgb, var(--color-accent) 20%, transparent)',
+          }}
         />
 
         {/* Concentric rings */}
@@ -114,10 +126,13 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
             cx={center}
             cy={center}
             r={radius * ring}
-            fill="none"
-            stroke="rgba(0, 240, 255, 0.12)"
+
             strokeWidth="0.5"
             strokeDasharray="4 4"
+            style={{
+              fill: 'none',
+              stroke: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+            }}
           />
         ))}
 
@@ -127,16 +142,18 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           y1={center}
           x2={center + radius}
           y2={center}
-          stroke="rgba(0, 240, 255, 0.15)"
+
           strokeWidth="0.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 15%, transparent)' }}
         />
         <line
           x1={center}
           y1={center - radius}
           x2={center}
           y2={center + radius}
-          stroke="rgba(0, 240, 255, 0.15)"
+
           strokeWidth="0.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 15%, transparent)' }}
         />
 
         {/* Diagonal crosshairs */}
@@ -145,16 +162,18 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           y1={center - radius * 0.707}
           x2={center + radius * 0.707}
           y2={center + radius * 0.707}
-          stroke="rgba(0, 240, 255, 0.08)"
+
           strokeWidth="0.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 8%, transparent)' }}
         />
         <line
           x1={center + radius * 0.707}
           y1={center - radius * 0.707}
           x2={center - radius * 0.707}
           y2={center + radius * 0.707}
-          stroke="rgba(0, 240, 255, 0.08)"
+
           strokeWidth="0.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 8%, transparent)' }}
         />
 
         {/* Sweep line */}
@@ -163,8 +182,9 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           y1={center}
           x2={center + radius * Math.cos((sweepAngle * Math.PI) / 180)}
           y2={center + radius * Math.sin((sweepAngle * Math.PI) / 180)}
-          stroke="rgba(0, 240, 255, 0.6)"
+
           strokeWidth="1.5"
+          style={{ stroke: 'color-mix(in srgb, var(--color-accent) 60%, transparent)' }}
         />
 
         {/* Sweep cone */}
@@ -174,7 +194,8 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           } ${center + radius * Math.sin(((sweepAngle - 30) * Math.PI) / 180)} A ${radius} ${radius} 0 0 1 ${
             center + radius * Math.cos((sweepAngle * Math.PI) / 180)
           } ${center + radius * Math.sin((sweepAngle * Math.PI) / 180)} Z`}
-          fill="rgba(0, 240, 255, 0.08)"
+
+          style={{ fill: 'color-mix(in srgb, var(--color-accent) 8%, transparent)' }}
         />
 
         {/* Threat blips */}
@@ -187,17 +208,18 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
                 cx={bx}
                 cy={by}
                 r={blip.severity === 'critical' ? 4 : 3}
-                fill={SEVERITY_COLORS[blip.severity]}
+
                 opacity={blip.opacity}
+                style={{ fill: SEVERITY_COLORS[blip.severity] }}
               />
               <circle
                 cx={bx}
                 cy={by}
                 r={8}
-                fill="none"
-                stroke={SEVERITY_COLORS[blip.severity]}
+
                 strokeWidth="0.5"
                 opacity={blip.opacity * 0.5}
+                style={{ fill: 'none', stroke: SEVERITY_COLORS[blip.severity] }}
               >
                 <animate attributeName="r" from="3" to="12" dur="2s" repeatCount="indefinite" />
                 <animate
@@ -213,16 +235,23 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
         })}
 
         {/* Center dot */}
-        <circle cx={center} cy={center} r="3" fill="#00f0ff" filter="url(#blipGlow)" />
+        <circle
+          cx={center}
+          cy={center}
+          r="3"
+          filter="url(#blipGlow)"
+          style={{ fill: 'var(--color-accent)' }}
+        />
 
         {/* Cardinal labels */}
         <text
           x={center}
           y={14}
           textAnchor="middle"
-          fill="rgba(0,240,255,0.4)"
+
           fontSize="9"
           fontFamily="monospace"
+          style={{ fill: 'color-mix(in srgb, var(--color-accent) 40%, transparent)' }}
         >
           N
         </text>
@@ -230,9 +259,10 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           x={center}
           y={size - 6}
           textAnchor="middle"
-          fill="rgba(0,240,255,0.4)"
+
           fontSize="9"
           fontFamily="monospace"
+          style={{ fill: 'color-mix(in srgb, var(--color-accent) 40%, transparent)' }}
         >
           S
         </text>
@@ -240,9 +270,10 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           x={8}
           y={center + 3}
           textAnchor="start"
-          fill="rgba(0,240,255,0.4)"
+
           fontSize="9"
           fontFamily="monospace"
+          style={{ fill: 'color-mix(in srgb, var(--color-accent) 40%, transparent)' }}
         >
           W
         </text>
@@ -250,9 +281,10 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
           x={size - 8}
           y={center + 3}
           textAnchor="end"
-          fill="rgba(0,240,255,0.4)"
+
           fontSize="9"
           fontFamily="monospace"
+          style={{ fill: 'color-mix(in srgb, var(--color-accent) 40%, transparent)' }}
         >
           E
         </text>

@@ -45,7 +45,7 @@ describe('the dashboard authentication gate', () => {
     const requests = stubFetch(authenticatedRoutes(false));
     const { container } = renderWithProviders(<App />, undefined, ['/models']);
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'ACCESS TERMINAL' })).toBeInTheDocument();
     await expectAccessible(container as HTMLElement);
     await user.type(screen.getByLabelText('Email address'), 'operator@example.test');
     await user.type(screen.getByLabelText('Password'), 'correct-horse-battery-42');
@@ -59,7 +59,7 @@ describe('the dashboard authentication gate', () => {
     expect(sessionToken()).toBe('signed-access-token');
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'ACCESS TERMINAL' })).toBeInTheDocument();
     await waitFor(() => expect(sessionToken()).toBeNull());
     expect(
       requests.some((request) => new URL(request.url).pathname === '/api/v1/auth/logout'),
@@ -72,7 +72,7 @@ describe('the dashboard authentication gate', () => {
     renderWithProviders(<App />, undefined, ['/models']);
 
     expect(
-      await screen.findByRole('heading', { name: 'Create your administrator account' }),
+      await screen.findByRole('heading', { name: 'CREATE ADMINISTRATOR' }),
     ).toBeInTheDocument();
     await user.type(screen.getByLabelText('Email address'), 'operator@example.test');
     await user.type(screen.getByLabelText('Password'), 'a-strong-local-password-42');

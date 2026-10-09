@@ -136,7 +136,7 @@ describe('routing and shell', () => {
   it('renders the overview page at the root', () => {
     renderAt('/');
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'OVERVIEW' })).toBeInTheDocument();
   });
 
   it('renders the full information architecture in the nav', () => {
@@ -284,8 +284,10 @@ describe('routing and shell', () => {
     // The index is a map of all six sections design.md §3 lists, and every one of them
     // is a real route now — including connectors, which T-422 built. Twice by design:
     // the section nav and the index map both list each one.
-    expect(await screen.findAllByRole('link', { name: 'Audit log' })).toHaveLength(2);
-    expect(screen.getAllByRole('link', { name: 'Connectors' })).toHaveLength(2);
+    expect(await screen.findAllByRole('link', { name: /^audit log$/i })).toHaveLength(2);
+    // The index's cards do not link Connectors (they group the other sections), so the
+    // section nav is the only link to it.
+    expect(screen.getAllByRole('link', { name: 'Connectors' })).toHaveLength(1);
   });
 
   it('mounts the connectors screen at /admin/connectors, the last screen the design names', async () => {
@@ -345,7 +347,7 @@ describe('the shell the three core screens are read in (T-413)', () => {
     // be checked — a page rendered on its own in a test has no `<main>` and should not
     // be required to mount one.
     for (const [path, heading] of [
-      ['/', 'Overview'],
+      ['/', 'OVERVIEW'],
       ['/alerts', 'Alert triage'],
       ['/hunt', 'Hunt'],
     ] as const) {
@@ -436,7 +438,7 @@ describe('below 768 px the console is the triage loop (T-412)', () => {
       viewport.setWidth(1280);
     });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'OVERVIEW' })).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: 'Screen size' })).not.toBeInTheDocument();
   });
 
