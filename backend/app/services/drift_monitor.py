@@ -7,6 +7,7 @@ appear in the /metrics scrape so the DriftPage can draw bars.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import threading
 import time
@@ -18,11 +19,9 @@ import urllib.error
 
 from app.observability.metrics import observe_drift_psi
 
-__all__ = ["DriftMonitor"]
+logger = logging.getLogger(__name__)
 
-# PSI thresholds
-PSI_STABLE = 0.10
-PSI_MODERATE = 0.25
+__all__ = ["DriftMonitor"]
 
 # Feature baselines (from typical network traffic)
 FEATURE_BASELINES: dict[str, dict[str, float]] = {
@@ -32,10 +31,6 @@ FEATURE_BASELINES: dict[str, dict[str, float]] = {
         "other": 0.10,
     },
     "proto": {"tcp": 0.70, "udp": 0.25, "icmp": 0.05},
-    "duration_bucket": {
-        "0-1s": 0.40, "1-10s": 0.25, "10-60s": 0.15,
-        "1-5m": 0.10, "5m+": 0.10,
-    },
 }
 
 
@@ -43,20 +38,6 @@ def _bucket_port(port: int) -> str:
     common = {80: "80", 443: "443", 53: "53", 22: "22", 3389: "3389",
               25: "25", 993: "993", 587: "587"}
     return common.get(port, "other")
-
-
-def _bucket_duration(duration: float | None) -> str:
-    if duration is None:
-        return "0-1s"
-    if duration < 1:
-        return "0-1s"
-    if duration < 10:
-        return "1-10s"
-    if duration < 60:
-        return "10-60s"
-    if duration < 300:
-        return "1-5m"
-    return "5m+"
 
 
 def _compute_distribution(flows: list[dict[str, Any]], feature: str) -> dict[str, float]:
@@ -69,8 +50,6 @@ def _compute_distribution(flows: list[dict[str, Any]], feature: str) -> dict[str
             counter[_bucket_port(int(f.get("dst_port", 0)))] += 1
         elif feature == "proto":
             counter[str(f.get("proto", "tcp"))] += 1
-        elif feature == "duration_bucket":
-            _bucket_duration(f.get("duration"))
     return {k: v / total for k, v in counter.items()}
 
 
@@ -86,11 +65,7 @@ def _compute_psi(expected: dict[str, float], observed: dict[str, float]) -> floa
 
 
 class DriftMonitor:
-    """Background task that computes PSI from buffered flows and publishes gauges.
-
-    Runs every `interval` seconds, reads flows from the detection engine's
-    buffer, computes PSI for each feature, and publishes to prometheus_client.
-    """
+    """Computes PSI from buffered flows and publishes aegis_drift_psi gauges."""
 
     def __init__(
         self,
@@ -103,9 +78,10 @@ class DriftMonitor:
         self._ml_url = ml_service_url
         self._running = False
         self._thread: threading.Thread | None = None
-        self._flow_buffer_ref = flow_buffer
+        self._flow_buffer: list[dict[str, Any]] = []
         self._lock = threading.Lock()
         self._last_psi: dict[str, float] = {}
+        self._compute_count = 0
 
     @property
     def stats(self) -> dict[str, Any]:
@@ -114,7 +90,16 @@ class DriftMonitor:
                 "running": self._running,
                 "last_psi": dict(self._last_psi),
                 "interval": self._interval,
+                "compute_count": self._compute_count,
+                "buffer_size": len(self._flow_buffer),
             }
+
+    def add_flows(self, flows: list[dict[str, Any]]) -> None:
+        """Add flows to the buffer for drift computation."""
+        with self._lock:
+            self._flow_buffer.extend(flows)
+            if len(self._flow_buffer) > 5000:
+                self._flow_buffer = self._flow_buffer[-5000:]
 
     def start(self) -> None:
         if self._running:
@@ -124,6 +109,7 @@ class DriftMonitor:
             target=self._loop, daemon=True, name="drift-monitor"
         )
         self._thread.start()
+        logger.info("drift_monitor_started", interval=self._interval)
 
     def stop(self) -> None:
         self._running = False
@@ -131,56 +117,20 @@ class DriftMonitor:
             self._thread.join(timeout=5)
 
     def _loop(self) -> None:
+        # First computation after a short delay to accumulate some flows
+        time.sleep(10)
+        self._compute_and_publish()
         while self._running:
             time.sleep(self._interval)
-            try:
-                self._compute_and_publish()
-            except Exception:
-                pass
+            self._compute_and_publish()
 
     def _compute_and_publish(self) -> None:
-        # Try ML service first
-        if self._ml_url:
-            try:
-                self._publish_from_ml_service()
-                return
-            except Exception:
-                pass
-
-        # Fallback: compute locally from buffered flows
-        self._compute_local()
-
-    def _publish_from_ml_service(self) -> None:
-        """Get drift data from ML service /drift endpoint."""
-        # Get recent flows from the flow store or buffer
-        # For now, send empty and let ML service use its own data
-        body = json.dumps({"flows": []}).encode()
-        req = urllib.request.Request(
-            f"{self._ml_url}/drift",
-            data=body,
-            headers={"Content-Type": "application/json"},
-        )
-        resp = urllib.request.urlopen(req, timeout=10)
-        result = json.loads(resp.read())
-
-        for feature_result in result.get("features", []):
-            feature = feature_result.get("feature", "")
-            psi = feature_result.get("psi", 0.0)
-            if feature:
-                observe_drift_psi(feature, psi)
-                with self._lock:
-                    self._last_psi[feature] = psi
-
-    def _compute_local(self) -> None:
-        """Compute PSI locally from recent flows."""
-        if self._flow_buffer_ref is None or not self._flow_buffer_ref:
-            return
-
-        # Take a snapshot
+        """Compute PSI from buffered flows and publish gauges."""
         with self._lock:
-            flows = list(self._flow_buffer_ref[-1000:])  # Last 1000 flows
+            flows = list(self._flow_buffer[-2000:])
 
-        if len(flows) < 10:
+        if len(flows) < 5:
+            logger.info("drift_monitor_insufficient_flows", count=len(flows))
             return
 
         for feature, baseline in FEATURE_BASELINES.items():
@@ -191,3 +141,7 @@ class DriftMonitor:
             observe_drift_psi(feature, psi)
             with self._lock:
                 self._last_psi[feature] = psi
+            logger.info("drift_monitor_published", feature=feature, psi=round(psi, 4))
+
+        self._compute_count += 1
+        logger.info("drift_monitor_cycle_done", compute_count=self._compute_count, flows=len(flows))

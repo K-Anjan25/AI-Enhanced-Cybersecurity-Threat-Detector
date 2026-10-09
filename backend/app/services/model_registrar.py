@@ -7,6 +7,7 @@ This makes the Models page show real model data by fetching from the ML service'
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from datetime import UTC, datetime
@@ -17,16 +18,13 @@ import urllib.error
 
 from app.services.model_ops import ModelVersion
 
+logger = logging.getLogger(__name__)
+
 __all__ = ["ModelRegistrar"]
 
 
 class ModelRegistrar:
-    """Periodically fetches model info from ML service and registers in backend.
-
-    This bridges the gap between:
-    - ML service: knows what models exist and their metrics
-    - Backend ModelOpsService: serves /api/v1/models to the dashboard
-    """
+    """Periodically fetches model info from ML service and registers in backend."""
 
     def __init__(
         self,
@@ -41,7 +39,7 @@ class ModelRegistrar:
         self._running = False
         self._thread: threading.Thread | None = None
         self._registered: dict[str, Any] = {}
-        self._stats = {"registrations": 0, "errors": 0}
+        self._stats = {"registrations": 0, "errors": 0, "last_error": None}
 
     @property
     def stats(self) -> dict[str, Any]:
@@ -51,6 +49,8 @@ class ModelRegistrar:
         if self._running:
             return
         self._running = True
+        # Try immediately on start
+        self._register_models()
         self._thread = threading.Thread(
             target=self._loop, daemon=True, name="model-registrar"
         )
@@ -62,43 +62,54 @@ class ModelRegistrar:
             self._thread.join(timeout=5)
 
     def _loop(self) -> None:
-        # First attempt immediately
-        self._register_models()
         while self._running:
             time.sleep(self._interval)
-            try:
-                self._register_models()
-            except Exception:
-                pass
+            self._register_models()
 
     def _register_models(self) -> None:
         """Fetch models from ML service and register them."""
         try:
-            req = urllib.request.Request(
-                f"{self._ml_url}/models",
-                headers={"Content-Type": "application/json"},
-            )
+            url = f"{self._ml_url}/models"
+            logger.info("model_registrar_fetching", url=url)
+            req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
             resp = urllib.request.urlopen(req, timeout=10)
             data = json.loads(resp.read())
+            logger.info("model_registrar_got_models", count=len(data.get("models", [])))
 
             for model in data.get("models", []):
                 model_id = model.get("model_id", "")
-                if model_id and model_id not in self._registered:
-                    # Create a ModelVersion and register it
+                if not model_id or model_id in self._registered:
+                    continue
+                try:
+                    version = ModelVersion(
+                        model_id=model_id,
+                        kind=model.get("kind", "flow"),
+                        status=model.get("status", "staging"),
+                        artifact_uri=model.get("artifact_uri", f"ml-service://{model_id}"),
+                        sha256="0" * 64,
+                        manifest_present=True,
+                    )
+                    self._model_ops.register(version)
+                    # Promote to active
                     try:
-                        version = ModelVersion(
-                            model_id=model_id,
-                            kind=model.get("kind", "flow"),
-                            status=model.get("status", "active"),
-                            artifact_uri=model.get("artifact_uri", f"ml-service://{model_id}"),
-                            sha256="",
-                            manifest_present=True,
+                        self._model_ops.promote(
+                            model_id,
+                            actor="model-registrar",
+                            justification="Auto-registered from ML service",
+                            at=datetime.now(UTC),
                         )
-                        self._model_ops.register(version)
-                        self._registered[model_id] = model
-                        self._stats["registrations"] += 1
-                    except Exception as e:
-                        self._stats["errors"] += 1
+                    except Exception:
+                        pass
+
+                    self._registered[model_id] = model
+                    self._stats["registrations"] += 1
+                    logger.info("model_registrar_registered", model_id=model_id)
+                except Exception as e:
+                    self._stats["errors"] += 1
+                    self._stats["last_error"] = str(e)
+                    logger.warning("model_registrar_register_failed", model_id=model_id, error=str(e))
 
         except Exception as e:
             self._stats["errors"] += 1
+            self._stats["last_error"] = str(e)
+            logger.warning("model_registrar_fetch_failed", error=str(e), url=f"{self._ml_url}/models")
