@@ -141,13 +141,20 @@ export async function fetchReadiness(signal?: AbortSignal): Promise<Readiness> {
 
 /** Detection engine status. */
 export interface DetectionStatus {
-  status?: string;
-  total_detections?: number;
-  total_alerts?: number;
-  buffer_size?: number;
-  cycle_count?: number;
-  last_cycle_alerts?: number;
-  running?: boolean;
+  rule_engine?: {
+    total_detections?: number;
+    total_alerts?: number;
+    buffer_size?: number;
+    cycle_count?: number;
+    last_cycle_alerts?: number;
+    running?: boolean;
+  };
+  ml_consumer?: {
+    windows_scored?: number;
+    scoring_errors?: number;
+    alerts_created?: number;
+    buffer_size?: number;
+  };
 }
 
 /** Read the rule-based detection engine status. */

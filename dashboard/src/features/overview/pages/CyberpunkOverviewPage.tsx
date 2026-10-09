@@ -171,41 +171,52 @@ export function CyberpunkOverviewPage() {
       </div>
 
       {/* Detection Engine Status */}
-      <NeonCard title="DETECTION ENGINE" subtitle="Rule-based threat detection" color={det?.running ? 'green' : 'yellow'}>
-        <div className="grid grid-cols-2 gap-3 font-mono text-caption md:grid-cols-4">
-          <div>
-            <span className="text-muted">STATUS</span>
-            <div className={det?.running ? 'text-green text-body' : 'text-yellow text-body'}>
-              {det?.running ? 'ACTIVE' : det ? 'STOPPED' : 'LOADING...'}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <NeonCard title="RULE DETECTOR" subtitle="Heuristic threat detection" color={det?.rule_engine?.running ? 'green' : 'yellow'}>
+          <div className="grid grid-cols-2 gap-3 font-mono text-caption">
+            <div>
+              <span className="text-muted">STATUS</span>
+              <div className={det?.rule_engine?.running ? 'text-green text-body' : 'text-yellow text-body'}>
+                {det?.rule_engine?.running ? 'ACTIVE' : det ? 'STOPPED' : '...'}
+              </div>
+            </div>
+            <div>
+              <span className="text-muted">DETECTIONS</span>
+              <div className="text-cyan text-body">{det?.rule_engine?.total_detections ?? 0}</div>
+            </div>
+            <div>
+              <span className="text-muted">ALERTS</span>
+              <div className="text-magenta text-body">{det?.rule_engine?.total_alerts ?? 0}</div>
+            </div>
+            <div>
+              <span className="text-muted">BUFFER</span>
+              <div className="text-yellow text-body">{det?.rule_engine?.buffer_size ?? 0}</div>
             </div>
           </div>
-          <div>
-            <span className="text-muted">DETECTIONS</span>
-            <div className="text-cyan text-body">{det?.total_detections ?? 0}</div>
+          <p className="mt-2 text-caption text-muted">Port scans, beacons, exfil, brute force, DNS tunnels, lateral movement</p>
+        </NeonCard>
+        <NeonCard title="ML PIPELINE" subtitle="Statistical anomaly scoring" color={det?.ml_consumer ? 'cyan' : 'yellow'}>
+          <div className="grid grid-cols-2 gap-3 font-mono text-caption">
+            <div>
+              <span className="text-muted">WINDOWS SCORED</span>
+              <div className="text-cyan text-body">{det?.ml_consumer?.windows_scored ?? 0}</div>
+            </div>
+            <div>
+              <span className="text-muted">ML ALERTS</span>
+              <div className="text-magenta text-body">{det?.ml_consumer?.alerts_created ?? 0}</div>
+            </div>
+            <div>
+              <span className="text-muted">SCORING ERRORS</span>
+              <div className="text-red text-body">{det?.ml_consumer?.scoring_errors ?? 0}</div>
+            </div>
+            <div>
+              <span className="text-muted">BUFFER</span>
+              <div className="text-yellow text-body">{det?.ml_consumer?.buffer_size ?? 0}</div>
+            </div>
           </div>
-          <div>
-            <span className="text-muted">ALERTS</span>
-            <div className="text-magenta text-body">{det?.total_alerts ?? 0}</div>
-          </div>
-          <div>
-            <span className="text-muted">BUFFER</span>
-            <div className="text-yellow text-body">{det?.buffer_size ?? 0} flows</div>
-          </div>
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-3 font-mono text-caption">
-          <div>
-            <span className="text-muted">CYCLES</span>
-            <div className="text-ink">{det?.cycle_count ?? 0}</div>
-          </div>
-          <div>
-            <span className="text-muted">LAST CYCLE</span>
-            <div className="text-ink">{det?.last_cycle_alerts ?? 0} alerts</div>
-          </div>
-        </div>
-        <p className="mt-3 text-caption text-muted">
-          Monitors incoming flows for: port scans, C2 beacons, data exfiltration, brute force, DNS tunneling, lateral movement.
-        </p>
-      </NeonCard>
+          <p className="mt-2 text-caption text-muted">Flows scored by ML service via /score endpoint</p>
+        </NeonCard>
+      </div>
 
       {/* Real KPI Tiles */}
       <KpiTiles
