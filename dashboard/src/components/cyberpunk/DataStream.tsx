@@ -15,7 +15,9 @@ interface DataStreamProps {
 
 function randomHex(length: number): string {
   return Array.from({ length }, () =>
-    Math.floor(Math.random() * 16).toString(16).toUpperCase(),
+    Math.floor(Math.random() * 16)
+      .toString(16)
+      .toUpperCase(),
   ).join(' ');
 }
 
@@ -39,11 +41,7 @@ export function DataStream({
 
     const interval = setInterval(
       () => {
-        setData((prev) =>
-          prev.map(() =>
-            Math.random() > 0.5 ? randomHex(16) : randomBinary(16),
-          ),
-        );
+        setData((prev) => prev.map(() => (Math.random() > 0.5 ? randomHex(16) : randomBinary(16))));
       },
       speed === 'fast' ? 80 : speed === 'medium' ? 150 : 300,
     );

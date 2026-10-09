@@ -10,7 +10,7 @@ name: aegis
 description: AI-Enhanced Cybersecurity Threat Detector
 type: application
 version: 1.0.0
-appVersion: "1.0.0"
+appVersion: '1.0.0'
 
 keywords:
   - cybersecurity
@@ -23,10 +23,10 @@ maintainers:
 
 dependencies:
   - name: postgresql
-    version: "13.2.24"
+    version: '13.2.24'
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: kafka
-    version: "26.8.0"
+    version: '26.8.0'
     repository: https://charts.bitnami.com/bitnami
     condition: kafka.enabled

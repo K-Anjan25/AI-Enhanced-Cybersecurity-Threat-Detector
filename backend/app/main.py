@@ -52,11 +52,10 @@ from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
-from app.services.detection_engine import DetectionEngine
-from app.services.drift_monitor import DriftMonitor
-from app.services.model_registrar import ModelRegistrar
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.auth_accounts import AuthAccountStore
+from app.services.detection_engine import DetectionEngine
+from app.services.drift_monitor import DriftMonitor
 from app.services.entity_registry import EntityRegistry
 from app.services.erasure import (
     EntityRedactionTarget,
@@ -77,6 +76,7 @@ from app.services.log_store import PostgresLogStore
 from app.services.log_tail import LogTail
 from app.services.ml_calibration import MlCalibrator
 from app.services.model_ops import ModelOpsService
+from app.services.model_registrar import ModelRegistrar
 from app.services.recalibration import (
     DEFAULT_TENANT_ID,
     AlertVerdictFeedback,
@@ -170,7 +170,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         drift_monitor.start()
         logger.info("drift_monitor_started")
     # Start the model registrar (model_ops exists now, created in create_app)
-    ml_url = getattr(app.state.settings, 'ml_service_url', None) or "http://ml-service:8001"
+    ml_url = getattr(app.state.settings, "ml_service_url", None) or "http://ml-service:8001"
     model_registrar = ModelRegistrar(
         ml_service_url=ml_url,
         model_ops=app.state.model_ops,
@@ -306,7 +306,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     # Drift monitor (T-421): computes PSI from recent flows and publishes
     # aegis_drift_psi{feature} gauges to /metrics so the DriftPage draws bars.
-    ml_service_url = getattr(resolved, 'ml_service_url', None) or "http://ml-service:8001"
+    ml_service_url = getattr(resolved, "ml_service_url", None) or "http://ml-service:8001"
     app.state.drift_monitor = DriftMonitor(
         interval=15.0,
         ml_service_url=ml_service_url,

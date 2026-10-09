@@ -9,10 +9,10 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 
 from aegis_ml.registry.model_registry import ModelRegistry
-from aegis_ml.serving.health import ServiceHealth, build_health
-from aegis_ml.serving.scoring import router as scoring_router
 from aegis_ml.serving.drift import router as drift_router
+from aegis_ml.serving.health import ServiceHealth, build_health
 from aegis_ml.serving.models import router as models_router
+from aegis_ml.serving.scoring import router as scoring_router
 
 __version__ = "0.1.0"
 

@@ -8,13 +8,21 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response
 
+from app.auth.rbac import Capability, require
 from app.schemas.health import HealthResponse, ReadinessResponse
 from app.services import health_service
 
 router = APIRouter(tags=["health"])
 
 
-@router.get("/api/v1/detection/status", summary="Detection + ML + Drift + Model status")
+# Authenticated: the body carries engine, drift and registrar internals (error
+# strings included), which are not for anonymous callers. Every role may read it,
+# as it may read the overview it sits beside.
+@router.get(
+    "/api/v1/detection/status",
+    summary="Detection + ML + Drift + Model status",
+    dependencies=[require(Capability.READ)],
+)
 def detection_status(request: Request) -> dict[str, object]:
     """Return all backend service stats."""
     result: dict[str, object] = {}

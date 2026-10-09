@@ -96,7 +96,7 @@ export function ingestFlows() {
   const params = {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${API_KEY}`,
     },
     timeout: '10s',
   };
@@ -120,7 +120,7 @@ export function ingestLogs() {
   const params = {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${API_KEY}`,
     },
     timeout: '10s',
   };

@@ -64,7 +64,9 @@ export function SignInPage() {
             <GlitchText as="h2" intensity="subtle" className="text-h2 tracking-wide">
               AEGIS
             </GlitchText>
-            <p className="font-mono text-caption uppercase tracking-wider text-muted">Security operations</p>
+            <p className="font-mono text-caption uppercase tracking-wider text-muted">
+              Security operations
+            </p>
           </div>
         </div>
 
@@ -105,17 +107,33 @@ export function SignInPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="font-mono text-caption text-muted">AEGIS / ACCESS CONTROL / SECURE CHANNEL</p>
+          <p className="font-mono text-caption text-muted">
+            AEGIS / ACCESS CONTROL / SECURE CHANNEL
+          </p>
         </div>
       </section>
 
       <section className="flex min-w-0 flex-1 items-center justify-center px-4 py-16 md:px-8">
-        <div className="neon-card w-full max-w-md overflow-hidden" style={{ '--neon-border': 'rgba(0, 240, 255, 0.3)', '--neon-glow': 'rgba(0, 240, 255, 0.15)', '--neon-text': '#00f0ff' } as React.CSSProperties}>
-          <div className="h-1" style={{ background: 'linear-gradient(90deg, #00f0ff, #8b72ff, #ff2a6d)' }} />
+        <div
+          className="neon-card w-full max-w-md overflow-hidden"
+          style={
+            {
+              '--neon-border': 'rgba(0, 240, 255, 0.3)',
+              '--neon-glow': 'rgba(0, 240, 255, 0.15)',
+              '--neon-text': '#00f0ff',
+            } as React.CSSProperties
+          }
+        >
+          <div
+            className="h-1"
+            style={{ background: 'linear-gradient(90deg, #00f0ff, #8b72ff, #ff2a6d)' }}
+          />
           <div className="neon-card__content p-6 md:p-8">
             <div className="mb-6 flex items-center gap-3 xl:hidden">
               <VectorShield size={40} status="secure" />
-              <span className="font-mono text-caption uppercase tracking-widest text-accent">AEGIS</span>
+              <span className="font-mono text-caption uppercase tracking-widest text-accent">
+                AEGIS
+              </span>
             </div>
             <p className="font-mono text-caption font-semibold uppercase tracking-wider text-accent">
               // SECURE WORKSPACE LOGIN

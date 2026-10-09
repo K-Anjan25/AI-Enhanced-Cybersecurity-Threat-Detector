@@ -8,17 +8,18 @@ on them periodically to generate alerts.
 from __future__ import annotations
 
 import threading
-import time
 from collections import deque
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from app.core.logging import get_logger
 from app.services.rule_detector import RuleDetector
 
 if TYPE_CHECKING:
     from app.services.alert_store import AlertStore
 
 __all__ = ["DetectionEngine"]
+
+_LOG = get_logger("aegis.detection_engine")
 
 
 class DetectionEngine:
@@ -36,12 +37,17 @@ class DetectionEngine:
         interval: float = 15.0,
         max_buffer: int = 10_000,
     ) -> None:
+        """Bind the detector to an alert store and the scoring cadence."""
         self._detector = RuleDetector(alert_store)
         self._interval = interval
         self._max_buffer = max_buffer
         self._buffer: deque[dict[str, object]] = deque(maxlen=max_buffer)
         self._lock = threading.Lock()
         self._running = False
+        # An event, not a bare sleep, so stop() wakes the loop immediately:
+        # a thread parked in time.sleep(interval) would hold shutdown for the
+        # whole join timeout on every application instance (every test builds one).
+        self._wake = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_alerts: list[dict[str, object]] = []
         self._cycle_count = 0
@@ -83,6 +89,7 @@ class DetectionEngine:
     def stop(self) -> None:
         """Stop the background detection loop."""
         self._running = False
+        self._wake.set()
         if self._thread is not None:
             self._thread.join(timeout=5)
             self._thread = None
@@ -90,11 +97,12 @@ class DetectionEngine:
     def _loop(self) -> None:
         """Main detection loop."""
         while self._running:
-            time.sleep(self._interval)
+            if self._wake.wait(self._interval):
+                break
             try:
                 self._run_cycle()
-            except Exception:
-                pass  # Don't crash the background thread
+            except Exception as exc:  # noqa: BLE001 - one bad cycle must not kill the loop
+                _LOG.warning("detection_cycle_failed", error=str(exc))
 
     def _run_cycle(self) -> None:
         """Run one detection cycle."""

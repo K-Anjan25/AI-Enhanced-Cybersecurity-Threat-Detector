@@ -167,9 +167,7 @@ export function App() {
 
   return (
     <ToastProvider>
-      <CommandProvider
-        listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}
-      >
+      <CommandProvider listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}>
         <Shell onSignOut={handleSignOut} />
       </CommandProvider>
     </ToastProvider>

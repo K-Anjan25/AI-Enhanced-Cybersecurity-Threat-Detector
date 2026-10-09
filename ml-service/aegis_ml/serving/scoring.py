@@ -15,14 +15,14 @@ statistical score acts as a floor when the neural model is absent.
 
 from __future__ import annotations
 
+import logging
 import math
 import os
-import logging
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -31,15 +31,16 @@ router = APIRouter(tags=["scoring"])
 
 # ── PyTorch models (optional) ──────────────────────────────────
 
-_flownet_model = None
-_lognet_model = None
+# Typed Any: torch is an optional extra, so the model classes are not always importable.
+_flownet_model: Any = None
+_lognet_model: Any = None
 _models_loaded = False
 
 FLOWNET_MODEL_PATH = os.environ.get("AEGIS_FLOWNET_MODEL_PATH", "/models/flownet.pt")
 LOGNET_MODEL_PATH = os.environ.get("AEGIS_LOGNET_MODEL_PATH", "/models/lognet.pt")
 
 
-def _try_load_models():
+def _try_load_models() -> None:
     """Attempt to load PyTorch models. Non-fatal if torch is absent."""
     global _flownet_model, _lognet_model, _models_loaded
     if _models_loaded:
@@ -47,6 +48,7 @@ def _try_load_models():
 
     try:
         import torch
+
         from aegis_ml.models.flownet import FlowNet, FlowNetConfig
         from aegis_ml.models.lognet import LogNet, LogNetConfig
 
@@ -58,25 +60,33 @@ def _try_load_models():
             model.load_state_dict(state)
             model.eval()
             _flownet_model = model
-            logger.info("flownet_loaded path=%s params=%d", FLOWNET_MODEL_PATH, sum(p.numel() for p in model.parameters()))
+            logger.info(
+                "flownet_loaded path=%s params=%d",
+                FLOWNET_MODEL_PATH,
+                sum(p.numel() for p in model.parameters()),
+            )
         else:
             logger.info("flownet_not_found path=%s", FLOWNET_MODEL_PATH)
 
         # Load LogNet if checkpoint exists
         if os.path.exists(LOGNET_MODEL_PATH):
-            config = LogNetConfig()
-            model = LogNet(config)
+            lognet_config = LogNetConfig()
+            lognet = LogNet(lognet_config)
             state = torch.load(LOGNET_MODEL_PATH, map_location="cpu", weights_only=True)
-            model.load_state_dict(state)
-            model.eval()
-            _lognet_model = model
-            logger.info("lognet_loaded path=%s params=%d", LOGNET_MODEL_PATH, sum(p.numel() for p in model.parameters()))
+            lognet.load_state_dict(state)
+            lognet.eval()
+            _lognet_model = lognet
+            logger.info(
+                "lognet_loaded path=%s params=%d",
+                LOGNET_MODEL_PATH,
+                sum(p.numel() for p in lognet.parameters()),
+            )
         else:
             logger.info("lognet_not_found path=%s", LOGNET_MODEL_PATH)
 
     except ImportError:
         logger.info("torch_not_available using_statistical_fallback")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a bad checkpoint degrades to the statistical path
         logger.warning("model_load_failed error=%s", str(e))
 
     _models_loaded = True
@@ -84,8 +94,10 @@ def _try_load_models():
 
 # ── Request/Response models ─────────────────────────────────────
 
+
 class FlowRecord(BaseModel):
     """A single flow record for scoring."""
+
     ts: float = 0
     src_ip: str = ""
     dst_ip: str = ""
@@ -102,6 +114,7 @@ class FlowRecord(BaseModel):
 
 class LogRecord(BaseModel):
     """A single log record for scoring."""
+
     source: str = ""
     level: str = "info"
     message: str = ""
@@ -111,6 +124,7 @@ class LogRecord(BaseModel):
 
 class ScoreRequest(BaseModel):
     """A window of flows to score."""
+
     flows: list[FlowRecord] = Field(default=[], min_length=0)
     logs: list[LogRecord] = Field(default=[], min_length=0)
     window_id: str | None = None
@@ -118,6 +132,7 @@ class ScoreRequest(BaseModel):
 
 class ScoreResponse(BaseModel):
     """The anomaly score for a window."""
+
     score: float = Field(..., ge=0.0, le=1.0)
     explanations: list[str] = []
     model_id: str = "statistical-anomaly-v1"
@@ -127,9 +142,11 @@ class ScoreResponse(BaseModel):
 
 # ── Feature extraction ──────────────────────────────────────────
 
+
 @dataclass
 class FlowFeatures:
     """Statistical features extracted from a flow window."""
+
     num_flows: int
     unique_dst_ports: int
     unique_dst_ips: int
@@ -240,7 +257,7 @@ def compute_statistical_score(features: FlowFeatures) -> tuple[float, list[str]]
     return score, reasons
 
 
-def _flows_to_tensor(flows: list[FlowRecord]):
+def _flows_to_tensor(flows: list[FlowRecord]) -> Any:
     """Convert flow records to a tensor for FlowNet inference."""
     import torch
 
@@ -249,9 +266,11 @@ def _flows_to_tensor(flows: list[FlowRecord]):
     # Simplified: just use the numeric features
     rows = []
     for f in flows:
-        proto_vec = [1 if f.proto == "tcp" else 0,
-                     1 if f.proto == "udp" else 0,
-                     1 if f.proto == "icmp" else 0]
+        proto_vec = [
+            1 if f.proto == "tcp" else 0,
+            1 if f.proto == "udp" else 0,
+            1 if f.proto == "icmp" else 0,
+        ]
         row = [
             f.src_port / 65535.0,
             f.dst_port / 65535.0,
@@ -259,7 +278,8 @@ def _flows_to_tensor(flows: list[FlowRecord]):
             min(f.duration or 0, 300) / 300.0,
             min(f.orig_bytes, 10_000_000) / 10_000_000.0,
             min(f.resp_bytes, 10_000_000) / 10_000_000.0,
-            0, 0,  # packets (not in FlowRecord)
+            0,
+            0,  # packets (not in FlowRecord)
         ]
         rows.append(row)
 
@@ -308,12 +328,13 @@ def compute_transformer_score(flows: list[FlowRecord]) -> tuple[float, list[str]
 
         return composite, reasons
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - a failed model must not fail the whole request
         logger.warning("transformer_scoring_failed error=%s", str(e))
         return 0.0, [f"Transformer scoring failed: {str(e)}"]
 
 
 # ── Scoring endpoint ────────────────────────────────────────────
+
 
 @router.post(
     "/score",
@@ -336,7 +357,7 @@ def score_window(request: ScoreRequest) -> ScoreResponse:
 
     # Layer 1: Transformer scoring (if model loaded)
     transformer_score = 0.0
-    transformer_reasons = []
+    transformer_reasons: list[str] = []
     if _flownet_model is not None and len(flows) >= 2:
         transformer_score, transformer_reasons = compute_transformer_score(flows)
 
@@ -392,20 +413,20 @@ def score_log_window(request: ScoreRequest) -> ScoreResponse:
     reasons = []
 
     # Error/critical ratio
-    error_count = sum(1 for l in logs if l.level in ("error", "critical"))
+    error_count = sum(1 for entry in logs if entry.level in ("error", "critical"))
     error_ratio = error_count / len(logs) if logs else 0
     if error_ratio > 0.3:
         score += min(error_ratio * 0.5, 0.3)
         reasons.append(f"High error ratio: {error_ratio:.0%}")
 
     # Unique sources (many different sources = potential scanning)
-    sources = {l.source for l in logs}
+    sources = {entry.source for entry in logs}
     if len(sources) > 5:
         score += min((len(sources) - 5) * 0.05, 0.2)
         reasons.append(f"Multiple log sources: {len(sources)}")
 
     # Repeated identical messages (potential loop/attack)
-    messages = [l.message for l in logs]
+    messages = [entry.message for entry in logs]
     msg_counts = Counter(messages)
     most_common_count = msg_counts.most_common(1)[0][1] if msg_counts else 0
     if most_common_count > len(logs) * 0.5 and len(logs) > 5:
@@ -442,35 +463,45 @@ def list_active_models() -> dict[str, Any]:
             "status": "active",
             "description": "Statistical anomaly detection using flow features",
             "features": [
-                "port_diversity", "failure_rate", "short_flow_ratio",
-                "transfer_size", "packet_size_distribution", "dns_ratio",
+                "port_diversity",
+                "failure_rate",
+                "short_flow_ratio",
+                "transfer_size",
+                "packet_size_distribution",
+                "dns_ratio",
             ],
         },
     ]
 
     if _flownet_model is not None:
-        models.append({
-            "model_id": "flownet-v1",
-            "kind": "flow",
-            "status": "active",
-            "description": "FlowNet transformer: 4-layer encoder with reconstruction + anomaly heads (~1.2M params)",
-            "architecture": "Transformer encoder (4 layers, 176d, 8 heads)",
-            "features": [
-                "reconstruction_error", "anomaly_logits",
-                "composite_score (T-205)",
-            ],
-        })
+        models.append(
+            {
+                "model_id": "flownet-v1",
+                "kind": "flow",
+                "status": "active",
+                "description": "FlowNet transformer: 4-layer encoder with reconstruction + anomaly heads (~1.2M params)",  # noqa: E501
+                "architecture": "Transformer encoder (4 layers, 176d, 8 heads)",
+                "features": [
+                    "reconstruction_error",
+                    "anomaly_logits",
+                    "composite_score (T-205)",
+                ],
+            }
+        )
 
     if _lognet_model is not None:
-        models.append({
-            "model_id": "lognet-v1",
-            "kind": "log",
-            "status": "active",
-            "description": "LogNet transformer: 6-layer encoder with masked-template + hypersphere objectives",
-            "architecture": "Transformer encoder (6 layers)",
-            "features": [
-                "masked_template_prediction", "hypersphere_distance",
-            ],
-        })
+        models.append(
+            {
+                "model_id": "lognet-v1",
+                "kind": "log",
+                "status": "active",
+                "description": "LogNet transformer: 6-layer encoder with masked-template + hypersphere objectives",  # noqa: E501
+                "architecture": "Transformer encoder (6 layers)",
+                "features": [
+                    "masked_template_prediction",
+                    "hypersphere_distance",
+                ],
+            }
+        )
 
     return {"models": models}

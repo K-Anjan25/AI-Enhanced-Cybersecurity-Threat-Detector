@@ -62,11 +62,7 @@ export function MatrixRain({ opacity = 0.08 }: { opacity?: number }) {
         // Short trail (3 instead of 8)
         ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
         for (let t = 1; t < 3; t++) {
-          ctx.fillText(
-            CHARS[Math.floor(Math.random() * CHARS.length)] ?? '0',
-            x,
-            y - t * fontSize,
-          );
+          ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)] ?? '0', x, y - t * fontSize);
         }
 
         if (y > canvas.height && Math.random() > 0.98) {

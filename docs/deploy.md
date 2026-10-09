@@ -27,6 +27,7 @@ Default admin: `admin@aegis.local` / `admin123456789`
 ## Production (Kubernetes)
 
 ### Prerequisites
+
 - Kubernetes 1.27+
 - Helm 3.12+
 - PostgreSQL 15+ (managed or self-hosted)
@@ -75,13 +76,13 @@ helm rollback aegis -n aegis
 
 All configuration via environment variables prefixed with `AEGIS_`:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `AEGIS_SECRET_KEY` | Yes | 32+ char random secret for JWT signing |
-| `AEGIS_DATABASE_URL` | Yes | PostgreSQL connection string |
-| `AEGIS_ENV` | No | `development`, `staging`, `production` |
-| `AEGIS_LOG_LEVEL` | No | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `AEGIS_ML_SERVICE_URL` | No | ML service URL (default: auto-detected) |
-| `AEGIS_DEV_AUTH_SETUP_ENABLED` | No | Enable initial admin creation |
-| `AEGIS_BOOTSTRAP_ADMIN_EMAIL` | No | Initial admin email |
-| `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` | No | Initial admin password |
+| Variable                         | Required | Description                             |
+| -------------------------------- | -------- | --------------------------------------- |
+| `AEGIS_SECRET_KEY`               | Yes      | 32+ char random secret for JWT signing  |
+| `AEGIS_DATABASE_URL`             | Yes      | PostgreSQL connection string            |
+| `AEGIS_ENV`                      | No       | `development`, `staging`, `production`  |
+| `AEGIS_LOG_LEVEL`                | No       | `DEBUG`, `INFO`, `WARNING`, `ERROR`     |
+| `AEGIS_ML_SERVICE_URL`           | No       | ML service URL (default: auto-detected) |
+| `AEGIS_DEV_AUTH_SETUP_ENABLED`   | No       | Enable initial admin creation           |
+| `AEGIS_BOOTSTRAP_ADMIN_EMAIL`    | No       | Initial admin email                     |
+| `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` | No       | Initial admin password                  |

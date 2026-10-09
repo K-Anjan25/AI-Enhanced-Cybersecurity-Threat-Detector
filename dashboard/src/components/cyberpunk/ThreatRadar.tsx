@@ -48,14 +48,13 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
     let lastTime = 0;
     function animate(time: number) {
       const delta = time - lastTime;
-      if (delta > 33) { // ~30fps instead of 60fps
+      if (delta > 33) {
+        // ~30fps instead of 60fps
         setSweepAngle((prev) => (prev + 2) % 360);
 
         // Fade blips
         setBlips((prev) =>
-          prev
-            .map((b) => ({ ...b, opacity: b.opacity - 0.008 }))
-            .filter((b) => b.opacity > 0),
+          prev.map((b) => ({ ...b, opacity: b.opacity - 0.008 })).filter((b) => b.opacity > 0),
         );
 
         // Random new blips — less frequent
@@ -200,13 +199,7 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
                 strokeWidth="0.5"
                 opacity={blip.opacity * 0.5}
               >
-                <animate
-                  attributeName="r"
-                  from="3"
-                  to="12"
-                  dur="2s"
-                  repeatCount="indefinite"
-                />
+                <animate attributeName="r" from="3" to="12" dur="2s" repeatCount="indefinite" />
                 <animate
                   attributeName="opacity"
                   from={String(blip.opacity * 0.5)}
@@ -223,10 +216,46 @@ export function ThreatRadar({ size = 280 }: { size?: number }) {
         <circle cx={center} cy={center} r="3" fill="#00f0ff" filter="url(#blipGlow)" />
 
         {/* Cardinal labels */}
-        <text x={center} y={14} textAnchor="middle" fill="rgba(0,240,255,0.4)" fontSize="9" fontFamily="monospace">N</text>
-        <text x={center} y={size - 6} textAnchor="middle" fill="rgba(0,240,255,0.4)" fontSize="9" fontFamily="monospace">S</text>
-        <text x={8} y={center + 3} textAnchor="start" fill="rgba(0,240,255,0.4)" fontSize="9" fontFamily="monospace">W</text>
-        <text x={size - 8} y={center + 3} textAnchor="end" fill="rgba(0,240,255,0.4)" fontSize="9" fontFamily="monospace">E</text>
+        <text
+          x={center}
+          y={14}
+          textAnchor="middle"
+          fill="rgba(0,240,255,0.4)"
+          fontSize="9"
+          fontFamily="monospace"
+        >
+          N
+        </text>
+        <text
+          x={center}
+          y={size - 6}
+          textAnchor="middle"
+          fill="rgba(0,240,255,0.4)"
+          fontSize="9"
+          fontFamily="monospace"
+        >
+          S
+        </text>
+        <text
+          x={8}
+          y={center + 3}
+          textAnchor="start"
+          fill="rgba(0,240,255,0.4)"
+          fontSize="9"
+          fontFamily="monospace"
+        >
+          W
+        </text>
+        <text
+          x={size - 8}
+          y={center + 3}
+          textAnchor="end"
+          fill="rgba(0,240,255,0.4)"
+          fontSize="9"
+          fontFamily="monospace"
+        >
+          E
+        </text>
       </svg>
     </div>
   );
