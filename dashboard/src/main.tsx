@@ -18,6 +18,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { RealtimeProvider } from './components/realtime/RealtimeProvider';
 import './index.css';
+import './cyberpunk.css';
 import { ThemeProvider } from './theme/ThemeProvider';
 
 const queryClient = new QueryClient({

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aegis.fullname" . }}-ml-service
+  labels:
+    {{- include "aegis.mlService.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.mlService.service.type }}
+  ports:
+    - port: {{ .Values.mlService.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "aegis.mlService.selectorLabels" . | nindent 4 }}
