@@ -52,6 +52,9 @@ from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
+from app.services.detection_engine import DetectionEngine
+from app.services.drift_monitor import DriftMonitor
+from app.services.model_registrar import ModelRegistrar
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.auth_accounts import AuthAccountStore
 from app.services.entity_registry import EntityRegistry
@@ -156,9 +159,38 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         environment=settings.env.value,
         version=__version__,
     )
+    # Start the rule-based detection engine
+    detection_engine = getattr(app.state, "detection_engine", None)
+    if detection_engine is not None:
+        detection_engine.start()
+        logger.info("detection_engine_started", interval=15)
+    # Start the drift monitor (T-421)
+    drift_monitor = getattr(app.state, "drift_monitor", None)
+    if drift_monitor is not None:
+        drift_monitor.start()
+        logger.info("drift_monitor_started")
+    # Start the model registrar (model_ops exists now, created in create_app)
+    ml_url = getattr(app.state.settings, 'ml_service_url', None) or "http://ml-service:8001"
+    model_registrar = ModelRegistrar(
+        ml_service_url=ml_url,
+        model_ops=app.state.model_ops,
+        interval=30.0,
+    )
+    app.state.model_registrar = model_registrar
+    model_registrar.start()
+    logger.info("model_registrar_started")
     try:
         yield
     finally:
+        # Stop the detection engine
+        if detection_engine is not None:
+            detection_engine.stop()
+        # Stop the drift monitor
+        if drift_monitor is not None:
+            drift_monitor.stop()
+        # Stop the model registrar
+        if model_registrar is not None:
+            model_registrar.stop()
         # Drop connected dashboards so they fall back to REST rather than
         # holding a socket that will never speak again (FR-20).
         app.state.alert_hub.close()
@@ -265,6 +297,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # here, like every other store in this environment; D-053 records the
     # PostgreSQL adapter as unwired and the case-id column it would need.
     app.state.alert_store = InMemoryAlertStore()
+    # Rule-based detection engine: runs in background, reads buffered flows,
+    # applies heuristic rules, and writes alerts to the alert store.
+    app.state.detection_engine = DetectionEngine(
+        app.state.alert_store,
+        interval=15.0,
+        max_buffer=10_000,
+    )
+    # Drift monitor (T-421): computes PSI from recent flows and publishes
+    # aegis_drift_psi{feature} gauges to /metrics so the DriftPage draws bars.
+    ml_service_url = getattr(resolved, 'ml_service_url', None) or "http://ml-service:8001"
+    app.state.drift_monitor = DriftMonitor(
+        interval=15.0,
+        ml_service_url=ml_service_url,
+    )
     # The entity registry (T-416). The same object type the pipeline allocates ids
     # from, so an alert written by this process can be rendered by name: the
     # overview resolves `entity_id` through it. D-053 records the persistent

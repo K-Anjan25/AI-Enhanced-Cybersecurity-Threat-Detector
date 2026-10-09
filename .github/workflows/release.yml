@@ -1,0 +1,149 @@
+# T-508: Release pipeline — tagged images, changelog, metrics from eval run.
+#
+# A release produces a note whose numbers trace to a recorded run (R-74).
+#
+# Triggered on: git tag v*
+# Produces:   - Docker images tagged with version
+#             - GitHub release with changelog
+#             - Metrics section from the latest eval run
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  # ── Build and push images ────────────────────
+  build-images:
+    name: Build images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: backend
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+          - name: ml-service
+            context: ./ml-service
+            dockerfile: ./ml-service/Dockerfile
+          - name: dashboard
+            context: ./dashboard
+            dockerfile: ./dashboard/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:latest
+
+  # ── Generate changelog ───────────────────────
+  changelog:
+    name: Generate changelog
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log "$PREV_TAG..HEAD" --pretty=format:"- %s (%h)" --no-merges)
+          else
+            LOG=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
+          fi
+          # Write multiline output
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+  # ── Create GitHub release ────────────────────
+  release:
+    name: Create release
+    needs: [build-images, changelog]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract metrics from latest eval run
+        id: metrics
+        run: |
+          # Find the latest recorded eval run (R-74)
+          EVAL_FILE=$(find . -name "*.json" -path "*/runs/*" -newer .git/refs/tags 2>/dev/null | head -1)
+          if [ -n "$EVAL_FILE" ]; then
+            echo "metrics<<EOF" >> "$GITHUB_OUTPUT"
+            python3 -c "
+          import json, sys
+          with open('$EVAL_FILE') as f:
+              data = json.load(f)
+          print('### Model Metrics (R-74)')
+          print()
+          for k, v in data.get('metrics', {}).items():
+              print(f'- **{k}**: {v}')
+          " >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          else
+            echo "metrics=No recorded eval run found." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: AEGIS ${{ github.ref_name }}
+          body: |
+            ## AEGIS ${{ github.ref_name }}
+
+            ### Changelog
+            ${{ needs.changelog.outputs.changelog }}
+
+            ### Docker Images
+            - `ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}`
+            - `ghcr.io/${{ github.repository }}/ml-service:${{ github.ref_name }}`
+            - `ghcr.io/${{ github.repository }}/dashboard:${{ github.ref_name }}`
+
+            ${{ steps.metrics.outputs.metrics }}
+
+            ### Deployment
+            ```bash
+            helm upgrade aegis ./helm/aegis --set backend.image.tag=${{ github.ref_name }} --set mlService.image.tag=${{ github.ref_name }} --set dashboard.image.tag=${{ github.ref_name }}
+            ```
+
+            ### Rollback
+            ```bash
+            helm rollback aegis
+            ```
+          draft: false
+          prerelease: false

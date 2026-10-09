@@ -1,0 +1,32 @@
+# T-504: Helm chart for AEGIS deployment
+#
+# Deploys backend, ml-service, dashboard to a clean Kubernetes cluster.
+# HPA scales scoring workers on consumer lag.
+#
+# Install: helm install aegis ./helm/aegis -f helm/aegis/values-production.yaml
+
+apiVersion: v2
+name: aegis
+description: AI-Enhanced Cybersecurity Threat Detector
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - cybersecurity
+  - threat-detection
+  - anomaly-detection
+  - ml
+
+maintainers:
+  - name: AEGIS team
+
+dependencies:
+  - name: postgresql
+    version: "13.2.24"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: kafka
+    version: "26.8.0"
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled

@@ -1,0 +1,402 @@
+/**
+ * CYBERPUNK THEME — Pure CSS, zero JavaScript overhead.
+ *
+ * All effects are CSS-only: no canvas, no requestAnimationFrame,
+ * no setInterval, no heavy JS animations. Memory-safe.
+ *
+ * Colors: Neon Cyan #00f0ff, Magenta #ff2a6d, Green #05ffa1, Yellow #fcee0a
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+:root,
+[data-theme='dark'] {
+  --color-bg-base: #050510;
+  --color-bg-surface: #0a0a1a;
+  --color-border: rgba(0, 240, 255, 0.15);
+  --color-text-primary: #e0e6ff;
+  --color-text-muted: #5a6b8a;
+  --color-accent: #00f0ff;
+  --color-on-accent: #050510;
+  --severity-critical: #ff2a6d;
+  --severity-high: #ff6b35;
+  --severity-medium: #fcee0a;
+  --severity-low: #00f0ff;
+  --severity-info: #8b72ff;
+  --severity-benign: #05ffa1;
+  --severity-text-critical: #ff5c8a;
+  --severity-text-high: #ff9e6b;
+  --severity-text-medium: #fcee0a;
+  --severity-text-low: #4df7ff;
+  --severity-text-info: #b69fff;
+  --severity-text-benign: #4dffc2;
+  --focus-ring: #00f0ff;
+  --shadow-overlay: 0 8px 32px rgba(0, 240, 255, 0.15);
+  --neon-cyan: #00f0ff;
+  --neon-magenta: #ff2a6d;
+  --neon-green: #05ffa1;
+  --neon-yellow: #fcee0a;
+  --neon-purple: #8b72ff;
+}
+
+[data-theme='light'] {
+  --color-bg-base: #0a0a1a;
+  --color-bg-surface: #0f0f25;
+  --color-border: rgba(0, 240, 255, 0.2);
+  --color-text-primary: #e0e6ff;
+  --color-text-muted: #5a6b8a;
+  --color-accent: #00f0ff;
+  --color-on-accent: #050510;
+}
+
+/* ===== BODY — Static gradient, no animation ===== */
+
+body {
+  background: var(--color-bg-base) !important;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(255, 42, 109, 0.02) 0%, transparent 50%) !important;
+  font-family: 'Rajdhani', 'Inter', system-ui, sans-serif !important;
+}
+
+/* Scanlines — static, no animation */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0, 0, 0, 0.02) 2px, rgba(0, 0, 0, 0.02) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ===== GRID BACKGROUND — Static ===== */
+
+.cyber-grid-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ===== NAVIGATION ===== */
+
+nav[aria-label='Primary'] {
+  background: linear-gradient(180deg, #0a0a1a 0%, #050510 50%, #0a0a1a 100%) !important;
+  border-right: 1px solid rgba(0, 240, 255, 0.1) !important;
+}
+
+nav[aria-label='Primary'] .text-h2 {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3em !important;
+  background: linear-gradient(135deg, #00f0ff 0%, #8b72ff 50%, #ff2a6d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+nav[aria-label='Primary'] a:hover {
+  background: rgba(0, 240, 255, 0.05) !important;
+  border-left-color: rgba(0, 240, 255, 0.3) !important;
+}
+
+nav[aria-label='Primary'] a[class*='border-accent'] {
+  border-left-color: #00f0ff !important;
+  background: rgba(0, 240, 255, 0.08) !important;
+  color: #00f0ff !important;
+}
+
+nav[aria-label='Primary'] .text-caption {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.2em !important;
+  color: rgba(0, 240, 255, 0.4) !important;
+}
+
+/* ===== TOP BAR ===== */
+
+header {
+  background: linear-gradient(90deg, #0a0a1a 0%, #0d0d25 50%, #0a0a1a 100%) !important;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.1) !important;
+}
+
+header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.3) 20%, rgba(255, 42, 109, 0.3) 50%, rgba(0, 240, 255, 0.3) 80%, transparent);
+}
+
+header .text-caption {
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 0.15em !important;
+  color: rgba(0, 240, 255, 0.5) !important;
+}
+
+/* ===== GLITCH TEXT — Pure CSS, no JS ===== */
+
+.glitch-text {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-weight: 700;
+  position: relative;
+  display: inline-block;
+}
+
+.glitch-text--subtle::before,
+.glitch-text--subtle::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.glitch-text--subtle::before {
+  color: #ff2a6d;
+  z-index: -1;
+  animation: glitch1 4s infinite linear alternate-reverse;
+}
+
+.glitch-text--subtle::after {
+  color: #00f0ff;
+  z-index: -2;
+  animation: glitch2 3s infinite linear alternate-reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glitch-text::before, .glitch-text::after { animation: none !important; }
+}
+
+@keyframes glitch1 {
+  0%, 90% { clip-path: inset(0 0 95% 0); transform: translate(-1px, 0); }
+  92% { clip-path: inset(40% 0 30% 0); transform: translate(1px, 0); }
+  94% { clip-path: inset(80% 0 5% 0); transform: translate(-1px, 0); }
+  96% { clip-path: inset(10% 0 60% 0); transform: translate(1px, 0); }
+  98% { clip-path: inset(50% 0 20% 0); transform: translate(-1px, 0); }
+  100% { clip-path: inset(0 0 95% 0); transform: translate(1px, 0); }
+}
+
+@keyframes glitch2 {
+  0%, 90% { clip-path: inset(95% 0 0 0); transform: translate(1px, 0); }
+  92% { clip-path: inset(30% 0 40% 0); transform: translate(-1px, 0); }
+  94% { clip-path: inset(5% 0 80% 0); transform: translate(1px, 0); }
+  96% { clip-path: inset(60% 0 10% 0); transform: translate(-1px, 0); }
+  98% { clip-path: inset(20% 0 50% 0); transform: translate(1px, 0); }
+  100% { clip-path: inset(95% 0 0 0); transform: translate(-1px, 0); }
+}
+
+/* ===== NEON CARD — Pure CSS ===== */
+
+.neon-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(10, 10, 26, 0.95) 0%, rgba(5, 5, 16, 0.98) 100%);
+  border: 1px solid var(--neon-border, rgba(0, 240, 255, 0.15));
+  padding: 20px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.neon-card:hover {
+  border-color: var(--neon-border, rgba(0, 240, 255, 0.4));
+}
+
+.neon-card__scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.neon-card__corner { position: absolute; width: 12px; height: 12px; z-index: 2; }
+.neon-card__corner--tl { top: 0; left: 0; border-top: 2px solid var(--neon-border); border-left: 2px solid var(--neon-border); }
+.neon-card__corner--tr { top: 0; right: 0; border-top: 2px solid var(--neon-border); border-right: 2px solid var(--neon-border); }
+.neon-card__corner--bl { bottom: 0; left: 0; border-bottom: 2px solid var(--neon-border); border-left: 2px solid var(--neon-border); }
+.neon-card__corner--br { bottom: 0; right: 0; border-bottom: 2px solid var(--neon-border); border-right: 2px solid var(--neon-border); }
+.neon-card__content { position: relative; z-index: 3; }
+
+/* ===== CYBER BUTTON — Pure CSS ===== */
+
+.cyber-btn {
+  position: relative;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 24px;
+  border: none;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  transition: box-shadow 0.2s ease;
+}
+
+.cyber-btn--primary {
+  background: linear-gradient(135deg, #00f0ff 0%, #00a8cc 100%);
+  color: #050510;
+}
+
+.cyber-btn--primary:hover { box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); }
+
+.cyber-btn--danger {
+  background: linear-gradient(135deg, #ff2a6d 0%, #cc2257 100%);
+  color: #ffffff;
+}
+
+.cyber-btn--ghost {
+  background: transparent;
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  clip-path: none;
+}
+
+.cyber-btn--ghost:hover { background: rgba(0, 240, 255, 0.1); border-color: rgba(0, 240, 255, 0.6); }
+.cyber-btn--sm { padding: 6px 14px; font-size: 11px; }
+.cyber-btn--md { padding: 10px 24px; font-size: 13px; }
+.cyber-btn--lg { padding: 14px 32px; font-size: 15px; }
+
+/* ===== THREAT LEVEL BAR ===== */
+
+.threat-level-bar__segment {
+  flex: 1;
+  height: 12px;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+
+/* ===== VECTOR SHIELD — Static SVG, no animation ===== */
+
+/* (No CSS needed — SVG handles its own rendering) */
+
+/* ===== INPUTS / SELECTS ===== */
+
+input, select, textarea {
+  font-family: 'JetBrains Mono', monospace !important;
+  border-color: rgba(0, 240, 255, 0.2) !important;
+  background: rgba(5, 5, 16, 0.8) !important;
+  color: #e0e6ff !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #00f0ff !important;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.1) !important;
+}
+
+select {
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+
+/* ===== BUTTONS — Ensure proper contrast in cyberpunk theme ===== */
+
+/* Primary buttons: dark text on cyan accent for readability */
+button.bg-accent,
+button[class*="bg-accent"] {
+  color: #050510 !important;
+}
+
+/* Danger buttons: white text on red */
+button.bg-severity-critical,
+button[class*="bg-severity-critical"] {
+  color: #ffffff !important;
+}
+
+/* Disabled buttons: ensure text remains visible */
+button:disabled {
+  opacity: 0.6 !important;
+}
+
+/* Secondary buttons: cyan text on dark surface */
+button.border-line {
+  color: #00f0ff !important;
+}
+
+/* ===== CARDS ===== */
+
+[class*='rounded-card'] {
+  border-color: rgba(0, 240, 255, 0.1) !important;
+  background: linear-gradient(135deg, rgba(10, 10, 26, 0.95) 0%, rgba(5, 5, 16, 0.98) 100%) !important;
+}
+
+/* ===== TABLES ===== */
+
+table { font-family: 'JetBrains Mono', monospace !important; }
+table thead { background: rgba(0, 240, 255, 0.03) !important; }
+table th { color: rgba(0, 240, 255, 0.6) !important; font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; border-bottom-color: rgba(0, 240, 255, 0.15) !important; }
+table td { border-bottom-color: rgba(0, 240, 255, 0.05) !important; }
+table tbody tr:hover { background: rgba(0, 240, 255, 0.03) !important; }
+
+/* ===== SCROLLBAR ===== */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(5, 5, 16, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.4); }
+
+/* ===== SELECTION ===== */
+
+::selection { background: rgba(0, 240, 255, 0.3); color: #ffffff; }
+
+/* ===== TYPOGRAPHY ===== */
+
+.text-h1 {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  background: linear-gradient(135deg, #e0e6ff 0%, #00f0ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-h2 {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.03em !important;
+  color: #e0e6ff !important;
+}
+
+/* ===== NEON TEXT GLOW (static) ===== */
+
+.neon-glow-cyan { text-shadow: 0 0 7px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.2); }
+.neon-glow-magenta { text-shadow: 0 0 7px rgba(255, 42, 109, 0.6), 0 0 20px rgba(255, 42, 109, 0.2); }
+.neon-glow-green { text-shadow: 0 0 7px rgba(5, 255, 161, 0.6), 0 0 20px rgba(5, 255, 161, 0.2); }
+
+/* ===== CONNECTION DOT ===== */
+
+.connection-dot--live {
+  background: #05ffa1 !important;
+  box-shadow: 0 0 6px rgba(5, 255, 161, 0.6);
+}
+
+/* ===== BADGES ===== */
+
+[class*='rounded-pill'] {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.05em !important;
+}
+
+/* ===== SKELETON LOADING ===== */
+
+[class*='animate-pulse'] {
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.03) 0%, rgba(0, 240, 255, 0.06) 50%, rgba(0, 240, 255, 0.03) 100%) !important;
+  background-size: 200% 100% !important;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 767px) {
+  body::after { display: none; }
+  .cyber-grid-bg { display: none; }
+}

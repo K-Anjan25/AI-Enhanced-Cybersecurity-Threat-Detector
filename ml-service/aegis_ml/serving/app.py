@@ -10,6 +10,9 @@ from fastapi import FastAPI, Request
 
 from aegis_ml.registry.model_registry import ModelRegistry
 from aegis_ml.serving.health import ServiceHealth, build_health
+from aegis_ml.serving.scoring import router as scoring_router
+from aegis_ml.serving.drift import router as drift_router
+from aegis_ml.serving.models import router as models_router
 
 __version__ = "0.1.0"
 
@@ -28,6 +31,11 @@ def create_app(registry: ModelRegistry | None = None) -> FastAPI:
     )
     app.state.registry = registry if registry is not None else ModelRegistry()
     app.state.version = __version__
+
+    # Include scoring, drift, and model endpoints
+    app.include_router(scoring_router)
+    app.include_router(drift_router)
+    app.include_router(models_router)
 
     @app.get(
         "/internal/healthz",

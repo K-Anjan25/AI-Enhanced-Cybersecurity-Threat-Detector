@@ -43,7 +43,7 @@ import { HuntPage } from './features/hunt/pages/HuntPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
 import { DriftPage } from './features/models/pages/DriftPage';
 import { ModelsPage } from './features/models/pages/ModelsPage';
-import { OverviewPage } from './features/overview/pages/OverviewPage';
+import { CyberpunkOverviewPage } from './features/overview/pages/CyberpunkOverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
@@ -82,7 +82,7 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
           index
           element={
             <Offered>
-              <OverviewPage />
+              <CyberpunkOverviewPage />
             </Offered>
           }
         />
@@ -168,8 +168,6 @@ export function App() {
   return (
     <ToastProvider>
       <CommandProvider
-        // Read on the open edge: the palette offers whatever this browser has saved
-        // by the time it is asked, not what was saved when the app started.
         listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}
       >
         <Shell onSignOut={handleSignOut} />

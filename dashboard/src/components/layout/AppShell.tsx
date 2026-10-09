@@ -71,6 +71,9 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
 
   return (
     <div className="flex min-h-screen bg-base text-ink">
+      {/* Cyberpunk static grid — zero JS */}
+      <div className="cyber-grid-bg" aria-hidden="true" />
+
       {narrow ? null : (
         <nav
           aria-label="Primary"
@@ -172,7 +175,7 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
               type="button"
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              className="rounded-input border border-line px-3 py-1 text-caption hover:text-accent"
+              className="rounded-input border border-line px-3 py-1 font-mono text-caption hover:text-accent"
             >
               {theme === 'dark' ? 'Light' : 'Dark'}
             </button>

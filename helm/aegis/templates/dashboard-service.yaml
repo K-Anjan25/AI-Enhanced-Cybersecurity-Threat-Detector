@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aegis.fullname" . }}-dashboard
+  labels:
+    {{- include "aegis.dashboard.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.dashboard.service.type }}
+  ports:
+    - port: {{ .Values.dashboard.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "aegis.dashboard.selectorLabels" . | nindent 4 }}
