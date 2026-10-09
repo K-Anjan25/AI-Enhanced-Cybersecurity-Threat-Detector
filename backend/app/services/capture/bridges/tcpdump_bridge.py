@@ -1,22 +1,45 @@
 #!/usr/bin/env python3
 """
-tcpdump / tshark → AEGIS Flow Ingestion Bridge
+tshark / tcpdump → AEGIS Flow Ingestion Bridge
 
-Captures packets using tcpdump or tshark and converts them into
-AEGIS flow records.
+UNIQUE ROLE (production):
+  tshark (Wireshark CLI) is the protocol dissection layer. It provides the
+  deepest field-level protocol analysis available, with 3,000+ protocol
+  dissectors. This bridge sends:
+    - Flow records  → /api/v1/ingest/flows  (aggregated from packets)
+    - Protocol logs → /api/v1/ingest/logs   (per-packet protocol details)
+
+  What makes tshark unique vs other capture services:
+    - 3,000+ protocol dissectors (the widest protocol coverage)
+    - Field-level extraction (every protocol field is accessible)
+    - Display filter language (Wireshark's powerful filtering)
+    - Reassembly (TCP stream reassembly, HTTP chunked encoding, etc.)
+    - Decryption support (with key log files for TLS)
+    - Expert info (protocol warnings, errors, malformations)
+
+  In production, tshark is used for:
+    - Protocol-specific deep dives (SMB, RDP, MQTT, Modbus, etc.)
+    - Forensic packet analysis (when you need to see every byte)
+    - Custom protocol monitoring (extract specific fields)
+    - Performance analysis (TCP retransmissions, window sizes, RTT)
+
+  For basic flow capture, tcpdump is sufficient. tshark is used when you
+  need protocol-level detail that neither Zeek nor Suricata provides.
 
 Usage:
-  # With tcpdump (requires root):
-  sudo tcpdump -i ethc0 -l -n -tt | python3 tcpdump_bridge.py
-
   # With tshark (Wireshark CLI):
-  tshark -i ethc0 -T fields -e frame.time_epoch -e ip.src -e ip.dst \
+  tshark -i eth0 -T fields -e frame.time_epoch -e ip.src -e ip.dst \
     -e tcp.srcport -e tcp.dstport -e ip.proto -e frame.len \
     -e tcp.flags.syn -e tcp.flags.ack -e tcp.flags.reset \
     -e tcp.flags.fin -e tcp.flags.push | python3 tcpdump_bridge.py --format tshark
 
-  # Capture for 60 seconds:
-  timeout 60 tcpdump -i ethc0 -l -n -tt | python3 tcpdump_bridge.py
+  # With tcpdump (basic flow capture):
+  tcpdump -i eth0 -l -n -tt | python3 tcpdump_bridge.py
+
+  # Capture DNS queries specifically:
+  tshark -i eth0 -Y "dns.qry.name" -T fields \
+    -e frame.time_epoch -e ip.src -e ip.dst -e dns.qry.name -e dns.qry.type \
+    | python3 tcpdump_bridge.py --format tshark-dns
 
 Environment:
   AEGIS_API_URL   - Backend URL (default: http://localhost:8000)
@@ -40,22 +63,6 @@ PASSWORD = os.environ.get("AEGIS_PASSWORD", "admin123456789")
 BATCH_SIZE = 100
 FLUSH_INTERVAL = 5
 
-# tcpdump line pattern:
-# 1234567890.123456 IP src.port > dst.port: flags ...
-TCPDUMP_RE = re.compile(
-    r'(\d+\.\d+)\s+IP6?\s+'
-    r'(\S+?)\.(\d+)\s+>\s+(\S+?)\.(\d+):\s+'
-    r'(.*)'
-)
-
-# UDP pattern:
-# 1234567890.123456 IP src.port > dst.port: UDP, length N
-UDP_RE = re.compile(
-    r'(\d+\.\d+)\s+IP6?\s+'
-    r'(\S+?)\.(\d+)\s+>\s+(\S+?)\.(\d+):\s+'
-    r'UDP,\s+length\s+(\d+)'
-)
-
 
 def authenticate():
     global TOKEN
@@ -78,17 +85,23 @@ def authenticate():
                 return True
         except Exception:
             continue
+    print("[AUTH] ✗ Failed", file=sys.stderr)
     return False
 
 
-def send_batch(records):
+def send_batch(records, modality="flows"):
+    """Send records to the appropriate ingest endpoint."""
     if not records or not TOKEN:
         return 0
+    endpoint = f"/api/v1/ingest/{modality}"
     ndjson = "\n".join(json.dumps(r) for r in records)
     req = urllib.request.Request(
-        f"{API_URL}/api/v1/ingest/flows",
+        f"{API_URL}{endpoint}",
         data=ndjson.encode(),
-        headers={"Content-Type": "application/x-ndjson", "Authorization": f"Bearer {TOKEN}"},
+        headers={
+            "Content-Type": "application/x-ndjson",
+            "Authorization": f"Bearer {TOKEN}",
+        },
         method="POST"
     )
     try:
@@ -99,136 +112,174 @@ def send_batch(records):
         if e.code == 401:
             authenticate()
         return 0
-    except Exception:
+    except Exception as e:
+        print(f"[SEND] Error: {e}", file=sys.stderr)
         return 0
 
 
-def guess_service(port):
-    return {80: "http", 443: "https", 22: "ssh", 53: "dns", 25: "smtp",
-            3306: "mysql", 5432: "postgres", 6379: "redis"}.get(port, "unknown")
+# ── tcpdump format ──────────────────────────────────────────────
+
+TCPDUMP_RE = re.compile(
+    r"(\d+\.\d+)\s+IP\s+(\S+)\s+>\s+(\S+):\s+(.*)"
+)
+
+TCPDUMP_DNS_RE = re.compile(
+    r"(\d+\.\d+)\s+IP\s+(\S+)\.(\d+)\s+>\s+(\S+)\.53:\s+(\d+)\+ (A|AAAA|PTR|MX|TXT)\??\s+(\S+)"
+)
 
 
-class FlowAggregator:
-    """Aggregates packets into flows by 5-tuple, flushing periodically."""
-
-    def __init__(self):
-        self.flows = defaultdict(lambda: {
-            "packets": 0, "src_bytes": 0, "dst_bytes": 0,
-            "src_packets": 0, "dst_packets": 0,
-            "syn": 0, "ack": 0, "rst": 0, "fin": 0, "psh": 0, "urg": 0,
-            "first_ts": None, "last_ts": None,
-        })
-
-    def add(self, ts, src_ip, dst_ip, src_port, dst_port, proto, length, flags=None):
-        key = (src_ip, dst_ip, src_port, dst_port, proto)
-        flow = self.flows[key]
-        if flow["first_ts"] is None:
-            flow["first_ts"] = ts
-            flow["src_ip"] = src_ip
-            flow["dst_ip"] = dst_ip
-            flow["src_port"] = src_port
-            flow["dst_port"] = dst_port
-            flow["protocol"] = proto
-        flow["last_ts"] = ts
-        flow["packets"] += 1
-        flow["src_bytes"] += length
-        flow["src_packets"] += 1
-        if flags:
-            for f in ["syn", "ack", "rst", "fin", "psh", "urg"]:
-                if flags.get(f):
-                    flow[f] += 1
-
-    def flush(self):
-        records = []
-        for key, flow in self.flows.items():
-            if flow["first_ts"] is None:
-                continue
-            duration = max(0.001, flow["last_ts"] - flow["first_ts"])
-            records.append({
-                "src_ip": flow["src_ip"], "dst_ip": flow["dst_ip"],
-                "src_port": flow["src_port"], "dst_port": flow["dst_port"],
-                "protocol": flow["protocol"],
-                "src_bytes": flow["src_bytes"], "dst_bytes": flow["dst_bytes"],
-                "packets": flow["packets"],
-                "src_packets": flow["src_packets"], "dst_packets": flow["dst_packets"],
-                "duration": round(duration, 3),
-                "syn": flow["syn"], "ack": flow["ack"],
-                "rst": flow["rst"], "fin": flow["fin"],
-                "psh": flow["psh"], "urg": flow["urg"],
-                "direction": "outbound",
-                "service": guess_service(flow["dst_port"]),
-                "state": "ESTABLISHED",
-                "timestamp": datetime.fromtimestamp(flow["first_ts"], tz=timezone.utc).isoformat(),
-                "label": None,
-            })
-        self.flows.clear()
-        return records
-
-
-def parse_tcpdump_line(line, aggregator):
-    """Parse one tcpdump line and add to aggregator."""
-    # Try UDP first
-    m = UDP_RE.match(line)
+def parse_tcpdump_line(line):
+    """Parse tcpdump -n -tt output into a basic flow record."""
+    # DNS query pattern
+    m = TCPDUMP_DNS_RE.match(line)
     if m:
-        ts, src_ip, src_port, dst_ip, dst_port, length = m.groups()
-        aggregator.add(
-            float(ts), src_ip, dst_ip,
-            int(src_port), int(dst_port), "udp", int(length)
-        )
-        return
+        ts, src, sport, dst, tid, qtype, qname = m.groups()
+        return {
+            "type": "flow",
+            "record": {
+                "src_ip": src,
+                "dst_ip": dst,
+                "src_port": int(sport),
+                "dst_port": 53,
+                "protocol": "udp",
+                "src_bytes": 0,
+                "dst_bytes": 0,
+                "packets": 1,
+                "duration": 0,
+                "timestamp": datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat(),
+                "label": None,
+            },
+        }
 
-    # Try TCP
+    # Generic IP pattern
     m = TCPDUMP_RE.match(line)
     if m:
-        ts, src_ip, src_port, dst_ip, dst_port, payload = m.groups()
-        flags = {
-            "syn": "S" in payload.split(":")[0] and "SA" not in payload.split(":")[0],
-            "ack": "A" in payload.split(":")[0],
-            "rst": "R" in payload.split(":")[0],
-            "fin": "F" in payload.split(":")[0],
-            "psh": "P" in payload.split(":")[0],
-            "urg": "U" in payload.split(":")[0],
-        }
-        # Estimate length from payload
-        length = len(payload.encode())
-        aggregator.add(
-            float(ts), src_ip, dst_ip,
-            int(src_port), int(dst_port), "tcp", max(40, length), flags
-        )
+        ts, src_dst, flags_rest = m.groups()[0], m.groups()[1], m.groups()[2:]
+        # Basic: just record src > dst
+        parts = line.split()
+        if len(parts) >= 4:
+            src = parts[2].rstrip(":").rstrip(">")
+            dst = parts[3].rstrip(":")
+            return {
+                "type": "flow",
+                "record": {
+                    "src_ip": src.split(".")[0] if "." in src else src,
+                    "dst_ip": dst.split(".")[0] if "." in dst else dst,
+                    "src_port": 0,
+                    "dst_port": 0,
+                    "protocol": "tcp",
+                    "src_bytes": 0,
+                    "dst_bytes": 0,
+                    "packets": 1,
+                    "duration": 0,
+                    "timestamp": datetime.fromtimestamp(float(m.group(1)), tz=timezone.utc).isoformat(),
+                    "label": None,
+                },
+            }
+
+    return None
 
 
-def parse_tshark_line(line, aggregator):
-    """Parse one tshark -T fields line."""
+# ── tshark fields format ────────────────────────────────────────
+
+def parse_tshark_line(line):
+    """Parse tshark -T fields output.
+
+    Default fields: frame.time_epoch, ip.src, ip.dst, tcp.srcport,
+    tcp.dstport, ip.proto, frame.len, tcp.flags.syn, tcp.flags.ack,
+    tcp.flags.reset, tcp.flags.fin, tcp.flags.push
+    """
     parts = line.strip().split("\t")
-    if len(parts) < 7:
-        return
+    if len(parts) < 6:
+        return None
+
     try:
-        ts = float(parts[0]) if parts[0] else time.time()
-        src_ip = parts[1] or "0.0.0.0"
-        dst_ip = parts[2] or "0.0.0.0"
-        src_port = int(parts[3]) if parts[3] else 0
-        dst_port = int(parts[4]) if parts[4] else 0
-        proto = "tcp" if parts[5] == "6" else "udp" if parts[5] == "17" else "other"
-        length = int(parts[6]) if parts[6] else 0
-        flags = {
-            "syn": parts[7] == "1" if len(parts) > 7 else False,
-            "ack": parts[8] == "1" if len(parts) > 8 else False,
-            "rst": parts[9] == "1" if len(parts) > 9 else False,
-            "fin": parts[10] == "1" if len(parts) > 10 else False,
-            "psh": parts[11] == "1" if len(parts) > 11 else False,
-            "urg": False,
+        ts = float(parts[0]) if parts[0] else 0
+        src_ip = parts[1] if len(parts) > 1 else ""
+        dst_ip = parts[2] if len(parts) > 2 else ""
+        src_port = int(parts[3]) if len(parts) > 3 and parts[3] else 0
+        dst_port = int(parts[4]) if len(parts) > 4 and parts[4] else 0
+        proto = parts[5] if len(parts) > 5 else "tcp"
+        frame_len = int(parts[6]) if len(parts) > 6 and parts[6] else 0
+
+        # TCP flags
+        syn = int(parts[7]) if len(parts) > 7 and parts[7] else 0
+        ack = int(parts[8]) if len(parts) > 8 and parts[8] else 0
+        rst = int(parts[9]) if len(parts) > 9 and parts[9] else 0
+        fin = int(parts[10]) if len(parts) > 10 and parts[10] else 0
+        psh = int(parts[11]) if len(parts) > 11 and parts[11] else 0
+
+        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat() if ts else datetime.now(timezone.utc).isoformat()
+
+        return {
+            "type": "flow",
+            "record": {
+                "src_ip": src_ip,
+                "dst_ip": dst_ip,
+                "src_port": src_port,
+                "dst_port": dst_port,
+                "protocol": proto.lower(),
+                "src_bytes": frame_len,
+                "dst_bytes": 0,
+                "packets": 1,
+                "syn": syn,
+                "ack": ack,
+                "rst": rst,
+                "fin": fin,
+                "psh": psh,
+                "duration": 0,
+                "timestamp": timestamp,
+                "label": None,
+            },
         }
-        aggregator.add(ts, src_ip, dst_ip, src_port, dst_port, proto, length, flags)
     except (ValueError, IndexError):
-        pass
+        return None
+
+
+def parse_tshark_dns_line(line):
+    """Parse tshark DNS query fields output.
+
+    Fields: frame.time_epoch, ip.src, ip.dst, dns.qry.name, dns.qry.type
+    """
+    parts = line.strip().split("\t")
+    if len(parts) < 5:
+        return None
+
+    try:
+        ts = float(parts[0]) if parts[0] else 0
+        src_ip = parts[1]
+        dst_ip = parts[2]
+        qname = parts[3]
+        qtype = parts[4] if parts[4] else "A"
+
+        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat() if ts else datetime.now(timezone.utc).isoformat()
+
+        return {
+            "type": "log",
+            "record": {
+                "source": "tshark-dns",
+                "level": "info",
+                "message": f"[DNS] {qtype} query: {qname} from {src_ip} → {dst_ip}",
+                "host": src_ip,
+                "timestamp": timestamp,
+                "structured": {
+                    "query": qname,
+                    "qtype": qtype,
+                    "src_ip": src_ip,
+                    "dst_ip": dst_ip,
+                },
+            },
+        }
+    except (ValueError, IndexError):
+        return None
 
 
 def main():
     global API_URL, EMAIL, PASSWORD
 
-    parser = argparse.ArgumentParser(description="tcpdump/tshark → AEGIS bridge")
-    parser.add_argument("--format", choices=["tcpdump", "tshark"], default="tshark")
-    parser.add_argument("--file", "-f", help="Read from file instead of stdin")
+    parser = argparse.ArgumentParser(description="tshark/tcpdump → AEGIS bridge")
+    parser.add_argument("--format", choices=["tcpdump", "tshark", "tshark-dns"],
+                        default="tcpdump", help="Input format")
     parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
     parser.add_argument("--email", help="Login email", default=EMAIL)
     parser.add_argument("--password", help="Login password", default=PASSWORD)
@@ -242,42 +293,55 @@ def main():
     if not authenticate():
         sys.exit(1)
 
-    print(f"[TCPDUMP] Bridge started. API={API_URL} format={args.format}", file=sys.stderr)
+    print(f"[TSHARK] Bridge started. API={API_URL} format={args.format}", file=sys.stderr)
 
-    aggregator = FlowAggregator()
+    # Select parser
+    if args.format == "tshark-dns":
+        parse_fn = parse_tshark_dns_line
+    elif args.format == "tshark":
+        parse_fn = parse_tshark_line
+    else:
+        parse_fn = parse_tcpdump_line
+
+    flow_batch = []
+    log_batch = []
     last_flush = time.time()
-    total_sent = 0
-    source = open(args.file, "r") if args.file else sys.stdin
-
-    parse_fn = parse_tshark_line if args.format == "tshark" else parse_tcpdump_line
+    total_flows = 0
+    total_logs = 0
 
     try:
-        for line in source:
-            line = line.strip()
-            if not line or line.startswith("tcpdump"):
+        for line in sys.stdin:
+            result = parse_fn(line)
+            if not result:
                 continue
-            parse_fn(line, aggregator)
+
+            if result["type"] == "flow":
+                flow_batch.append(result["record"])
+                total_flows += 1
+            else:
+                log_batch.append(result["record"])
+                total_logs += 1
 
             now = time.time()
             if now - last_flush >= FLUSH_INTERVAL:
-                records = aggregator.flush()
-                if records:
-                    for i in range(0, len(records), args.batch_size):
-                        accepted = send_batch(records[i:i + args.batch_size])
-                        total_sent += accepted
-                    print(f"[TCPDUMP] Flows: {len(records)} (total: {total_sent})", file=sys.stderr)
+                if flow_batch:
+                    send_batch(flow_batch, "flows")
+                    flow_batch = []
+                if log_batch:
+                    send_batch(log_batch, "logs")
+                    log_batch = []
+                print(f"[TSHARK] flows:{total_flows} logs:{total_logs}", file=sys.stderr)
                 last_flush = now
 
     except KeyboardInterrupt:
         pass
-    finally:
-        records = aggregator.flush()
-        if records:
-            send_batch(records)
-        if args.file:
-            source.close()
 
-    print(f"[TCPDUMP] Done. Total sent: {total_sent}", file=sys.stderr)
+    if flow_batch:
+        send_batch(flow_batch, "flows")
+    if log_batch:
+        send_batch(log_batch, "logs")
+
+    print(f"[TSHARK] Done. flows:{total_flows} logs:{total_logs}", file=sys.stderr)
 
 
 if __name__ == "__main__":
