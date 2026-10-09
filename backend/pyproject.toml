@@ -137,6 +137,12 @@ files = ["app"]
 module = ["uvicorn.*"]
 ignore_missing_imports = true
 
+# scapy is an optional capture-container dependency (not installed in the
+# backend dev environment); its absence is handled at runtime by HAS_SCAPY.
+[[tool.mypy.overrides]]
+module = ["scapy.*"]
+ignore_missing_imports = true
+
 # --- pytest (R-80..R-89) ---------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]

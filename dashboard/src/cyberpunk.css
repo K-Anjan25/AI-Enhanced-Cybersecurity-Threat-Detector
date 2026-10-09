@@ -454,11 +454,7 @@ button.border-line {
 
 [class*='rounded-card'] {
   border-color: rgb(0 240 255 / 10%) !important;
-  background: linear-gradient(
-    135deg,
-    rgb(10 10 26 / 95%) 0%,
-    rgb(5 5 16 / 98%) 100%
-  ) !important;
+  background: linear-gradient(135deg, rgb(10 10 26 / 95%) 0%, rgb(5 5 16 / 98%) 100%) !important;
 }
 
 /* ===== TABLES ===== */

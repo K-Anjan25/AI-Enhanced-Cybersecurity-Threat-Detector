@@ -46,6 +46,10 @@ POSTGRES_URL_RE = re.compile(r"\bpostgresql(?:\+([a-z0-9_]+))?://")
 #: Which distribution provides each SQLAlchemy driver name.
 DRIVER_PACKAGES = {"psycopg": "psycopg", "psycopg2": "psycopg2", "asyncpg": "asyncpg"}
 
+#: Network capture containers. Their AEGIS_* variables configure the standalone
+#: bridge scripts (read from the environment by the entrypoints), not Settings.
+CAPTURE_SERVICES = {"capture", "zeek", "suricata", "tshark"}
+
 EXPECTED_SERVICES = {
     "postgres",
     "redis",
@@ -54,7 +58,7 @@ EXPECTED_SERVICES = {
     "backend",
     "ml-service",
     "dashboard",
-}
+} | CAPTURE_SERVICES
 
 # service -> (build context relative to the compose file, published port)
 EXPECTED_BUILD = {
@@ -131,9 +135,12 @@ def check_services(compose: dict[str, Any], problems: list[str]) -> dict[str, An
 
 
 def check_env_vars(services: dict[str, Any], problems: list[str]) -> None:
-    """Every AEGIS_* variable must be a real Settings field."""
+    """Every AEGIS_* variable on a Settings-backed service must be a real Settings field."""
     known = settings_fields()
-    text = yaml.safe_dump(services)
+    settings_services = {
+        name: svc for name, svc in services.items() if name not in CAPTURE_SERVICES
+    }
+    text = yaml.safe_dump(settings_services)
     used = set(ENV_VAR_RE.findall(text))
     for var in sorted(used):
         if var not in known:
