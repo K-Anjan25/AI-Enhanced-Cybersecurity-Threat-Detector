@@ -2,19 +2,31 @@
 """
 Suricata EVE JSON → AEGIS Ingestion Bridge
 
-Reads Suricata's eve.json output and converts flow/alert events into
-AEGIS flow and log records.
+Reads Suricata's eve.json output and converts events into AEGIS records.
+
+UNIQUE ROLE (production):
+  Suricata is the IDS/IPS layer. It applies 20,000+ ET Open signatures to
+  detect known malware, C2 beacons, exploit attempts, and policy violations.
+  This bridge sends:
+    - alert events → /api/v1/ingest/logs (with severity, signature, category)
+    - flow events  → /api/v1/ingest/flows (5-tuple + bytes + packets)
+    - dns events   → /api/v1/ingest/logs (DNS query/response pairs)
+    - http events  → /api/v1/ingest/logs (HTTP request metadata)
+    - tls events   → /api/v1/ingest/logs (TLS handshake metadata)
+
+  What makes Suricata unique vs other capture services:
+    - Signature-based detection (ET Open rules) — catches known threats
+    - Protocol parsing (HTTP, DNS, TLS, SMB, SMTP, FTP, SSH)
+    - File extraction and hashing (MD5/SHA1/SHA256)
+    - JA3/JA3S TLS fingerprinting
+    - Anomaly detection (protocol violations, malformed packets)
 
 Usage:
   # Tail eve.json in real-time:
   tail -f /var/log/suricata/eve.json | python3 suricata_bridge.py
 
   # Pipe directly from Suricata:
-  suricata -i ethc0 --set outputs.1.eve-log.filename=eve.json -l /var/log/suricata/
-  tail -f /var/log/suricata/eve.json | python3 suricata_bridge.py
-
-  # One-shot:
-  python3 suricata_bridge.py --file /var/log/suricata/eve.json
+  suricata -i eth0 --set outputs.1.eve-log.filename=eve.json -l /var/log/suricata/
 
 Environment:
   AEGIS_API_URL     - Backend URL (default: http://localhost:8000)
@@ -58,16 +70,23 @@ def authenticate():
                 return True
         except Exception:
             continue
+    print("[AUTH] ✗ Failed", file=sys.stderr)
     return False
 
 
-def send_ndjson(records, url):
+def send_batch(records, modality="flows"):
+    """Send records to the appropriate ingest endpoint."""
     if not records or not TOKEN:
         return 0
+    endpoint = f"/api/v1/ingest/{modality}"
     ndjson = "\n".join(json.dumps(r) for r in records)
     req = urllib.request.Request(
-        url, data=ndjson.encode(),
-        headers={"Content-Type": "application/x-ndjson", "Authorization": f"Bearer {TOKEN}"},
+        f"{API_URL}{endpoint}",
+        data=ndjson.encode(),
+        headers={
+            "Content-Type": "application/x-ndjson",
+            "Authorization": f"Bearer {TOKEN}",
+        },
         method="POST"
     )
     try:
@@ -78,94 +97,206 @@ def send_ndjson(records, url):
         if e.code == 401:
             authenticate()
         return 0
-    except Exception:
+    except Exception as e:
+        print(f"[SEND] Error: {e}", file=sys.stderr)
         return 0
 
 
-def parse_flow_event(event):
-    """Convert a Suricata flow event to an AEGIS flow record."""
-    flow = event.get("flow", {})
-    src = event.get("src_ip", "")
-    dst = event.get("dest_ip", "")
-    sp = event.get("src_port", 0)
-    dp = event.get("dest_port", 0)
+def parse_alert(event):
+    """Convert Suricata alert event → AEGIS log record with severity mapping.
 
-    pkts_toserver = flow.get("pkts_toserver", 0)
-    pkts_toclient = flow.get("pkts_toclient", 0)
-    bytes_toserver = flow.get("bytes_toserver", 0)
-    bytes_toclient = flow.get("bytes_toclient", 0)
-
-    state_map = {
-        "new": "SYN_SENT", "established": "ESTABLISHED",
-        "closed": "CLOSED", "not_found": "UNKNOWN",
-    }
-
-    return {
-        "src_ip": src, "dst_ip": dst,
-        "src_port": int(sp) if sp else 0,
-        "dst_port": int(dp) if dp else 0,
-        "protocol": event.get("proto", "tcp"),
-        "src_bytes": bytes_toserver,
-        "dst_bytes": bytes_toclient,
-        "packets": pkts_toserver + pkts_toclient,
-        "src_packets": pkts_toserver,
-        "dst_packets": pkts_toclient,
-        "duration": round(float(flow.get("age", 0.001)), 3),
-        "syn": 1 if flow.get("state", "") in ("new",) else 0,
-        "ack": 1 if flow.get("state", "") in ("established", "closed") else 0,
-        "rst": 1 if "RST" in flow.get("reason", "").upper() else 0,
-        "fin": 1 if flow.get("state", "") == "closed" else 0,
-        "psh": 0, "urg": 0,
-        "direction": "inbound" if int(dp) < int(sp) else "outbound",
-        "service": event.get("app_proto", "unknown"),
-        "state": state_map.get(flow.get("state", ""), "UNKNOWN"),
-        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
-        "label": None,
-    }
-
-
-def parse_alert_event(event):
-    """Convert a Suricata alert event to an AEGIS log record."""
+    Suricata alerts are the PRIMARY reason to run Suricata in production.
+    Each alert carries:
+      - signature_id + revision (ET Open rule tracking)
+      - severity (1=high, 2=medium, 3=low)
+      - category (malware, exploit, policy, etc.)
+      - action (allowed/blocked)
+      - src/dst with ports
+    """
     alert = event.get("alert", {})
-    severity_map = {1: "error", 2: "warn", 3: "info"}
+    severity = alert.get("severity", 3)
+
+    # Map Suricata severity to AEGIS log level
+    level_map = {1: "critical", 2: "warning", 3: "info"}
+    level = level_map.get(severity, "info")
+
+    # Build a structured message with signature details
+    sig_id = alert.get("signature_id", 0)
+    signature = alert.get("signature", "unknown")
+    category = alert.get("category", "unknown")
+    action = alert.get("action", "allowed")
+
+    src_ip = event.get("src_ip", "")
+    dst_ip = event.get("dest_ip", "")
+    src_port = event.get("src_port", 0)
+    dst_port = event.get("dest_ip", 0)
+    proto = event.get("proto", "TCP")
+
+    message = (
+        f"[IDS] {signature} | "
+        f"sid:{sig_id} cat:{category} action:{action} | "
+        f"{src_ip}:{src_port} → {dst_ip}:{dst_port} {proto}"
+    )
 
     return {
-        "host": event.get("host", "suricata-sensor"),
-        "service": "suricata",
-        "level": severity_map.get(alert.get("severity", 3), "warn"),
-        "message": f"{alert.get('signature', 'Unknown alert')} | "
-                   f"{event.get('src_ip', '')}:{event.get('src_port', '')} -> "
-                   f"{event.get('dest_ip', '')}:{event.get('dest_port', '')} "
-                   f"[{alert.get('category', '')}] {alert.get('action', 'allowed')}",
+        "source": "suricata-alert",
+        "level": level,
+        "message": message,
+        "host": src_ip,
         "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
-        "parameters": [],
-        "template_id": None,
+        "structured": {
+            "signature_id": sig_id,
+            "signature": signature,
+            "category": category,
+            "severity": severity,
+            "action": action,
+            "src_ip": src_ip,
+            "dst_ip": dst_ip,
+            "src_port": src_port,
+            "dst_port": dst_port,
+            "proto": proto,
+        },
+    }
+
+
+def parse_flow(event):
+    """Convert Suricata flow event → AEGIS flow record."""
+    return {
+        "src_ip": event.get("src_ip", ""),
+        "dst_ip": event.get("dest_ip", ""),
+        "src_port": event.get("src_port", 0),
+        "dst_port": event.get("dest_port", 0),
+        "protocol": event.get("proto", "tcp").lower(),
+        "src_bytes": event.get("bytes_toserver", 0),
+        "dst_bytes": event.get("bytes_toclient", 0),
+        "packets": event.get("pkts_toserver", 0) + event.get("pkts_toclient", 0),
+        "src_packets": event.get("pkts_toserver", 0),
+        "dst_packets": event.get("pkts_toclient", 0),
+        "duration": event.get("flow", {}).get("duration", 0),
+        "state": event.get("flow", {}).get("state", "unknown"),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "label": None,
     }
 
 
-def parse_dns_event(event):
-    """Convert Suricata DNS event to AEGIS log record."""
+def parse_dns(event):
+    """Convert Suricata DNS event → AEGIS log record.
+
+    DNS logs are critical for detecting:
+    - DNS tunneling (high query volume, large responses)
+    - DGA domains (algorithmically generated)
+    - C2 beaconing (regular DNS lookups to suspicious domains)
+    - Data exfiltration via DNS
+    """
     dns = event.get("dns", {})
+    query = dns.get("rrname", "")
+    rtype = dns.get("rrtype", "A")
+    answers = dns.get("answers", [])
+
+    message = f"[DNS] {rtype} query: {query}"
+    if answers:
+        answer_strs = [a.get("rdata", "") for a in answers[:5]]
+        message += f" → {', '.join(answer_strs)}"
+
     return {
-        "host": event.get("host", "suricata-sensor"),
-        "service": "dns-sensor",
+        "source": "suricata-dns",
         "level": "info",
-        "message": f"DNS {dns.get('type', 'query')} {dns.get('rrname', '')} "
-                   f"→ {dns.get('rdata', '')} [{dns.get('rrtype', '')}]",
+        "message": message,
+        "host": event.get("src_ip", ""),
         "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
-        "parameters": [],
-        "template_id": None,
-        "label": None,
+        "structured": {
+            "query": query,
+            "type": rtype,
+            "answers": [a.get("rdata", "") for a in answers],
+            "src_ip": event.get("src_ip", ""),
+        },
+    }
+
+
+def parse_http(event):
+    """Convert Suricata HTTP event → AEGIS log record.
+
+    HTTP logs enable detection of:
+    - C2 communication (beaconing patterns, suspicious User-Agents)
+    - Data exfiltration (large POST requests, unusual content types)
+    - Phishing (URL patterns, redirect chains)
+    - Web shell activity (suspicious URL parameters)
+    """
+    http = event.get("http", {})
+    method = http.get("method", "GET")
+    url = http.get("url", "")
+    host = http.get("hostname", "")
+    status = http.get("status", 0)
+    ua = http.get("http_user_agent", "")
+
+    message = f"[HTTP] {method} {host}{url} → {status}"
+    if ua:
+        message += f" UA:{ua[:80]}"
+
+    return {
+        "source": "suricata-http",
+        "level": "info",
+        "message": message,
+        "host": event.get("src_ip", ""),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
+        "structured": {
+            "method": method,
+            "url": url,
+            "hostname": host,
+            "status": status,
+            "user_agent": ua,
+            "content_type": http.get("content_type", ""),
+            "length": http.get("length", 0),
+            "src_ip": event.get("src_ip", ""),
+        },
+    }
+
+
+def parse_tls(event):
+    """Convert Suricata TLS event → AEGIS log record.
+
+    TLS logs enable detection of:
+    - JA3/JA3S fingerprinting (known malware TLS signatures)
+    - Certificate anomalies (self-signed, expired, suspicious CN)
+    - TLS version downgrade attacks
+    - C2 over HTTPS (beaconing patterns in TLS handshakes)
+    """
+    tls = event.get("tls", {})
+    sni = tls.get("sni", "")
+    version = tls.get("version", "")
+    ja3 = tls.get("ja3", {})
+    subject = tls.get("subject", "")
+    issuer = tls.get("issuerdn", "")
+
+    message = f"[TLS] {sni} version:{version}"
+    if ja3:
+        message += f" ja3:{ja3.get('hash', '')[:16]}..."
+
+    return {
+        "source": "suricata-tls",
+        "level": "info",
+        "message": message,
+        "host": event.get("src_ip", ""),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
+        "structured": {
+            "sni": sni,
+            "version": version,
+            "subject": subject,
+            "issuer": issuer,
+            "ja3_hash": ja3.get("hash", ""),
+            "ja3_str": ja3.get("string", ""),
+            "not_before": tls.get("notbefore", ""),
+            "not_after": tls.get("notafter", ""),
+            "src_ip": event.get("src_ip", ""),
+        },
     }
 
 
 def main():
     global API_URL, EMAIL, PASSWORD
 
-    parser = argparse.ArgumentParser(description="Suricata → AEGIS bridge")
+    parser = argparse.ArgumentParser(description="Suricata EVE → AEGIS bridge")
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
-    parser.add_argument("--log", help="Path to eve.json to tail (follows file)")
     parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
     parser.add_argument("--email", help="Login email", default=EMAIL)
     parser.add_argument("--password", help="Login password", default=PASSWORD)
@@ -180,21 +311,14 @@ def main():
         sys.exit(1)
 
     print(f"[SURICATA] Bridge started. API={API_URL}", file=sys.stderr)
+    print("[SURICATA] Sending: alerts→logs, flows→flows, dns/http/tls→logs", file=sys.stderr)
 
     flow_batch = []
     log_batch = []
     last_flush = time.time()
-    total_flows = 0
-    total_logs = 0
+    counts = {"alerts": 0, "flows": 0, "dns": 0, "http": 0, "tls": 0}
 
-    if args.log:
-        import subprocess
-        source = subprocess.Popen(
-            ["tail", "-f", "-n", "+1", args.log],
-            stdout=subprocess.PIPE,
-            text=True,
-        ).stdout
-    elif args.file:
+    if args.file:
         source = open(args.file, "r")
     else:
         source = sys.stdin
@@ -211,41 +335,44 @@ def main():
 
             event_type = event.get("event_type", "")
 
-            if event_type == "flow":
-                record = parse_flow_event(event)
-                flow_batch.append(record)
-            elif event_type == "alert":
-                record = parse_alert_event(event)
-                log_batch.append(record)
+            if event_type == "alert":
+                log_batch.append(parse_alert(event))
+                counts["alerts"] += 1
+            elif event_type == "flow":
+                flow_batch.append(parse_flow(event))
+                counts["flows"] += 1
             elif event_type == "dns":
-                record = parse_dns_event(event)
-                log_batch.append(record)
+                log_batch.append(parse_dns(event))
+                counts["dns"] += 1
+            elif event_type == "http":
+                log_batch.append(parse_http(event))
+                counts["http"] += 1
+            elif event_type == "tls":
+                log_batch.append(parse_tls(event))
+                counts["tls"] += 1
 
             now = time.time()
-            if now - last_flush >= FLUSH_INTERVAL or len(flow_batch) >= args.batch_size:
+            if now - last_flush >= FLUSH_INTERVAL:
                 if flow_batch:
-                    accepted = send_ndjson(flow_batch, f"{API_URL}/api/v1/ingest/flows")
-                    total_flows += accepted
-                    print(f"[SURICATA] Flows: {len(flow_batch)} → {accepted} accepted (total: {total_flows})", file=sys.stderr)
+                    send_batch(flow_batch, "flows")
                     flow_batch = []
                 if log_batch:
-                    accepted = send_ndjson(log_batch, f"{API_URL}/api/v1/ingest/logs")
-                    total_logs += accepted
-                    print(f"[SURICATA] Logs: {len(log_batch)} → {accepted} accepted (total: {total_logs})", file=sys.stderr)
+                    send_batch(log_batch, "logs")
                     log_batch = []
+                print(f"[SURICATA] stats: {counts}", file=sys.stderr)
                 last_flush = now
 
     except KeyboardInterrupt:
         pass
     finally:
         if flow_batch:
-            send_ndjson(flow_batch, f"{API_URL}/api/v1/ingest/flows")
+            send_batch(flow_batch, "flows")
         if log_batch:
-            send_ndjson(log_batch, f"{API_URL}/api/v1/ingest/logs")
+            send_batch(log_batch, "logs")
         if args.file:
             source.close()
 
-    print(f"[SURICATA] Done. Flows={total_flows}, Logs={total_logs}", file=sys.stderr)
+    print(f"[SURICATA] Done. {counts}", file=sys.stderr)
 
 
 if __name__ == "__main__":
