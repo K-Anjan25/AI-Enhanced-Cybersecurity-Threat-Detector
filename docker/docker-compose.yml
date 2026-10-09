@@ -166,7 +166,13 @@ services:
 
   # Network capture service — captures REAL traffic from the host network.
   # Requires: --cap-add=NET_ADMIN or --privileged
-  # Override interface with: AEGIS_CAPTURE_INTERFACE=Wi-Fi docker compose up
+  # Override interface with a Linux interface name, e.g.:
+  #   AEGIS_CAPTURE_INTERFACE=wlan0 docker compose up
+  # Windows/macOS adapter names (Wi-Fi, Ethernet) do not exist in the container.
+  # On Docker Desktop, network_mode: host is the Linux VM's network, not the host
+  # adapter, so little real traffic is seen. See
+  # backend/app/services/capture/bridges/README.md ("Docker Desktop").
+  # Default interface per service differs; see the same README for the table.
   capture:
     build:
       context: ../backend

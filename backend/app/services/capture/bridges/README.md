@@ -39,25 +39,54 @@ The `capture` service runs inside Docker with `network_mode: host` and `NET_ADMI
 
 ## Environment Variables
 
-| Variable                  | Default               | Description                                |
-| ------------------------- | --------------------- | ------------------------------------------ |
-| `AEGIS_CAPTURE_INTERFACE` | `any`                 | Network interface to capture (`any` = all) |
-| `AEGIS_API_URL`           | `http://backend:8000` | Backend API URL                            |
-| `AEGIS_FLUSH_INTERVAL`    | `10`                  | Seconds between flow flushes               |
-| `AEGIS_CAPTURE_FILTER`    | (empty)               | BPF filter expression                      |
+| Variable                  | Default                                          | Description                                                                                 |
+| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `AEGIS_CAPTURE_INTERFACE` | `any` (capture, tshark); `eth0` (zeek, suricata) | Linux interface to capture (`any` = all, where supported). See the per-service table below. |
+| `AEGIS_API_URL`           | `http://backend:8000`                            | Backend API URL                                                                             |
+| `AEGIS_FLUSH_INTERVAL`    | `10`                                             | Seconds between flow flushes                                                                |
+| `AEGIS_CAPTURE_FILTER`    | (empty)                                          | BPF filter expression                                                                       |
 
 ## Override Interface
 
+The capture containers run on the Linux network namespace of the Docker host
+(`network_mode: host`), so `AEGIS_CAPTURE_INTERFACE` must be a Linux interface
+name as the kernel sees it (`ip link`), for example:
+
 ```bash
-# Capture only on Wi-Fi
-AEGIS_CAPTURE_INTERFACE=Wi-Fi docker compose up
-
-# Capture only on Ethernet
-AEGIS_CAPTURE_INTERFACE=Ethernet docker compose up
-
-# Capture on Linux interface
+# Capture on a specific Linux interface
 AEGIS_CAPTURE_INTERFACE=wlan0 docker compose up
+
+# Capture on all interfaces (capture and tshark only; see the defaults below)
+AEGIS_CAPTURE_INTERFACE=any docker compose up
 ```
+
+Windows and macOS adapter names such as `Wi-Fi` or `Ethernet` do not exist
+inside the container, so they cannot be used here.
+
+### Docker Desktop (Windows and macOS)
+
+Docker Desktop runs Linux containers inside a virtual machine. `network_mode:
+host` attaches the containers to that VM's network, not to your Wi-Fi or
+Ethernet adapter. On Docker Desktop the capture services therefore see little
+or no real host traffic. To capture your own machine's traffic on Windows or
+macOS, run `capture_service.py` directly on the host instead of through
+Compose, or run the stack on a Linux host.
+
+### Per-service defaults
+
+The four capture services do not share one default interface. These are the
+values in `docker/docker-compose.yml`:
+
+| Service    | `AEGIS_CAPTURE_INTERFACE` default | Why                                                                                       |
+| ---------- | --------------------------------- | ----------------------------------------------------------------------------------------- |
+| `capture`  | `any`                             | libpcap accepts `any` on Linux, so all traffic is seen.                                   |
+| `tshark`   | `any`                             | Same as `capture`; the entrypoint passes it to `tshark -i`.                               |
+| `zeek`     | `eth0`                            | Zeek runs with `-i <name>`. `eth0` exists in the Docker Desktop VM.                       |
+| `suricata` | `eth0`                            | Not changed to `any` because Suricata's AF_PACKET support for `any` is not verified here. |
+
+To make all four the same, set `AEGIS_CAPTURE_INTERFACE` explicitly to a real
+Linux interface name. Verify with `suricata -i any` on your host before using
+`any` for Suricata.
 
 ## Optional: Zeek/Suricata/tcpdump Bridges
 
