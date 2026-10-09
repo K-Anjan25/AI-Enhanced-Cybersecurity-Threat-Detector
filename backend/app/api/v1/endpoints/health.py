@@ -14,13 +14,21 @@ from app.services import health_service
 router = APIRouter(tags=["health"])
 
 
-@router.get("/api/v1/detection/status", summary="Rule-based detection engine status")
+@router.get("/api/v1/detection/status", summary="Detection + ML + Drift + Model status")
 def detection_status(request: Request) -> dict[str, object]:
-    """Return the detection engine's current stats."""
+    """Return all backend service stats."""
+    result: dict[str, object] = {}
+
     engine = getattr(request.app.state, "detection_engine", None)
-    if engine is None:
-        return {"status": "not_configured"}
-    return engine.stats
+    result["rule_engine"] = engine.stats if engine else {"status": "not_configured"}
+
+    drift = getattr(request.app.state, "drift_monitor", None)
+    result["drift_monitor"] = drift.stats if drift else {"status": "not_configured"}
+
+    registrar = getattr(request.app.state, "model_registrar", None)
+    result["model_registrar"] = registrar.stats if registrar else {"status": "not_configured"}
+
+    return result
 
 
 @router.get("/healthz", response_model=HealthResponse, summary="Liveness probe")
