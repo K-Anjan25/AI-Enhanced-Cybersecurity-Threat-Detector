@@ -169,11 +169,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if drift_monitor is not None:
         drift_monitor.start()
         logger.info("drift_monitor_started")
-    # Start the model registrar
-    model_registrar = getattr(app.state, "model_registrar", None)
-    if model_registrar is not None:
-        model_registrar.start()
-        logger.info("model_registrar_started")
+    # Start the model registrar (model_ops exists now, created in create_app)
+    ml_url = getattr(app.state.settings, 'ml_service_url', None) or "http://ml-service:8001"
+    model_registrar = ModelRegistrar(
+        ml_service_url=ml_url,
+        model_ops=app.state.model_ops,
+        interval=30.0,
+    )
+    app.state.model_registrar = model_registrar
+    model_registrar.start()
+    logger.info("model_registrar_started")
     try:
         yield
     finally:
@@ -305,13 +310,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.drift_monitor = DriftMonitor(
         interval=60.0,
         ml_service_url=ml_service_url,
-    )
-    # Model registrar: fetches models from ML service and registers them
-    # in ModelOpsService so the Models page shows real data.
-    app.state.model_registrar = ModelRegistrar(
-        ml_service_url=ml_service_url,
-        model_ops=app.state.model_ops,
-        interval=30.0,
     )
     # The entity registry (T-416). The same object type the pipeline allocates ids
     # from, so an alert written by this process can be rendered by name: the
