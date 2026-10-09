@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Refuse the development default password; see docker/.env.example.
+if [ -z "${AEGIS_PASSWORD:-}" ] || [ "${AEGIS_PASSWORD}" = "admin123456789" ]; then  # pragma: allowlist secret
+    echo "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in docker/.env) to a value other than the development default" >&2
+    exit 2
+fi
+
 INTERFACE="${AEGIS_CAPTURE_INTERFACE:-eth0}"
 API_URL="${AEGIS_API_URL:-http://backend:8000}"
 LOG_DIR="/tmp/zeek-logs"
@@ -44,7 +50,7 @@ tail -n +1 -F "$LOG_DIR/conn.log" | python3 -u /app/zeek_bridge.py \
     --log-type conn \
     --api "$API_URL" \
     --email "${AEGIS_EMAIL:-admin@aegis.local}" \
-    --password "${AEGIS_PASSWORD:-admin123456789}" &
+    --password "${AEGIS_PASSWORD}" &
 
 BRIDGE_PID=$!
 

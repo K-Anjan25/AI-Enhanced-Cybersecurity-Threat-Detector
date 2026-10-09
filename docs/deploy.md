@@ -22,7 +22,7 @@ Dashboard: http://localhost:8080
 Backend API: http://localhost:8000/docs
 ML Service: http://localhost:8001/docs
 
-Default admin: `admin@aegis.local` / `admin123456789`
+Default admin: `admin@aegis.local` / `admin123456789`. The capture services (`capture`, `zeek`, `suricata`, `tshark`) refuse to start while the password is this default. Set `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` in `docker/.env` first; see `docker/.env.example`.
 
 ## Production (Kubernetes)
 

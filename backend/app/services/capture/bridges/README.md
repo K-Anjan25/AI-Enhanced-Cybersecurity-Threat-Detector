@@ -39,12 +39,13 @@ The `capture` service runs inside Docker with `network_mode: host` and `NET_ADMI
 
 ## Environment Variables
 
-| Variable                  | Default                                          | Description                                                                                 |
-| ------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `AEGIS_CAPTURE_INTERFACE` | `any` (capture, tshark); `eth0` (zeek, suricata) | Linux interface to capture (`any` = all, where supported). See the per-service table below. |
-| `AEGIS_API_URL`           | `http://backend:8000`                            | Backend API URL                                                                             |
-| `AEGIS_FLUSH_INTERVAL`    | `10`                                             | Seconds between flow flushes                                                                |
-| `AEGIS_CAPTURE_FILTER`    | (empty)                                          | BPF filter expression                                                                       |
+| Variable                  | Default                                          | Description                                                                                                                       |
+| ------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `AEGIS_PASSWORD`          | (none, required)                                 | Admin password. Set `AEGIS_BOOTSTRAP_ADMIN_PASSWORD` in `docker/.env`; the services refuse to start with the development default. |
+| `AEGIS_CAPTURE_INTERFACE` | `any` (capture, tshark); `eth0` (zeek, suricata) | Linux interface to capture (`any` = all, where supported). See the per-service table below.                                       |
+| `AEGIS_API_URL`           | `http://backend:8000`                            | Backend API URL                                                                                                                   |
+| `AEGIS_FLUSH_INTERVAL`    | `10`                                             | Seconds between flow flushes                                                                                                      |
+| `AEGIS_CAPTURE_FILTER`    | (empty)                                          | BPF filter expression                                                                                                             |
 
 ## Override Interface
 

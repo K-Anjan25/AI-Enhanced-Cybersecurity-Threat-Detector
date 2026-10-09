@@ -49,7 +49,7 @@ from typing import Any, TextIO
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")
 EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
-PASSWORD = os.environ.get("AEGIS_PASSWORD", "admin123456789")
+PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
 BATCH_SIZE = 100
 FLUSH_INTERVAL = 5
 
@@ -352,6 +352,14 @@ def main() -> None:
     API_URL = args.api
     EMAIL = args.email
     PASSWORD = args.password
+
+    if not PASSWORD or PASSWORD == "admin123456789":  # noqa: S105  # the development default, compared to refuse it; pragma: allowlist secret
+        print(
+            "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in "
+            "docker/.env) to a value other than the development default",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     if not authenticate():
         sys.exit(1)

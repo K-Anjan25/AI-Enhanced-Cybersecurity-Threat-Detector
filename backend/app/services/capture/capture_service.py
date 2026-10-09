@@ -31,7 +31,7 @@ __all__ = ["FlowAggregator", "CaptureService"]
 
 API_BASE = os.environ.get("AEGIS_API_URL", "http://backend:8000")
 API_EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
-API_PASSWORD = os.environ.get("AEGIS_PASSWORD", "admin123456789")
+API_PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
 INTERFACE = os.environ.get("AEGIS_CAPTURE_INTERFACE", "eth0")
 FLUSH_INTERVAL = int(os.environ.get("AEGIS_FLUSH_INTERVAL", "10"))
 BATCH_SIZE = int(os.environ.get("AEGIS_BATCH_SIZE", "200"))
@@ -341,6 +341,13 @@ class CaptureService:
 
 
 def main() -> None:
+    if not API_PASSWORD or API_PASSWORD == "admin123456789":  # noqa: S105  # the development default, compared to refuse it; pragma: allowlist secret
+        print(
+            "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in "
+            "docker/.env) to a value other than the development default",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     service = CaptureService()
     service.run()
 
