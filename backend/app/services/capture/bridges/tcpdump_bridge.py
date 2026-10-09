@@ -284,7 +284,9 @@ def main() -> None:
     """Parse arguments, authenticate, and stream tcpdump/tshark output to AEGIS."""
     global API_URL, EMAIL, PASSWORD
 
-    parser = argparse.ArgumentParser(description="tshark/tcpdump → AEGIS bridge")
+    parser = argparse.ArgumentParser(
+        description="tshark/tcpdump → AEGIS bridge", allow_abbrev=False
+    )
     parser.add_argument(
         "--format",
         choices=["tcpdump", "tshark", "tshark-dns"],
