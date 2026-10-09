@@ -43,7 +43,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, TextIO
 
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
@@ -181,7 +181,7 @@ def parse_alert(event: dict[str, Any]) -> dict[str, Any]:
         "level": level,
         "message": message,
         "host": src_ip,
-        "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "structured": {
             "signature_id": sig_id,
             "signature": signature,
@@ -213,7 +213,7 @@ def parse_flow(event: dict[str, Any]) -> dict[str, Any]:
         "dst_packets": event.get("pkts_toclient", 0),
         "duration": event.get("flow", {}).get("duration", 0),
         "state": event.get("flow", {}).get("state", "unknown"),
-        "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "label": None,
     }
 
@@ -243,7 +243,7 @@ def parse_dns(event: dict[str, Any]) -> dict[str, Any]:
         "level": "info",
         "message": message,
         "host": event.get("src_ip", ""),
-        "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "structured": {
             "query": query,
             "type": rtype,
@@ -279,7 +279,7 @@ def parse_http(event: dict[str, Any]) -> dict[str, Any]:
         "level": "info",
         "message": message,
         "host": event.get("src_ip", ""),
-        "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "structured": {
             "method": method,
             "url": url,
@@ -319,7 +319,7 @@ def parse_tls(event: dict[str, Any]) -> dict[str, Any]:
         "level": "info",
         "message": message,
         "host": event.get("src_ip", ""),
-        "timestamp": event.get("timestamp", datetime.now(UTC).isoformat()),
+        "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "structured": {
             "sni": sni,
             "version": version,

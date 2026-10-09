@@ -54,7 +54,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, TextIO
 
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
@@ -205,7 +205,9 @@ def parse_conn(row: dict[str, str]) -> dict[str, Any] | None:
     """conn.log → AEGIS flow record."""
     ts = safe_float(row.get("ts", 0))
     timestamp = (
-        datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+        datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        if ts
+        else datetime.now(timezone.utc).isoformat()
     )
 
     conn_state_map = {
@@ -256,7 +258,9 @@ def parse_http_log(row: dict[str, str]) -> dict[str, Any] | None:
     """
     ts = safe_float(row.get("ts", 0))
     timestamp = (
-        datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+        datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        if ts
+        else datetime.now(timezone.utc).isoformat()
     )
 
     host = row.get("host", "")
@@ -302,7 +306,9 @@ def parse_dns_log(row: dict[str, str]) -> dict[str, Any] | None:
     """
     ts = safe_float(row.get("ts", 0))
     timestamp = (
-        datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+        datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        if ts
+        else datetime.now(timezone.utc).isoformat()
     )
 
     query = row.get("query", "")
@@ -342,7 +348,9 @@ def parse_ssl_log(row: dict[str, str]) -> dict[str, Any] | None:
     """
     ts = safe_float(row.get("ts", 0))
     timestamp = (
-        datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+        datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        if ts
+        else datetime.now(timezone.utc).isoformat()
     )
 
     sni = row.get("server_name", "")
@@ -390,7 +398,9 @@ def parse_notice_log(row: dict[str, str]) -> dict[str, Any] | None:
     """
     ts = safe_float(row.get("ts", 0))
     timestamp = (
-        datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+        datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        if ts
+        else datetime.now(timezone.utc).isoformat()
     )
 
     note = row.get("note", "")

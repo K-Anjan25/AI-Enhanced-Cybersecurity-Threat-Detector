@@ -16,10 +16,10 @@ mkdir -p "$LOG_DIR"
 
 # Start Suricata in the background
 echo "[SURICATA] Starting Suricata IDS on $INTERFACE..."
-suricata -i "$INTERFACE" -l "$LOG_DIR" \
-    --set outputs.eve-log.enabled=yes \
-    --set outputs.eve-log.filetype=regular \
-    2>&1 &
+# eve-log is enabled by the stock suricata.yaml (filetype: regular, filename:
+# eve.json, relative to -l). Do not override it with --set: outputs is a YAML
+# list in Suricata 6, so "outputs.eve-log.*" fails with SC_ERR_INVALID_ARGUMENT.
+suricata -i "$INTERFACE" -l "$LOG_DIR" 2>&1 &
 
 SURICATA_PID=$!
 

@@ -53,7 +53,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
@@ -147,7 +147,7 @@ def parse_tcpdump_line(line: str) -> dict[str, Any] | None:
                 "dst_bytes": 0,
                 "packets": 1,
                 "duration": 0,
-                "timestamp": datetime.fromtimestamp(float(ts), tz=UTC).isoformat(),
+                "timestamp": datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat(),
                 "label": None,
             },
         }
@@ -173,7 +173,9 @@ def parse_tcpdump_line(line: str) -> dict[str, Any] | None:
                     "dst_bytes": 0,
                     "packets": 1,
                     "duration": 0,
-                    "timestamp": datetime.fromtimestamp(float(m.group(1)), tz=UTC).isoformat(),
+                    "timestamp": datetime.fromtimestamp(
+                        float(m.group(1)), tz=timezone.utc
+                    ).isoformat(),
                     "label": None,
                 },
             }
@@ -212,7 +214,9 @@ def parse_tshark_line(line: str) -> dict[str, Any] | None:
         psh = int(parts[11]) if len(parts) > 11 and parts[11] else 0
 
         timestamp = (
-            datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+            datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+            if ts
+            else datetime.now(timezone.utc).isoformat()
         )
 
         return {
@@ -257,7 +261,9 @@ def parse_tshark_dns_line(line: str) -> dict[str, Any] | None:
         qtype = parts[4] if parts[4] else "A"
 
         timestamp = (
-            datetime.fromtimestamp(ts, tz=UTC).isoformat() if ts else datetime.now(UTC).isoformat()
+            datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+            if ts
+            else datetime.now(timezone.utc).isoformat()
         )
 
         return {
