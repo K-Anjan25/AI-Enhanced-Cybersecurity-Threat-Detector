@@ -124,6 +124,10 @@ services:
       AEGIS_HOST: 0.0.0.0
       AEGIS_PORT: '8000'
       AEGIS_LOG_LEVEL: INFO
+      # Seeds the first admin the capture services log in as. The default is a
+      # local-development credential; override both with a .env file or the shell.
+      AEGIS_BOOTSTRAP_ADMIN_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      AEGIS_BOOTSTRAP_ADMIN_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
     ports:
       - '8000:8000'
     depends_on:
@@ -169,8 +173,8 @@ services:
       dockerfile: app/services/capture/Dockerfile
     environment:
       AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789 # pragma: allowlist secret
+      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
       AEGIS_FLUSH_INTERVAL: '10'
     network_mode: host
@@ -189,8 +193,8 @@ services:
       dockerfile: app/services/capture/Dockerfile.zeek
     environment:
       AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789 # pragma: allowlist secret
+      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
     network_mode: host
     depends_on:
@@ -208,8 +212,8 @@ services:
       dockerfile: app/services/capture/Dockerfile.suricata
     environment:
       AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789 # pragma: allowlist secret
+      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
     network_mode: host
     depends_on:
@@ -226,8 +230,8 @@ services:
       dockerfile: app/services/capture/Dockerfile.tshark
     environment:
       AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789 # pragma: allowlist secret
+      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
       AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
     network_mode: host
     depends_on:
