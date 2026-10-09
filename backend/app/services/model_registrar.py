@@ -1,8 +1,4 @@
-"""Model registration service: fetches models from ML service and populates backend.
-
-This makes the Models page show real model data by fetching from the ML service's
-/models endpoint and registering them in the backend's ModelOpsService.
-"""
+"""Model registration service: fetches models from ML service and populates backend."""
 
 from __future__ import annotations
 
@@ -49,7 +45,6 @@ class ModelRegistrar:
         if self._running:
             return
         self._running = True
-        # Try immediately on start
         self._register_models()
         self._thread = threading.Thread(
             target=self._loop, daemon=True, name="model-registrar"
@@ -67,14 +62,13 @@ class ModelRegistrar:
             self._register_models()
 
     def _register_models(self) -> None:
-        """Fetch models from ML service and register them."""
         try:
             url = f"{self._ml_url}/models"
-            logger.info("model_registrar_fetching", url=url)
+            logger.info("model_registrar_fetching url=%s", url)
             req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
             resp = urllib.request.urlopen(req, timeout=10)
             data = json.loads(resp.read())
-            logger.info("model_registrar_got_models", count=len(data.get("models", [])))
+            logger.info("model_registrar_got_models count=%d", len(data.get("models", [])))
 
             for model in data.get("models", []):
                 model_id = model.get("model_id", "")
@@ -90,7 +84,6 @@ class ModelRegistrar:
                         manifest_present=True,
                     )
                     self._model_ops.register(version)
-                    # Promote to active
                     try:
                         self._model_ops.promote(
                             model_id,
@@ -103,13 +96,13 @@ class ModelRegistrar:
 
                     self._registered[model_id] = model
                     self._stats["registrations"] += 1
-                    logger.info("model_registrar_registered", model_id=model_id)
+                    logger.info("model_registrar_registered model_id=%s", model_id)
                 except Exception as e:
                     self._stats["errors"] += 1
                     self._stats["last_error"] = str(e)
-                    logger.warning("model_registrar_register_failed", model_id=model_id, error=str(e))
+                    logger.warning("model_registrar_register_failed model_id=%s error=%s", model_id, str(e))
 
         except Exception as e:
             self._stats["errors"] += 1
             self._stats["last_error"] = str(e)
-            logger.warning("model_registrar_fetch_failed", error=str(e), url=f"{self._ml_url}/models")
+            logger.warning("model_registrar_fetch_failed error=%s url=%s/models", str(e), self._ml_url)

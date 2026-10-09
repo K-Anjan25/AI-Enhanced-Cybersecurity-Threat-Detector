@@ -1,12 +1,7 @@
-"""Background drift monitoring: computes PSI from recent flows and publishes gauges.
-
-This implements T-421: the PSI gauge producer that makes aegis_drift_psi{feature}
-appear in the /metrics scrape so the DriftPage can draw bars.
-"""
+"""Background drift monitoring: computes PSI from recent flows and publishes gauges."""
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 import threading
@@ -14,16 +9,12 @@ import time
 from collections import Counter
 from typing import Any
 
-import urllib.request
-import urllib.error
-
 from app.observability.metrics import observe_drift_psi
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["DriftMonitor"]
 
-# Feature baselines (from typical network traffic)
 FEATURE_BASELINES: dict[str, dict[str, float]] = {
     "dst_port": {
         "80": 0.25, "443": 0.35, "53": 0.15, "22": 0.05,
@@ -95,7 +86,6 @@ class DriftMonitor:
             }
 
     def add_flows(self, flows: list[dict[str, Any]]) -> None:
-        """Add flows to the buffer for drift computation."""
         with self._lock:
             self._flow_buffer.extend(flows)
             if len(self._flow_buffer) > 5000:
@@ -109,7 +99,7 @@ class DriftMonitor:
             target=self._loop, daemon=True, name="drift-monitor"
         )
         self._thread.start()
-        logger.info("drift_monitor_started", interval=self._interval)
+        logger.info("drift_monitor_started interval=%s", self._interval)
 
     def stop(self) -> None:
         self._running = False
@@ -117,7 +107,6 @@ class DriftMonitor:
             self._thread.join(timeout=5)
 
     def _loop(self) -> None:
-        # First computation after a short delay to accumulate some flows
         time.sleep(10)
         self._compute_and_publish()
         while self._running:
@@ -125,12 +114,11 @@ class DriftMonitor:
             self._compute_and_publish()
 
     def _compute_and_publish(self) -> None:
-        """Compute PSI from buffered flows and publish gauges."""
         with self._lock:
             flows = list(self._flow_buffer[-2000:])
 
         if len(flows) < 5:
-            logger.info("drift_monitor_insufficient_flows", count=len(flows))
+            logger.info("drift_monitor_insufficient_flows count=%d", len(flows))
             return
 
         for feature, baseline in FEATURE_BASELINES.items():
@@ -141,7 +129,7 @@ class DriftMonitor:
             observe_drift_psi(feature, psi)
             with self._lock:
                 self._last_psi[feature] = psi
-            logger.info("drift_monitor_published", feature=feature, psi=round(psi, 4))
+            logger.info("drift_monitor_published feature=%s psi=%.4f", feature, psi)
 
         self._compute_count += 1
-        logger.info("drift_monitor_cycle_done", compute_count=self._compute_count, flows=len(flows))
+        logger.info("drift_monitor_cycle_done count=%d flows=%d", self._compute_count, len(flows))
