@@ -233,12 +233,12 @@ Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). 
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#F4F6FF` | — | App background |
+| `bg.base` | `#EEF2F8` | — | App background |
 | `bg.surface` | `#FFFFFF` | — | Cards, panels, tables |
 | `border.default` | `#C3DDEB` | decorative | Hairlines |
-| `text.primary` | `#0A0B1E` | 18.04 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#4A5378` | 6.96 : 1 on `bg.base` · 7.50 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#00758F` | 4.94 : 1 on `bg.base` · 5.33 : 1 on `bg.surface` | Links, focus, primary actions |
+| `text.primary` | `#0A0B1E` | 17.31 : 1 on `bg.base` · 19.45 : 1 on `bg.surface` | Body, headings |
+| `text.muted` | `#4A5378` | 6.68 : 1 on `bg.base` · 7.50 : 1 on `bg.surface` | Secondary labels |
+| `accent` | `#00758F` | 4.74 : 1 on `bg.base` · 5.33 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.3 Severity palette
 
@@ -246,18 +246,18 @@ Severity has **two** tokens per level. The base hue is for fills, borders, chart
 
 | Severity | Base (fill / chart) | Text on dark | Text on light | Glyph |
 |---|---|---|---|---|
-| `critical` | `#FF2A6D` | `#FF5C8A` — 6.90 / 6.67 | `#A8124A` — 6.83 / 7.37 | `●` filled + solid ring |
-| `high` | `#FF6B35` | `#FF9E6B` — 10.00 / 9.67 | `#9C3B00` — 6.41 / 6.91 | `●` filled |
-| `medium` | `#FCEE0A` | `#FCEE0A` — 16.78 / 16.22 | `#6B5000` — 7.02 / 7.57 | `◐` half |
-| `low` | `#00F0FF` | `#4DF7FF` — 15.51 / 15.00 | `#005F7F` — 6.62 / 7.13 | `○` hollow |
-| `info` | `#8B72FF` | `#B69FFF` — 9.07 / 8.77 | `#4A3FA0` — 7.76 / 8.37 | `○` hollow |
-| `benign` | `#05FFA1` | `#4DFFC2` — 15.83 / 15.31 | `#0A6B42` — 6.10 / 6.57 | `✓` |
+| `critical` | `#FF2A6D` | `#FF5C8A` — 6.90 / 6.67 | `#A8124A` — 6.56 / 7.37 | `●` filled + solid ring |
+| `high` | `#FF6B35` | `#FF9E6B` — 10.00 / 9.67 | `#9C3B00` — 6.15 / 6.91 | `●` filled |
+| `medium` | `#FCEE0A` | `#FCEE0A` — 16.78 / 16.22 | `#6B5000` — 6.74 / 7.57 | `◐` half |
+| `low` | `#00F0FF` | `#4DF7FF` — 15.51 / 15.00 | `#005F7F` — 6.35 / 7.13 | `○` hollow |
+| `info` | `#8B72FF` | `#B69FFF` — 9.07 / 8.77 | `#4A3FA0` — 7.45 / 8.37 | `○` hollow |
+| `benign` | `#05FFA1` | `#4DFFC2` — 15.83 / 15.31 | `#0A6B42` — 5.85 / 6.57 | `✓` |
 
 *Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes.*
 
 **Badge rule.** A severity badge is a base-hue fill with `#050510` text. Measured: critical 5.60, high 7.15, medium 16.78, low 14.39, info 5.74, benign 15.28 — all ≥ 4.5 : 1. White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 14.39 : 1 (dark) and 4.94 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 14.39 : 1 (dark) and 4.74 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 

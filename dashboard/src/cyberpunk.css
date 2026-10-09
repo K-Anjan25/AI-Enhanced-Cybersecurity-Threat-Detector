@@ -592,3 +592,11 @@ table tbody tr:hover {
     display: none;
   }
 }
+
+/* ===== LIGHT THEME — no scanlines =====
+   The scanlines are a dark-screen effect. Drawn in the base colour over white,
+   they read as stripes across the whole page and across every card. */
+[data-theme='light'] body::after,
+[data-theme='light'] .neon-card-scanlines {
+  display: none;
+}
