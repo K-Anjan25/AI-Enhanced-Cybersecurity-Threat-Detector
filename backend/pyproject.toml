@@ -116,6 +116,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Tests hold deliberately fake credentials and invoke the interpreter directly.
 "tests/**" = ["D100", "D101", "D102", "D103", "D104", "S101", "S105", "S106", "S603"]
+# The capture bridges run in Ubuntu 22.04 images on Python 3.10, where datetime.UTC
+# does not exist. timezone.utc is the 3.10-compatible spelling, so UP017 is wrong here.
+"app/services/capture/bridges/*.py" = ["UP017"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

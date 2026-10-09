@@ -8,6 +8,7 @@ bridge it feeds, and abbreviated flags are rejected rather than guessed at.
 
 from __future__ import annotations
 
+import ast
 import re
 import subprocess
 import sys
@@ -85,3 +86,31 @@ def test_abbreviated_option_is_rejected_not_guessed(bridge: str) -> None:
     assert result.returncode == 2
     assert "ambiguous" not in result.stderr
     assert "unrecognized arguments: --log" in result.stderr
+
+
+CAPTURE_PYTHON = sorted(BRIDGES.glob("*.py"))
+
+
+@pytest.mark.parametrize("path", CAPTURE_PYTHON, ids=lambda p: p.name)
+def test_bridge_is_python_310_compatible(path: Path) -> None:
+    """The capture images run Ubuntu 22.04's Python 3.10, not the backend's 3.11.
+
+    Regression: ``from datetime import UTC`` is 3.11-only and crashed every
+    bridge at import time. Parse with the 3.10 grammar, then reject the imports
+    that parse but still fail on 3.10.
+    """
+    tree = ast.parse(path.read_text(), filename=str(path), feature_version=(3, 10))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "datetime":
+            names = {alias.name for alias in node.names}
+            assert "UTC" not in names, f"{path.name} imports datetime.UTC (Python 3.11+ only)"
+
+
+def test_suricata_entrypoint_does_not_override_outputs_with_set() -> None:
+    """Suricata 6 rejects ``--set outputs.eve-log.*``.
+
+    ``outputs`` is a YAML list there, so the override fails with
+    SC_ERR_INVALID_ARGUMENT and eve.json is never written.
+    """
+    text = (CAPTURE / "suricata_entrypoint.sh").read_text()
+    assert "--set outputs." not in text
