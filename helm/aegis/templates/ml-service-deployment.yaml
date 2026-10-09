@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aegis.fullname" . }}-ml-service
+  labels:
+    {{- include "aegis.mlService.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.mlService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "aegis.mlService.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "aegis.mlService.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: ml-service
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.mlService.image.repository }}:{{ .Values.mlService.image.tag }}"
+          imagePullPolicy: {{ .Values.mlService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.mlService.service.port }}
+              protocol: TCP
+          {{- if .Values.mlService.probes.liveness }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.mlService.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.mlService.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.mlService.probes.liveness.periodSeconds }}
+          {{- end }}
+          env:
+            {{- range $key, $value := .Values.mlService.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.mlService.resources | nindent 12 }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
