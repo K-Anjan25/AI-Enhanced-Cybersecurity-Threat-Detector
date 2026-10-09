@@ -48,13 +48,25 @@ interface PointData {
 }
 
 const THREAT_TYPES = ['DDoS', 'Malware', 'Phishing', 'Brute Force', 'SQL Injection', 'XSS'];
-const ARC_COLORS = [
-  ['#ff2a6d', '#ff6b9d'],
-  ['#00f0ff', '#00a8cc'],
-  ['#fcee0a', '#ff9e00'],
-  ['#05ffa1', '#00cc80'],
-  ['#8b72ff', '#b69fff'],
+// Colours are design tokens (design.md §5, R-27): the names are listed here and
+// resolved against the active theme at runtime, so the globe follows a theme switch.
+const ARC_COLORS: [string, string][] = [
+  ['--severity-critical', '--severity-text-critical'],
+  ['--color-accent', '--severity-text-low'],
+  ['--severity-medium', '--severity-high'],
+  ['--severity-benign', '--severity-text-benign'],
+  ['--severity-info', '--severity-text-info'],
 ];
+const POINT_COLORS = [
+  '--color-accent',
+  '--severity-critical',
+  '--severity-benign',
+  '--severity-medium',
+];
+
+function tokenColour(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 
 export function CyberGlobe({ width = 600, height = 500 }: { width?: number; height?: number }) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
@@ -66,8 +78,9 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
       lat: city.lat,
       lng: city.lng,
       size: 0.3 + Math.random() * 0.4,
-      color:
-        ['#00f0ff', '#ff2a6d', '#05ffa1', '#fcee0a'][Math.floor(Math.random() * 4)] ?? '#00f0ff',
+      color: tokenColour(
+        POINT_COLORS[Math.floor(Math.random() * POINT_COLORS.length)] ?? '--color-accent',
+      ),
       name: city.name,
     }));
     setPoints(cityPoints);
@@ -88,7 +101,7 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
       startLng: src.lng,
       endLat: dst.lat,
       endLng: dst.lng,
-      color: colors,
+      color: colors.map(tokenColour) as [string, string],
       threatType,
     };
   }, []);
@@ -129,8 +142,8 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
         bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
         backgroundImageUrl=""
-        backgroundColor="rgba(0,0,0,0)"
-        atmosphereColor="#00f0ff"
+        backgroundColor="transparent"
+        atmosphereColor={tokenColour('--color-accent')}
         atmosphereAltitude={0.15}
         arcsData={arcs}
         arcStartLat="startLat"
@@ -158,24 +171,24 @@ export function CyberGlobe({ width = 600, height = 500 }: { width?: number; heig
       {/* HUD overlay */}
       <div className="pointer-events-none absolute inset-0">
         {/* Corner brackets */}
-        <div className="absolute left-2 top-2 h-6 w-6 border-l border-t border-cyan/50" />
-        <div className="absolute right-2 top-2 h-6 w-6 border-r border-t border-cyan/50" />
-        <div className="absolute bottom-2 left-2 h-6 w-6 border-b border-l border-cyan/50" />
-        <div className="absolute bottom-2 right-2 h-6 w-6 border-b border-r border-cyan/50" />
+        <div className="absolute left-2 top-2 h-6 w-6 border-l border-t border-accent" />
+        <div className="absolute right-2 top-2 h-6 w-6 border-r border-t border-accent" />
+        <div className="absolute bottom-2 left-2 h-6 w-6 border-b border-l border-accent" />
+        <div className="absolute bottom-2 right-2 h-6 w-6 border-b border-r border-accent" />
       </div>
 
       {/* Tooltip */}
       {hoverArc && (
-        <div className="absolute bottom-4 left-4 rounded border border-cyan/30 bg-base/90 px-3 py-2 font-mono text-caption text-cyan backdrop-blur-sm">
+        <div className="absolute bottom-4 left-4 rounded border border-accent bg-base/90 px-3 py-2 font-mono text-caption text-accent backdrop-blur-sm">
           THREAT: {hoverArc.threatType}
         </div>
       )}
 
       {/* Stats overlay */}
       <div className="absolute right-4 top-4 font-mono text-caption">
-        <div className="text-cyan">ACTIVE ARCS: {arcs.length}</div>
-        <div className="text-green">NODES: {points.length}</div>
-        <div className="text-yellow">STATUS: MONITORING</div>
+        <div className="text-accent">ACTIVE ARCS: {arcs.length}</div>
+        <div className="text-severityText-benign">NODES: {points.length}</div>
+        <div className="text-severityText-medium">STATUS: MONITORING</div>
       </div>
     </div>
   );

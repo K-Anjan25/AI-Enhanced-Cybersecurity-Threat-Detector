@@ -21,6 +21,11 @@ export function MatrixRain({ opacity = 0.08 }: { opacity?: number }) {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mq.matches) return;
 
+    // Canvas cannot read CSS var(), so resolve the theme tokens to hex once per mount.
+    const rootStyle = getComputedStyle(document.documentElement);
+    const baseColour = rootStyle.getPropertyValue('--color-bg-base').trim();
+    const accentColour = rootStyle.getPropertyValue('--color-accent').trim();
+
     let animId: number;
     let columns: number;
     let drops: number[];
@@ -45,7 +50,8 @@ export function MatrixRain({ opacity = 0.08 }: { opacity?: number }) {
       if (!ctx || !canvas) return;
 
       // Fade trail
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.07)';
+      ctx.fillStyle = baseColour;
+      ctx.globalAlpha = 0.07;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.font = `${fontSize}px monospace`;
@@ -56,11 +62,12 @@ export function MatrixRain({ opacity = 0.08 }: { opacity?: number }) {
         const y = (drops[i] ?? 0) * fontSize;
 
         // Head glow
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.8)';
+        ctx.fillStyle = accentColour;
+        ctx.globalAlpha = 0.8;
         ctx.fillText(char, x, y);
 
         // Short trail (3 instead of 8)
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.1)';
+        ctx.globalAlpha = 0.1;
         for (let t = 1; t < 3; t++) {
           ctx.fillText(CHARS[Math.floor(Math.random() * CHARS.length)] ?? '0', x, y - t * fontSize);
         }

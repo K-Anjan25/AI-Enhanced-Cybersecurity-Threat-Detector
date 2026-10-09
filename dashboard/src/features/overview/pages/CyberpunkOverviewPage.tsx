@@ -102,7 +102,7 @@ export function CyberpunkOverviewPage() {
       {/* Connection status banner */}
       <div className="flex items-center gap-2 rounded border border-line bg-surface/50 px-3 py-2 font-mono text-caption text-muted">
         <span
-          className={`inline-block h-2 w-2 rounded-full ${overview.isSuccess ? 'bg-green' : overview.isLoading ? 'bg-yellow' : 'bg-red'}`}
+          className={`inline-block h-2 w-2 rounded-full ${overview.isSuccess ? 'bg-severity-benign' : overview.isLoading ? 'bg-severity-medium' : 'bg-severity-critical'}`}
         />
         <span>
           LIVE from <code className="text-accent">/api/v1/overview</code>
@@ -163,7 +163,7 @@ export function CyberpunkOverviewPage() {
           <NeonCard
             title="SYSTEM THREAT LEVEL"
             subtitle={`${alerts} alerts in ${range.label}`}
-            color={threatLevel > 60 ? 'magenta' : threatLevel > 30 ? 'yellow' : 'green'}
+            color={threatLevel > 60 ? 'critical' : threatLevel > 30 ? 'medium' : 'benign'}
           >
             <ThreatLevelBar level={threatLevel} />
             <div className="mt-3 grid grid-cols-2 gap-3 font-mono text-caption md:grid-cols-4">
@@ -188,7 +188,7 @@ export function CyberpunkOverviewPage() {
             </div>
           </NeonCard>
         </div>
-        <NeonCard title="SYSTEM STATUS" color={overview.isSuccess ? 'green' : 'magenta'}>
+        <NeonCard title="SYSTEM STATUS" color={overview.isSuccess ? 'benign' : 'critical'}>
           <div className="flex items-center gap-3 py-2">
             <VectorShield
               size={40}
@@ -197,7 +197,7 @@ export function CyberpunkOverviewPage() {
             />
             <div>
               <p
-                className={`font-mono text-body ${overview.isSuccess ? 'text-green' : 'text-red'}`}
+                className={`font-mono text-body ${overview.isSuccess ? 'text-severityText-benign' : 'text-severityText-critical'}`}
               >
                 {overview.isSuccess ? 'ALL SYSTEMS OPERATIONAL' : 'CONNECTION ERROR'}
               </p>
@@ -221,14 +221,16 @@ export function CyberpunkOverviewPage() {
         <NeonCard
           title="RULE DETECTOR"
           subtitle="Heuristic threat detection"
-          color={det?.rule_engine?.running ? 'green' : 'yellow'}
+          color={det?.rule_engine?.running ? 'benign' : 'medium'}
         >
           <div className="grid grid-cols-2 gap-3 font-mono text-caption">
             <div>
               <span className="text-muted">STATUS</span>
               <div
                 className={
-                  det?.rule_engine?.running ? 'text-green text-body' : 'text-yellow text-body'
+                  det?.rule_engine?.running
+                    ? 'text-severityText-benign text-body'
+                    : 'text-severityText-medium text-body'
                 }
               >
                 {det?.rule_engine?.running ? 'ACTIVE' : det ? 'STOPPED' : '...'}
@@ -236,15 +238,19 @@ export function CyberpunkOverviewPage() {
             </div>
             <div>
               <span className="text-muted">DETECTIONS</span>
-              <div className="text-cyan text-body">{det?.rule_engine?.total_detections ?? 0}</div>
+              <div className="text-accent text-body">{det?.rule_engine?.total_detections ?? 0}</div>
             </div>
             <div>
               <span className="text-muted">ALERTS</span>
-              <div className="text-magenta text-body">{det?.rule_engine?.total_alerts ?? 0}</div>
+              <div className="text-severityText-critical text-body">
+                {det?.rule_engine?.total_alerts ?? 0}
+              </div>
             </div>
             <div>
               <span className="text-muted">BUFFER</span>
-              <div className="text-yellow text-body">{det?.rule_engine?.buffer_size ?? 0}</div>
+              <div className="text-severityText-medium text-body">
+                {det?.rule_engine?.buffer_size ?? 0}
+              </div>
             </div>
           </div>
           <p className="mt-2 text-caption text-muted">
@@ -254,24 +260,30 @@ export function CyberpunkOverviewPage() {
         <NeonCard
           title="ML PIPELINE"
           subtitle="Statistical anomaly scoring"
-          color={det?.ml_consumer ? 'cyan' : 'yellow'}
+          color={det?.ml_consumer ? 'accent' : 'medium'}
         >
           <div className="grid grid-cols-2 gap-3 font-mono text-caption">
             <div>
               <span className="text-muted">WINDOWS SCORED</span>
-              <div className="text-cyan text-body">{det?.ml_consumer?.windows_scored ?? 0}</div>
+              <div className="text-accent text-body">{det?.ml_consumer?.windows_scored ?? 0}</div>
             </div>
             <div>
               <span className="text-muted">ML ALERTS</span>
-              <div className="text-magenta text-body">{det?.ml_consumer?.alerts_created ?? 0}</div>
+              <div className="text-severityText-critical text-body">
+                {det?.ml_consumer?.alerts_created ?? 0}
+              </div>
             </div>
             <div>
               <span className="text-muted">SCORING ERRORS</span>
-              <div className="text-red text-body">{det?.ml_consumer?.scoring_errors ?? 0}</div>
+              <div className="text-severityText-critical text-body">
+                {det?.ml_consumer?.scoring_errors ?? 0}
+              </div>
             </div>
             <div>
               <span className="text-muted">BUFFER</span>
-              <div className="text-yellow text-body">{det?.ml_consumer?.buffer_size ?? 0}</div>
+              <div className="text-severityText-medium text-body">
+                {det?.ml_consumer?.buffer_size ?? 0}
+              </div>
             </div>
           </div>
           <p className="mt-2 text-caption text-muted">
@@ -289,7 +301,7 @@ export function CyberpunkOverviewPage() {
       />
 
       {/* Real Severity Chart */}
-      <NeonCard title="ALERT SEVERITY TIMELINE" subtitle={windowLabel} color="cyan">
+      <NeonCard title="ALERT SEVERITY TIMELINE" subtitle={windowLabel} color="accent">
         <SeverityAreaChart
           points={points}
           windowLabel={windowLabel}
@@ -303,7 +315,7 @@ export function CyberpunkOverviewPage() {
 
       {/* Real Entities + Family Mix */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <NeonCard title="TOP ATTACKED ENTITIES" color="magenta">
+        <NeonCard title="TOP ATTACKED ENTITIES" color="critical">
           <Card
             title="Entities"
             state={state}
@@ -322,7 +334,7 @@ export function CyberpunkOverviewPage() {
             />
           </Card>
         </NeonCard>
-        <NeonCard title="THREAT FAMILY DISTRIBUTION" color="yellow">
+        <NeonCard title="THREAT FAMILY DISTRIBUTION" color="medium">
           <FamilyMixChart
             families={families}
             peaks={peaks}
@@ -338,7 +350,7 @@ export function CyberpunkOverviewPage() {
 
       {/* Real Pipeline Strip */}
       {stages.length === 0 ? (
-        <NeonCard title="DETECTION PIPELINE HEALTH" color="cyan">
+        <NeonCard title="DETECTION PIPELINE HEALTH" color="accent">
           {metrics.isError ? (
             <div className="mt-2">
               <EmptyState
@@ -354,7 +366,7 @@ export function CyberpunkOverviewPage() {
           )}
         </NeonCard>
       ) : (
-        <NeonCard title="DETECTION PIPELINE HEALTH" subtitle="Live from /metrics" color="cyan">
+        <NeonCard title="DETECTION PIPELINE HEALTH" subtitle="Live from /metrics" color="accent">
           <PipelineStrip
             stages={stages}
             hasRates={previousMetrics !== undefined}

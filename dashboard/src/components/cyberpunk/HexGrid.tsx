@@ -80,9 +80,13 @@ export function HexGrid({
             <path
               key={`${col}-${row}`}
               d={hexPath(cx, cy, cellSize * 0.45)}
-              fill={isHighlighted ? `rgba(0, 240, 255, ${isHighlighted.opacity * 0.2})` : 'none'}
-              stroke="rgba(0, 240, 255, 0.08)"
-              strokeWidth="0.5"
+              style={{
+                fill: isHighlighted
+                  ? `color-mix(in srgb, var(--color-accent) ${isHighlighted.opacity * 20}%, transparent)`
+                  : 'none',
+                stroke: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+                strokeWidth: 0.5,
+              }}
             />
           );
         }),

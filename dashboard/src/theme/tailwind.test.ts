@@ -330,7 +330,8 @@ describe('closed scales', () => {
   });
 
   it('closes the font families to the two design.md names', async () => {
-    expect(Object.keys(config.theme.fontFamily).sort()).toEqual(['mono', 'sans']);
+    // design.md §5.4 publishes three stacks: display (Orbitron), sans and mono.
+    expect(Object.keys(config.theme.fontFamily).sort()).toEqual(['display', 'mono', 'sans']);
     const compiled = await compile('font-sans font-mono font-serif');
     expect(compiled).toContain('Inter');
     expect(compiled).toContain('JetBrains Mono');
@@ -475,8 +476,14 @@ describe('shipped sources', () => {
     const utility =
       /(?<![\w-])(?:bg|text|border|divide|ring|fill|stroke)-[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*(?![-\w*$])/g;
     const candidates = new Set<string>();
-    for (const [, source] of shipped) {
-      for (const match of source.matchAll(utility)) candidates.add(match[0]);
+    // Class names live in component markup, so only the TypeScript sources are scanned.
+    // A stylesheet also contains CSS properties (`border-right`, `text-shadow`), which
+    // are not utilities and would fail here for the wrong reason.
+    for (const [name, source] of shipped) {
+      if (!/\.tsx?$/.test(name)) continue;
+      // SVG animation names (`attributeName="stroke-opacity"`) are not classes.
+      const markup = source.replace(/attributeName="[^"]*"/g, '');
+      for (const match of markup.matchAll(utility)) candidates.add(match[0]);
     }
     // A regex that matched nothing would make the assertion below vacuous.
     expect(candidates.size).toBeGreaterThanOrEqual(20);

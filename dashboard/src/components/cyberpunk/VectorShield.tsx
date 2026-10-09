@@ -13,9 +13,18 @@ interface VectorShieldProps {
 }
 
 const STATUS_COLORS = {
-  secure: { primary: '#05ffa1', glow: 'rgba(5, 255, 161, 0.6)' },
-  warning: { primary: '#fcee0a', glow: 'rgba(252, 238, 10, 0.6)' },
-  breach: { primary: '#ff2a6d', glow: 'rgba(255, 42, 109, 0.6)' },
+  secure: {
+    primary: 'var(--severity-benign)',
+    glow: 'color-mix(in srgb, var(--severity-benign) 60%, transparent)',
+  },
+  warning: {
+    primary: 'var(--severity-medium)',
+    glow: 'color-mix(in srgb, var(--severity-medium) 60%, transparent)',
+  },
+  breach: {
+    primary: 'var(--severity-critical)',
+    glow: 'color-mix(in srgb, var(--severity-critical) 60%, transparent)',
+  },
 };
 
 export function VectorShield({
@@ -44,18 +53,18 @@ export function VectorShield({
           </feMerge>
         </filter>
         <linearGradient id={`shieldGrad-${status}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={colors.primary} stopOpacity="0.8" />
-          <stop offset="100%" stopColor={colors.primary} stopOpacity="0.3" />
+          <stop offset="0%" stopOpacity="0.8" style={{ stopColor: colors.primary }} />
+          <stop offset="100%" stopOpacity="0.3" style={{ stopColor: colors.primary }} />
         </linearGradient>
       </defs>
 
       {/* Shield outline */}
       <path
         d="M32 4 L52 14 L52 30 C52 42 42 52 32 58 C22 52 12 42 12 30 L12 14 Z"
-        fill="none"
-        stroke={colors.primary}
+
         strokeWidth="2"
         filter={animate ? `url(#shieldGlow-${status})` : undefined}
+        style={{ fill: 'none', stroke: colors.primary }}
       >
         {animate && (
           <animate
@@ -77,11 +86,11 @@ export function VectorShield({
       {/* Circuit lines inside shield */}
       <path
         d="M24 22 L32 22 L32 30 L40 30"
-        fill="none"
-        stroke={colors.primary}
+
         strokeWidth="1"
         opacity="0.5"
         strokeDasharray="2 2"
+        style={{ fill: 'none', stroke: colors.primary }}
       >
         {animate && (
           <animate
@@ -95,11 +104,11 @@ export function VectorShield({
       </path>
       <path
         d="M28 38 L32 38 L32 30"
-        fill="none"
-        stroke={colors.primary}
+
         strokeWidth="1"
         opacity="0.5"
         strokeDasharray="2 2"
+        style={{ fill: 'none', stroke: colors.primary }}
       />
 
       {/* Center emblem */}
@@ -108,11 +117,11 @@ export function VectorShield({
           {/* Checkmark */}
           <path
             d="M25 32 L30 37 L39 27"
-            fill="none"
-            stroke={colors.primary}
+
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            style={{ fill: 'none', stroke: colors.primary }}
           >
             {animate && (
               <animate
@@ -131,10 +140,11 @@ export function VectorShield({
             x="32"
             y="38"
             textAnchor="middle"
-            fill={colors.primary}
+
             fontSize="18"
             fontWeight="bold"
             fontFamily="monospace"
+            style={{ fill: colors.primary }}
           >
             !
           </text>
@@ -143,17 +153,23 @@ export function VectorShield({
         <g filter={animate ? `url(#shieldGlow-${status})` : undefined}>
           <path
             d="M26 26 L38 38 M38 26 L26 38"
-            fill="none"
-            stroke={colors.primary}
+
             strokeWidth="2.5"
             strokeLinecap="round"
+            style={{ fill: 'none', stroke: colors.primary }}
           />
         </g>
       )}
 
       {/* Pulse ring */}
       {animate && (
-        <circle cx="32" cy="32" r="30" fill="none" stroke={colors.primary} strokeWidth="0.5">
+        <circle
+          cx="32"
+          cy="32"
+          r="30"
+          strokeWidth="0.5"
+          style={{ fill: 'none', stroke: colors.primary }}
+        >
           <animate attributeName="r" from="28" to="34" dur="2s" repeatCount="indefinite" />
           <animate attributeName="opacity" from="0.4" to="0" dur="2s" repeatCount="indefinite" />
         </circle>

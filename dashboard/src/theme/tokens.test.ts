@@ -322,7 +322,7 @@ describe('design.md agreement', () => {
   });
 
   it('implements the badge rule with the published ratios', () => {
-    expect(dark['--color-on-severity']).toBe('#0b0e14');
+    expect(dark['--color-on-severity']).toBe('#050510');
     expect(light['--color-on-severity']).toBe(dark['--color-on-severity']);
     const rule = section('**Badge rule.**');
     for (const severity of SEVERITIES) {
@@ -361,7 +361,7 @@ describe('design.md agreement', () => {
     const families = new Map(
       rows_.filter((row) => row[1]?.includes(',')).map((row) => [row[0]!, row[1]!]),
     );
-    expect(families.get('font.sans')).toBe('Inter, system-ui fallback');
+    expect(families.get('font.sans')).toBe('Rajdhani, Inter, system-ui fallback');
     expect(families.get('font.mono')).toBe('JetBrains Mono, ui-monospace fallback');
     const published = new Map(
       rows_.filter((row) => /^\d+ \/ \d+$/.test(row[1] ?? '')).map((row) => [row[0]!, row[1]!]),

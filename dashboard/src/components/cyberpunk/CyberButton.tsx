@@ -17,12 +17,9 @@ export function CyberButton({
   ...props
 }: CyberButtonProps) {
   return (
-    <button
-      className={`cyber-btn cyber-btn--${variant} cyber-btn--${size} ${className}`}
-      {...props}
-    >
-      <span className="cyber-btn__text">{children}</span>
-      <span className="cyber-btn__glitch" aria-hidden="true" />
+    <button className={`cyber-btn cyber-btn-${variant} cyber-btn-${size} ${className}`} {...props}>
+      <span className="cyber-btn-text">{children}</span>
+      <span className="cyber-btn-glitch" aria-hidden="true" />
     </button>
   );
 }
