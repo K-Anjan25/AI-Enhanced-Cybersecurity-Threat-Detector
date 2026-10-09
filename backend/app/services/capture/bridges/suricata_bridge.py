@@ -341,7 +341,7 @@ def main() -> None:
     # Let the entrypoint's SIGTERM unwind through finally so batches flush.
     signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
-    parser = argparse.ArgumentParser(description="Suricata EVE → AEGIS bridge")
+    parser = argparse.ArgumentParser(description="Suricata EVE → AEGIS bridge", allow_abbrev=False)
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
     parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
     parser.add_argument("--email", help="Login email", default=EMAIL)

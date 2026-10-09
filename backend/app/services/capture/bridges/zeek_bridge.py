@@ -462,7 +462,7 @@ def main() -> None:
     # Let the entrypoint's SIGTERM unwind through finally so batches flush.
     signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
-    parser = argparse.ArgumentParser(description="Zeek → AEGIS bridge")
+    parser = argparse.ArgumentParser(description="Zeek → AEGIS bridge", allow_abbrev=False)
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
     parser.add_argument("--log-dir", help="Read all Zeek logs from directory")
     parser.add_argument("--log-type", default="conn", help="Log type: conn, http, dns, ssl, notice")
