@@ -167,7 +167,7 @@ describe('KeysPanel', () => {
     expect(within(dialog).getByRole('button', { name: 'Issue' })).toBeEnabled();
   });
 
-  it('asks before revoking, and says the row stays', async () => {
+  it('asks before revoking', async () => {
     const user = userEvent.setup();
     stubFetch(routes());
     renderWithProviders(
@@ -178,7 +178,9 @@ describe('KeysPanel', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Revoke' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/record of a credential having existed/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('The key stops working on its next request.'),
+    ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Revoke the key' }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();

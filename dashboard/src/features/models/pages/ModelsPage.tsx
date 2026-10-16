@@ -119,7 +119,6 @@ export function ModelsPage() {
         {header}
         <ErrorState
           message="The model registry could not be read"
-          detail="Nothing is shown rather than a stale table: a promotion offered from a list this screen cannot vouch for would be a guess with an admin action attached."
           action={
             <Button
               onClick={() => {

@@ -199,7 +199,6 @@ describe('the shell and the live stream', () => {
 
     expect(await screen.findByText('Live updates are off')).toBeInTheDocument();
     expect(screen.getByText('Disconnected')).toBeInTheDocument();
-    expect(screen.getByText(/polling every 15 s/)).toBeInTheDocument();
 
     await settle();
     expect(polls()).toBeGreaterThan(before);

@@ -45,10 +45,7 @@ export function ComparisonEvidence({
             description="No evaluation run attached."
           />
         ) : (
-          <ErrorState
-            message="Recorded evaluation evidence could not be read"
-            detail="No confusion matrix is shown until its source run can be read."
-          />
+          <ErrorState message="Recorded evaluation evidence could not be read" />
         )
       ) : evaluation === null ? (
         <EmptyState

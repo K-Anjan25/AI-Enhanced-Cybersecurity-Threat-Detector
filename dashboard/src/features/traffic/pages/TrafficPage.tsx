@@ -108,7 +108,6 @@ export function TrafficPage() {
       {window.isError && full === undefined ? (
         <ErrorState
           message="The traffic window could not be loaded"
-          detail="It reads the flow API over the selected window, which composes the alert overlay."
           action={<Button onClick={() => void window.refetch()}>Retry</Button>}
         />
       ) : null}
@@ -116,7 +115,6 @@ export function TrafficPage() {
       {brushed.isError && brush !== null ? (
         <ErrorState
           message="The brushed window could not be loaded"
-          detail="The table and the graph still describe the whole window; widen the brush to see everything again."
           action={<Button onClick={() => setBrush(null)}>Clear the brush</Button>}
         />
       ) : null}

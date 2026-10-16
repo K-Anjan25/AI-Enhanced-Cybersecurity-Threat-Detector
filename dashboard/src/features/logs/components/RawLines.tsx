@@ -44,7 +44,6 @@ export function RawLines({ clusterKey, template, lines, failed, onClose }: RawLi
       {failed ? (
         <ErrorState
           message="The raw lines could not be read"
-          detail="The cluster is still listed; closing and reopening it retries the read."
           action={<Button onClick={onClose}>Close</Button>}
         />
       ) : lines === undefined ? (
@@ -53,9 +52,8 @@ export function RawLines({ clusterKey, template, lines, failed, onClose }: RawLi
         <div id="log-raw-lines">
           <p className="mb-2 text-caption text-muted">
             {lines.lines_truncated
-              ? `Showing the newest ${formatCount(lines.lines.length)} of ${formatCount(lines.lines_seen)} matching lines.`
-              : `All ${formatCount(lines.lines_seen)} matching lines in the window.`}{' '}
-            {lines.caveats[0] ?? ''}
+              ? `Newest ${formatCount(lines.lines.length)} of ${formatCount(lines.lines_seen)}`
+              : `${formatCount(lines.lines_seen)} lines`}
           </p>
           <ol className="space-y-1 font-mono text-body-sm">
             {lines.lines.map((line) => (

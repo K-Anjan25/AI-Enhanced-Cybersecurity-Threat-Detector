@@ -47,7 +47,7 @@ export function ConnectionBanner({ state, message, explanation, onRetry }: Conne
     >
       <p className="text-body-sm">
         <span className="font-semibold">{message}</span>{' '}
-        <span className="text-muted">{explanation}</span>
+        {explanation === '' ? null : <span className="text-muted">{explanation}</span>}
       </p>
       {onRetry === undefined ? null : (
         <Button variant="secondary" size="sm" onClick={onRetry}>

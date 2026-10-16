@@ -323,7 +323,6 @@ export function CyberpunkOverviewPage() {
             empty={{ title: `No entity was attacked in the ${range.label}.` }}
             error={{
               message: 'Top entities could not be loaded',
-              detail: 'Same window as tiles.',
               action: <Button onClick={() => void overview.refetch()}>Retry</Button>,
             }}
           >

@@ -153,7 +153,6 @@ export function OverviewPage() {
           empty={{ title: `No entity was attacked in the ${range.label}.` }}
           error={{
             message: 'Top entities could not be loaded',
-            detail: 'They are part of the same window as the tiles.',
             action: <Button onClick={() => void overview.refetch()}>Retry</Button>,
           }}
         >

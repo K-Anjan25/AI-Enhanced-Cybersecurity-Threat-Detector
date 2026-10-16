@@ -46,12 +46,6 @@ describe('TimelinePanel', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('names the chart primitives it is not, rather than imitating them', () => {
-    render(<TimelinePanel detail={alertDetail()} />);
-
-    expect(screen.getByText(/arrive with the T-406 chart primitives/)).toBeInTheDocument();
-  });
-
   it('has no serious accessibility violations', async () => {
     const { container } = render(<TimelinePanel detail={alertDetail()} />);
 

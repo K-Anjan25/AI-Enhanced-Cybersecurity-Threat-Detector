@@ -168,8 +168,6 @@ export function UsersPanel() {
       loadingLines={4}
       error={{
         message: 'The user directory could not be read',
-        detail:
-          'Nothing is listed rather than a stale roster: a role change offered against an account list this screen cannot vouch for would be a privilege change made blind.',
       }}
     >
       <div className="flex flex-col gap-3">
@@ -213,7 +211,7 @@ export function UsersPanel() {
         message={
           confirming === null
             ? ''
-            : `${confirming.row.email} goes from ${confirming.row.role} to ${confirming.role}. The change is recorded in the audit trail against your account, and the account's access changes on its next request.`
+            : `${confirming.row.email} goes from ${confirming.row.role} to ${confirming.role}.`
         }
         confirmLabel="Change the role"
         onClose={() => {

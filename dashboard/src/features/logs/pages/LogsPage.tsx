@@ -131,7 +131,7 @@ export function LogsPage() {
 
       <Panel
         title="Clusters"
-        state={view.state === 'rows' ? 'ready' : view.state === 'empty' ? 'empty' : 'ready'}
+        state="ready"
         loadingLines={5}
         actions={
           <span className="text-caption text-muted">
@@ -146,7 +146,6 @@ export function LogsPage() {
         ) : view.state === 'error' ? (
           <ErrorState
             message="The log lines could not be read"
-            detail="It reads accepted log lines over the selected window. Nothing is shown rather than a stale window presented as current."
             action={<Button onClick={() => void tail.refetch()}>Retry</Button>}
           />
         ) : (
@@ -154,12 +153,7 @@ export function LogsPage() {
             rows={view.rows}
             openKey={openKey}
             onOpen={setOpenKey}
-            empty={
-              <EmptyState
-                title="No log lines in this window"
-                description={view.emptyReason ?? 'Nothing matched the window and filters.'}
-              />
-            }
+            empty={<EmptyState title="No log lines in this window" />}
           />
         )}
       </Panel>
@@ -175,14 +169,6 @@ export function LogsPage() {
       <section aria-label="What this screen is showing" className="flex flex-col gap-1">
         <p className="text-caption text-muted">
           {view.retention} {staleDetail}
-        </p>
-        {view.caveats.map((caveat) => (
-          <p key={caveat} className="text-caption text-muted">
-            {caveat}
-          </p>
-        ))}
-        <p className="text-caption text-muted">
-          Jumping to an alert is not available in this build.
         </p>
       </section>
     </div>

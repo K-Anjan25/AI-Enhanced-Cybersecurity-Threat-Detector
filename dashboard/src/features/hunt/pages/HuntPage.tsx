@@ -237,10 +237,6 @@ export function HuntPage() {
             }}
           />
 
-          <p className="text-caption text-muted">
-            Creating an alert from a filter is not available in this build.
-          </p>
-
           {refusal === null ? null : (
             <p role="alert" className="text-caption text-severityText-critical">
               {refusal}

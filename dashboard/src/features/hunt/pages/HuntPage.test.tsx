@@ -301,13 +301,10 @@ describe('the hunt console', () => {
     expect(alert).toHaveTextContent('nothing was written to the audit trail');
   });
 
-  it('says that saved hunts live in this browser, and that creating an alert is unavailable', () => {
+  it('says that saved hunts live in this browser', () => {
     stubHunt(() => jsonResponse(page([])));
     renderHunt();
 
-    expect(
-      screen.getByText(/Creating an alert from a filter is not available/),
-    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Saved hunts \(0\)/ })).toBeInTheDocument();
   });
 
