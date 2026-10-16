@@ -316,12 +316,7 @@ export function ConnectorsPanel() {
             rowKey={(row) => row.id}
             rowLabel={(row) => row.host}
             height={280}
-            empty={
-              <EmptyState
-                title="No endpoints are registered"
-                description="Alerts leave only through allowlisted endpoints."
-              />
-            }
+            empty={<EmptyState title="No endpoints are registered" />}
           />
         </div>
       </Card>
@@ -349,12 +344,7 @@ export function ConnectorsPanel() {
             rowKey={(row) => row.deliveryId}
             rowLabel={(row) => `${row.outcomeLabel} to ${row.endpoint}`}
             height={280}
-            empty={
-              <EmptyState
-                title="No delivery has been attempted"
-                description="A row appears here the moment an attempt is made — an alert that reached an endpoint, or a test send from the table above."
-              />
-            }
+            empty={<EmptyState title="No delivery has been attempted" />}
           />
         </div>
       </Card>
@@ -470,7 +460,7 @@ export function ConnectorsPanel() {
       <ConfirmDialog
         open={removing !== null}
         title={`Remove ${removing?.host ?? ''}?`}
-        message="Alerts stop being delivered to it immediately, and its signing secret is discarded with it. The attempts already made keep their rows, because the record of what left the building is not something a delete unsends."
+        message="Alerts stop being delivered to it immediately."
         confirmLabel="Remove the endpoint"
         onConfirm={() => {
           if (removing === null) return;

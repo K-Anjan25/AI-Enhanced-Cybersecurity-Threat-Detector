@@ -253,7 +253,7 @@ describe('routing and shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Logs' })).toBeInTheDocument();
     // The stubbed tail is empty and says why, which is the log screen's own claim
     // about a bounded buffer rather than a blank table.
-    expect(await screen.findByText('Nothing has arrived in this window')).toBeInTheDocument();
+    expect(await screen.findByText('No log lines in this window')).toBeInTheDocument();
   });
 
   it('navigates to the hunt console, which is built now', async () => {

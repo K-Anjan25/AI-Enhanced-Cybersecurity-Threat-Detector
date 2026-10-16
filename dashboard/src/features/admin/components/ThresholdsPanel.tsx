@@ -30,7 +30,6 @@ import {
   useThresholds,
 } from '../hooks';
 import {
-  BAND_WITHOUT_BOUND,
   bandRows,
   formatThreshold,
   knownFamilies,
@@ -68,8 +67,6 @@ export function ThresholdsPanel() {
         state="error"
         error={{
           message: 'The thresholds could not be read',
-          detail:
-            'Nothing is shown rather than FR-13\u2019s defaults alone: a default presented as the value in force would be a claim about this deployment that the read failed to make.',
         }}
       />
     );
@@ -176,15 +173,11 @@ export function ThresholdsPanel() {
           </tbody>
         </table>
         <p className="text-body-sm text-muted">
-          {`Everything below the ${formatThreshold(rows[rows.length - 1]?.value ?? 0)} ${BAND_WITHOUT_BOUND} bound is ${BAND_WITHOUT_BOUND}: it has no lower bound of its own, so there is nothing there to set.`}
-        </p>
-        <p className="text-body-sm text-muted">
-          Sources:{' '}
+          Source:{' '}
           {rows.filter((row) => row.moved).length > 0
-            ? 'a row exists for the bands that were moved'
-            : 'no band has been moved on this deployment, so every value is FR-13\u2019s documented default'}
-          . A recalibrated value and one set by hand are both stored the same way; the source is
-          what tells them apart, and it is written by whoever moved it.
+            ? 'set by hand or recalibrated'
+            : 'FR-13 default'}
+          .
         </p>
       </div>
 

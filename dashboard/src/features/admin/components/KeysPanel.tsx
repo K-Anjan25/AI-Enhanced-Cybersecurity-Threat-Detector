@@ -321,7 +321,7 @@ export function KeysPanel() {
       <ConfirmDialog
         open={revoking !== null}
         title={`Revoke ${revoking?.name ?? ''}?`}
-        message="The key stops working on its next request. Its row stays, because the record of a credential having existed is what an audit reads."
+        message="The key stops working on its next request."
         confirmLabel="Revoke the key"
         onConfirm={() => {
           if (revoking === null) return;

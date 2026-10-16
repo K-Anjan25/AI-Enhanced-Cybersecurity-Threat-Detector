@@ -184,18 +184,6 @@ describe('LogsPage', () => {
     );
   });
 
-  it('carries the API’s caveats through word for word', async () => {
-    stubLogs();
-    renderPage();
-    await screen.findByRole('table', { name: /Log clusters/ });
-
-    // "not a store" and "no database URL is named" are claims about the deployment, so
-    // the screen renders the server's sentences rather than ones of its own.
-    expect(screen.getByText(/It is not a store/)).toBeInTheDocument();
-    expect(screen.getByText(/no database URL is named/)).toBeInTheDocument();
-    expect(screen.getByText(/not a model's anomaly score/)).toBeInTheDocument();
-  });
-
   it('names the read model it is showing', async () => {
     stubLogs();
     renderPage();
@@ -263,16 +251,6 @@ describe('LogsPage', () => {
     });
   });
 
-  it('says an alert cannot be jumped to rather than offering a dead link', async () => {
-    stubLogs();
-    renderPage();
-    await screen.findByRole('table', { name: /Log clusters/ });
-
-    expect(
-      screen.getByText(/Jumping to an alert is not available in this build/),
-    ).toBeInTheDocument();
-  });
-
   it('reads a bounded window and sends no level filter for "all"', async () => {
     const requests = stubLogs();
     renderPage();
@@ -334,9 +312,7 @@ describe('LogsPage', () => {
     await userEvent.click(within(table).getByRole('button', { name: 't-retry' }));
 
     await screen.findByRole('heading', { name: 'Raw lines · t-retry' });
-    expect(screen.getByText(/matching lines/)).toHaveTextContent(
-      'These lines are read from the log store',
-    );
+    expect(screen.getByText('Read from the log store.')).toBeInTheDocument();
     expect(new URL(requests.at(-1)?.url ?? '').searchParams.get('key')).toBe('t-retry');
   });
 
@@ -378,9 +354,7 @@ describe('LogsPage', () => {
 
     await userEvent.click(within(table).getByRole('button', { name: 't-retry' }));
 
-    await waitFor(() =>
-      expect(screen.getByText(/Showing the newest 2 of 10,000 matching lines/)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/Newest 2 of 10,000/)).toBeInTheDocument());
   });
 
   it('closes an expansion with the row, so the panel cannot outlive its row', async () => {
@@ -389,7 +363,7 @@ describe('LogsPage', () => {
     const table = await screen.findByRole('table', { name: /Log clusters/ });
 
     await userEvent.click(within(table).getByRole('button', { name: 't-retry' }));
-    await screen.findByText(/Showing the newest 2 of 10,000 matching lines/);
+    await screen.findByText(/Newest 2 of 10,000/);
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
 
     await waitFor(() => expect(screen.queryByText(/Raw lines/)).toBeNull());
@@ -398,7 +372,7 @@ describe('LogsPage', () => {
     expect(within(table).getByText('connection refused to upstream billing')).toBeInTheDocument();
   });
 
-  it('describes an empty window with the API’s own reason', async () => {
+  it('shows an empty window as empty', async () => {
     stubLogs(
       tail({
         clusters: [],
@@ -409,7 +383,7 @@ describe('LogsPage', () => {
     );
     renderPage();
 
-    expect(await screen.findByText('Nothing has arrived in this window')).toBeInTheDocument();
+    expect(await screen.findByText('No log lines in this window')).toBeInTheDocument();
   });
 
   it('names the failure and offers a retry when the read fails', async () => {

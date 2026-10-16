@@ -57,11 +57,6 @@ export function TimelinePanel({ detail }: { detail: AlertDetail }) {
           <span className="font-mono">{formatInstant(view.firstAnomaly)}</span>
         </p>
       )}
-
-      <p className="mt-2 text-body-sm text-muted">
-        Flow rate and anomaly score over this span arrive with the T-406 chart primitives; this
-        panel plots the windows the alert kept.
-      </p>
     </Card>
   );
 }

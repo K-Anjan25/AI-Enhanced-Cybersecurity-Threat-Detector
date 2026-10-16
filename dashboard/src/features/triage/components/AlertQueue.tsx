@@ -64,7 +64,6 @@ export function AlertQueue({
         <div className="mt-3">
           <ErrorState
             message="The queue could not be loaded"
-            detail="The rows below are the last successful read, if there was one."
             {...(onRetry === undefined
               ? {}
               : {

@@ -379,14 +379,16 @@ describe('ConnectorsPanel', () => {
     expect(secretOnScreen()).toBe(false);
   });
 
-  it('asks before removing an endpoint, and says what removal does not undo', async () => {
+  it('asks before removing an endpoint', async () => {
     const user = userEvent.setup();
     const seen = stubFetch(routes());
     render();
 
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/attempts already made keep their rows/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('Alerts stop being delivered to it immediately.'),
+    ).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Remove the endpoint' }));
 
     await waitFor(() => {

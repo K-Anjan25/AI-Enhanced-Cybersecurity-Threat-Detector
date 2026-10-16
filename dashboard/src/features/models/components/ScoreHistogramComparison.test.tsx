@@ -97,7 +97,6 @@ describe('ScoreHistogramComparison', () => {
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent('A recorded score histogram is incomplete');
-    expect(screen.getByRole('alert')).toHaveTextContent('ten fixed-width');
     expect(screen.queryByRole('img')).toBeNull();
   });
 

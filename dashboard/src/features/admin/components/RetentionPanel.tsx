@@ -92,8 +92,6 @@ export function RetentionPanel() {
       loadingLines={6}
       error={{
         message: 'The retention plan could not be read',
-        detail:
-          'A run is offered only from a plan this screen has read: dropping partitions on the strength of a failed read is the one way this screen could destroy data it never showed you.',
       }}
     >
       <div className="flex flex-col gap-3">
@@ -211,7 +209,7 @@ export function RetentionPanel() {
       <ConfirmDialog
         open={confirming}
         title="Run retention now?"
-        message={`${String(drops.length)} partition${drops.length === 1 ? '' : 's'} would be dropped, and the rows they hold are gone: ${drops.map((row) => row.name).join(', ')}. The run is recorded in the audit trail.`}
+        message={`${drops.map((row) => row.name).join(', ')} will be dropped.`}
         confirmLabel="Drop the partitions"
         onConfirm={() => {
           run.mutate(undefined, {

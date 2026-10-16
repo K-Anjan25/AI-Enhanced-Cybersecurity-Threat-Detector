@@ -16,12 +16,7 @@ import { useMemo } from 'react';
 
 import { useNow } from '../hooks/polling';
 import { useOptionalRealtime } from './RealtimeProvider';
-import {
-  connectionStateOf,
-  FALLBACK_POLL_MS,
-  stalenessLabel,
-  type ShellConnectionState,
-} from '../../lib/realtime';
+import { connectionStateOf, stalenessLabel, type ShellConnectionState } from '../../lib/realtime';
 
 export interface ConnectionView {
   /** What the header indicator shows. */
@@ -53,7 +48,6 @@ export function useConnectionView(override?: ShellConnectionState): ConnectionVi
 
   return useMemo<ConnectionView>(() => {
     const age = stalenessLabel(lastUpdateAt, now);
-    const seconds = FALLBACK_POLL_MS / 1_000;
 
     if (state === 'live') {
       return { state, detail: undefined, banner: null, retryNow: undefined };
@@ -65,7 +59,7 @@ export function useConnectionView(override?: ShellConnectionState): ConnectionVi
         detail: realtime === null ? undefined : age,
         banner: {
           message: 'Connecting to the live alert stream',
-          explanation: 'Retrying automatically; the screen keeps showing the last data it read.',
+          explanation: '',
         },
         retryNow: realtime?.retryNow,
       };
@@ -80,7 +74,7 @@ export function useConnectionView(override?: ShellConnectionState): ConnectionVi
       detail: realtime === null ? undefined : age,
       banner: {
         message: 'Live updates are off',
-        explanation: `${why}. Showing the API's data and polling every ${String(seconds)} s.`,
+        explanation: `${why}.`,
       },
       retryNow: realtime?.retryNow,
     };
