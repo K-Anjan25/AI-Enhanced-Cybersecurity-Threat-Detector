@@ -68,10 +68,6 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
       <h2 id="pipeline-health" className="text-h2">
         Detection pipeline health
       </h2>
-      <p className="mt-1 text-caption text-muted">
-        What each stage is doing right now. A quiet alert list with a red stage below means AEGIS is
-        degraded, not that the estate is calm.
-      </p>
 
       <ol className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stages.map((stage) => {

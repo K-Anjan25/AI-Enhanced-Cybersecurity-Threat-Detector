@@ -187,7 +187,7 @@ export function OverviewPage() {
             <div className="mt-2">
               <EmptyState
                 title="The metrics scrape could not be read"
-                description="Pipeline health comes from /metrics, which did not answer. The indicator above says whether this console is still hearing from the server."
+                description="Metrics unavailable."
               />
             </div>
           ) : (

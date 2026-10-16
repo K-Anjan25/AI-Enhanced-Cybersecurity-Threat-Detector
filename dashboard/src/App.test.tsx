@@ -204,7 +204,7 @@ describe('routing and shell', () => {
     await user.keyboard('{Enter}');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
-    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Run a query to see results/)).toBeInTheDocument();
     // The dialog closed behind the navigation rather than staying over the screen
     // it just opened.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -265,7 +265,7 @@ describe('routing and shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
     // The console does not search until asked, and says so rather than showing an
     // empty table that would read as a quiet network.
-    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Run a query to see results/)).toBeInTheDocument();
   });
 
   it('mounts the model ops screen at /models, which is built now', async () => {

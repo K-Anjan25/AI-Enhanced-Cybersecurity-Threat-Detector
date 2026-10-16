@@ -113,10 +113,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       </div>
 
       {matches.length === 0 ? (
-        <p className="mt-4 text-body-sm text-muted">
-          Nothing matches “{query.trim()}”. The list filters as you type — clear it to see every
-          screen, saved hunt and action.
-        </p>
+        <p className="mt-4 text-body-sm text-muted">No match for “{query.trim()}”.</p>
       ) : (
         <div
           id={listId}

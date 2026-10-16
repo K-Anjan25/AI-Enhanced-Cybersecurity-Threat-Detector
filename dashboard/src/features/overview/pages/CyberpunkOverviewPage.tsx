@@ -353,10 +353,7 @@ export function CyberpunkOverviewPage() {
         <NeonCard title="DETECTION PIPELINE HEALTH" color="accent">
           {metrics.isError ? (
             <div className="mt-2">
-              <EmptyState
-                title="The metrics scrape could not be read"
-                description="Pipeline health comes from /metrics."
-              />
+              <EmptyState title="The metrics scrape could not be read" />
               <Button onClick={() => void metrics.refetch()} className="mt-3">
                 Retry
               </Button>

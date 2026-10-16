@@ -113,10 +113,7 @@ export function LogsPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1">Logs</h1>
-          <p className="mt-1 text-body-sm text-muted">
-            Accepted log lines, with identical lines collapsed into one row. Open a cluster to read
-            the lines behind it. {view.sourceLabel}
-          </p>
+          <p className="mt-1 text-body-sm text-muted">{view.sourceLabel}</p>
         </div>
       </header>
 
@@ -185,9 +182,7 @@ export function LogsPage() {
           </p>
         ))}
         <p className="text-caption text-muted">
-          Jumping from a cluster to the alert that referenced it is not available in this build: an
-          alert&rsquo;s evidence names a window, not the lines in it, so there is nothing to link to
-          yet.
+          Jumping to an alert is not available in this build.
         </p>
       </section>
     </div>

@@ -63,7 +63,7 @@ function Offered({ children }: { children: ReactNode }) {
       <h1 className="text-h1">Not offered at this window size</h1>
       <EmptyState
         title="This screen needs a wider window"
-        description="Below 768 px the console is the triage loop: the alert list and the alert detail. Widen the window, or rotate the device, to bring the rest back."
+        description="Widen the window to view this screen."
       />
     </div>
   );
@@ -144,9 +144,7 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
             <Offered>
               <div>
                 <h1 className="text-h1">Page not found</h1>
-                <p className="mt-2 text-body text-muted">
-                  No route matches this address. Check the navigation for available screens.
-                </p>
+                <p className="mt-2 text-body text-muted">Not found.</p>
               </div>
             </Offered>
           }

@@ -203,12 +203,7 @@ export function UsersPanel() {
           rowKey={(row) => String(row.id)}
           rowLabel={(row) => row.email}
           height={280}
-          empty={
-            <p className="text-body">
-              The directory is empty. This build starts with no bootstrap account (D-047): the
-              directory is populated by the deployment, not by the dashboard.
-            </p>
-          }
+          empty={<p className="text-body">No users.</p>}
         />
       </div>
 

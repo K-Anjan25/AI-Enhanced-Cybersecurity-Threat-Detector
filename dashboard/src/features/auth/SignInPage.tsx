@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Fingerprint, KeyRound } from 'lucide-react';
+import { ArrowRight, KeyRound } from 'lucide-react';
 
 import { ApiError } from '../../api/client';
 import { getAuthStatus, signIn, setupLocalAdmin } from '../../api/auth';
@@ -64,53 +64,14 @@ export function SignInPage() {
             <GlitchText as="h2" intensity="subtle" className="text-h2 tracking-wide">
               AEGIS
             </GlitchText>
-            <p className="font-mono text-caption uppercase tracking-wider text-muted">
-              Security operations
-            </p>
           </div>
         </div>
 
         <div className="max-w-xl">
-          <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-base px-3 py-2 font-mono text-caption text-accent">
-            <Fingerprint aria-hidden="true" className="size-icon-sm" />
-            AI-enhanced threat detection
-          </span>
-          <h1 className="mt-6 text-display leading-tight">Clarity in every security decision.</h1>
-          <p className="mt-4 max-w-xl text-body text-muted">
-            Investigate activity, understand model evidence, and take governed action from one
-            focused operations console.
-          </p>
-
-          <ul className="mt-8 grid gap-3">
-            <li className="flex items-start gap-3 rounded-card border border-line bg-base p-4">
-              <span className="mt-1 h-2 w-2 rounded-pill bg-severity-benign" aria-hidden="true" />
-              <span>
-                <span className="block text-body font-semibold">Evidence stays explicit</span>
-                <span className="mt-1 block text-body-sm text-muted">
-                  Recorded model evaluations are shown as recorded; missing evidence stays
-                  unavailable.
-                </span>
-              </span>
-            </li>
-            <li className="flex items-start gap-3 rounded-card border border-line bg-base p-4">
-              <span className="mt-1 h-2 w-2 rounded-pill bg-accent" aria-hidden="true" />
-              <span>
-                <span className="block text-body font-semibold">
-                  Access is enforced server-side
-                </span>
-                <span className="mt-1 block text-body-sm text-muted">
-                  Roles govern protected operations, not just what the interface displays.
-                </span>
-              </span>
-            </li>
-          </ul>
+          <h1 className="text-display leading-tight">AEGIS</h1>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <p className="font-mono text-caption text-muted">
-            AEGIS / ACCESS CONTROL / SECURE CHANNEL
-          </p>
-        </div>
+        <div className="flex flex-col gap-2"></div>
       </section>
 
       <section className="flex min-w-0 flex-1 items-center justify-center px-4 py-16 md:px-8">
@@ -160,23 +121,15 @@ export function SignInPage() {
                 className="mt-6 rounded-card border border-line bg-base p-4 text-body-sm text-severityText-high"
                 role="status"
               >
-                The authentication service could not be reached. Check that the backend is running
-                and the dashboard API proxy is connected.
+                Authentication service unreachable.
               </div>
             ) : setupAvailable ? (
               <div className="mt-6 rounded-card border border-line bg-base p-4 text-body-sm text-severityText-high">
-                The first account receives administrator permissions. Local setup is
-                development-only; this account is held in memory and is cleared when the backend
-                restarts.
+                First account is admin. Cleared on restart.
               </div>
             ) : status.data?.account_exists === false ? (
               <div className="mt-6 rounded-card border border-line bg-base p-4 text-body-sm text-muted">
-                No account is provisioned. For a private local development instance, enable
-                <code className="mx-1 rounded-input border border-line px-1 py-0.5 font-mono text-caption text-ink">
-                  AEGIS_DEV_AUTH_SETUP_ENABLED=true
-                </code>
-                and restart the backend, or configure bootstrap credentials through your secret
-                manager.
+                No account. Enable setup in docker/.env and restart the backend.
               </div>
             ) : null}
 
@@ -274,7 +227,7 @@ function authErrorMessage(error: unknown, setup: boolean): string {
       return 'Local setup is disabled by the backend. Enable it only for a private development instance.';
     }
     if (error.failure === 'unreachable' || error.failure === 'timeout') {
-      return 'The authentication service could not be reached. Check the backend and dashboard proxy.';
+      return 'Authentication service unreachable.';
     }
     return `Authentication was refused (HTTP ${error.status ?? 'unknown'}).`;
   }

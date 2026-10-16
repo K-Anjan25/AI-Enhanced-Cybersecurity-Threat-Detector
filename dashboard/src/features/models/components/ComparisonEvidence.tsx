@@ -35,17 +35,14 @@ export function ComparisonEvidence({
     >
       <h3 className="text-body font-semibold text-ink">{title}</h3>
       {modelId === null ? (
-        <EmptyState
-          title="Choose a model version"
-          description="No evaluation artifact was requested."
-        />
+        <EmptyState title="Choose a model version" />
       ) : loading ? (
         <Skeleton lines={4} label={`${title} evaluation evidence is loading`} />
       ) : error !== null ? (
         error instanceof ApiError && error.status === 404 ? (
           <EmptyState
             title="No recorded evaluation for this version"
-            description="The registry has no evaluation run attached to this model version, so its confusion matrix is unavailable."
+            description="No evaluation run attached."
           />
         ) : (
           <ErrorState
@@ -56,7 +53,7 @@ export function ComparisonEvidence({
       ) : evaluation === null ? (
         <EmptyState
           title="Confusion matrix unavailable"
-          description="This recorded run has no eval@2 confusion matrix. Existing scalar metrics are shown separately; no matrix values are inferred."
+          description="No confusion matrix recorded."
         />
       ) : (
         <ConfusionView evaluation={evaluation} />

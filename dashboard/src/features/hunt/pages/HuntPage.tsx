@@ -157,10 +157,6 @@ export function HuntPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-h1">Hunt</h1>
-        <p className="text-body-sm text-muted">
-          Search alerts by severity, status, family, entity and score over a window you choose.
-          Every run is a bounded read: the newest rows of the window, up to the row cap.
-        </p>
       </header>
 
       <Panel title="Query">
@@ -242,10 +238,7 @@ export function HuntPage() {
           />
 
           <p className="text-caption text-muted">
-            Saving a hunt keeps the text in this browser; the export is the only part of this screen
-            the server records. Creating an alert from a filter is not available in this build:
-            alerts are written by the detection pipeline, and there is no API that creates one by
-            hand.
+            Creating an alert from a filter is not available in this build.
           </p>
 
           {refusal === null ? null : (
@@ -273,12 +266,7 @@ export function HuntPage() {
 
   function resultBody(): ReactNode {
     if (view.state === 'idle') {
-      return (
-        <p className="text-body-sm text-muted">
-          Nothing has been searched yet. Write a query and run it: the executed query and the window
-          are shown here, so an empty result never has to be guessed at.
-        </p>
-      );
+      return <p className="text-body-sm text-muted">Run a query to see results.</p>;
     }
     if (view.state === 'loading') return <Skeleton lines={6} label="Hunt results" />;
     if (view.state === 'error') {

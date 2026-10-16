@@ -112,7 +112,7 @@ describe('ScoreHistogramComparison', () => {
     render(<ScoreHistogramComparison left={side('flow-a', 'runs/a.json')} right={older} />);
 
     expect(screen.getByText('Score-distribution comparison unavailable')).toBeInTheDocument();
-    expect(screen.getByText(/older eval@1 artifact/)).toBeInTheDocument();
+    expect(screen.getByText(/Histogram not recorded for one run/)).toBeInTheDocument();
     expect(screen.queryByRole('img')).toBeNull();
   });
 

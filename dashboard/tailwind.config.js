@@ -113,12 +113,11 @@ export default {
       lg: '1024px',
       xl: '1440px',
     },
-    // design.md §5.4's two stacks and nothing else. `font-serif` emits nothing:
-    // a third stack would be a decision, and the document names two.
+    // design.md §5.4's stacks and nothing else. `font-serif` emits nothing.
     fontFamily: {
-      sans: ['Rajdhani', 'Inter', 'system-ui', 'sans-serif'],
+      sans: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-      display: ['Orbitron', 'Rajdhani', 'sans-serif'],
+      display: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
     },
     // The documented type scale and nothing else, so the 12px floor cannot be
     // undercut by a Tailwind default step (`text-xs` is exactly 12px, but

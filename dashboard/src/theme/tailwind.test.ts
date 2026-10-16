@@ -330,13 +330,11 @@ describe('closed scales', () => {
   });
 
   it('closes the font families to the two design.md names', async () => {
-    // design.md §5.4 publishes three stacks: display (Orbitron), sans and mono.
+    // design.md §5.4 publishes three stacks, all monospace.
     expect(Object.keys(config.theme.fontFamily).sort()).toEqual(['display', 'mono', 'sans']);
     const compiled = await compile('font-sans font-mono font-serif');
-    expect(compiled).toContain('Inter');
     expect(compiled).toContain('JetBrains Mono');
     expect(compiled).not.toMatch(/\.font-serif[\s{,:]/);
-    expect(design).toContain('Inter, system-ui fallback');
     expect(design).toContain('JetBrains Mono, ui-monospace fallback');
   });
 

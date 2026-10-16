@@ -76,7 +76,7 @@ describe('the command palette', () => {
 
     await user.type(screen.getByRole('combobox'), 'zzz');
 
-    expect(screen.getByText(/Nothing matches “zzz”/)).toBeInTheDocument();
+    expect(screen.getByText(/No match for “zzz”/)).toBeInTheDocument();
     expect(screen.queryByRole('option')).not.toBeInTheDocument();
   });
 

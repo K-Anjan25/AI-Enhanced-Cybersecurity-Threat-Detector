@@ -268,7 +268,9 @@ describe('LogsPage', () => {
     renderPage();
     await screen.findByRole('table', { name: /Log clusters/ });
 
-    expect(screen.getByText(/not available in this build/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Jumping to an alert is not available in this build/),
+    ).toBeInTheDocument();
   });
 
   it('reads a bounded window and sends no level filter for "all"', async () => {
