@@ -195,8 +195,6 @@ describe('KeysPanel', () => {
         <KeysPanel />
       </ToastProvider>,
     );
-    expect(
-      await screen.findByText(/issuing one\s+is the only way to obtain a credential/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('No keys issued.')).toBeInTheDocument();
   });
 });

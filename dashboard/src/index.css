@@ -14,13 +14,13 @@
 
 :root,
 [data-theme='dark'] {
-  --color-bg-base: #050510;
-  --color-bg-surface: #0a0a1a;
-  --color-border: #082c3c;
-  --color-text-primary: #e0e6ff; /* 16.35:1 on base, 15.81:1 on surface */
-  --color-text-muted: #8a98b8; /* 7.01:1 on base, 6.78:1 on surface */
-  --color-accent: #00f0ff; /* 14.39:1 on base, 13.92:1 on surface */
-  --color-on-accent: #050510;
+  --color-bg-base: #0b0e08;
+  --color-bg-surface: #121709;
+  --color-border: #2c3b1c;
+  --color-text-primary: #d7f54a; /* 15.78:1 on base, 14.80:1 on surface */
+  --color-text-muted: #8da150; /* 6.80:1 on base, 6.38:1 on surface */
+  --color-accent: #d7f54a; /* 15.78:1 on base, 14.80:1 on surface */
+  --color-on-accent: #0b0e08;
 
   /* Severity: base hues for fills, charts, and the alert rail. */
   --severity-critical: #ff2a6d;
@@ -31,19 +31,19 @@
   --severity-benign: #05ffa1;
 
   /* Severity text variants: the base hues fail AA as text, so text uses these. */
-  --severity-text-critical: #ff5c8a; /* 6.90:1 / 6.67:1 */
-  --severity-text-high: #ff9e6b; /* 10.00:1 / 9.67:1 */
-  --severity-text-medium: #fcee0a; /* 16.78:1 / 16.22:1 */
-  --severity-text-low: #4df7ff; /* 15.51:1 / 15.00:1 */
-  --severity-text-info: #b69fff; /* 9.07:1 / 8.77:1 */
-  --severity-text-benign: #4dffc2; /* 15.83:1 / 15.31:1 */
+  --severity-text-critical: #ff5c8a; /* 6.62 / 6.21 */
+  --severity-text-high: #ff9e6b; /* 9.58 / 8.99 */
+  --severity-text-medium: #fcee0a; /* 16.08 / 15.08 */
+  --severity-text-low: #4df7ff; /* 14.87 / 13.94 */
+  --severity-text-info: #b69fff; /* 8.69 / 8.15 */
+  --severity-text-benign: #4dffc2; /* 15.18 / 14.23 */
 
-  /* Badge rule (design.md §5.3): base-hue fill with #050510 text.
-     critical 5.60, high 7.15, medium 16.78, low 14.39, info 5.74, benign 15.28.
+  /* Badge rule (design.md §5.3): base-hue fill with #0b0e08 text.
+     critical 5.37, high 6.85, medium 16.08, low 13.80, info 5.51, benign 14.65.
      White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited. */
-  --color-on-severity: #050510;
+  --color-on-severity: #0b0e08;
 
-  --focus-ring: #00f0ff; /* 14.39:1 against base, above the 3:1 requirement */
+  --focus-ring: #d7f54a; /* 15.78:1 against base, above the 3:1 requirement */
 
   /* Elevation (design.md §5.5). Exactly one shadow token exists, because
      "elevation is reserved for overlays — dropdowns, modals, toasts, command
@@ -57,12 +57,12 @@
 }
 
 [data-theme='light'] {
-  --color-bg-base: #eef2f8;
+  --color-bg-base: #eef2e6;
   --color-bg-surface: #ffffff;
-  --color-border: #c3ddeb;
-  --color-text-primary: #0a0b1e; /* 17.31:1 on base, 19.45:1 on surface */
-  --color-text-muted: #4a5378; /* 6.68:1 on base, 7.50:1 on surface */
-  --color-accent: #00758f; /* 4.74:1 on base, 5.33:1 on surface */
+  --color-border: #c6d3aa;
+  --color-text-primary: #111a06; /* 15.74:1 on base, 17.88:1 on surface */
+  --color-text-muted: #4b5a2a; /* 6.61:1 on base, 7.51:1 on surface */
+  --color-accent: #3d6100; /* 6.35:1 on base, 7.22:1 on surface */
   --color-on-accent: #ffffff;
 
   --severity-critical: #ff2a6d;
@@ -72,15 +72,15 @@
   --severity-info: #8b72ff;
   --severity-benign: #05ffa1;
 
-  --severity-text-critical: #a8124a; /* 6.56:1 / 7.37:1 */
-  --severity-text-high: #9c3b00; /* 6.15:1 / 6.91:1 */
-  --severity-text-medium: #6b5000; /* 6.74:1 / 7.57:1 */
-  --severity-text-low: #005f7f; /* 6.35:1 / 7.13:1 */
-  --severity-text-info: #4a3fa0; /* 7.45:1 / 8.37:1 */
-  --severity-text-benign: #0a6b42; /* 5.85:1 / 6.57:1 */
+  --severity-text-critical: #a8124a; /* 6.48 / 7.37 */
+  --severity-text-high: #9c3b00; /* 6.08 / 6.91 */
+  --severity-text-medium: #6b5000; /* 6.66 / 7.57 */
+  --severity-text-low: #005f7f; /* 6.28 / 7.13 */
+  --severity-text-info: #4a3fa0; /* 7.36 / 8.37 */
+  --severity-text-benign: #0a6b42; /* 5.78 / 6.57 */
 
-  --color-on-severity: #050510;
-  --focus-ring: #00758f; /* 4.74:1 against base */
+  --color-on-severity: #0b0e08;
+  --focus-ring: #3d6100; /* 6.35:1 against base */
   --shadow-overlay: 0 6px 16px rgb(16 24 40 / 12%);
 }
 

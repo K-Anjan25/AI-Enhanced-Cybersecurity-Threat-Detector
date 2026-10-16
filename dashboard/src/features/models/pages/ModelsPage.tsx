@@ -97,10 +97,6 @@ export function ModelsPage() {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h1 className="text-h1">Model ops</h1>
-        <p className="mt-1 text-body text-muted">
-          Which versions are registered, what each scored on its own recorded run, and how one
-          replaces another. Promoting requires typing the version id (design.md §4.7).
-        </p>
       </div>
       <Link className="text-body text-accent underline" to={DRIFT_PATH}>
         Feature drift (PSI) →
@@ -143,10 +139,7 @@ export function ModelsPage() {
     return (
       <div className="flex flex-col gap-4">
         {header}
-        <EmptyState
-          title="No model versions are registered"
-          description="The registry is empty, so nothing can be promoted. Registering a version is a training-pipeline step (T-202/T-212), not something this screen does."
-        />
+        <EmptyState title="No model versions are registered" description="Nothing to promote." />
       </div>
     );
   }

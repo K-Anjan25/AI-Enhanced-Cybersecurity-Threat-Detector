@@ -121,7 +121,7 @@ describe('RetentionPanel', () => {
     renderWithProviders(<RetentionPanel />);
     // The action bar renders with the card, so the assertion waits for the plan
     // itself rather than for the button.
-    expect(await screen.findByText(/would still be\s+recorded in the trail/)).toBeInTheDocument();
+    expect(await screen.findByText('Nothing to drop.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Run retention' })).toBeDisabled();
   });
 

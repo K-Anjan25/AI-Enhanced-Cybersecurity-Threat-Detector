@@ -56,17 +56,17 @@ export function ScoreHistogramComparison({ left, right }: ScoreHistogramComparis
       ) : missingRun !== undefined ? (
         <EmptyState
           title="Two recorded histograms are required"
-          description={`${missingRun.modelId === null ? 'A selected version' : `Version ${missingRun.modelId.slice(0, 12)}`} has no recorded evaluation. No distribution is inferred.`}
+          description="No recorded evaluation."
         />
       ) : failedRead !== undefined ? (
         <ErrorState
           message="Recorded score histograms could not be read"
-          detail="The comparison is withheld until both source runs can be read. No distribution is inferred."
+          detail="Comparison withheld."
         />
       ) : left.histogram === null || right.histogram === null ? (
         <EmptyState
           title="Score-distribution comparison unavailable"
-          description="At least one recorded run has no eval@2 histogram, as with an older eval@1 artifact. The chart requires both runs and does not infer bins from scalar metrics."
+          description="Histogram not recorded for one run."
         />
       ) : !isCompleteHistogram(left.histogram) || !isCompleteHistogram(right.histogram) ? (
         <ErrorState

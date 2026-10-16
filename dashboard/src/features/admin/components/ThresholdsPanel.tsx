@@ -119,11 +119,6 @@ export function ThresholdsPanel() {
       }
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted">
-          Each value is the lower bound of its band: a score at or above it is banded at least this
-          severely, and bands are matched from the top down. A hand-set value must keep the order
-          intact, and the server refuses one that would not.
-        </p>
         {recalibrate.isError ? (
           <p className="text-body-sm text-severityText-critical" role="alert">
             The recalibration could not run. No threshold was moved.
@@ -299,8 +294,7 @@ function ThresholdEditor({ family, row, onClose, onSave, refusal, saving }: Edit
         )}
         {preview.isError ? (
           <p className="text-body-sm text-severityText-critical" role="alert">
-            The impact preview could not be read, so nothing here can be saved: setting a threshold
-            without knowing what it would have done is the one thing this dialog exists to prevent.
+            Preview unavailable. Nothing can be saved.
           </p>
         ) : null}
         {reading === null ? null : (

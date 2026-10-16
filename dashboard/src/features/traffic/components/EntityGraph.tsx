@@ -55,12 +55,7 @@ export function EntityGraph({
   );
 
   if (model.nodes.length === 0) {
-    return (
-      <EmptyState
-        title="No addresses in this selection"
-        description="Widen the brush or lower the flow threshold to bring addresses back into view."
-      />
-    );
+    return <EmptyState title="No addresses in this selection" />;
   }
 
   return (

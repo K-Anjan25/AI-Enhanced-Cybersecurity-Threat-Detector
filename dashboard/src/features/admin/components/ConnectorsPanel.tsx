@@ -319,7 +319,7 @@ export function ConnectorsPanel() {
             empty={
               <EmptyState
                 title="No endpoints are registered"
-                description="An alert leaves the deployment only through one of these. R-55 refuses a destination that is not allowlisted or that resolves into a private address, and names which when it does."
+                description="Alerts leave only through allowlisted endpoints."
               />
             }
           />
@@ -414,10 +414,6 @@ export function ConnectorsPanel() {
               <dt className="text-muted">Registered</dt>
               <dd>{issued.createdAt}</dd>
             </dl>
-            <p className="text-body-sm text-muted">
-              The receiver verifies the signature with this secret, so send it to whoever operates
-              the endpoint — it is not stored anywhere it can be read back.
-            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -438,8 +434,7 @@ export function ConnectorsPanel() {
               />
             </label>
             <label className="flex flex-col gap-1 text-body-sm">
-              Description — optional, and never the URL: it is what a reader recognises the endpoint
-              by in a list.
+              Description (optional)
               <input
                 value={description}
                 onChange={(event) => {
@@ -465,11 +460,6 @@ export function ConnectorsPanel() {
                 ))}
               </select>
             </label>
-            <p className="text-body-sm text-muted">
-              FR-21 delivers `high` and `critical` by default; a lower floor sends more, and every
-              alert at or above it is one signed POST, retried with backoff while the receiver
-              answers with a retryable status.
-            </p>
             {readiness.reason === null ? null : (
               <p className="text-body-sm text-muted">{readiness.reason}</p>
             )}

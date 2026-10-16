@@ -26,10 +26,6 @@ export interface ShortcutReferenceProps {
 export function ShortcutReference({ open, shortcuts, onClose }: ShortcutReferenceProps) {
   return (
     <Modal open={open} title="Keyboard shortcuts" onClose={onClose}>
-      <p className="text-body-sm text-muted">
-        Everything in the dashboard is reachable and operable from the keyboard. These are the
-        shortcuts it adds on top of ordinary Tab and Enter navigation.
-      </p>
       <table className="mt-4 w-full border-collapse text-body">
         <caption className="sr-only">
           Keyboard shortcuts, what each does, and where it applies

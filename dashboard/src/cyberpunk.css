@@ -1,584 +1,293 @@
 /**
- * CYBERPUNK THEME — Pure CSS, zero JavaScript overhead.
+ * Terminal theme: phosphor on near-black, halftone texture, dashed rules.
  *
- * All effects are CSS-only: no canvas, no requestAnimationFrame,
- * no setInterval, no heavy JS animations. Memory-safe.
- *
- * Colours come from the design tokens in src/index.css (design.md §5); this file
- * only references them.
+ * Pure CSS, no JavaScript, no looping animation. Colours come from the design
+ * tokens in src/index.css (design.md §5); this file only references them.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ===== BODY — Static gradient, no animation ===== */
+/* ===== BODY ===== */
 
 body {
   background: var(--color-bg-base) !important;
-  background-image:
-    radial-gradient(
-      ellipse at 20% 50%,
-      color-mix(in srgb, var(--color-accent) 3%, transparent) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 80% 20%,
-      color-mix(in srgb, var(--severity-critical) 2%, transparent) 0%,
-      transparent 50%
-    ) !important;
-  font-family: Rajdhani, Inter, system-ui, sans-serif !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
 }
 
-/* Scanlines — static, no animation */
+/* Faint scanlines over the whole screen (dark theme only; see the light block). */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
+  pointer-events: none;
   background: repeating-linear-gradient(
     0deg,
     transparent,
-    transparent 2px,
-    color-mix(in srgb, var(--color-bg-base) 2%, transparent) 2px,
-    color-mix(in srgb, var(--color-bg-base) 2%, transparent) 4px
+    transparent 3px,
+    color-mix(in srgb, var(--color-bg-base) 35%, transparent) 3px,
+    color-mix(in srgb, var(--color-bg-base) 35%, transparent) 4px
   );
-  pointer-events: none;
   z-index: 9999;
 }
 
-/* ===== GRID BACKGROUND — Static ===== */
-
+/* Halftone dot field: the texture of the reference, in the accent colour. */
 .cyber-grid-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--color-accent) 2%, transparent) 1px, transparent 1px),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-accent) 2%, transparent) 1px,
-      transparent 1px
-    );
-  background-size: 60px 60px;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-accent) 22%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 8px 8px;
 }
 
-/* ===== NAVIGATION ===== */
+/* ===== NAVIGATION & HEADER ===== */
 
 nav[aria-label='Primary'] {
-  background: linear-gradient(
-    180deg,
-    var(--color-bg-surface) 0%,
-    var(--color-bg-base) 50%,
-    var(--color-bg-surface) 100%
-  ) !important;
-  border-right: 1px solid color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
+  border-right: 1px dashed var(--color-border);
 }
 
-.text-h2 {
-  font-family: Orbitron, Rajdhani, sans-serif !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.03em !important;
-  color: var(--color-text-primary) !important;
-}
-
-nav[aria-label='Primary'] .text-h2 {
-  font-family: Orbitron, Rajdhani, sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.3em !important;
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    var(--severity-info) 50%,
-    var(--severity-critical) 100%
-  );
-  /* stylelint-disable-next-line property-no-vendor-prefix -- Safari still needs the prefix for clipped text */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+nav[aria-label='Primary'] a {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
 }
 
 nav[aria-label='Primary'] a:hover {
-  background: color-mix(in srgb, var(--color-accent) 5%, transparent) !important;
-  border-left-color: color-mix(in srgb, var(--color-accent) 30%, transparent) !important;
+  color: var(--color-accent);
 }
 
 nav[aria-label='Primary'] a[class*='border-accent'] {
-  border-left-color: var(--color-accent) !important;
-  background: color-mix(in srgb, var(--color-accent) 8%, transparent) !important;
-  color: var(--color-accent) !important;
+  color: var(--color-accent);
 }
-
-header .text-caption {
-  font-family: 'JetBrains Mono', monospace !important;
-  letter-spacing: 0.15em !important;
-  color: color-mix(in srgb, var(--color-accent) 50%, transparent) !important;
-}
-
-nav[aria-label='Primary'] .text-caption {
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 10px !important;
-  letter-spacing: 0.2em !important;
-  color: color-mix(in srgb, var(--color-accent) 40%, transparent) !important;
-}
-
-/* ===== TOP BAR ===== */
 
 header {
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-surface) 0%,
-    var(--color-bg-surface) 50%,
-    var(--color-bg-surface) 100%
-  ) !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
+  border-bottom: 1px dashed var(--color-border);
 }
 
-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--color-accent) 30%, transparent) 20%,
-    color-mix(in srgb, var(--severity-critical) 30%, transparent) 50%,
-    color-mix(in srgb, var(--color-accent) 30%, transparent) 80%,
-    transparent
-  );
+header .text-caption,
+nav[aria-label='Primary'] .text-caption {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
 }
 
-/* ===== GLITCH TEXT — Pure CSS, no JS ===== */
+/* ===== TYPE ===== */
 
-.glitch-text {
-  font-family: Orbitron, Rajdhani, sans-serif !important;
-  font-weight: 700;
-  position: relative;
-  display: inline-block;
+.text-h1,
+.text-h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-.glitch-text-subtle::before,
-.glitch-text-subtle::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+/* Kept as a class so the components that use it keep compiling; no glitch. */
+.glitch-text,
+.glitch-text-subtle {
+  letter-spacing: 0.2em;
 }
 
-.glitch-text-subtle::before {
-  color: var(--severity-critical);
-  z-index: -1;
-  animation: glitch1 4s infinite linear alternate-reverse;
-}
-
-.glitch-text-subtle::after {
-  color: var(--color-accent);
-  z-index: -2;
-  animation: glitch2 3s infinite linear alternate-reverse;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .glitch-text::before,
-  .glitch-text::after {
-    animation: none !important;
-  }
-}
-
-@keyframes glitch1 {
-  0%,
-  90% {
-    clip-path: inset(0 0 95% 0);
-    transform: translate(-1px, 0);
-  }
-
-  92% {
-    clip-path: inset(40% 0 30% 0);
-    transform: translate(1px, 0);
-  }
-
-  94% {
-    clip-path: inset(80% 0 5% 0);
-    transform: translate(-1px, 0);
-  }
-
-  96% {
-    clip-path: inset(10% 0 60% 0);
-    transform: translate(1px, 0);
-  }
-
-  98% {
-    clip-path: inset(50% 0 20% 0);
-    transform: translate(-1px, 0);
-  }
-
-  100% {
-    clip-path: inset(0 0 95% 0);
-    transform: translate(1px, 0);
-  }
-}
-
-@keyframes glitch2 {
-  0%,
-  90% {
-    clip-path: inset(95% 0 0 0);
-    transform: translate(1px, 0);
-  }
-
-  92% {
-    clip-path: inset(30% 0 40% 0);
-    transform: translate(-1px, 0);
-  }
-
-  94% {
-    clip-path: inset(5% 0 80% 0);
-    transform: translate(1px, 0);
-  }
-
-  96% {
-    clip-path: inset(60% 0 10% 0);
-    transform: translate(-1px, 0);
-  }
-
-  98% {
-    clip-path: inset(20% 0 50% 0);
-    transform: translate(1px, 0);
-  }
-
-  100% {
-    clip-path: inset(95% 0 0 0);
-    transform: translate(-1px, 0);
-  }
-}
-
-/* ===== NEON CARD — Pure CSS ===== */
+/* ===== CARDS ===== */
 
 .neon-card {
   position: relative;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-bg-surface) 95%, transparent) 0%,
-    color-mix(in srgb, var(--color-bg-base) 98%, transparent) 100%
-  );
-  border: 1px solid var(--color-accent, color-mix(in srgb, var(--color-accent) 15%, transparent));
-  padding: 20px;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 12px) 0,
-    100% 12px,
-    100% 100%,
-    12px 100%,
-    0 calc(100% - 12px)
-  );
-  transition: border-color 0.2s ease;
-  overflow: hidden;
-}
-
-.neon-card:hover {
-  border-color: var(--color-accent, color-mix(in srgb, var(--color-accent) 40%, transparent));
+  background: var(--color-bg-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 0;
 }
 
 .neon-card-scanlines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    color-mix(in srgb, var(--color-bg-base) 3%, transparent) 2px,
-    color-mix(in srgb, var(--color-bg-base) 3%, transparent) 4px
-  );
-  pointer-events: none;
-  z-index: 1;
+  display: none;
 }
 
+/* Corner marks are not used in this theme. */
 .neon-card-corner {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  z-index: 2;
-}
-
-.neon-card-corner-tl {
-  top: 0;
-  left: 0;
-  border-top: 2px solid var(--color-accent);
-  border-left: 2px solid var(--color-accent);
-}
-
-.neon-card-corner-tr {
-  top: 0;
-  right: 0;
-  border-top: 2px solid var(--color-accent);
-  border-right: 2px solid var(--color-accent);
-}
-
-.neon-card-corner-bl {
-  bottom: 0;
-  left: 0;
-  border-bottom: 2px solid var(--color-accent);
-  border-left: 2px solid var(--color-accent);
-}
-
-.neon-card-corner-br {
-  bottom: 0;
-  right: 0;
-  border-bottom: 2px solid var(--color-accent);
-  border-right: 2px solid var(--color-accent);
+  display: none;
 }
 
 .neon-card-content {
   position: relative;
-  z-index: 3;
+  z-index: 1;
 }
 
-/* ===== CYBER BUTTON — Pure CSS ===== */
+[class*='rounded-card'] {
+  border: 1px dashed var(--color-border) !important;
+  background: var(--color-bg-surface) !important;
+  border-radius: 0 !important;
+}
+
+/* ===== BUTTONS ===== */
 
 .cyber-btn {
-  position: relative;
-  font-family: Rajdhani, sans-serif;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 10px 24px;
-  border: none;
-  cursor: pointer;
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
-  transition: box-shadow 0.2s ease;
+  letter-spacing: 0.15em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  transition: background-color var(--duration-micro) ease;
 }
 
-.cyber-btn-primary {
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    color-mix(in srgb, var(--color-accent) 70%, var(--color-bg-base)) 100%
-  );
-  color: var(--color-bg-base);
-}
-
-.cyber-btn-primary:hover {
-  box-shadow: 0 0 20px color-mix(in srgb, var(--color-accent) 40%, transparent);
-}
-
-.cyber-btn-danger {
-  background: linear-gradient(
-    135deg,
-    var(--severity-critical) 0%,
-    color-mix(in srgb, var(--severity-critical) 80%, var(--color-bg-base)) 100%
-  );
+.cyber-btn:hover {
+  background: var(--color-accent);
   color: var(--color-on-accent);
 }
 
-.cyber-btn-ghost {
+.cyber-btn-primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.cyber-btn-primary:hover {
   background: transparent;
   color: var(--color-accent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
-  clip-path: none;
+}
+
+.cyber-btn-danger {
+  border-color: var(--severity-critical);
+  color: var(--severity-text-critical);
+}
+
+.cyber-btn-danger:hover {
+  background: var(--severity-critical);
+  color: var(--color-on-severity);
+}
+
+.cyber-btn-ghost {
+  border-color: transparent;
+  color: var(--color-text-muted);
 }
 
 .cyber-btn-ghost:hover {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  color: var(--color-accent);
+  border-color: var(--color-border);
 }
 
 .cyber-btn-sm {
-  padding: 6px 14px;
-  font-size: 11px;
+  padding: 4px 12px;
+  font-size: 12px;
 }
 
 .cyber-btn-md {
-  padding: 10px 24px;
+  padding: 8px 16px;
   font-size: 13px;
 }
 
 .cyber-btn-lg {
-  padding: 14px 32px;
-  font-size: 15px;
+  padding: 12px 24px;
+  font-size: 14px;
 }
 
-/* ===== THREAT LEVEL BAR ===== */
-
-.threat-level-bar-segment {
-  flex: 1;
-  height: 12px;
-  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+button.bg-accent,
+button[class*='bg-accent'] {
+  color: var(--color-on-accent) !important;
 }
 
-/* ===== VECTOR SHIELD — Static SVG, no animation ===== */
+button.bg-severity-critical,
+button[class*='bg-severity-critical'] {
+  color: var(--color-on-severity) !important;
+}
 
-/* (No CSS needed — SVG handles its own rendering) */
+button:disabled {
+  opacity: 0.5 !important;
+}
+
+button.border-line {
+  color: var(--color-accent) !important;
+}
 
 /* ===== INPUTS / SELECTS ===== */
 
 input,
 select,
 textarea {
-  font-family: 'JetBrains Mono', monospace !important;
-  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
-  background: color-mix(in srgb, var(--color-bg-base) 80%, transparent) !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  border: 1px dashed var(--color-border) !important;
+  border-radius: 0 !important;
+  background: var(--color-bg-base) !important;
   color: var(--color-text-primary) !important;
-}
-
-select {
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
 }
 
 input:focus,
 select:focus,
 textarea:focus {
+  border-style: solid !important;
   border-color: var(--color-accent) !important;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
+  outline: none !important;
 }
 
-/* ===== BUTTONS — Ensure proper contrast in cyberpunk theme ===== */
+/* ===== STATUS & SEVERITY ===== */
 
-/* Primary buttons: dark text on cyan accent for readability */
-button.bg-accent,
-button[class*='bg-accent'] {
-  color: var(--color-bg-base) !important;
+.threat-level-bar-segment {
+  flex: 1;
+  height: 8px;
 }
 
-/* Danger buttons: white text on red */
-button.bg-severity-critical,
-button[class*='bg-severity-critical'] {
-  color: var(--color-on-accent) !important;
+.connection-dot-live {
+  background: var(--color-accent);
 }
 
-/* Disabled buttons: ensure text remains visible */
-button:disabled {
-  opacity: 0.6 !important;
-}
-
-/* Secondary buttons: cyan text on dark surface */
-button.border-line {
-  color: var(--color-accent) !important;
-}
-
-/* ===== CARDS ===== */
-
-[class*='rounded-card'] {
-  border-color: color-mix(in srgb, var(--color-accent) 10%, transparent) !important;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-bg-surface) 95%, transparent) 0%,
-    color-mix(in srgb, var(--color-bg-base) 98%, transparent) 100%
-  ) !important;
+.neon-glow-cyan,
+.neon-glow-green,
+.neon-glow-magenta {
+  color: var(--color-accent);
 }
 
 /* ===== TABLES ===== */
 
 table {
-  font-family: 'JetBrains Mono', monospace !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 table thead {
-  background: color-mix(in srgb, var(--color-accent) 3%, transparent) !important;
+  border-bottom: 1px dashed var(--color-border);
 }
 
 table th {
-  color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
-  font-size: 11px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.1em !important;
-  border-bottom-color: color-mix(in srgb, var(--color-accent) 15%, transparent) !important;
-}
-
-table td {
-  border-bottom-color: color-mix(in srgb, var(--color-accent) 5%, transparent) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
 }
 
 table tbody tr:hover {
-  background: color-mix(in srgb, var(--color-accent) 3%, transparent) !important;
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
-/* ===== SCROLLBAR ===== */
+[class*='rounded-pill'] {
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em !important;
+  border-radius: 0 !important;
+}
+
+/* ===== SCROLLBARS & SELECTION ===== */
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--color-bg-base) 50%, transparent);
+  background: var(--color-bg-base);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
-  border-radius: 3px;
+  background: var(--color-border);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: var(--color-accent);
 }
 
-/* ===== SELECTION ===== */
-
 ::selection {
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: var(--color-accent);
   color: var(--color-on-accent);
 }
 
-/* ===== TYPOGRAPHY ===== */
-
-.text-h1 {
-  font-family: Orbitron, Rajdhani, sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.05em !important;
-  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-accent) 100%);
-  /* stylelint-disable-next-line property-no-vendor-prefix -- Safari still needs the prefix for clipped text */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ===== NEON TEXT GLOW (static) ===== */
-
-.neon-glow-cyan {
-  text-shadow:
-    0 0 7px color-mix(in srgb, var(--color-accent) 60%, transparent),
-    0 0 20px color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-
-.neon-glow-magenta {
-  text-shadow:
-    0 0 7px color-mix(in srgb, var(--severity-critical) 60%, transparent),
-    0 0 20px color-mix(in srgb, var(--severity-critical) 20%, transparent);
-}
-
-.neon-glow-green {
-  text-shadow:
-    0 0 7px color-mix(in srgb, var(--severity-benign) 60%, transparent),
-    0 0 20px color-mix(in srgb, var(--severity-benign) 20%, transparent);
-}
-
-/* ===== CONNECTION DOT ===== */
-
-.connection-dot-live {
-  background: var(--severity-benign) !important;
-  box-shadow: 0 0 6px color-mix(in srgb, var(--severity-benign) 60%, transparent);
-}
-
-/* ===== BADGES ===== */
-
-[class*='rounded-pill'] {
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 10px !important;
-  letter-spacing: 0.05em !important;
-}
-
-/* ===== SKELETON LOADING ===== */
+/* ===== SKELETON ===== */
 
 [class*='animate-pulse'] {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--color-accent) 3%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 6%, transparent) 50%,
-    color-mix(in srgb, var(--color-accent) 3%, transparent) 100%
-  ) !important;
-  background-size: 200% 100% !important;
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent) !important;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -587,16 +296,10 @@ table tbody tr:hover {
   body::after {
     display: none;
   }
-
-  .cyber-grid-bg {
-    display: none;
-  }
 }
 
-/* ===== LIGHT THEME — no scanlines =====
-   The scanlines are a dark-screen effect. Drawn in the base colour over white,
-   they read as stripes across the whole page and across every card. */
+/* ===== LIGHT THEME: no scanlines, no dot field ===== */
 [data-theme='light'] body::after,
-[data-theme='light'] .neon-card-scanlines {
+[data-theme='light'] .cyber-grid-bg {
   display: none;
 }

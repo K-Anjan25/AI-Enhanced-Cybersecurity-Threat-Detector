@@ -144,7 +144,7 @@ describe('the hunt console', () => {
     renderHunt();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
-    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Run a query to see results/)).toBeInTheDocument();
     expect(seen).toEqual([]);
   });
 
@@ -325,7 +325,7 @@ describe('the hunt console', () => {
     await user.click(screen.getByRole('button', { name: 'Saved hunts (1)' }));
 
     // The menu states the store's boundary rather than implying a shared one.
-    expect(screen.getByText(/live in this browser only/)).toBeInTheDocument();
+    expect(screen.getByText(/Stored in this browser only/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'open queue' }));
     expect(box).toHaveValue('status:open');

@@ -216,29 +216,29 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). Light theme is a full peer, not an afterthought. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+Dark theme is the default: a phosphor-green display on near-black, for dim rooms and long shifts. Light theme is a full peer. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
 
 ### 5.1 Colour — dark theme (default)
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#050510` | — | App background |
-| `bg.surface` | `#0A0A1A` | — | Cards, panels, tables |
-| `border.default` | `#082C3C` | decorative | Hairlines; never the sole separator for essential info |
-| `text.primary` | `#E0E6FF` | 16.35 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#8A98B8` | 7.01 : 1 on `bg.base` · 6.78 : 1 on `bg.surface` | Secondary labels, metadata |
-| `accent` | `#00F0FF` | 14.39 : 1 on `bg.base` · 13.92 : 1 on `bg.surface` | Links, focus, primary actions |
+| `bg.base` | `#0B0E08` | — | App background |
+| `bg.surface` | `#121709` | — | Cards, panels, tables |
+| `border.default` | `#2C3B1C` | decorative | Hairlines; never the sole separator for essential info |
+| `text.primary` | `#D7F54A` | 15.78 : 1 on `bg.base` · 14.80 : 1 on `bg.surface` | Body, headings |
+| `text.muted` | `#8DA150` | 6.80 : 1 on `bg.base` · 6.38 : 1 on `bg.surface` | Secondary labels, metadata |
+| `accent` | `#D7F54A` | 15.78 : 1 on `bg.base` · 14.80 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.2 Colour — light theme
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#EEF2F8` | — | App background |
+| `bg.base` | `#EEF2E6` | — | App background |
 | `bg.surface` | `#FFFFFF` | — | Cards, panels, tables |
-| `border.default` | `#C3DDEB` | decorative | Hairlines |
-| `text.primary` | `#0A0B1E` | 17.31 : 1 on `bg.base` · 19.45 : 1 on `bg.surface` | Body, headings |
-| `text.muted` | `#4A5378` | 6.68 : 1 on `bg.base` · 7.50 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#00758F` | 4.74 : 1 on `bg.base` · 5.33 : 1 on `bg.surface` | Links, focus, primary actions |
+| `border.default` | `#C6D3AA` | decorative | Hairlines |
+| `text.primary` | `#111A06` | 15.74 : 1 on `bg.base` · 17.88 : 1 on `bg.surface` | Body, headings |
+| `text.muted` | `#4B5A2A` | 6.61 : 1 on `bg.base` · 7.51 : 1 on `bg.surface` | Secondary labels |
+| `accent` | `#3D6100` | 6.35 : 1 on `bg.base` · 7.22 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.3 Severity palette
 
@@ -246,25 +246,27 @@ Severity has **two** tokens per level. The base hue is for fills, borders, chart
 
 | Severity | Base (fill / chart) | Text on dark | Text on light | Glyph |
 |---|---|---|---|---|
-| `critical` | `#FF2A6D` | `#FF5C8A` — 6.90 / 6.67 | `#A8124A` — 6.56 / 7.37 | `●` filled + solid ring |
-| `high` | `#FF6B35` | `#FF9E6B` — 10.00 / 9.67 | `#9C3B00` — 6.15 / 6.91 | `●` filled |
-| `medium` | `#FCEE0A` | `#FCEE0A` — 16.78 / 16.22 | `#6B5000` — 6.74 / 7.57 | `◐` half |
-| `low` | `#00F0FF` | `#4DF7FF` — 15.51 / 15.00 | `#005F7F` — 6.35 / 7.13 | `○` hollow |
-| `info` | `#8B72FF` | `#B69FFF` — 9.07 / 8.77 | `#4A3FA0` — 7.45 / 8.37 | `○` hollow |
-| `benign` | `#05FFA1` | `#4DFFC2` — 15.83 / 15.31 | `#0A6B42` — 5.85 / 6.57 | `✓` |
+| `critical` | `#FF2A6D` | `#FF5C8A` — 6.62 / 6.21 | `#A8124A` — 6.48 / 7.37 | `●` filled + solid ring |
+| `high` | `#FF6B35` | `#FF9E6B` — 9.58 / 8.99 | `#9C3B00` — 6.08 / 6.91 | `●` filled |
+| `medium` | `#FCEE0A` | `#FCEE0A` — 16.08 / 15.08 | `#6B5000` — 6.66 / 7.57 | `◐` half |
+| `low` | `#00F0FF` | `#4DF7FF` — 14.87 / 13.94 | `#005F7F` — 6.28 / 7.13 | `○` hollow |
+| `info` | `#8B72FF` | `#B69FFF` — 8.69 / 8.15 | `#4A3FA0` — 7.36 / 8.37 | `○` hollow |
+| `benign` | `#05FFA1` | `#4DFFC2` — 15.18 / 14.23 | `#0A6B42` — 5.78 / 6.57 | `✓` |
 
 *Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes.*
 
-**Badge rule.** A severity badge is a base-hue fill with `#050510` text. Measured: critical 5.60, high 7.15, medium 16.78, low 14.39, info 5.74, benign 15.28 — all ≥ 4.5 : 1. White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited.
+**Badge rule.** A severity badge is a base-hue fill with `#0B0E08` text. Measured: critical 5.37, high 6.85, medium 16.08, low 13.80, info 5.51, benign 14.65 — all ≥ 4.5 : 1. White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 14.39 : 1 (dark) and 4.74 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 15.78 : 1 (dark) and 6.35 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 
+The UI uses one monospace family throughout, for the terminal look. Labels are uppercase with wide tracking.
+
 | Token | Size / line-height | Weight | Use |
 |---|---|---|---|
-| `font.display` | Orbitron, Rajdhani, system-ui fallback | — | Display headings and KPI titles |
-| `font.sans` | Rajdhani, Inter, system-ui fallback | — | All UI text |
+| `font.display` | JetBrains Mono, ui-monospace fallback | — | Display headings and KPI titles |
+| `font.sans` | JetBrains Mono, ui-monospace fallback | — | All UI text |
 | `font.mono` | JetBrains Mono, ui-monospace fallback | — | IPs, ports, hashes, log lines, scores |
 | `type.display` | 32 / 36 | 600 | KPI values |
 | `type.h1` | 24 / 32 | 600 | Page titles |
@@ -273,7 +275,7 @@ Severity has **two** tokens per level. The base hue is for fills, borders, chart
 | `type.body-sm` | 13 / 18 | 400 | Table cells, dense lists |
 | `type.caption` | 12 / 16 | 400 | Metadata, axis labels — never below 12 px |
 
-Minimum text size is 12 px. Numeric columns use `font.mono` with tabular figures so values align vertically.
+Minimum text size is 12 px. Numeric columns use tabular figures so values align vertically.
 
 ### 5.5 Spacing, radius, elevation
 

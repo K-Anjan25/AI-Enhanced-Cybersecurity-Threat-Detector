@@ -140,10 +140,7 @@ export function TriagePage() {
         <div className="flex flex-col gap-4">
           {selectedId === null ? (
             <Card title="No alert open">
-              <EmptyState
-                title="Select an alert from the queue"
-                description="Every row in the queue opens here: the reasons behind the alert, its timeline, the evidence trail and the context. The whole screen works from the keyboard."
-              />
+              <EmptyState title="Select an alert from the queue" />
             </Card>
           ) : createdAt === null ? (
             <Card title="This alert cannot be opened from this link">

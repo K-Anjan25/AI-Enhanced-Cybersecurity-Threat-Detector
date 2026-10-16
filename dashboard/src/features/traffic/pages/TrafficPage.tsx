@@ -77,10 +77,6 @@ export function TrafficPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1">Traffic</h1>
-          <p className="mt-1 text-body-sm text-muted">
-            Flow volume and composite score over the window, with the addresses those flows belong
-            to. Brushing the series re-reads the selected window for the table and the graph.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <ConnectionStatus state={connection.state} detail={connection.detail} />
