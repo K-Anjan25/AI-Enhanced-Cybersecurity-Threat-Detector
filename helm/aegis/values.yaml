@@ -121,12 +121,10 @@ postgresql:
       size: 20Gi
 
 # ──────────────────────────────────────────────
-# Kafka (optional — use external managed Kafka in production)
+# Kafka: not deployed by this chart. Provision Apache Kafka (apache/kafka, KRaft)
+# outside the release, as k8s/README.md describes. The Bitnami subchart was removed
+# because its images are no longer published.
 # ──────────────────────────────────────────────
-kafka:
-  enabled: false
-  persistence:
-    size: 20Gi
 
 # ──────────────────────────────────────────────
 # Secrets (created externally from cluster secret store)

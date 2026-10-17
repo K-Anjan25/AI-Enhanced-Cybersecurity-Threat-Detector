@@ -26,7 +26,3 @@ dependencies:
     version: '13.2.24'
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
-  - name: kafka
-    version: '26.8.0'
-    repository: https://charts.bitnami.com/bitnami
-    condition: kafka.enabled
