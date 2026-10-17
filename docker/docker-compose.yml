@@ -105,6 +105,10 @@ services:
     environment:
       AEGIS_ENV: development
       AEGIS_LOG_LEVEL: INFO
+    # The trained FlowNet checkpoint (data/checkpoints/flownet, not in Git). Without it the
+    # service runs, reports no flow model, and the backend scores with rules only.
+    volumes:
+      - ../data/checkpoints/flownet:/models/flownet:ro
     ports:
       - '8001:8001'
     healthcheck:

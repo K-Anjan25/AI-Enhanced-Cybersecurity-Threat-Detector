@@ -11,7 +11,9 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 COPY aegis_ml ./aegis_ml
-RUN pip install --no-cache-dir .
+# The training extra carries torch, which the trained FlowNet needs to score. Without it the
+# service still starts and serves /models, but /score/windows answers 503 with the reason.
+RUN pip install --no-cache-dir ".[training]"
 
 RUN useradd --create-home --uid 10001 aegis \
     && mkdir -p /app/artifacts \
