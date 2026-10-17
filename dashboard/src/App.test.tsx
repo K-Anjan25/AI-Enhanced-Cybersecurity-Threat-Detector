@@ -136,7 +136,7 @@ describe('routing and shell', () => {
   it('renders the overview page at the root', () => {
     renderAt('/');
 
-    expect(screen.getByRole('heading', { level: 1, name: 'OVERVIEW' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
   });
 
   it('renders the full information architecture in the nav', () => {
@@ -347,7 +347,7 @@ describe('the shell the three core screens are read in (T-413)', () => {
     // be checked — a page rendered on its own in a test has no `<main>` and should not
     // be required to mount one.
     for (const [path, heading] of [
-      ['/', 'OVERVIEW'],
+      ['/', 'Overview'],
       ['/alerts', 'Alert triage'],
       ['/hunt', 'Hunt'],
     ] as const) {
@@ -438,7 +438,7 @@ describe('below 768 px the console is the triage loop (T-412)', () => {
       viewport.setWidth(1280);
     });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'OVERVIEW' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: 'Screen size' })).not.toBeInTheDocument();
   });
 

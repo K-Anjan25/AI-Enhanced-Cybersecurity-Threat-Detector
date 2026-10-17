@@ -19,9 +19,6 @@
  *   * the attempts themselves — endpoint, outcome, retry count, HTTP status and the
  *     short reason code — newest first, in the same card as the sentence that says how
  *     much of the history the window holds;
- *   * the server's own caveats, rendered as written. A deployment with no outbound
- *     transport says exactly that instead of showing an empty table that would read as
- *     a quiet network (R-29, R-70).
  *
  * Removing an endpoint is a `ConfirmDialog`: it is a destructive act on configuration
  * that alerts are currently flowing to. The attempts already made keep their rows —
@@ -51,12 +48,9 @@ import {
 } from '../hooks';
 import {
   SECRET_ONCE_NOTE,
-  caveatText,
   connectorRows,
-  connectorSummary,
   creationReadiness,
   deliveryRows,
-  deliverySummary,
   floorChoices,
   floorLabel,
   issuedConnector,
@@ -85,10 +79,7 @@ export function ConnectorsPanel() {
   const [issued, setIssued] = useState<IssuedConnector | null>(null);
 
   const rows = connectorRows(targets.data?.items);
-  const summary = connectorSummary(targets.data?.items);
   const attempts = deliveryRows(deliveries.data?.items, targets.data?.items);
-  const attemptSummary = deliverySummary(deliveries.data);
-  const caveats = caveatText(deliveries.data);
   const readiness = creationReadiness(
     url,
     rows.map((row) => row.url),
@@ -298,7 +289,6 @@ export function ConnectorsPanel() {
         error={{ message: 'The endpoint list could not be read' }}
       >
         <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-muted">{summary.note}</p>
           {connectorRefusalMessage(remove.error, 'delete') === null ? null : (
             <p className="text-body-sm text-severityText-critical" role="alert">
               {connectorRefusalMessage(remove.error, 'delete')}
@@ -328,15 +318,6 @@ export function ConnectorsPanel() {
         error={{ message: 'The delivery history could not be read' }}
       >
         <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-muted">{attemptSummary.note}</p>
-          {/* The server's own sentences, as written (R-70): the window's limits are
-              the store's to describe, and a screen that paraphrased them would be a
-              second place for them to be wrong. */}
-          {caveats.map((sentence) => (
-            <p key={sentence} className="text-body-sm text-muted">
-              {sentence}
-            </p>
-          ))}
           <DataTable
             caption="Recent delivery attempts"
             columns={attemptColumns}

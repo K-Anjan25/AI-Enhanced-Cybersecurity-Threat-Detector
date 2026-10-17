@@ -34,7 +34,6 @@ import {
   creationReadiness,
   issuedKey,
   keyRows,
-  keySummary,
   scopeChoices,
   type IssuedKey,
   type KeyRow,
@@ -58,7 +57,6 @@ export function KeysPanel() {
   const [secret, setSecret] = useState<IssuedKey | null>(null);
 
   const rows = keyRows(keys.data?.items);
-  const summary = keySummary(keys.data?.items);
   const choices = scopeChoices(scopes.data?.items);
   const readiness = creationReadiness(name, picked);
   const live = secretIsLive(secret, open ? token : null);
@@ -192,9 +190,6 @@ export function KeysPanel() {
       error={{ message: 'The key list could not be read' }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted" data-testid="key-summary">
-          {summary.note}
-        </p>
         {keyRefusalMessage(revoke.error, 'revoke') === null ? null : (
           <p className="text-body-sm text-severityText-critical" role="alert">
             {keyRefusalMessage(revoke.error, 'revoke')}

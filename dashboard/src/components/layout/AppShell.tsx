@@ -27,21 +27,16 @@
  * height the design asks for became the height the bar needed.
  */
 import { useState, type ReactNode } from 'react';
-import { LogOut, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
 import { useViewportClass } from '../hooks/viewport';
 import { NarrowNotice } from './NarrowNotice';
 import { useTheme } from '../../theme/ThemeProvider';
-import { ConnectionBanner } from '../realtime/ConnectionBanner';
-import { useConnectionView } from '../realtime/useConnectionView';
-import { ConnectionStatus, type ConnectionState } from '../ui/ConnectionStatus';
 import { NAV_ITEMS } from './nav';
 
 interface AppShellProps {
-  /** Connection state for the top-bar indicator. */
-  connection?: ConnectionState;
   /**
    * Opens the command palette.
    *
@@ -55,14 +50,13 @@ interface AppShellProps {
   children?: ReactNode;
 }
 
-export function AppShell({ connection, onOpenPalette, onSignOut, children }: AppShellProps) {
+export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) {
   // `null` is "nobody has said", which is what lets the default follow the window:
   // §8.3's icon rail on a laptop, labels on a large monitor. Once the operator
   // toggles it their choice sticks, including across a resize — a rail that sprang
   // back to its default under the cursor would be the shell arguing with them.
   const [collapsedByHand, setCollapsedByHand] = useState<boolean | null>(null);
   const { theme, toggleTheme } = useTheme();
-  const view = useConnectionView(connection);
   const viewport = useViewportClass();
   const narrow = viewport === 'narrow';
   const collapsed = collapsedByHand ?? viewport === 'medium';
@@ -71,9 +65,6 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
 
   return (
     <div className="flex min-h-screen bg-base text-ink">
-      {/* Cyberpunk static grid — zero JS */}
-      <div className="cyber-grid-bg" aria-hidden="true" />
-
       {narrow ? null : (
         <nav
           aria-label="Primary"
@@ -145,7 +136,6 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-topbar items-center justify-between border-b border-line bg-surface px-6">
-          <span className="text-caption text-muted">AI-Enhanced Cybersecurity Threat Detector</span>
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -157,11 +147,6 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
               Search
               <kbd className="font-mono">{paletteKeyLabel()}</kbd>
             </button>
-            <ConnectionStatus state={view.state} detail={view.detail} />
-            <span className="hidden items-center gap-1 rounded-pill border border-line px-2 py-1 text-caption text-muted lg:inline-flex">
-              <ShieldCheck aria-hidden="true" className="size-icon-sm text-accent" />
-              Authenticated
-            </span>
             <button
               type="button"
               onClick={onSignOut}
@@ -182,18 +167,7 @@ export function AppShell({ connection, onOpenPalette, onSignOut, children }: App
           </div>
         </header>
 
-        {/* §8.3's banner. Above the connection banner, because it describes the whole
-            window rather than a stream that is down. */}
         {narrow ? <NarrowNotice showQueueLink /> : null}
-
-        {view.banner === null ? null : (
-          <ConnectionBanner
-            state={view.state}
-            message={view.banner.message}
-            explanation={view.banner.explanation}
-            onRetry={view.retryNow}
-          />
-        )}
 
         <main className="flex-1 p-6">{children ?? <Outlet />}</main>
       </div>

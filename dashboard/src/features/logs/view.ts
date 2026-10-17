@@ -23,7 +23,7 @@ import {
   worstLevel,
   type LogWindow,
 } from './cluster';
-import { formatCount, formatInstant, formatStamp } from '../../lib/format';
+import { formatInstant } from '../../lib/format';
 import type { BadgeTone } from '../../components/ui';
 import type { LogSource, LogTail } from './api';
 
@@ -59,19 +59,8 @@ export interface LogView {
   notableCount: number;
   /** The API's own caveats, in its own words, never rephrased. */
   caveats: string[];
-  /** What the source holds right now, as a sentence. */
-  retention: string;
   /** Which read model answered, or `null` before the first response (T-419). */
   source: LogSource | null;
-  /**
-   * One sentence naming the read model, so the screen never implies the other.
-   *
-   * `null` until a response arrives. It is deliberately not defaulted to the tail:
-   * a loading screen that already says "read from this process's own tail" has named
-   * a source it has not heard from, and on a store deployment that sentence is wrong
-   * every time the page opens.
-   */
-  sourceLabel: string | null;
   /** The screen's state, so a panel has no empty-success path. */
   state: 'loading' | 'error' | 'empty' | 'rows';
   /** Why there is nothing to show, in the API's own words, when there is nothing. */
@@ -109,35 +98,6 @@ function rowOf(cluster: LogCluster): LogRow {
 }
 
 /**
- * Which read model answered, in a sentence (T-419).
- *
- * The API's caveats say it too, in more detail; this is the short form the header
- * uses, and it exists so the screen cannot read like a live tail when it is in fact
- * reading a store — which is the difference between "these lines are gone in fifteen
- * minutes" and "these lines survive a restart".
- */
-const SOURCE_LABELS: Record<LogSource, string> = {
-  store: 'Read from the log store.',
-  tail: 'Read from this process’s own tail.',
-};
-
-/** The sentence about the source's own bounds: how much it holds, and what aged out. */
-function retentionSentence(tail: LogTail): string {
-  const parts = [`Holding ${formatCount(tail.retained_lines)} lines`];
-  // A store cannot report evictions -- nothing evicts yet -- so the sentence omits the
-  // clause rather than printing "0 aged out", which would be a claim it cannot make.
-  if (tail.dropped_lines !== null) {
-    parts.push(
-      tail.dropped_lines > 0
-        ? `${formatCount(tail.dropped_lines)} aged out`
-        : 'nothing aged out yet',
-    );
-  }
-  if (tail.retained_to !== null) parts.push(`newest ${formatStamp(tail.retained_to)}`);
-  return `${parts.join(' · ')}.`;
-}
-
-/**
  * Fold a response into what the page renders.
  *
  * `loading` is the query's own state rather than "no rows yet", so a first paint
@@ -158,9 +118,7 @@ export function buildLogView(input: LogViewInput): LogView {
       truncated: false,
       notableCount: 0,
       caveats: [],
-      retention: 'The logs could not be read.',
       source: null,
-      sourceLabel: null,
       state: 'error',
       emptyReason: null,
     };
@@ -176,9 +134,7 @@ export function buildLogView(input: LogViewInput): LogView {
       truncated: false,
       notableCount: 0,
       caveats: [],
-      retention: 'Reading the logs…',
       source: null,
-      sourceLabel: null,
       state: 'loading',
       emptyReason: null,
     };
@@ -194,9 +150,7 @@ export function buildLogView(input: LogViewInput): LogView {
     truncated: tail.clusters_truncated,
     notableCount: rows.filter((row) => row.notable).length,
     caveats: tail.caveats,
-    retention: retentionSentence(tail),
     source: tail.source,
-    sourceLabel: SOURCE_LABELS[tail.source],
     state: rows.length === 0 ? 'empty' : 'rows',
     // The API's second caveat is the specific one -- never accepted, aged out,
     // outside the window, or filtered away -- and it is the honest description of

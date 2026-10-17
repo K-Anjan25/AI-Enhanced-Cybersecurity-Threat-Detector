@@ -171,7 +171,6 @@ export function UsersPanel() {
       }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted">{summary.note}</p>
         {summary.stranded ? (
           <p className="text-body-sm text-severityText-critical" role="status">
             No active admin: every action on this screen will be refused until one exists.

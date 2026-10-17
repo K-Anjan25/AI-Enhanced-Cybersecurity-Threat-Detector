@@ -216,57 +216,57 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-Dark theme is the default: a phosphor-green display on near-black, for dim rooms and long shifts. Light theme is a full peer. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+The blue of the reference: a saturated field with white type, halftone imagery, and white pill buttons. Dark is the default. Light is a full peer on the same blue. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
 
 ### 5.1 Colour — dark theme (default)
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#0B0E08` | — | App background |
-| `bg.surface` | `#121709` | — | Cards, panels, tables |
-| `border.default` | `#2C3B1C` | decorative | Hairlines; never the sole separator for essential info |
-| `text.primary` | `#D7F54A` | 15.78 : 1 on `bg.base` · 14.80 : 1 on `bg.surface` | Body, headings |
-| `text.muted` | `#8DA150` | 6.80 : 1 on `bg.base` · 6.38 : 1 on `bg.surface` | Secondary labels, metadata |
-| `accent` | `#D7F54A` | 15.78 : 1 on `bg.base` · 14.80 : 1 on `bg.surface` | Links, focus, primary actions |
+| `bg.base` | `#0C3AE8` | — | App background |
+| `bg.surface` | `#0A2FC4` | — | Cards, panels, tables |
+| `border.default` | `#6F8FF7` | decorative | Hairlines; never the sole separator for essential info |
+| `text.primary` | `#FFFFFF` | 7.54 : 1 on `bg.base` · 9.47 : 1 on `bg.surface` | Body, headings |
+| `text.muted` | `#DBE5FF` | 5.98 : 1 on `bg.base` · 7.52 : 1 on `bg.surface` | Secondary labels, metadata |
+| `accent` | `#FFFFFF` | 7.54 : 1 on `bg.base` · 9.47 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.2 Colour — light theme
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `bg.base` | `#EEF2E6` | — | App background |
+| `bg.base` | `#F3F6FF` | — | App background |
 | `bg.surface` | `#FFFFFF` | — | Cards, panels, tables |
-| `border.default` | `#C6D3AA` | decorative | Hairlines |
-| `text.primary` | `#111A06` | 15.74 : 1 on `bg.base` · 17.88 : 1 on `bg.surface` | Body, headings |
-| `text.muted` | `#4B5A2A` | 6.61 : 1 on `bg.base` · 7.51 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#3D6100` | 6.35 : 1 on `bg.base` · 7.22 : 1 on `bg.surface` | Links, focus, primary actions |
+| `border.default` | `#B8C8F5` | decorative | Hairlines |
+| `text.primary` | `#0A1F8F` | 12.11 : 1 on `bg.base` · 13.08 : 1 on `bg.surface` | Body, headings |
+| `text.muted` | `#2F4BB3` | 7.00 : 1 on `bg.base` · 7.56 : 1 on `bg.surface` | Secondary labels |
+| `accent` | `#0C3AE8` | 6.98 : 1 on `bg.base` · 7.54 : 1 on `bg.surface` | Links, focus, primary actions |
 
 ### 5.3 Severity palette
 
-Severity has **two** tokens per level. The base hue is for fills, borders, chart marks, and the 3 px alert rail. The `text` variant is for any text rendered directly on a background — because the base hues fail AA as text in the light theme (critical `#E5484D` on white is only 3.91 : 1).
+Severity has **two** tokens per level. The base hue is for fills, borders, chart marks, and the 3 px alert rail. The `text` variant is for any text rendered directly on a background, because the base hues do not all reach AA as text on the blue surfaces.
 
 | Severity | Base (fill / chart) | Text on dark | Text on light | Glyph |
 |---|---|---|---|---|
-| `critical` | `#FF2A6D` | `#FF5C8A` — 6.62 / 6.21 | `#A8124A` — 6.48 / 7.37 | `●` filled + solid ring |
-| `high` | `#FF6B35` | `#FF9E6B` — 9.58 / 8.99 | `#9C3B00` — 6.08 / 6.91 | `●` filled |
-| `medium` | `#FCEE0A` | `#FCEE0A` — 16.08 / 15.08 | `#6B5000` — 6.66 / 7.57 | `◐` half |
-| `low` | `#00F0FF` | `#4DF7FF` — 14.87 / 13.94 | `#005F7F` — 6.28 / 7.13 | `○` hollow |
-| `info` | `#8B72FF` | `#B69FFF` — 8.69 / 8.15 | `#4A3FA0` — 7.36 / 8.37 | `○` hollow |
-| `benign` | `#05FFA1` | `#4DFFC2` — 15.18 / 14.23 | `#0A6B42` — 5.78 / 6.57 | `✓` |
+| `critical` | `#FF8AA0` | `#FFC6D3` — 5.12 / 6.44 | `#B0124A` — 6.41 / 6.93 | `●` filled + solid ring |
+| `high` | `#FF9A5C` | `#FFC49E` — 4.90 / 6.15 | `#A03A00` — 6.27 / 6.77 | `●` filled |
+| `medium` | `#FFE14D` | `#FFF17A` — 6.50 / 8.17 | `#6B5300` — 6.79 / 7.34 | `◐` half |
+| `low` | `#4DE1FF` | `#9CF0FF` — 5.86 / 7.36 | `#00607D` — 6.55 / 7.07 | `○` hollow |
+| `info` | `#B9A6FF` | `#D6CCFF` — 5.00 / 6.29 | `#4630B0` — 8.41 / 9.09 | `○` hollow |
+| `benign` | `#4DFFB8` | `#9DFFD9` — 6.37 / 8.00 | `#06673F` — 6.44 / 6.95 | `✓` |
 
 *Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes.*
 
-**Badge rule.** A severity badge is a base-hue fill with `#0B0E08` text. Measured: critical 5.37, high 6.85, medium 16.08, low 13.80, info 5.51, benign 14.65 — all ≥ 4.5 : 1. White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited.
+**Badge rule.** A severity badge is a base-hue fill with `#0A1F8F` text. Measured: critical 5.85, high 6.25, medium 10.05, low 8.43, info 6.20, benign 10.16 — all ≥ 4.5 : 1. White text on these fills fails (critical 2.97, medium 1.30) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 15.78 : 1 (dark) and 6.35 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 7.54 : 1 (dark) and 6.98 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 
-The UI uses one monospace family throughout, for the terminal look. Labels are uppercase with wide tracking.
+The UI uses Inter throughout, in sentence case, with uppercase reserved for short labels and the top navigation. Data (IPs, hashes, log lines, scores) uses JetBrains Mono.
 
 | Token | Size / line-height | Weight | Use |
 |---|---|---|---|
-| `font.display` | JetBrains Mono, ui-monospace fallback | — | Display headings and KPI titles |
-| `font.sans` | JetBrains Mono, ui-monospace fallback | — | All UI text |
+| `font.display` | Inter, system-ui fallback | — | Display headings and KPI titles |
+| `font.sans` | Inter, system-ui fallback | — | All UI text |
 | `font.mono` | JetBrains Mono, ui-monospace fallback | — | IPs, ports, hashes, log lines, scores |
 | `type.display` | 32 / 36 | 600 | KPI values |
 | `type.h1` | 24 / 32 | 600 | Page titles |
@@ -303,7 +303,6 @@ All primitives live in `dashboard/src/components/ui` and are the only approved b
 | `Timeline`, `TimeSeriesChart`, `EntityGraph` | D3-based, all accept a `reducedMotion` flag |
 | `Toast` | success / warning / error; auto-dismiss except errors |
 | `CommandPalette` | `⌘K`; navigates, filters, and runs saved hunts |
-| `ConnectionStatus` | live / degraded / disconnected; drives the global banner |
 | `EmptyState`, `ErrorState`, `Skeleton` | required by R-29 |
 
 ## 7. Data visualisation
@@ -393,3 +392,4 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 | 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
 | 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
 | 2026-10-07 | 0.3 | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081). |
+| 2026-10-17 | 0.4 | Restyled to the blue reference: blue-only palette (§5), Inter for UI text, plain cards in place of the decorative overview. Removed the connection indicator, reconnect banner, staleness stamps, and explanatory text from every screen (§6, §8.1). Added an unauthenticated landing page at `/`; other paths show sign-in. |

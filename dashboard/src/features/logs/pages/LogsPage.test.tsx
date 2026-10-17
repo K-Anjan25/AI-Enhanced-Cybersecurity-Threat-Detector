@@ -171,25 +171,13 @@ describe('LogsPage', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(3);
   });
 
-  it('summarises what was read, including how many rows hold an error or worse', async () => {
+  it('summarises what was read', async () => {
     stubLogs();
     renderPage();
 
     // The counts are the read result: `Reading the tail…` cannot satisfy this,
     // so the assertion waits for the read rather than for the element.
-    await waitFor(() =>
-      expect(
-        screen.getByText(/2 clusters · 10,003 lines · 1 with an error or worse/),
-      ).toBeInTheDocument(),
-    );
-  });
-
-  it('names the read model it is showing', async () => {
-    stubLogs();
-    renderPage();
-    await screen.findByRole('table', { name: /Log clusters/ });
-
-    expect(screen.getByText(/Read from this process’s own tail/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/2 clusters · 10,003 lines/)).toBeInTheDocument());
   });
 
   it('offers a store deployment the wider windows its source can read', async () => {
@@ -208,7 +196,6 @@ describe('LogsPage', () => {
       'Last hour',
       'Last 24 h',
     ]);
-    expect(screen.getByText(/Read from the log store/)).toBeInTheDocument();
   });
 
   it('offers a tail deployment only what its retention can answer', async () => {
@@ -295,25 +282,6 @@ describe('LogsPage', () => {
         Date.parse(url.searchParams.get('start') ?? '');
       expect(span).toBe(900_000);
     });
-  });
-
-  it("says where an expansion's lines came from, as the read that returned them did", async () => {
-    // A cluster count and the lines behind it can be answered by the same source, and
-    // the expansion says which one in the API's own words: an expansion taken from a
-    // fifteen-minute buffer must not read like a stored read (T-419, R-70).
-    const requests = stubLogs(
-      tail({ source: 'store', dropped_lines: null, caveats: STORE_CAVEATS }),
-      lines({ source: 'store', dropped_lines: null, caveats: STORE_CAVEATS }),
-    );
-    renderPage();
-    await screen.findByRole('table', { name: /Log clusters/ });
-
-    const table = await screen.findByRole('table', { name: /Log clusters/ });
-    await userEvent.click(within(table).getByRole('button', { name: 't-retry' }));
-
-    await screen.findByRole('heading', { name: 'Raw lines · t-retry' });
-    expect(screen.getByText('Read from the log store.')).toBeInTheDocument();
-    expect(new URL(requests.at(-1)?.url ?? '').searchParams.get('key')).toBe('t-retry');
   });
 
   it('reads no raw lines until a row is opened', async () => {

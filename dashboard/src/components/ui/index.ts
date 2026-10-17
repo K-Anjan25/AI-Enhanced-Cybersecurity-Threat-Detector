@@ -20,8 +20,6 @@ export { Button } from './Button';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
 export { Card, Card as Panel } from './Card';
 export type { CardProps, CardState } from './Card';
-export { ConnectionStatus } from './ConnectionStatus';
-export type { ConnectionState } from './ConnectionStatus';
 export { DataTable } from './DataTable';
 export type { Column, DataTableProps } from './DataTable';
 export { EmptyState } from './EmptyState';

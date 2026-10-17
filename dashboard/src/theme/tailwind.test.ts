@@ -430,7 +430,7 @@ describe('shipped sources', () => {
 
   it('scans the sources that exist, so the scan cannot pass vacuously', () => {
     expect(shipped.length).toBeGreaterThanOrEqual(4);
-    expect(shipped.map(([name]) => name)).toContain('components/ui/ConnectionStatus.tsx');
+    expect(shipped.map(([name]) => name)).toContain('components/ui/Badge.tsx');
   });
 
   it('carries no colour literal outside the token file (R-27)', () => {
