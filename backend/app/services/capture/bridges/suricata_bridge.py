@@ -50,6 +50,9 @@ API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")
 EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
 PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
+DEV_DEFAULT_PASSWORD = (
+    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+)
 BATCH_SIZE = 100
 FLUSH_INTERVAL = 5
 
@@ -83,9 +86,16 @@ def iter_lines(source: TextIO) -> Iterator[str | None]:
             yield item
 
 
-def authenticate() -> bool:
-    """Obtain a bearer token by logging in (or bootstrapping the admin account)."""
+def authenticate(force: bool = False) -> bool:
+    """Obtain a bearer token by logging in (or bootstrapping the admin account).
+
+    ``force`` discards the cached token first. A 401 means that token has expired
+    (access tokens last 900 s), so the retry must log in again; returning early on
+    the stale token is what left the bridge posting 401s until it was restarted.
+    """
     global TOKEN
+    if force:
+        TOKEN = ""  # nosec B105 - clears the cached token; this is not a credential
     if TOKEN:
         return True
     for endpoint, body in [
@@ -132,7 +142,7 @@ def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
             return int(body.get("accepted", 0))
     except urllib.error.HTTPError as e:
         if e.code == 401:
-            authenticate()
+            authenticate(force=True)
         return 0
     except (urllib.error.URLError, OSError, ValueError) as e:
         print(f"[SEND] Error: {e}", file=sys.stderr)
@@ -353,7 +363,7 @@ def main() -> None:
     EMAIL = args.email
     PASSWORD = args.password
 
-    if not PASSWORD or PASSWORD == "admin123456789":  # noqa: S105  # the development default, compared to refuse it; pragma: allowlist secret
+    if not PASSWORD or PASSWORD == DEV_DEFAULT_PASSWORD:
         print(
             "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in "
             "docker/.env) to a value other than the development default",

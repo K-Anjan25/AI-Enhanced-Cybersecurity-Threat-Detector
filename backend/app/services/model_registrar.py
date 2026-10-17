@@ -111,11 +111,23 @@ class ModelRegistrar:
         model_id = str(model.get("model_id", ""))
         if not model_id or model_id in self._registered:
             return
+        kind = model.get("kind", "flow")
+        status = model.get("status", "staging")
+        # The ML service reports every model it can score with as "active", so it can
+        # list two active flow models (the statistical fallback and FlowNet). The
+        # registry allows one active version per kind. The first one listed becomes
+        # the incumbent; any other "active" entry is registered as staging and is
+        # not promoted, because promotion would retire the incumbent. Promoting is a
+        # decision for an operator, not for this loop.
+        incumbent = self._model_ops.active(kind) if status == "active" else None
+        staged = incumbent is not None and incumbent.model_id != model_id
+        if staged:
+            status = "staging"
         try:
             version = ModelVersion(
                 model_id=model_id,
-                kind=model.get("kind", "flow"),
-                status=model.get("status", "staging"),
+                kind=kind,
+                status=status,
                 artifact_uri=model.get("artifact_uri", f"ml-service://{model_id}"),
                 sha256="0" * 64,
                 manifest_present=True,
@@ -126,15 +138,23 @@ class ModelRegistrar:
             logger.warning("model_registrar_register_failed model_id=%s error=%s", model_id, exc)
             return
 
-        try:
-            self._model_ops.promote(
+        if staged:
+            logger.info(
+                "model_registrar_staged model_id=%s kind=%s incumbent=%s",
                 model_id,
-                actor="model-registrar",
-                justification="Auto-registered from ML service",
-                at=datetime.now(UTC),
+                kind,
+                incumbent.model_id if incumbent is not None else "",
             )
-        except Exception as exc:  # noqa: BLE001 - promotion is optional; registration stands
-            logger.info("model_registrar_not_promoted model_id=%s reason=%s", model_id, exc)
+        else:
+            try:
+                self._model_ops.promote(
+                    model_id,
+                    actor="model-registrar",
+                    justification="Auto-registered from ML service",
+                    at=datetime.now(UTC),
+                )
+            except Exception as exc:  # noqa: BLE001 - promotion is optional; registration stands
+                logger.info("model_registrar_not_promoted model_id=%s reason=%s", model_id, exc)
 
         self._registered[model_id] = model
         self._stats["registrations"] += 1
