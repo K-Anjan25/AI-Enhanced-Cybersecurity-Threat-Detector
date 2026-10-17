@@ -66,6 +66,30 @@ BRUTE_FORCE_THRESHOLD = 10  # failed connections to auth ports
 DNS_TUNNEL_SIZE = 512  # bytes — large DNS queries are suspicious
 LATERAL_THRESHOLD = 5  # connections to lateral ports
 
+#: Score at or above which a trained-model window raises a ``flow_anomaly`` alert. The
+#: FlowNet checkpoint's measured operating point is 0.5 (its eval@2 report).
+ML_ALERT_THRESHOLD = 0.5
+#: Windows scored per detection cycle. Bounds the HTTP calls one cycle can make.
+ML_MAX_WINDOWS_PER_CYCLE = 200
+
+
+@dataclass(frozen=True, slots=True)
+class MlWindowResult:
+    """What the trained flow model said about one window."""
+
+    score: float
+    model_id: str
+    reasons: tuple[str, ...]
+    partial_evidence: bool
+
+
+class MlWindowScorerLike(Protocol):
+    """Anything that scores one window of ingested flow dicts, or returns None on failure."""
+
+    def score(self, flows: list[dict[str, object]]) -> MlWindowResult | None:
+        """Score the window, or return None when the model could not be reached."""
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class FlowRecord:
@@ -341,9 +365,23 @@ class RuleDetector:
         *,
         lookback_minutes: int = 10,
         entity_registry: object | None = None,
+        ml_scorer: MlWindowScorerLike | None = None,
+        ml_threshold: float = ML_ALERT_THRESHOLD,
+        ml_max_windows: int = ML_MAX_WINDOWS_PER_CYCLE,
     ) -> None:
-        """Build every family detector over one alert store and one correlator."""
+        """Build every family detector over one alert store and one correlator.
+
+        ``ml_scorer`` is optional. When set, each source window of two or more flows is
+        also scored by the trained flow model; a score at or above ``ml_threshold``
+        raises a ``flow_anomaly`` alert. A scorer that fails returns nothing, and the
+        rules still run.
+        """
         self._alerts = alert_store
+        self._ml = ml_scorer
+        self._ml_threshold = ml_threshold
+        self._ml_max_windows = ml_max_windows
+        self._ml_scored = 0
+        self._ml_errors = 0
         self._lookback = timedelta(minutes=lookback_minutes)
         self._entity_registry = entity_registry
         self._detectors: list[_Scanner] = [
@@ -366,32 +404,34 @@ class RuleDetector:
         return {
             "total_detections": self._total_detections,
             "total_alerts": self._total_alerts,
+            "ml_windows_scored": self._ml_scored,
+            "ml_errors": self._ml_errors,
         }
 
     def process_flows(self, flows: list[dict[str, object]]) -> list[dict[str, object]]:
         """Process a batch of flow dicts and return any new alerts created.
 
-        Each flow dict should have: ts, src_ip, dst_ip, src_port, dst_port,
-        proto, service, duration, orig_bytes, resp_bytes, conn_state.
+        Accepts the ``flow@1`` shape that ingest stores, and the legacy shape the
+        capture bridges used to send. Each source window is run through every rule and,
+        when a scorer is configured, through the trained flow model.
         """
         if not flows:
             return []
 
-        # Convert to FlowRecord objects
-        records: list[FlowRecord] = []
+        # Convert to FlowRecord objects, keeping the original dict per source window so
+        # the ML scorer receives the same fields that were ingested.
+        windows: dict[str, FlowWindow] = {}
+        originals: dict[str, list[dict[str, object]]] = defaultdict(list)
         for f in flows:
             try:
-                records.append(_flow_record(f))
-            except (ValueError, TypeError):
+                record = _flow_record(f)
+            except (ValueError, TypeError, KeyError):
                 continue
-
-        # Build windows by source IP
-        windows: dict[str, FlowWindow] = {}
-        for r in records:
-            key = r.src_ip
+            key = record.src_ip
             if key not in windows:
                 windows[key] = FlowWindow(key=key)
-            windows[key].add(r)
+            windows[key].add(record)
+            originals[key].append(f)
 
         # Run all detectors on each window
         new_alerts: list[dict[str, object]] = []
@@ -403,11 +443,8 @@ class RuleDetector:
                 if hit is None:
                     continue
                 self._total_detections += 1
-
-                # Create detection for the correlator
-                entity_id = _entity_id(hit.entity_key)
                 detection = Detection(
-                    entity_id=entity_id,
+                    entity_id=_entity_id(hit.entity_key),
                     family=hit.family,
                     modality=Modality.flow,
                     score=hit.score,
@@ -416,38 +453,88 @@ class RuleDetector:
                     model_id="rule-detector-v1",
                     explanation=Explanation(reasons=hit.reasons),
                 )
+                new_alerts.extend(self._correlate_and_store(detection, list(hit.reasons), now))
 
-                # Correlate (dedup, group, absorb)
-                outcome = self._correlator.ingest(detection)
-
-                if outcome.action in (Action.created, Action.grouped, Action.absorbed):
-                    case = outcome.case
-                    row = _alert_row_from_case(case)
-                    # Store in alert store
-                    try:
-                        self._alerts.save(
-                            case.id,
-                            row,
-                            created_at=(
-                                case.first_seen if isinstance(case.first_seen, datetime) else now
-                            ),
-                        )
-                        self._total_alerts += 1
-                        new_alerts.append(
-                            {
-                                "family": case.family,
-                                "severity": case.severity.value,
-                                "score": float(case.score),
-                                "entity_id": case.entity_id,
-                                "action": outcome.action.value,
-                                "explanation": list(hit.reasons),
-                            }
-                        )
-                    except Exception as exc:  # noqa: BLE001 - a store error must not stop the cycle
-                        _LOG.warning("rule_detector_store_failed", error=str(exc))
+        if self._ml is not None:
+            new_alerts.extend(self._score_with_model(self._ml, windows, originals, now))
 
         self._last_run = now
         return new_alerts
+
+    def _score_with_model(
+        self,
+        scorer: MlWindowScorerLike,
+        windows: dict[str, FlowWindow],
+        originals: dict[str, list[dict[str, object]]],
+        now: datetime,
+    ) -> list[dict[str, object]]:
+        """Score source windows with the trained flow model and alert above threshold.
+
+        A window with fewer than two flows is not scored, because the model needs a
+        sequence. A failed call is counted and skipped; it never raises an alert and
+        never records a zero, which would read as a clean window.
+        """
+        alerts: list[dict[str, object]] = []
+        scored_this_cycle = 0
+        for key, window in windows.items():
+            if len(window.flows) < 2:
+                continue
+            # The cap is per detection cycle, so the model keeps scoring in later cycles.
+            if scored_this_cycle >= self._ml_max_windows:
+                break
+            scored_this_cycle += 1
+            self._ml_scored += 1
+            result = scorer.score(originals[key])
+            if result is None:
+                self._ml_errors += 1
+                continue
+            if result.score < self._ml_threshold:
+                continue
+            reasons = list(result.reasons)
+            if result.partial_evidence:
+                reasons.insert(0, "Flow evidence only: the log model is not serving")
+            detection = Detection(
+                entity_id=_entity_id(key),
+                family="flow_anomaly",
+                modality=Modality.flow,
+                score=result.score,
+                at=window.end or now,
+                evidence_id=f"ml:{key}:{result.model_id}:{int(now.timestamp())}",
+                model_id=result.model_id,
+                explanation=Explanation(reasons=tuple(reasons)),
+            )
+            alerts.extend(self._correlate_and_store(detection, reasons, now))
+        return alerts
+
+    def _correlate_and_store(
+        self, detection: Detection, reasons: list[str], now: datetime
+    ) -> list[dict[str, object]]:
+        """Correlate one detection (dedup, group, absorb) and save any alert it creates."""
+        outcome = self._correlator.ingest(detection)
+        if outcome.action not in (Action.created, Action.grouped, Action.absorbed):
+            return []
+        case = outcome.case
+        row = _alert_row_from_case(case)
+        try:
+            self._alerts.save(
+                case.id,
+                row,
+                created_at=(case.first_seen if isinstance(case.first_seen, datetime) else now),
+            )
+        except Exception as exc:  # noqa: BLE001 - a store error must not stop the cycle
+            _LOG.warning("rule_detector_store_failed", error=str(exc))
+            return []
+        self._total_alerts += 1
+        return [
+            {
+                "family": case.family,
+                "severity": case.severity.value,
+                "score": float(case.score),
+                "entity_id": case.entity_id,
+                "action": outcome.action.value,
+                "explanation": reasons,
+            }
+        ]
 
 
 @dataclass(slots=True)
@@ -477,25 +564,47 @@ def _simple_fuse(flow_score: float | None, log_score: float | None) -> FusedScor
 def _flow_record(f: Mapping[str, object]) -> FlowRecord:
     """Build one :class:`FlowRecord` from a loosely typed flow dict.
 
+    Two shapes are read. ``flow@1`` (what ingest stores) carries ``timestamp``,
+    ``protocol``, ``src_bytes`` and ``dst_bytes``. The legacy capture shape carries
+    ``ts``, ``proto``, ``orig_bytes`` and ``resp_bytes``. Reading only the legacy names
+    silently turned every ingested flow into a zero-byte TCP flow at time zero, which
+    starved the timing and volume rules.
+
     Raises:
-        ValueError: if a numeric field cannot be parsed.
+        ValueError: if a numeric field cannot be parsed, or a timestamp is missing.
         TypeError: if a numeric field has an unsupported type.
     """
+    ts = f.get("ts")
+    if ts is None:
+        ts = _timestamp_seconds(f.get("timestamp"))
     duration = f.get("duration")
+    proto = f.get("proto", f.get("protocol", "tcp"))
+    orig = f.get("orig_bytes", f.get("src_bytes"))
+    resp = f.get("resp_bytes", f.get("dst_bytes"))
+    state = f.get("conn_state", f.get("state"))
     return FlowRecord(
-        ts=float(_num(f.get("ts"))),
+        ts=float(_num(ts)),
         src_ip=str(f.get("src_ip", "")),
         dst_ip=str(f.get("dst_ip", "")),
         src_port=int(_num(f.get("src_port"))),
         dst_port=int(_num(f.get("dst_port"))),
-        proto=str(f.get("proto", "tcp")),
+        proto=str(proto),
         service=_opt_str(f.get("service")),
         duration=None if duration is None else float(_num(duration)),
-        orig_bytes=int(_num(f.get("orig_bytes"))),
-        resp_bytes=int(_num(f.get("resp_bytes"))),
-        conn_state=_opt_str(f.get("conn_state")),
+        orig_bytes=int(_num(orig)),
+        resp_bytes=int(_num(resp)),
+        conn_state=_opt_str(state),
         source=_opt_str(f.get("source")),
     )
+
+
+def _timestamp_seconds(value: object) -> float:
+    """Epoch seconds from a ``flow@1`` timestamp (a datetime or an ISO-8601 string)."""
+    if isinstance(value, datetime):
+        return value.timestamp()
+    if isinstance(value, str):
+        return datetime.fromisoformat(value).timestamp()
+    raise ValueError("flow has no timestamp")
 
 
 def _num(value: object) -> float:

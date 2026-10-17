@@ -61,9 +61,7 @@ API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")
 EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
 PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
-DEV_DEFAULT_PASSWORD = (
-    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
-)
+DEV_DEFAULT_PASSWORD = "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
 BATCH_SIZE = 100
 FLUSH_INTERVAL = 5
 
@@ -157,8 +155,109 @@ def authenticate(force: bool = False) -> bool:
     return False
 
 
+# ── flow@1 contract ─────────────────────────────────────────────────────────────
+#
+# The ingest endpoint accepts only flow@1 and rejects any field outside it. This file is
+# copied into its container on its own, so the mapping lives here.
+
+_FLOW_V1_FIELDS = (
+    "timestamp",
+    "src_ip",
+    "dst_ip",
+    "src_port",
+    "dst_port",
+    "protocol",
+    "direction",
+    "service",
+    "state",
+    "packets",
+    "src_packets",
+    "dst_packets",
+    "src_bytes",
+    "dst_bytes",
+    "duration",
+    "syn",
+    "ack",
+    "rst",
+    "fin",
+    "psh",
+    "urg",
+    "label",
+)
+_FLOW_V1_PROTOCOLS = {
+    "tcp": "tcp",
+    "udp": "udp",
+    "icmp": "icmp",
+    "6": "tcp",
+    "17": "udp",
+    "1": "icmp",
+}
+_FLOW_V1_COUNTS = (
+    "src_port",
+    "dst_port",
+    "packets",
+    "src_packets",
+    "dst_packets",
+    "src_bytes",
+    "dst_bytes",
+    "syn",
+    "ack",
+    "rst",
+    "fin",
+    "psh",
+    "urg",
+)
+
+
+def _ipv4(ip: object) -> bool:
+    import ipaddress
+
+    try:
+        return isinstance(ipaddress.ip_address(str(ip)), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _direction(src_ip: str, dst_ip: str) -> str:
+    import ipaddress
+
+    def internal(ip: str) -> bool:
+        a = ipaddress.ip_address(ip)
+        return a.is_private or a.is_loopback or a.is_link_local
+
+    src_in, dst_in = internal(src_ip), internal(dst_ip)
+    if src_in and dst_in:
+        return "internal"
+    return "outbound" if src_in else "inbound"
+
+
+def to_flow_v1(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Map a bridge flow record to flow@1, or None when it cannot be one.
+
+    Records with a protocol outside tcp/udp/icmp or a non-IPv4 address are dropped, not
+    rewritten: a rewritten value would be a claim the sensor did not observe.
+    """
+    proto = _FLOW_V1_PROTOCOLS.get(str(record.get("protocol", "")).lower())
+    src_ip, dst_ip = str(record.get("src_ip", "")), str(record.get("dst_ip", ""))
+    if proto is None or not (_ipv4(src_ip) and _ipv4(dst_ip)):
+        return None
+    out: dict[str, Any] = {k: record[k] for k in _FLOW_V1_FIELDS if record.get(k) is not None}
+    for key in _FLOW_V1_COUNTS:
+        out[key] = int(out.get(key) or 0)
+    out.update(
+        schema_version="flow@1",
+        protocol=proto,
+        direction=_direction(src_ip, dst_ip),
+        duration=max(0.0, float(record.get("duration") or 0.0)),
+    )
+    out.setdefault("packets", out["src_packets"] + out["dst_packets"])
+    return out
+
+
 def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
     """Send records to the appropriate ingest endpoint."""
+    if modality == "flows":
+        records = [c for c in (to_flow_v1(r) for r in records) if c is not None]
     if not records or not TOKEN:
         return 0
     endpoint = f"/api/v1/ingest/{modality}"

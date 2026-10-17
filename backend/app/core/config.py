@@ -124,6 +124,10 @@ class Settings(BaseSettings):
     # to attach to registered model versions. Empty means no evaluations are loaded.
     ml_eval_reports_dir: str = Field(default="")
 
+    # Score each source window with the trained flow model in the detection cycle
+    # (2b). Rules run either way; a model that cannot be reached adds no alerts.
+    ml_detection_enabled: bool = Field(default=True)
+
     # Alert stream (FR-20). The interval is both how often a quiet stream says
     # "still here" and, per architecture.md §14, how often a dashboard whose
     # socket dropped polls instead -- 15 s by default.

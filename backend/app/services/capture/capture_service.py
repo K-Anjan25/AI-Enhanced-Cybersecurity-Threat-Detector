@@ -15,6 +15,7 @@ import signal
 import sys
 import threading
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 try:
@@ -32,13 +33,94 @@ __all__ = ["FlowAggregator", "CaptureService"]
 API_BASE = os.environ.get("AEGIS_API_URL", "http://backend:8000")
 API_EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
 API_PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
-DEV_DEFAULT_PASSWORD = (
-    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
-)
+DEV_DEFAULT_PASSWORD = "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
 INTERFACE = os.environ.get("AEGIS_CAPTURE_INTERFACE", "eth0")
 FLUSH_INTERVAL = int(os.environ.get("AEGIS_FLUSH_INTERVAL", "10"))
 BATCH_SIZE = int(os.environ.get("AEGIS_BATCH_SIZE", "200"))
 FILTER_EXPR = os.environ.get("AEGIS_CAPTURE_FILTER", "")
+
+
+# ── flow@1 contract ─────────────────────────────────────────────────────────────
+#
+# The aggregator keeps flows in its own shape (ts, proto, orig_bytes, orig_pkts...).
+# The ingest endpoint accepts only flow@1 and forbids any other field. Each container
+# runs this file on its own, so the mapping is kept here rather than imported.
+
+_FLOW_V1_PROTOCOLS = frozenset({"tcp", "udp", "icmp"})
+
+
+def _is_ipv4(ip: str) -> bool:
+    """True for a dotted-quad IPv4 address (the only form flow@1 accepts)."""
+    import ipaddress
+
+    try:
+        return isinstance(ipaddress.ip_address(ip), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _is_internal(ip: str) -> bool:
+    """Private, loopback or link-local: the monitored side of the boundary."""
+    import ipaddress
+
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return address.is_private or address.is_loopback or address.is_link_local
+
+
+def direction_of(src_ip: str, dst_ip: str) -> str:
+    """Direction relative to the monitored boundary (flow@1 ``direction``).
+
+    Transit traffic between two external hosts is reported as ``inbound``: it crosses
+    the boundary from outside, which is the only side a sensor here can see.
+    """
+    src_internal, dst_internal = _is_internal(src_ip), _is_internal(dst_ip)
+    if src_internal and dst_internal:
+        return "internal"
+    if src_internal:
+        return "outbound"
+    return "inbound"
+
+
+def to_flow_v1(flow: dict[str, Any]) -> dict[str, Any] | None:
+    """Map one aggregated flow to a ``flow@1`` record, or None when it cannot be one.
+
+    A flow with a protocol outside tcp/udp/icmp is dropped rather than sent with the
+    protocol rewritten, because a rewritten protocol would be a claim the sensor did not
+    observe.
+    """
+    proto = str(flow.get("proto", "")).lower()
+    if proto not in _FLOW_V1_PROTOCOLS:
+        return None
+    src_ip = str(flow.get("src_ip", ""))
+    dst_ip = str(flow.get("dst_ip", ""))
+    if not (_is_ipv4(src_ip) and _is_ipv4(dst_ip)):
+        # flow@1 carries IPv4 addresses only; IPv6 flows are not sent.
+        return None
+    orig_pkts = int(flow.get("orig_pkts", 0))
+    resp_pkts = int(flow.get("resp_pkts", 0))
+    orig_bytes = int(flow.get("orig_bytes", 0))
+    resp_bytes = int(flow.get("resp_bytes", 0))
+    return {
+        "schema_version": "flow@1",
+        "timestamp": datetime.fromtimestamp(float(flow["ts"]), tz=UTC).isoformat(),
+        "src_ip": src_ip,
+        "dst_ip": dst_ip,
+        "src_port": int(flow.get("src_port", 0)),
+        "dst_port": int(flow.get("dst_port", 0)),
+        "protocol": proto,
+        "direction": direction_of(src_ip, dst_ip),
+        "service": flow.get("service"),
+        "state": flow.get("conn_state"),
+        "packets": orig_pkts + resp_pkts,
+        "src_packets": orig_pkts,
+        "dst_packets": resp_pkts,
+        "src_bytes": orig_bytes,
+        "dst_bytes": resp_bytes,
+        "duration": max(0.0, float(flow.get("duration") or 0.0)),
+    }
 
 
 class FlowAggregator:
@@ -205,7 +287,12 @@ class CaptureService:
         if not token:
             return False
 
-        body = "\n".join(json.dumps(f) for f in flows)
+        # Ingest validates flow@1 and rejects unknown fields, so every flow is converted
+        # first. Before this, every capture batch was refused in full.
+        contract = [c for c in (to_flow_v1(f) for f in flows) if c is not None]
+        if not contract:
+            return False
+        body = "\n".join(json.dumps(f) for f in contract)
         req = urllib.request.Request(  # noqa: S310 - API_BASE is operator-configured
             f"{API_BASE}/api/v1/ingest/flows",
             data=body.encode(),
