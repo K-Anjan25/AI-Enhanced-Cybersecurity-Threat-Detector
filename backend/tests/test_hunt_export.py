@@ -144,7 +144,10 @@ def audit_entries(client: TestClient) -> list[dict[str, object]]:
         {"action": entry.record.action.value, "detail": dict(entry.record.detail)}
         for entry in trail.entries(
             start=START - timedelta(days=1),
-            end=START + timedelta(days=1),
+            # The route stamps the row with the wall clock, not the fixture's date, so the
+            # window must reach now. A fixed end would pass on the day the fixture was
+            # written and fail on every later day.
+            end=datetime.now(UTC) + timedelta(days=1),
             limit=100,
         )
     ]
@@ -347,7 +350,7 @@ def test_an_export_writes_exactly_one_row_naming_the_actor(
     entries = [e for e in audit_entries(client) if e["action"] == "hunt.export"]
     assert len(entries) == 1
     stored = client.app.state.audit_trail.entries(  # type: ignore[attr-defined]
-        start=START - timedelta(days=1), end=START + timedelta(days=1), limit=10
+        start=START - timedelta(days=1), end=datetime.now(UTC) + timedelta(days=1), limit=10
     )[0]
     assert stored.record.actor == "admin@corp"
     assert stored.record.target_type == "hunt"

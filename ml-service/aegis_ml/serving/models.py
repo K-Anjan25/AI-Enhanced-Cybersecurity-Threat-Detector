@@ -17,6 +17,7 @@ router = APIRouter(tags=["models"])
 
 class ModelInfo(BaseModel):
     """Information about a registered model."""
+
     model_id: str
     kind: str
     status: str
@@ -33,25 +34,34 @@ REGISTERED_MODELS: list[dict[str, Any]] = [
         "model_id": "statistical-anomaly-v1",
         "kind": "flow",
         "status": "active",
-        "description": "Statistical anomaly detection using flow feature analysis. Always available as safety net.",
+        "description": "Statistical anomaly detection using flow feature analysis. Always available as safety net.",  # noqa: E501
         "version": "1.0.0",
         "features": [
-            "port_diversity", "failure_rate", "short_flow_ratio",
-            "transfer_size", "packet_size_distribution", "dns_ratio",
+            "port_diversity",
+            "failure_rate",
+            "short_flow_ratio",
+            "transfer_size",
+            "packet_size_distribution",
+            "dns_ratio",
         ],
         "artifact_uri": "ml-service://statistical-anomaly-v1",
         "metrics": {
-            "precision": 0.78, "recall": 0.65, "f1": 0.71, "roc_auc": 0.82,
+            "precision": 0.78,
+            "recall": 0.65,
+            "f1": 0.71,
+            "roc_auc": 0.82,
         },
     },
     {
         "model_id": "flownet-v1",
         "kind": "flow",
         "status": "active",
-        "description": "FlowNet transformer: 4-layer encoder with reconstruction + anomaly heads (~1.2M params). Detects novel patterns via reconstruction error.",
+        "description": "FlowNet transformer: 4-layer encoder with reconstruction + anomaly heads (~1.2M params). Detects novel patterns via reconstruction error.",  # noqa: E501
         "version": "1.0.0",
         "features": [
-            "reconstruction_error", "anomaly_logits", "composite_score",
+            "reconstruction_error",
+            "anomaly_logits",
+            "composite_score",
         ],
         "artifact_uri": "ml-service://flownet-v1",
         "metrics": {
@@ -64,10 +74,11 @@ REGISTERED_MODELS: list[dict[str, Any]] = [
         "model_id": "lognet-v1",
         "kind": "log",
         "status": "active",
-        "description": "LogNet transformer: 6-layer encoder with masked-template prediction + hypersphere objective. Detects anomalous log sequences.",
+        "description": "LogNet transformer: 6-layer encoder with masked-template prediction + hypersphere objective. Detects anomalous log sequences.",  # noqa: E501
         "version": "1.0.0",
         "features": [
-            "masked_template_prediction", "hypersphere_distance",
+            "masked_template_prediction",
+            "hypersphere_distance",
         ],
         "artifact_uri": "ml-service://lognet-v1",
         "metrics": {
