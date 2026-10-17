@@ -130,6 +130,8 @@ services:
       AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
       AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
+      # The eval@2 report sits beside the checkpoint; the registrar attaches it to the model.
+      AEGIS_ML_EVAL_REPORTS_DIR: /models/flownet
       AEGIS_HOST: 0.0.0.0
       AEGIS_PORT: '8000'
       AEGIS_LOG_LEVEL: INFO
@@ -137,6 +139,9 @@ services:
       # local-development credential; override both with a .env file or the shell.
       AEGIS_BOOTSTRAP_ADMIN_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
       AEGIS_BOOTSTRAP_ADMIN_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
+    volumes:
+      # Read-only view of the checkpoint folder, for the eval@2 report only.
+      - ../data/checkpoints/flownet:/models/flownet:ro
     ports:
       - '8000:8000'
     depends_on:
