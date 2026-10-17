@@ -35,6 +35,7 @@ or body do not match the schema below.
 | `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
 | `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |
+| `GET` | `/api/v1/detection/status` | Detection + ML + Drift + Model status | admin, analyst, responder, viewer | `200` `application/json` | — |
 | `GET` | `/api/v1/flows` | Count one window of traffic: volume, addresses and relationships (FR-52) | admin, analyst, responder, viewer | `200` `FlowAggregateOut` | — |
 | `POST` | `/api/v1/hunt/export` | Export the alerts matching a hunt as CSV (FR-23) | admin, responder | `200` `text/csv` | `HuntExportRequest` |
 | `POST` | `/api/v1/ingest/flows` | Ingest flow records (flow@1) | admin, analyst, responder | `200` `IngestResponse` | `FlowRecordIn` |

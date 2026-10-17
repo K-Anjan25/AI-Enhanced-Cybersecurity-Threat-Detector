@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Refuse the development default password; see docker/.env.example.
+if [ -z "${AEGIS_PASSWORD:-}" ] || [ "${AEGIS_PASSWORD}" = "admin123456789" ]; then  # pragma: allowlist secret
+    echo "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in docker/.env) to a value other than the development default" >&2
+    exit 2
+fi
+
 INTERFACE="${AEGIS_CAPTURE_INTERFACE:-eth0}"
 API_URL="${AEGIS_API_URL:-http://backend:8000}"
 LOG_DIR="/var/log/suricata"
@@ -16,10 +22,10 @@ mkdir -p "$LOG_DIR"
 
 # Start Suricata in the background
 echo "[SURICATA] Starting Suricata IDS on $INTERFACE..."
-suricata -i "$INTERFACE" -l "$LOG_DIR" \
-    --set outputs.eve-log.enabled=yes \
-    --set outputs.eve-log.filetype=regular \
-    2>&1 &
+# eve-log is enabled by the stock suricata.yaml (filetype: regular, filename:
+# eve.json, relative to -l). Do not override it with --set: outputs is a YAML
+# list in Suricata 6, so "outputs.eve-log.*" fails with SC_ERR_INVALID_ARGUMENT.
+suricata -i "$INTERFACE" -l "$LOG_DIR" 2>&1 &
 
 SURICATA_PID=$!
 
@@ -41,11 +47,12 @@ fi
 echo "[SURICATA] eve.json found. Starting bridge to $API_URL..."
 
 # Run the bridge
-python3 -u /app/suricata_bridge.py \
+# Follow eve.json from the start and stream it into the bridge on stdin.
+# (suricata_bridge.py has no --log option; tail -F keeps it running.)
+tail -n +1 -F "$LOG_DIR/eve.json" | python3 -u /app/suricata_bridge.py \
     --api "$API_URL" \
     --email "${AEGIS_EMAIL:-admin@aegis.local}" \
-    --password "${AEGIS_PASSWORD:-admin123456789}" \
-    --log "$LOG_DIR/eve.json" &
+    --password "${AEGIS_PASSWORD}" &
 
 BRIDGE_PID=$!
 

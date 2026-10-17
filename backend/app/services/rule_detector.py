@@ -19,13 +19,13 @@ Each family maps to a score in [0, 1] and an explanation.
 from __future__ import annotations
 
 import hashlib
-import time
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Mapping
+from typing import Protocol
 
-from app.db.models import AlertStatus, Severity
+from app.core.logging import get_logger
 from app.services.alert_store import AlertStore
 from app.services.correlator import (
     Action,
@@ -36,11 +36,11 @@ from app.services.correlator import (
     FusedScoreLike,
     InMemoryCaseStore,
     Modality,
-    SeverityBands,
-    severity_for,
 )
 
 __all__ = ["RuleDetector", "FlowWindow"]
+
+_LOG = get_logger("aegis.rule_detector")
 
 # Ports commonly used for authentication
 AUTH_PORTS = frozenset({22, 23, 3389, 5900, 5985, 5986, 8022, 9090})
@@ -54,23 +54,23 @@ BEACON_INTERVALS = (60, 120, 300, 600, 900, 1800, 3600)
 # DNS port
 DNS_PORT = 53
 
-# Thresholds — use AEGIS_DEMO_THRESHOLD_DIVISOR to lower all thresholds
-# (e.g. set to 5 in development so normal traffic triggers alerts for demo)
-import os
-_threshold_divisor = int(os.environ.get("AEGIS_DEMO_THRESHOLD_DIVISOR", "1"))
-
-PORT_SCAN_THRESHOLD = max(3, 15 // _threshold_divisor)     # unique dst_ports from one src in window
-BEACON_MIN_FLOWS = max(2, 5 // _threshold_divisor)         # minimum flows to suspect beaconing
-BEACON_INTERVAL_TOLERANCE = 0.15                            # 15% tolerance on interval
-EXFIL_BYTE_THRESHOLD = max(1_000_000, 50_000_000 // _threshold_divisor)  # outbound bytes
-BRUTE_FORCE_THRESHOLD = max(2, 10 // _threshold_divisor)   # failed connections to auth ports
-DNS_TUNNEL_SIZE = 512                                       # bytes — large DNS queries are suspicious
-LATERAL_THRESHOLD = max(2, 5 // _threshold_divisor)        # connections to lateral ports
+# Thresholds. These are the documented detection bounds (architecture.md §7.2);
+# there is deliberately no environment override that quietly lowers them, because
+# a knob that turns normal traffic into alerts is how a demo earns a screenshot
+# and how a threshold drifts without anybody deciding it.
+PORT_SCAN_THRESHOLD = 15  # unique dst_ports from one src in window
+BEACON_MIN_FLOWS = 5  # minimum flows to suspect beaconing
+BEACON_INTERVAL_TOLERANCE = 0.15  # 15% tolerance on interval
+EXFIL_BYTE_THRESHOLD = 50_000_000  # outbound bytes
+BRUTE_FORCE_THRESHOLD = 10  # failed connections to auth ports
+DNS_TUNNEL_SIZE = 512  # bytes — large DNS queries are suspicious
+LATERAL_THRESHOLD = 5  # connections to lateral ports
 
 
 @dataclass(frozen=True, slots=True)
 class FlowRecord:
     """Minimal flow record for detection."""
+
     ts: float
     src_ip: str
     dst_ip: str
@@ -88,12 +88,14 @@ class FlowRecord:
 @dataclass(slots=True)
 class FlowWindow:
     """A time-bounded collection of flows for one source IP."""
+
     key: str
     flows: list[FlowRecord] = field(default_factory=list)
     start: datetime | None = None
     end: datetime | None = None
 
     def add(self, flow: FlowRecord) -> None:
+        """Add one flow and widen the window's bounds to contain it."""
         self.flows.append(flow)
         ts = datetime.fromtimestamp(flow.ts, tz=UTC)
         if self.start is None or ts < self.start:
@@ -105,6 +107,7 @@ class FlowWindow:
 @dataclass(frozen=True, slots=True)
 class RuleHit:
     """One detection from a rule."""
+
     family: str
     score: float
     reasons: tuple[str, ...]
@@ -112,8 +115,14 @@ class RuleHit:
 
 
 def _entity_id(key: str) -> int:
-    """Deterministic entity id from IP string."""
-    return int(hashlib.md5(key.encode()).hexdigest()[:8], 16)
+    """Deterministic entity id from IP string.
+
+    The hash is a keyed lookup into an id space, not a security control, so
+    MD5 is marked ``usedforsecurity=False``: the value is stable across runs
+    and processes, which is what the correlator's case ids rely on.
+    """
+    digest = hashlib.md5(key.encode(), usedforsecurity=False).hexdigest()
+    return int(digest[:8], 16)
 
 
 class PortScanDetector:
@@ -179,11 +188,7 @@ class BeaconDetector:
                         f"Regular beacon to {dest} every {avg_interval:.1f}s",
                         f"Jitter: {avg_deviation * 100:.1f}% (suspiciously low)",
                         f"{len(timestamps)} beacon signals detected",
-                        *(
-                            ("Matches known C2 interval pattern",)
-                            if matches_known
-                            else ()
-                        ),
+                        *(("Matches known C2 interval pattern",) if matches_known else ()),
                     ),
                     entity_key=window.key,
                 )
@@ -205,9 +210,11 @@ class ExfiltrationDetector:
                 score=score,
                 reasons=(
                     f"{total_outbound:,} bytes outbound from {window.key}",
-                    f"Largest flow: {top_flows[0].orig_bytes:,} bytes to {top_flows[0].dst_ip}"
-                    if top_flows
-                    else "",
+                    (
+                        f"Largest flow: {top_flows[0].orig_bytes:,} bytes to {top_flows[0].dst_ip}"
+                        if top_flows
+                        else ""
+                    ),
                     f"{len(window.flows)} flows in window",
                 ),
                 entity_key=window.key,
@@ -223,7 +230,8 @@ class BruteForceDetector:
             return None
         auth_flows = [f for f in window.flows if f.dst_port in AUTH_PORTS]
         failed = [
-            f for f in auth_flows
+            f
+            for f in auth_flows
             if f.conn_state in ("REJ", "RSTO", "RSTR", "S0", "SH")
             or (f.duration is not None and f.duration < 0.5 and f.resp_bytes < 100)
         ]
@@ -236,7 +244,7 @@ class BruteForceDetector:
                 reasons=(
                     f"{len(failed)} failed auth attempts from {window.key}",
                     f"Target ports: {', '.join(f'{p} ({c}x)' for p, c in targets)}",
-                    f"Success rate: {(len(auth_flows) - len(failed)) / max(len(auth_flows), 1) * 100:.1f}%",
+                    f"Success rate: {_success_rate(len(auth_flows), len(failed)):.1f}%",
                 ),
                 entity_key=window.key,
             )
@@ -274,10 +282,9 @@ class LateralMovementDetector:
         if not window.flows:
             return None
         lateral = [
-            f for f in window.flows
-            if f.dst_port in LATERAL_PORTS
-            and _is_internal(f.dst_ip)
-            and _is_internal(f.src_ip)
+            f
+            for f in window.flows
+            if f.dst_port in LATERAL_PORTS and _is_internal(f.dst_ip) and _is_internal(f.src_ip)
         ]
         if len(lateral) >= LATERAL_THRESHOLD:
             targets = Counter(f.dst_ip for f in lateral).most_common(5)
@@ -295,6 +302,11 @@ class LateralMovementDetector:
         return None
 
 
+def _success_rate(total: int, failed: int) -> float:
+    """Percentage of auth flows that did not fail, guarding against an empty set."""
+    return (total - failed) / max(total, 1) * 100
+
+
 def _is_internal(ip: str) -> bool:
     """Check if an IP is in a private range."""
     try:
@@ -302,14 +314,17 @@ def _is_internal(ip: str) -> bool:
         if len(parts) != 4:
             return False
         a, b = int(parts[0]), int(parts[1])
-        return (
-            a == 10
-            or (a == 172 and 16 <= b <= 31)
-            or (a == 192 and b == 168)
-            or a == 127
-        )
+        return a == 10 or (a == 172 and 16 <= b <= 31) or (a == 192 and b == 168) or a == 127
     except (ValueError, IndexError):
         return False
+
+
+class _Scanner(Protocol):
+    """One family detector: a window in, at most one hit out."""
+
+    def scan(self, window: FlowWindow) -> RuleHit | None:
+        """Return the family's hit for this window, if any."""
+        ...
 
 
 class RuleDetector:
@@ -327,10 +342,11 @@ class RuleDetector:
         lookback_minutes: int = 10,
         entity_registry: object | None = None,
     ) -> None:
+        """Build every family detector over one alert store and one correlator."""
         self._alerts = alert_store
         self._lookback = timedelta(minutes=lookback_minutes)
         self._entity_registry = entity_registry
-        self._detectors = [
+        self._detectors: list[_Scanner] = [
             PortScanDetector(),
             BeaconDetector(),
             ExfiltrationDetector(),
@@ -346,6 +362,7 @@ class RuleDetector:
 
     @property
     def stats(self) -> dict[str, int]:
+        """Running totals of detections and alerts."""
         return {
             "total_detections": self._total_detections,
             "total_alerts": self._total_alerts,
@@ -364,20 +381,7 @@ class RuleDetector:
         records: list[FlowRecord] = []
         for f in flows:
             try:
-                records.append(FlowRecord(
-                    ts=float(f.get("ts", 0)),
-                    src_ip=str(f.get("src_ip", "")),
-                    dst_ip=str(f.get("dst_ip", "")),
-                    src_port=int(f.get("src_port", 0)),
-                    dst_port=int(f.get("dst_port", 0)),
-                    proto=str(f.get("proto", "tcp")),
-                    service=f.get("service"),
-                    duration=f.get("duration"),
-                    orig_bytes=int(f.get("orig_bytes", 0)),
-                    resp_bytes=int(f.get("resp_bytes", 0)),
-                    conn_state=f.get("conn_state"),
-                    source=f.get("source"),
-                ))
+                records.append(_flow_record(f))
             except (ValueError, TypeError):
                 continue
 
@@ -424,35 +428,90 @@ class RuleDetector:
                         self._alerts.save(
                             case.id,
                             row,
-                            created_at=case.first_seen if isinstance(case.first_seen, datetime) else now,
+                            created_at=(
+                                case.first_seen if isinstance(case.first_seen, datetime) else now
+                            ),
                         )
                         self._total_alerts += 1
-                        new_alerts.append({
-                            "family": case.family,
-                            "severity": case.severity.value,
-                            "score": float(case.score),
-                            "entity_id": case.entity_id,
-                            "action": outcome.action.value,
-                            "explanation": list(hit.reasons),
-                        })
-                    except Exception:
-                        pass  # Don't crash the detector on store errors
+                        new_alerts.append(
+                            {
+                                "family": case.family,
+                                "severity": case.severity.value,
+                                "score": float(case.score),
+                                "entity_id": case.entity_id,
+                                "action": outcome.action.value,
+                                "explanation": list(hit.reasons),
+                            }
+                        )
+                    except Exception as exc:  # noqa: BLE001 - a store error must not stop the cycle
+                        _LOG.warning("rule_detector_store_failed", error=str(exc))
 
         self._last_run = now
         return new_alerts
 
 
-def _simple_fuse(scores: Mapping[str, float] | float | None, *args: object) -> FusedScoreLike:
-    """Simple fusion rule: just use the flow score directly."""
-    from app.services.correlator import FusedScoreLike
+@dataclass(slots=True)
+class _RuleFusion:
+    """A fused score that satisfies :class:`FusedScoreLike` structurally."""
 
-    if isinstance(scores, dict):
-        value = max(scores.values()) if scores else 0.0
-    elif isinstance(scores, (int, float)):
-        value = float(scores)
-    else:
-        value = 0.0
-    return FusedScoreLike(score=value, partial_evidence=False)
+    score: float
+    partial_evidence: bool
+
+
+def _simple_fuse(flow_score: float | None, log_score: float | None) -> FusedScoreLike:
+    """Fuse for rule detections: the flow score is the only modality that exists.
+
+    Rule hits carry no log modality, so the score is the flow score as-is and
+    ``partial_evidence`` is False. Refuses to invent a score when neither side is set.
+    """
+    if flow_score is None and log_score is None:
+        msg = "rule detector produced no score to fuse"
+        raise ValueError(msg)
+    value = flow_score if flow_score is not None else log_score
+    if value is None:  # unreachable after the guard above; typed, not asserted
+        msg = "rule detector produced no score to fuse"
+        raise ValueError(msg)
+    return _RuleFusion(score=float(value), partial_evidence=False)
+
+
+def _flow_record(f: Mapping[str, object]) -> FlowRecord:
+    """Build one :class:`FlowRecord` from a loosely typed flow dict.
+
+    Raises:
+        ValueError: if a numeric field cannot be parsed.
+        TypeError: if a numeric field has an unsupported type.
+    """
+    duration = f.get("duration")
+    return FlowRecord(
+        ts=float(_num(f.get("ts"))),
+        src_ip=str(f.get("src_ip", "")),
+        dst_ip=str(f.get("dst_ip", "")),
+        src_port=int(_num(f.get("src_port"))),
+        dst_port=int(_num(f.get("dst_port"))),
+        proto=str(f.get("proto", "tcp")),
+        service=_opt_str(f.get("service")),
+        duration=None if duration is None else float(_num(duration)),
+        orig_bytes=int(_num(f.get("orig_bytes"))),
+        resp_bytes=int(_num(f.get("resp_bytes"))),
+        conn_state=_opt_str(f.get("conn_state")),
+        source=_opt_str(f.get("source")),
+    )
+
+
+def _num(value: object) -> float:
+    """Coerce a stored numeric field; a missing field reads as zero."""
+    if value is None:
+        return 0.0
+    if isinstance(value, bool):
+        raise TypeError("boolean is not a numeric flow field")
+    if isinstance(value, (int, float, str)):
+        return float(value)
+    raise TypeError(f"unsupported flow field type {type(value).__name__}")
+
+
+def _opt_str(value: object) -> str | None:
+    """Return a string field, or None when it is absent."""
+    return None if value is None else str(value)
 
 
 def _alert_row_from_case(case: AlertCase) -> dict[str, object]:

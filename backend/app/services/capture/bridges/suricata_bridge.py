@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Suricata EVE JSON → AEGIS Ingestion Bridge
+"""Suricata EVE JSON → AEGIS Ingestion Bridge.
 
 Reads Suricata's eve.json output and converts events into AEGIS records.
 
@@ -32,25 +31,71 @@ Environment:
   AEGIS_API_URL     - Backend URL (default: http://localhost:8000)
   AEGIS_API_TOKEN   - Bearer token (auto-obtained if not set)
 """
-import os
-import sys
-import json
-import time
+
 import argparse
-import urllib.request
+import json
+import os
+import queue
+import signal
+import sys
+import threading
+import time
 import urllib.error
+import urllib.request
+from collections.abc import Iterator
 from datetime import datetime, timezone
+from typing import Any, TextIO
 
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")
 EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
-PASSWORD = os.environ.get("AEGIS_PASSWORD", "admin123456789")
+PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
+DEV_DEFAULT_PASSWORD = (
+    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+)
 BATCH_SIZE = 100
 FLUSH_INTERVAL = 5
 
 
-def authenticate():
+_EOF = object()
+
+
+def iter_lines(source: TextIO) -> Iterator[str | None]:
+    """Yield lines from ``source``, or None after FLUSH_INTERVAL seconds of silence.
+
+    A reader thread does the blocking reads, so the caller can still flush
+    pending batches when the sensor goes quiet (and on SIGTERM via finally).
+    """
+    lines: queue.Queue[object] = queue.Queue()
+
+    def pump() -> None:
+        for ln in source:
+            lines.put(ln)
+        lines.put(_EOF)
+
+    threading.Thread(target=pump, daemon=True).start()
+    while True:
+        try:
+            item = lines.get(timeout=FLUSH_INTERVAL)
+        except queue.Empty:
+            yield None
+            continue
+        if item is _EOF:
+            return
+        if isinstance(item, str):
+            yield item
+
+
+def authenticate(force: bool = False) -> bool:
+    """Obtain a bearer token by logging in (or bootstrapping the admin account).
+
+    ``force`` discards the cached token first. A 401 means that token has expired
+    (access tokens last 900 s), so the retry must log in again; returning early on
+    the stale token is what left the bridge posting 401s until it was restarted.
+    """
     global TOKEN
+    if force:
+        TOKEN = ""  # nosec B105 - clears the cached token; this is not a credential
     if TOKEN:
         return True
     for endpoint, body in [
@@ -59,50 +104,53 @@ def authenticate():
     ]:
         try:
             data = json.dumps(body).encode()
-            req = urllib.request.Request(
-                f"{API_URL}{endpoint}", data=data,
-                headers={"Content-Type": "application/json"}, method="POST"
+            req = urllib.request.Request(  # noqa: S310 - API_URL is operator-configured
+                f"{API_URL}{endpoint}",
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310  # nosec B310
                 result = json.loads(resp.read())
                 TOKEN = result["access_token"]
                 print(f"[AUTH] ✓ {result['subject']}", file=sys.stderr)
                 return True
-        except Exception:
+        except (urllib.error.URLError, OSError, ValueError, KeyError):
             continue
     print("[AUTH] ✗ Failed", file=sys.stderr)
     return False
 
 
-def send_batch(records, modality="flows"):
+def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
     """Send records to the appropriate ingest endpoint."""
     if not records or not TOKEN:
         return 0
     endpoint = f"/api/v1/ingest/{modality}"
     ndjson = "\n".join(json.dumps(r) for r in records)
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310 - API_URL is operator-configured
         f"{API_URL}{endpoint}",
         data=ndjson.encode(),
         headers={
             "Content-Type": "application/x-ndjson",
             "Authorization": f"Bearer {TOKEN}",
         },
-        method="POST"
+        method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310  # nosec B310
             body = json.loads(resp.read())
-            return body.get("accepted", 0)
+            return int(body.get("accepted", 0))
     except urllib.error.HTTPError as e:
         if e.code == 401:
-            authenticate()
+            authenticate(force=True)
         return 0
-    except Exception as e:
+    except (urllib.error.URLError, OSError, ValueError) as e:
         print(f"[SEND] Error: {e}", file=sys.stderr)
         return 0
 
 
-def parse_alert(event):
+def parse_alert(event: dict[str, Any]) -> dict[str, Any]:
+    """Suricata alert event → AEGIS log record."""
     """Convert Suricata alert event → AEGIS log record with severity mapping.
 
     Suricata alerts are the PRIMARY reason to run Suricata in production.
@@ -159,7 +207,8 @@ def parse_alert(event):
     }
 
 
-def parse_flow(event):
+def parse_flow(event: dict[str, Any]) -> dict[str, Any]:
+    """Suricata flow event → AEGIS flow record."""
     """Convert Suricata flow event → AEGIS flow record."""
     return {
         "src_ip": event.get("src_ip", ""),
@@ -179,7 +228,8 @@ def parse_flow(event):
     }
 
 
-def parse_dns(event):
+def parse_dns(event: dict[str, Any]) -> dict[str, Any]:
+    """Suricata DNS event → AEGIS log record."""
     """Convert Suricata DNS event → AEGIS log record.
 
     DNS logs are critical for detecting:
@@ -213,7 +263,8 @@ def parse_dns(event):
     }
 
 
-def parse_http(event):
+def parse_http(event: dict[str, Any]) -> dict[str, Any]:
+    """Suricata HTTP event → AEGIS log record."""
     """Convert Suricata HTTP event → AEGIS log record.
 
     HTTP logs enable detection of:
@@ -252,7 +303,8 @@ def parse_http(event):
     }
 
 
-def parse_tls(event):
+def parse_tls(event: dict[str, Any]) -> dict[str, Any]:
+    """Suricata TLS event → AEGIS log record."""
     """Convert Suricata TLS event → AEGIS log record.
 
     TLS logs enable detection of:
@@ -292,10 +344,14 @@ def parse_tls(event):
     }
 
 
-def main():
+def main() -> None:
+    """Parse arguments, authenticate, and stream Suricata EVE events to AEGIS."""
     global API_URL, EMAIL, PASSWORD
 
-    parser = argparse.ArgumentParser(description="Suricata EVE → AEGIS bridge")
+    # Let the entrypoint's SIGTERM unwind through finally so batches flush.
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+
+    parser = argparse.ArgumentParser(description="Suricata EVE → AEGIS bridge", allow_abbrev=False)
     parser.add_argument("--file", "-f", help="Read from file instead of stdin")
     parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
     parser.add_argument("--email", help="Login email", default=EMAIL)
@@ -307,25 +363,42 @@ def main():
     EMAIL = args.email
     PASSWORD = args.password
 
+    if not PASSWORD or PASSWORD == DEV_DEFAULT_PASSWORD:
+        print(
+            "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in "
+            "docker/.env) to a value other than the development default",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
     if not authenticate():
         sys.exit(1)
 
     print(f"[SURICATA] Bridge started. API={API_URL}", file=sys.stderr)
     print("[SURICATA] Sending: alerts→logs, flows→flows, dns/http/tls→logs", file=sys.stderr)
 
-    flow_batch = []
-    log_batch = []
+    flow_batch: list[dict[str, Any]] = []
+    log_batch: list[dict[str, Any]] = []
     last_flush = time.time()
-    counts = {"alerts": 0, "flows": 0, "dns": 0, "http": 0, "tls": 0}
+    counts: dict[str, int] = {"alerts": 0, "flows": 0, "dns": 0, "http": 0, "tls": 0}
 
-    if args.file:
-        source = open(args.file, "r")
-    else:
-        source = sys.stdin
+    source: TextIO = open(args.file) if args.file else sys.stdin  # noqa: SIM115 - closed in finally
 
     try:
-        for line in source:
-            line = line.strip()
+        for raw in iter_lines(source):
+            now = time.time()
+            if now - last_flush >= FLUSH_INTERVAL:
+                if flow_batch:
+                    send_batch(flow_batch, "flows")
+                    flow_batch = []
+                if log_batch:
+                    send_batch(log_batch, "logs")
+                    log_batch = []
+                print(f"[SURICATA] stats: {counts}", file=sys.stderr)
+                last_flush = now
+            if raw is None:
+                continue
+            line = raw.strip()
             if not line:
                 continue
             try:
@@ -350,17 +423,6 @@ def main():
             elif event_type == "tls":
                 log_batch.append(parse_tls(event))
                 counts["tls"] += 1
-
-            now = time.time()
-            if now - last_flush >= FLUSH_INTERVAL:
-                if flow_batch:
-                    send_batch(flow_batch, "flows")
-                    flow_batch = []
-                if log_batch:
-                    send_batch(log_batch, "logs")
-                    log_batch = []
-                print(f"[SURICATA] stats: {counts}", file=sys.stderr)
-                last_flush = now
 
     except KeyboardInterrupt:
         pass
