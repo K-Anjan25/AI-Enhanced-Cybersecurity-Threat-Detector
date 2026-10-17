@@ -13,11 +13,11 @@
  *     §5.3 publishes a ratio for against both backgrounds (≥ 4.5:1, asserted by
  *     src/theme/tokens.test.ts), precisely so it can be read on a surface.
  *
- * Both carry the §5.3 glyph, because colour is never the only encoding (NFR-09).
+ * Both carry the severity as a word, because colour is never the only encoding (NFR-09).
  * Neither lets the caller pass a colour: the severity chooses both the rail and the
  * text.
  */
-import { SEVERITY_GLYPHS, SEVERITY_LABELS, type Severity } from './severity';
+import { SEVERITY_LABELS, type Severity } from './severity';
 
 /** The §5.3 text variant of each hue. These are the AA-safe form on a surface. */
 const TEXT: Record<Severity, string> = {
@@ -53,7 +53,6 @@ export function SeverityPill({ severity, detail }: SeverityPillProps) {
     <span
       className={`inline-flex items-baseline gap-2 border-l-rail pl-2 ${RAIL[severity]} ${TEXT[severity]}`}
     >
-      <span aria-hidden="true">{SEVERITY_GLYPHS[severity]}</span>
       <span className="text-caption font-semibold">{SEVERITY_LABELS[severity]}</span>
       {detail === undefined ? null : <span className="text-caption text-muted">{detail}</span>}
     </span>

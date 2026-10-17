@@ -6,7 +6,7 @@
  * The presentation rule is the acceptance criterion: **a stage over its budget is
  * red, and it says which budget it exceeded** — "p95 412 ms vs budget 150 ms
  * (NFR-01)". Colour alone would fail NFR-09 anyway, so the status is written out in
- * words beside the mark, and the mark is a glyph as well as a hue.
+ * words beside the mark, and the word is the second encoding besides the hue.
  *
  * A stage nothing measures renders as *not measured*, with its budget still shown:
  * the absence of an instrument is information an operator needs, and the
@@ -16,13 +16,10 @@ import { Badge, type Severity } from '../../../components/ui';
 import { formatMilliseconds, formatRate } from '../../../lib/format';
 import type { StageHealth, StageStatus } from '../pipeline';
 
-const STATUS_BADGE: Record<
-  StageStatus,
-  { tone: Severity | 'neutral'; label: string; glyph: string }
-> = {
-  ok: { tone: 'benign', label: 'within budget', glyph: '\u25CF' },
-  degraded: { tone: 'critical', label: 'over budget', glyph: '\u25CF' },
-  unmeasured: { tone: 'neutral', label: 'latency not measured', glyph: '\u25CB' },
+const STATUS_BADGE: Record<StageStatus, { tone: Severity | 'neutral'; label: string }> = {
+  ok: { tone: 'benign', label: 'within budget' },
+  degraded: { tone: 'critical', label: 'over budget' },
+  unmeasured: { tone: 'neutral', label: 'latency not measured' },
 };
 
 export interface PipelineStripProps {
@@ -76,10 +73,7 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
             <li key={stage.spec.id} className="rounded-input border border-line p-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-body font-semibold text-ink">{stage.spec.label}</h3>
-                <Badge tone={badge.tone}>
-                  <span aria-hidden="true">{badge.glyph} </span>
-                  {badge.label}
-                </Badge>
+                <Badge tone={badge.tone}>{badge.label}</Badge>
               </div>
               <p className="mt-1 text-caption text-muted">{stage.spec.covers}</p>
               <ul className="mt-1 flex flex-col gap-1">

@@ -24,20 +24,20 @@
   --color-on-accent: #0f232e; /* text on the accent fill; asserted in tokens.test.ts */
 
   /* Severity: base hues for fills, charts, and the alert rail. */
-  --severity-critical: #ff8aa0;
-  --severity-high: #ff9a5c;
-  --severity-medium: #ffe14d;
-  --severity-low: #4de1ff;
-  --severity-info: #b9a6ff;
-  --severity-benign: #4dffb8;
+  --severity-critical: #d27884;
+  --severity-high: #c98d5e;
+  --severity-medium: #cfb35e;
+  --severity-low: #6e9cb5;
+  --severity-info: #9baab9;
+  --severity-benign: #6ba58a;
 
   /* Severity text variants: the base hues do not all reach AA as text, so text uses these. */
-  --severity-text-critical: #ffc6d3; /* 5.12 / 6.44 */
-  --severity-text-high: #ffc49e; /* 4.90 / 6.15 */
-  --severity-text-medium: #fff17a; /* 6.50 / 8.17 */
-  --severity-text-low: #9cf0ff; /* 5.86 / 7.36 */
-  --severity-text-info: #d6ccff; /* 5.00 / 6.29 */
-  --severity-text-benign: #9dffd9; /* 6.37 / 8.00 */
+  --severity-text-critical: #eba6ae; /* 8.15 / 6.95 */
+  --severity-text-high: #ebc29f; /* 9.81 / 8.36 */
+  --severity-text-medium: #e9d595; /* 11.09 / 9.46 */
+  --severity-text-low: #afd0e1; /* 9.95 / 8.48 */
+  --severity-text-info: #dbe2e9; /* 12.36 / 10.54 */
+  --severity-text-benign: #aad4bb; /* 9.88 / 8.43 */
 
   /* Badge rule (design.md §5.3): base-hue fill with #0f232e text, all >= 4.5:1. */
   --color-on-severity: #0f232e;
@@ -57,19 +57,19 @@
   --color-accent: #0000ff; /* 6.57:1 on base, 8.59:1 on surface */
   --color-on-accent: #ffffff; /* text on the accent fill; asserted in tokens.test.ts */
 
-  --severity-critical: #ff8aa0;
-  --severity-high: #ff9a5c;
-  --severity-medium: #ffe14d;
-  --severity-low: #4de1ff;
-  --severity-info: #b9a6ff;
-  --severity-benign: #4dffb8;
+  --severity-critical: #d27884;
+  --severity-high: #c98d5e;
+  --severity-medium: #cfb35e;
+  --severity-low: #6e9cb5;
+  --severity-info: #9baab9;
+  --severity-benign: #6ba58a;
 
-  --severity-text-critical: #b0124a; /* 6.41 / 6.93 */
-  --severity-text-high: #a03a00; /* 6.27 / 6.77 */
-  --severity-text-medium: #6b5300; /* 6.79 / 7.34 */
-  --severity-text-low: #00607d; /* 6.55 / 7.07 */
-  --severity-text-info: #4630b0; /* 8.41 / 9.09 */
-  --severity-text-benign: #06673f; /* 6.44 / 6.95 */
+  --severity-text-critical: #8a2c3a; /* 6.42 / 8.39 */
+  --severity-text-high: #7e4620; /* 5.77 / 7.54 */
+  --severity-text-medium: #5e4f12; /* 6.17 / 8.07 */
+  --severity-text-low: #2d5870; /* 5.86 / 7.66 */
+  --severity-text-info: #3e5160; /* 6.30 / 8.23 */
+  --severity-text-benign: #2d6446; /* 5.32 / 6.95 */
 
   --color-on-severity: #0f232e;
   --focus-ring: #0000ff; /* 6.57:1 against base */

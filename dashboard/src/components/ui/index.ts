@@ -32,7 +32,7 @@ export { ScoreMeter, scoreBand } from './ScoreMeter';
 export type { ScoreBand, ScoreMeterProps } from './ScoreMeter';
 export { SeverityPill } from './SeverityPill';
 export type { SeverityPillProps } from './SeverityPill';
-export { SEVERITIES, SEVERITY_GLYPHS, SEVERITY_LABELS, isSeverity } from './severity';
+export { SEVERITIES, SEVERITY_LABELS, isSeverity } from './severity';
 export type { Severity } from './severity';
 export { Skeleton } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';

@@ -140,7 +140,7 @@ export function driftView(samples: readonly Sample[]): DriftView {
 }
 
 /**
- * The glyph and word a drifting feature carries.
+ * The word a drifting feature carries.
  *
  * A badge rather than colour alone: R-27's contrast rules and NFR-10's non-colour
  * encoding both require the state to survive a monochrome screenshot, and the design

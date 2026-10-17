@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { expectAccessible } from '../../test/axe';
 import { Badge } from './Badge';
-import { SEVERITIES, SEVERITY_GLYPHS } from './severity';
+import { SEVERITIES } from './severity';
 
 describe('Badge', () => {
   it.each(SEVERITIES)('fills the %s badge with its hue and near-black text', (severity) => {
@@ -11,18 +11,18 @@ describe('Badge', () => {
     // the `onSeverity` token. No variant of this component puts light text on a fill.
     render(<Badge tone={severity}>{severity}</Badge>);
 
-    const badge = screen.getByText(SEVERITY_GLYPHS[severity]).parentElement as HTMLElement;
+    const badge = screen.getByText(severity);
     expect(badge.className).toContain(`bg-severity-${severity}`);
     expect(badge.className).toContain('text-onSeverity');
     expect(badge).toHaveTextContent(severity);
   });
 
-  it('carries the §5.3 glyph, hidden from assistive technology', () => {
-    // NFR-09: colour is never the only encoding. The glyph is the second encoding,
-    // hidden because the label beside it already says the same thing in words.
+  it('writes the severity in words and draws no symbol beside it', () => {
+    // NFR-09: colour is never the only encoding. The word is the second encoding.
     render(<Badge tone="critical">Critical</Badge>);
 
-    expect(screen.getByText(SEVERITY_GLYPHS.critical)).toHaveAttribute('aria-hidden', 'true');
+    const badge = screen.getByText('Critical');
+    expect(badge.textContent).toBe('Critical');
   });
 
   it('renders neutral as a hairline chip rather than a severity fill', () => {

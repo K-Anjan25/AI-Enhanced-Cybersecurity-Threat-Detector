@@ -7,13 +7,12 @@
  * `onSeverity` token — near-black in both themes, and the only colour the closed
  * palette will compile for it.
  *
- * Colour is never the only encoding (NFR-09): every severity badge carries the
- * §5.3 glyph as well, hidden from assistive technology because the label beside it
- * already says the same thing in words.
+ * Colour is never the only encoding (NFR-09): the severity is also written out in
+ * words as the badge's children, so no symbol is drawn.
  */
 import { type ReactNode } from 'react';
 
-import { SEVERITY_GLYPHS, type Severity } from './severity';
+import { type Severity } from './severity';
 
 export type BadgeTone = Severity | 'neutral';
 
@@ -39,7 +38,6 @@ export function Badge({ tone = 'neutral', children }: BadgeProps) {
     <span
       className={`inline-flex items-center gap-2 rounded-input px-2 py-1 text-caption font-semibold ${FILLS[tone]}`}
     >
-      {tone === 'neutral' ? null : <span aria-hidden="true">{SEVERITY_GLYPHS[tone]}</span>}
       {children}
     </span>
   );

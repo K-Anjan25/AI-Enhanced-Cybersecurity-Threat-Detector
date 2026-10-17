@@ -18,7 +18,7 @@
 3. **Calm by default, loud when it matters.** A SOC dashboard is stared at for eight hours. Reserve saturated colour and motion for severity — a screen that shouts constantly trains the analyst to ignore it.
 4. **Density is a feature.** Analysts are expert users. Prefer information density with clear hierarchy over generous whitespace that pushes evidence below the fold. Offer a comfortable mode; do not force one.
 5. **Honest states.** Loading, empty, partial, degraded, and error are distinct, labelled states. The UI never renders a blank panel where data failed to arrive, and never invents a number.
-6. **Colour is never the only channel.** Severity is encoded by colour **and** label **and** icon, so the product is usable by colour-blind analysts and in greyscale printing (NFR-09).
+6. **Colour is never the only channel.** Severity is encoded by colour **and** label, so the product is usable by colour-blind analysts and in greyscale printing (NFR-09).
 
 ## 2. Personas and key flows
 
@@ -125,7 +125,7 @@ Purpose: "is anything happening, and is AEGIS itself healthy?"
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Left severity rail: 3 px colour bar **plus** a glyph (`●` filled for high/critical, `○` hollow below).
+- Left severity rail: 3 px colour bar **plus** the severity word.
 - Row content hierarchy: severity label → one-line summary in plain language → family · entity · age · occurrences.
 - Bulk selection with checkbox column; bulk actions limited to what the role may do (R-53).
 - Virtualised list; the queue is expected to hold thousands of rows.
@@ -244,18 +244,18 @@ The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, 
 
 Severity has **two** tokens per level. The base hue is for fills, borders, chart marks, and the 3 px alert rail. The `text` variant is for any text rendered directly on a background, because the base hues do not all reach AA as text on the blue surfaces.
 
-| Severity   | Base (fill / chart) | Text on dark            | Text on light           | Glyph                   |
+| Severity   | Base (fill / chart) | Text on dark            | Text on light           | Label    |
 |---|---|---|---|---|
-| `critical` | `#FF8AA0`           | `#FFC6D3` — 10.98 / 9.36 | `#B0124A` — 5.30 / 6.93 | `●` filled + solid ring |
-| `high`     | `#FF9A5C`           | `#FFC49E` — 10.49 / 8.95 | `#A03A00` — 5.18 / 6.77 | `●` filled              |
-| `medium`   | `#FFE14D`           | `#FFF17A` — 13.93 / 11.88 | `#6B5300` — 5.61 / 7.34 | `◐` half                |
-| `low`      | `#4DE1FF`           | `#9CF0FF` — 12.55 / 10.71 | `#00607D` — 5.41 / 7.07 | `○` hollow              |
-| `info`     | `#B9A6FF`           | `#D6CCFF` — 10.72 / 9.15 | `#4630B0` — 6.96 / 9.09 | `○` hollow              |
-| `benign`   | `#4DFFB8`           | `#9DFFD9` — 13.64 / 11.64 | `#06673F` — 5.32 / 6.95 | `✓`                     |
+| `critical` | `#D27884` | `#EBA6AE` — 8.15 / 6.95 | `#8A2C3A` — 6.42 / 8.39 | `Critical` |
+| `high` | `#C98D5E` | `#EBC29F` — 9.81 / 8.36 | `#7E4620` — 5.77 / 7.54 | `High` |
+| `medium` | `#CFB35E` | `#E9D595` — 11.09 / 9.46 | `#5E4F12` — 6.17 / 8.07 | `Medium` |
+| `low` | `#6E9CB5` | `#AFD0E1` — 9.95 / 8.48 | `#2D5870` — 5.86 / 7.66 | `Low` |
+| `info` | `#9BAAB9` | `#DBE2E9` — 12.36 / 10.54 | `#3E5160` — 6.30 / 8.23 | `Info` |
+| `benign` | `#6BA58A` | `#AAD4BB` — 9.88 / 8.43 | `#2D6446` — 5.32 / 6.95 | `Benign` |
 
 _Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes._
 
-**Badge rule.** A severity badge is a base-hue fill with `#0F232E` text. Measured: critical 7.23, high 7.71, medium 12.41, low 10.41, info 7.66, benign 12.55 — all ≥ 4.5 : 1. White text on these fills fails (critical 2.24, medium 1.30) and is prohibited.
+**Badge rule.** A severity badge is a base-hue fill with `#0F232E` text. Measured: critical 5.20, high 5.73, medium 7.89, low 5.45, info 6.80, benign 5.67 — all ≥ 4.5 : 1. White text on these fills fails (critical 3.11, medium 2.05) and is prohibited.
 
 **Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 16.15 : 1 (dark) and 6.57 : 1 (light) — above the 3 : 1 non-text requirement.
 
@@ -288,7 +288,7 @@ Minimum text size is 12 px. Numeric columns use tabular figures so values align 
 
 ### 5.6 Iconography
 
-Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content. Severity additionally uses the glyph column from §5.3.
+Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content. Severity additionally uses the word label from §5.3.
 
 ## 6. Component library
 
@@ -358,7 +358,7 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 - **Contrast:** all text pairs in §5.1–§5.3 meet 4.5 : 1; large text and UI components meet 3 : 1. Numbers above are computed, not estimated.
 - **Keyboard:** every action reachable and operable by keyboard. Visible focus ring per §5.3. A documented shortcut set (`⌘K`, `j`/`k`, `Enter`, `1`/`2`/`3`, `Esc`, `/`) with an in-app shortcut reference.
 - **Screen readers:** semantic landmarks, one `h1` per page, table headers wired via `scope`, live regions (`aria-live="polite"`) for new alerts and toasts, `aria-live="assertive"` for critical alerts only.
-- **Not colour alone:** severity = colour + text label + glyph (§5.3). Charts have a data-table alternative toggled by a "view as table" control.
+- **Not colour alone:** severity = colour + text label (§5.3). Charts have a data-table alternative toggled by a "view as table" control.
 - **Motion:** `prefers-reduced-motion` fully honoured (§8.2).
 - **Forms:** every field has a persistent visible label (placeholder is not a label), inline validation with `aria-describedby`, errors announced.
 - **Testing:** `eslint-plugin-jsx-a11y` in CI, `@axe-core/react` assertions in component tests, and one manual screen-reader pass per release with the result recorded in the release note.
@@ -397,3 +397,4 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 | 2026-10-17 | 0.4     | Restyled to the blue reference: blue-only palette (§5), Inter for UI text, plain cards in place of the decorative overview. Removed the connection indicator, reconnect banner, staleness stamps, and explanatory text from every screen (§6, §8.1). Added an unauthenticated landing page at `/`; other paths show sign-in.                                   |
 | 2026-10-17 | 0.5     | Rebuilt the landing page to the reference layout: hero headline, halftone art field (artwork supplied as `dashboard/public/landing-hero.jpg`), three feature cards, primary and secondary CTAs. Added `type.hero` (64/68) and `type.stat` (48/52) to §5.4.                                                                                                     |
 | 2026-10-17 | 0.6 | Re-based the palette on the brand sheet: Mariana Blue field and Grey type in dark, Dawning Mist field and Deep Blue accent in light. Replaced the cobalt values in §5.1 and §5.2; updated the severity text and badge ratios and the focus ring to match. |
+| 2026-10-17 | 0.7 | Toned the severity hues down to sit with the brand palette and kept each text variant at 4.5:1 or better. Replaced the symbol glyphs with the severity word, so every severity is written out in words; the §5.3 Glyph column is now Label. |
