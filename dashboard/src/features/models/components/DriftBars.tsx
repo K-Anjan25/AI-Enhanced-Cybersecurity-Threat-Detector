@@ -42,12 +42,7 @@ export function DriftBars({ view, at, loading, error }: DriftBarsProps) {
     );
   }
   if (error !== null) {
-    return (
-      <ErrorState
-        message="The scrape could not be read, so no PSI is shown."
-        detail="The drift screen reads the same /metrics document Prometheus scrapes; a refused or unreachable scrape leaves it with nothing to draw."
-      />
-    );
+    return <ErrorState message="The scrape could not be read, so no PSI is shown." />;
   }
   if (view.absent) {
     return (

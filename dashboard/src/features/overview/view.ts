@@ -1,6 +1,6 @@
 /**
  * Small decisions the overview makes about *what to say*: which panel state a
- * query is in, how stale the data is, what a bucket is called, and which tiles
+ * query is in, what a bucket is called, and which tiles
  * exist.
  *
  * They are pure functions in their own module so the page component is left with
@@ -8,10 +8,8 @@
  * and the bucket labels are exactly the kind of thing that is off by one and only
  * shows up at 04:00.
  */
-import { type ConnectionState, type Severity } from '../../components/ui';
-import { formatAge } from '../../lib/format';
+import { type Severity } from '../../components/ui';
 import { type SeverityTally } from './aggregate';
-import { CHART_REFRESH_MS } from './hooks';
 import type { Tile } from './components/KpiTiles';
 
 /** The four states a panel can be in (R-29). */
@@ -27,58 +25,6 @@ export function panelState(status: 'pending' | 'error' | 'success', rowCount: nu
   if (status === 'pending') return 'loading';
   if (status === 'error') return 'error';
   return rowCount === 0 ? 'empty' : 'ready';
-}
-
-/**
- * How long before data counts as stale: two missed polls.
- *
- * One missed poll is a hiccup; two means the refresh has stopped working, which is
- * the moment §8.1 says to stop presenting old numbers as current.
- */
-export const STALE_AFTER_MS = 2 * CHART_REFRESH_MS;
-
-export interface Staleness {
-  ageSeconds: number | null;
-  label: string;
-  stale: boolean;
-}
-
-/**
- * The "last update" age.
- *
- * `null` means nothing has arrived yet — which is not "0 s ago", it is the state
- * where there is no data to be stale.
- */
-export function staleness(
-  updatedAt: number | null,
-  now: number,
-  staleAfterMs: number = STALE_AFTER_MS,
-): Staleness {
-  if (updatedAt === null || !Number.isFinite(updatedAt)) {
-    return { ageSeconds: null, label: 'no data yet', stale: false };
-  }
-  const ageMs = Math.max(0, now - updatedAt);
-  return {
-    ageSeconds: ageMs / 1_000,
-    label: `last update ${formatAge(ageMs / 1_000)}`,
-    stale: ageMs > staleAfterMs,
-  };
-}
-
-/**
- * What the connection indicator says.
- *
- * A failed scrape is *disconnected*, not degraded: the console has stopped hearing
- * from the server, which is the distinction principle 5 exists to make. Stale data
- * is degraded — the last answer was real, it is just old.
- */
-export function connectionState(input: {
-  alertsFailed: boolean;
-  metricsFailed: boolean;
-  stale: boolean;
-}): ConnectionState {
-  if (input.alertsFailed || input.metricsFailed) return 'disconnected';
-  return input.stale ? 'degraded' : 'live';
 }
 
 const MONTHS = [

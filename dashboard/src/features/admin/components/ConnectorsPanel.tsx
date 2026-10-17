@@ -19,9 +19,6 @@
  *   * the attempts themselves — endpoint, outcome, retry count, HTTP status and the
  *     short reason code — newest first, in the same card as the sentence that says how
  *     much of the history the window holds;
- *   * the server's own caveats, rendered as written. A deployment with no outbound
- *     transport says exactly that instead of showing an empty table that would read as
- *     a quiet network (R-29, R-70).
  *
  * Removing an endpoint is a `ConfirmDialog`: it is a destructive act on configuration
  * that alerts are currently flowing to. The attempts already made keep their rows —
@@ -51,12 +48,9 @@ import {
 } from '../hooks';
 import {
   SECRET_ONCE_NOTE,
-  caveatText,
   connectorRows,
-  connectorSummary,
   creationReadiness,
   deliveryRows,
-  deliverySummary,
   floorChoices,
   floorLabel,
   issuedConnector,
@@ -85,10 +79,7 @@ export function ConnectorsPanel() {
   const [issued, setIssued] = useState<IssuedConnector | null>(null);
 
   const rows = connectorRows(targets.data?.items);
-  const summary = connectorSummary(targets.data?.items);
   const attempts = deliveryRows(deliveries.data?.items, targets.data?.items);
-  const attemptSummary = deliverySummary(deliveries.data);
-  const caveats = caveatText(deliveries.data);
   const readiness = creationReadiness(
     url,
     rows.map((row) => row.url),
@@ -298,7 +289,6 @@ export function ConnectorsPanel() {
         error={{ message: 'The endpoint list could not be read' }}
       >
         <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-muted">{summary.note}</p>
           {connectorRefusalMessage(remove.error, 'delete') === null ? null : (
             <p className="text-body-sm text-severityText-critical" role="alert">
               {connectorRefusalMessage(remove.error, 'delete')}
@@ -316,12 +306,7 @@ export function ConnectorsPanel() {
             rowKey={(row) => row.id}
             rowLabel={(row) => row.host}
             height={280}
-            empty={
-              <EmptyState
-                title="No endpoints are registered"
-                description="An alert leaves the deployment only through one of these. R-55 refuses a destination that is not allowlisted or that resolves into a private address, and names which when it does."
-              />
-            }
+            empty={<EmptyState title="No endpoints are registered" />}
           />
         </div>
       </Card>
@@ -333,15 +318,6 @@ export function ConnectorsPanel() {
         error={{ message: 'The delivery history could not be read' }}
       >
         <div className="flex flex-col gap-3">
-          <p className="text-body-sm text-muted">{attemptSummary.note}</p>
-          {/* The server's own sentences, as written (R-70): the window's limits are
-              the store's to describe, and a screen that paraphrased them would be a
-              second place for them to be wrong. */}
-          {caveats.map((sentence) => (
-            <p key={sentence} className="text-body-sm text-muted">
-              {sentence}
-            </p>
-          ))}
           <DataTable
             caption="Recent delivery attempts"
             columns={attemptColumns}
@@ -349,12 +325,7 @@ export function ConnectorsPanel() {
             rowKey={(row) => row.deliveryId}
             rowLabel={(row) => `${row.outcomeLabel} to ${row.endpoint}`}
             height={280}
-            empty={
-              <EmptyState
-                title="No delivery has been attempted"
-                description="A row appears here the moment an attempt is made — an alert that reached an endpoint, or a test send from the table above."
-              />
-            }
+            empty={<EmptyState title="No delivery has been attempted" />}
           />
         </div>
       </Card>
@@ -414,10 +385,6 @@ export function ConnectorsPanel() {
               <dt className="text-muted">Registered</dt>
               <dd>{issued.createdAt}</dd>
             </dl>
-            <p className="text-body-sm text-muted">
-              The receiver verifies the signature with this secret, so send it to whoever operates
-              the endpoint — it is not stored anywhere it can be read back.
-            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -438,8 +405,7 @@ export function ConnectorsPanel() {
               />
             </label>
             <label className="flex flex-col gap-1 text-body-sm">
-              Description — optional, and never the URL: it is what a reader recognises the endpoint
-              by in a list.
+              Description (optional)
               <input
                 value={description}
                 onChange={(event) => {
@@ -465,11 +431,6 @@ export function ConnectorsPanel() {
                 ))}
               </select>
             </label>
-            <p className="text-body-sm text-muted">
-              FR-21 delivers `high` and `critical` by default; a lower floor sends more, and every
-              alert at or above it is one signed POST, retried with backoff while the receiver
-              answers with a retryable status.
-            </p>
             {readiness.reason === null ? null : (
               <p className="text-body-sm text-muted">{readiness.reason}</p>
             )}
@@ -480,7 +441,7 @@ export function ConnectorsPanel() {
       <ConfirmDialog
         open={removing !== null}
         title={`Remove ${removing?.host ?? ''}?`}
-        message="Alerts stop being delivered to it immediately, and its signing secret is discarded with it. The attempts already made keep their rows, because the record of what left the building is not something a delete unsends."
+        message="Alerts stop being delivered to it immediately."
         confirmLabel="Remove the endpoint"
         onConfirm={() => {
           if (removing === null) return;

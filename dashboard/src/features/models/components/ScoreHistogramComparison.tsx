@@ -56,36 +56,24 @@ export function ScoreHistogramComparison({ left, right }: ScoreHistogramComparis
       ) : missingRun !== undefined ? (
         <EmptyState
           title="Two recorded histograms are required"
-          description={`${missingRun.modelId === null ? 'A selected version' : `Version ${missingRun.modelId.slice(0, 12)}`} has no recorded evaluation. No distribution is inferred.`}
+          description="No recorded evaluation."
         />
       ) : failedRead !== undefined ? (
-        <ErrorState
-          message="Recorded score histograms could not be read"
-          detail="The comparison is withheld until both source runs can be read. No distribution is inferred."
-        />
+        <ErrorState message="Recorded score histograms could not be read" />
       ) : left.histogram === null || right.histogram === null ? (
         <EmptyState
           title="Score-distribution comparison unavailable"
-          description="At least one recorded run has no eval@2 histogram, as with an older eval@1 artifact. The chart requires both runs and does not infer bins from scalar metrics."
+          description="Histogram not recorded for one run."
         />
       ) : !isCompleteHistogram(left.histogram) || !isCompleteHistogram(right.histogram) ? (
-        <ErrorState
-          message="A recorded score histogram is incomplete"
-          detail="The chart requires ten fixed-width, valid, non-empty probability bins over the full [0, 1] range. No partial distribution is drawn."
-        />
+        <ErrorState message="A recorded score histogram is incomplete" />
       ) : left.threshold === null ||
         right.threshold === null ||
         !isProbability(left.threshold) ||
         !isProbability(right.threshold) ? (
-        <ErrorState
-          message="The operating threshold is missing"
-          detail="Both recorded thresholds are required to mark the overlaid distributions."
-        />
+        <ErrorState message="The operating threshold is missing" />
       ) : !sameBins(left.histogram, right.histogram) ? (
-        <ErrorState
-          message="The score histograms use incompatible bins"
-          detail="The two recorded distributions are not plotted on a shared axis."
-        />
+        <ErrorState message="The score histograms use incompatible bins" />
       ) : (
         <HistogramOverlay left={left} right={right} />
       )}

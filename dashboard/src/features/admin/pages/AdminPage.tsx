@@ -82,11 +82,6 @@ export function AdminPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-h1">Admin</h1>
-        <p className="text-body-sm text-muted">
-          Governance surfaces. Everything here is admin-only on the server and audited when it
-          changes something (R-53, FR-42) — hiding a panel would not be the control; the API's own
-          refusal is.
-        </p>
       </header>
 
       <div className="flex flex-col gap-6 lg:flex-row">
@@ -136,32 +131,25 @@ function AdminIndex() {
         Governance Overview
       </h2>
 
-      <div className="rounded-card border border-line bg-surface p-4">
-        <p className="text-body-sm text-muted">
-          Select a section from the navigation to manage governance settings.
-          All changes are audited (FR-42) and require the admin role (R-53).
-        </p>
-      </div>
-
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-card border border-line bg-surface p-3">
           <h3 className="text-body font-semibold text-accent">Access Control</h3>
-          <p className="text-body-sm text-muted mt-1">
-            Manage user roles and API keys. One admin must always exist.
-          </p>
           <div className="mt-2 flex gap-2">
-            <NavLink to="users" className="text-body-sm text-accent underline">Users</NavLink>
-            <NavLink to="keys" className="text-body-sm text-accent underline">API Keys</NavLink>
+            <NavLink to="users" className="text-body-sm text-accent underline">
+              Users
+            </NavLink>
+            <NavLink to="keys" className="text-body-sm text-accent underline">
+              API Keys
+            </NavLink>
           </div>
         </div>
 
         <div className="rounded-card border border-line bg-surface p-3">
           <h3 className="text-body font-semibold text-accent">Detection Tuning</h3>
-          <p className="text-body-sm text-muted mt-1">
-            Adjust thresholds and review how changes affect alert volume.
-          </p>
           <div className="mt-2 flex gap-2">
-            <NavLink to="thresholds" className="text-body-sm text-accent underline">Thresholds</NavLink>
+            <NavLink to="thresholds" className="text-body-sm text-accent underline">
+              Thresholds
+            </NavLink>
           </div>
         </div>
 
@@ -171,17 +159,18 @@ function AdminIndex() {
             Retention policies, GDPR erasure, and data governance.
           </p>
           <div className="mt-2 flex gap-2">
-            <NavLink to="retention" className="text-body-sm text-accent underline">Retention</NavLink>
+            <NavLink to="retention" className="text-body-sm text-accent underline">
+              Retention
+            </NavLink>
           </div>
         </div>
 
         <div className="rounded-card border border-line bg-surface p-3">
           <h3 className="text-body font-semibold text-accent">Audit Trail</h3>
-          <p className="text-body-sm text-muted mt-1">
-            Every recorded change, filterable and exportable. Append-only.
-          </p>
           <div className="mt-2 flex gap-2">
-            <NavLink to="audit" className="text-body-sm text-accent underline">Audit Log</NavLink>
+            <NavLink to="audit" className="text-body-sm text-accent underline">
+              Audit Log
+            </NavLink>
           </div>
         </div>
       </div>

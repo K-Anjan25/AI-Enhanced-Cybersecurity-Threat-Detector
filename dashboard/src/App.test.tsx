@@ -204,7 +204,7 @@ describe('routing and shell', () => {
     await user.keyboard('{Enter}');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
-    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Run a query to see results/)).toBeInTheDocument();
     // The dialog closed behind the navigation rather than staying over the screen
     // it just opened.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -253,7 +253,7 @@ describe('routing and shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Logs' })).toBeInTheDocument();
     // The stubbed tail is empty and says why, which is the log screen's own claim
     // about a bounded buffer rather than a blank table.
-    expect(await screen.findByText('Nothing has arrived in this window')).toBeInTheDocument();
+    expect(await screen.findByText('No log lines in this window')).toBeInTheDocument();
   });
 
   it('navigates to the hunt console, which is built now', async () => {
@@ -265,7 +265,7 @@ describe('routing and shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Hunt' })).toBeInTheDocument();
     // The console does not search until asked, and says so rather than showing an
     // empty table that would read as a quiet network.
-    expect(screen.getByText(/Nothing has been searched yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Run a query to see results/)).toBeInTheDocument();
   });
 
   it('mounts the model ops screen at /models, which is built now', async () => {
@@ -284,8 +284,10 @@ describe('routing and shell', () => {
     // The index is a map of all six sections design.md §3 lists, and every one of them
     // is a real route now — including connectors, which T-422 built. Twice by design:
     // the section nav and the index map both list each one.
-    expect(await screen.findAllByRole('link', { name: 'Audit log' })).toHaveLength(2);
-    expect(screen.getAllByRole('link', { name: 'Connectors' })).toHaveLength(2);
+    expect(await screen.findAllByRole('link', { name: /^audit log$/i })).toHaveLength(2);
+    // The index's cards do not link Connectors (they group the other sections), so the
+    // section nav is the only link to it.
+    expect(screen.getAllByRole('link', { name: 'Connectors' })).toHaveLength(1);
   });
 
   it('mounts the connectors screen at /admin/connectors, the last screen the design names', async () => {

@@ -12,76 +12,68 @@
  * Dark theme is the default (SOC context: dim rooms, long shifts).
  */
 
+/* Dark is the default: the blue field of the reference, with white type. */
 :root,
 [data-theme='dark'] {
-  --color-bg-base: #0b0e14;
-  --color-bg-surface: #141a23;
-  --color-border: #232a35;
-  --color-text-primary: #e6e9ef; /* 15.88:1 on base */
-  --color-text-muted: #98a2b3; /* 7.50:1 on base, 6.79:1 on surface */
-  --color-accent: #8b72ff; /* 5.47:1 on base, 4.95:1 on surface */
-  --color-on-accent: #0b0e14;
+  --color-bg-base: #1347d6;
+  --color-bg-surface: #0c38b8;
+  --color-border: #8fa6e0;
+  --color-text-primary: #ffffff; /* 7.24:1 on base, 9.24:1 on surface */
+  --color-text-muted: #dbe5ff; /* 5.75:1 on base, 7.33:1 on surface */
+  --color-accent: #ffffff; /* 7.24:1 on base, 9.24:1 on surface */
+  --color-on-accent: #0c38b8; /* text on the accent fill; asserted in tokens.test.ts */
 
   /* Severity: base hues for fills, charts, and the alert rail. */
-  --severity-critical: #e5484d;
-  --severity-high: #f76808;
-  --severity-medium: #ffc53d;
-  --severity-low: #3e8ef7;
-  --severity-info: #8b8d98;
-  --severity-benign: #30a46c;
+  --severity-critical: #ff8aa0;
+  --severity-high: #ff9a5c;
+  --severity-medium: #ffe14d;
+  --severity-low: #4de1ff;
+  --severity-info: #b9a6ff;
+  --severity-benign: #4dffb8;
 
-  /* Severity text variants: the base hues fail AA as text, so text uses these. */
-  --severity-text-critical: #ff6369; /* 6.66:1 / 6.03:1 */
-  --severity-text-high: #ffa057; /* 9.58:1 / 8.67:1 */
-  --severity-text-medium: #ffc53d; /* 12.24:1 / 11.07:1 */
-  --severity-text-low: #70b0ff; /* 8.59:1 / 7.77:1 */
-  --severity-text-info: #98a2b3; /* 7.50:1 / 6.79:1 */
-  --severity-text-benign: #4cc38a; /* 8.72:1 / 7.89:1 */
+  /* Severity text variants: the base hues do not all reach AA as text, so text uses these. */
+  --severity-text-critical: #ffc6d3; /* 5.12 / 6.44 */
+  --severity-text-high: #ffc49e; /* 4.90 / 6.15 */
+  --severity-text-medium: #fff17a; /* 6.50 / 8.17 */
+  --severity-text-low: #9cf0ff; /* 5.86 / 7.36 */
+  --severity-text-info: #d6ccff; /* 5.00 / 6.29 */
+  --severity-text-benign: #9dffd9; /* 6.37 / 8.00 */
 
-  /* Badge rule (design.md §5.3): base-hue fill with #0B0E14 text.
-     critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 6.12.
-     White text on these fills fails (3.91 / 1.58) and is prohibited. */
-  --color-on-severity: #0b0e14;
+  /* Badge rule (design.md §5.3): base-hue fill with #0a1f8f text, all >= 4.5:1. */
+  --color-on-severity: #0a1f8f;
 
-  --focus-ring: #8b72ff; /* 5.47:1 against base, above the 3:1 requirement */
+  --focus-ring: #ffffff; /* 7.24:1 against base, above the 3:1 requirement */
 
-  /* Elevation (design.md §5.5). Exactly one shadow token exists, because
-     "elevation is reserved for overlays — dropdowns, modals, toasts, command
-     palette": a card cannot acquire a shadow from the token layer, it gets
-     border.default. The blur and spread are implementation values; design.md
-     fixes the policy, not the numbers, and says so here rather than implying a
-     documented value. --shadow-overlay is the only #hex-free colour in this
-     file: a shadow is black at an alpha, and the light theme uses a blue-grey
-     so it does not read as a smudge. */
-  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 45%);
+  /* Elevation (design.md §5.5). Exactly one shadow token exists. */
+  --shadow-overlay: 0 8px 24px rgb(4 18 90 / 45%);
 }
 
 [data-theme='light'] {
-  --color-bg-base: #ffffff;
-  --color-bg-surface: #f6f7f9;
-  --color-border: #e2e5ea;
-  --color-text-primary: #0b0e14; /* 19.32:1 on base */
-  --color-text-muted: #5a6473; /* 5.99:1 on base, 5.59:1 on surface */
-  --color-accent: #6c4fe0; /* 5.48:1 on base, 5.11:1 on surface */
-  --color-on-accent: #ffffff;
+  --color-bg-base: #f3f6ff;
+  --color-bg-surface: #ffffff;
+  --color-border: #b8c8f5;
+  --color-text-primary: #0a1f8f; /* 12.11:1 on base, 13.08:1 on surface */
+  --color-text-muted: #2f4bb3; /* 7.00:1 on base, 7.56:1 on surface */
+  --color-accent: #1446c8; /* 7.09:1 on base, 7.66:1 on surface */
+  --color-on-accent: #ffffff; /* text on the accent fill; asserted in tokens.test.ts */
 
-  --severity-critical: #e5484d;
-  --severity-high: #f76808;
-  --severity-medium: #ffc53d;
-  --severity-low: #3e8ef7;
-  --severity-info: #8b8d98;
-  --severity-benign: #30a46c;
+  --severity-critical: #ff8aa0;
+  --severity-high: #ff9a5c;
+  --severity-medium: #ffe14d;
+  --severity-low: #4de1ff;
+  --severity-info: #b9a6ff;
+  --severity-benign: #4dffb8;
 
-  --severity-text-critical: #c62a2f; /* 5.57:1 / 5.19:1 */
-  --severity-text-high: #b34700; /* 5.50:1 / 5.13:1 */
-  --severity-text-medium: #7a5b00; /* 6.32:1 / 5.89:1 */
-  --severity-text-low: #0b62c4; /* 5.90:1 / 5.51:1 */
-  --severity-text-info: #5a6473; /* 5.99:1 / 5.59:1 */
-  --severity-text-benign: #1e7a4c; /* 5.33:1 / 4.97:1 */
+  --severity-text-critical: #b0124a; /* 6.41 / 6.93 */
+  --severity-text-high: #a03a00; /* 6.27 / 6.77 */
+  --severity-text-medium: #6b5300; /* 6.79 / 7.34 */
+  --severity-text-low: #00607d; /* 6.55 / 7.07 */
+  --severity-text-info: #4630b0; /* 8.41 / 9.09 */
+  --severity-text-benign: #06673f; /* 6.44 / 6.95 */
 
-  --color-on-severity: #0b0e14;
-  --focus-ring: #6c4fe0; /* 5.48:1 against base */
-  --shadow-overlay: 0 6px 16px rgb(16 24 40 / 12%);
+  --color-on-severity: #0a1f8f;
+  --focus-ring: #1446c8; /* 7.09:1 against base */
+  --shadow-overlay: 0 6px 16px rgb(10 31 143 / 14%);
 }
 
 /*
@@ -172,4 +164,25 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+}
+
+/*
+ * Landing page halftone field. The dot grid is drawn in the text colour and
+ * faded toward the edges with a mask, so it reads as print texture rather than
+ * a pattern. A photo placed under it is turned into a blue luminosity duotone
+ * by the landing page, not here.
+ */
+.landing-halftone {
+  background-image: radial-gradient(circle, var(--color-text-primary) 1.6px, transparent 2px);
+  background-size: 9px 9px;
+  mask-image: radial-gradient(ellipse at center, var(--color-text-primary) 30%, transparent 75%);
+  opacity: 0.45;
+}
+
+/*
+ * Landing page field: the reference grades from the deep surface tone at the
+ * top-left into the base blue, rather than sitting on one flat colour.
+ */
+.landing-backdrop {
+  background-image: linear-gradient(150deg, var(--color-bg-surface) 0%, var(--color-bg-base) 60%);
 }

@@ -75,7 +75,6 @@ export function SeverityAreaChart({
         : {
             error: {
               message: 'Alert volume could not be loaded',
-              detail: 'The alert window did not arrive; the tiles show the same failure.',
               action: <Button onClick={onRetry}>Retry</Button>,
             },
           })}

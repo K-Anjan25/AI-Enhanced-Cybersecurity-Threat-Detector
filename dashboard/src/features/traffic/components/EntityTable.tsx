@@ -131,11 +131,7 @@ export function EntityTable({ entities, pinnedId, onPin, now = Date.now() }: Ent
       rows={entities}
       rowKey={(row) => row.id}
       height={320}
-      empty={
-        <p className="text-body-sm text-muted">
-          No addresses in this selection. Widen the brush, or lower the flow threshold.
-        </p>
-      }
+      empty={<p className="text-body-sm text-muted">No addresses.</p>}
     />
   );
 }
