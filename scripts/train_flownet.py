@@ -53,7 +53,12 @@ from aegis_ml.data.splits import (  # noqa: E402
     window_families,
 )
 from aegis_ml.data.synthetic import generate_dataset  # noqa: E402
-from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
+from aegis_ml.data.windowing import (  # noqa: E402
+    FLOW_WINDOW_SIZE,
+    Window,
+    WindowKey,
+    window_flows,
+)
 from aegis_ml.training.baselines import design_matrix  # noqa: E402
 from aegis_ml.training.evaluation import EvalReport, evaluate  # noqa: E402
 
@@ -159,6 +164,12 @@ def main(argv: list[str] | None = None) -> int:
         help="entity dimension a window is keyed on (D-013)",
     )
     parser.add_argument("--out", required=True, help="where to write the run log")
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help="directory to write the serving artifacts to: flownet.pt (weights), "
+        "flownet.config.json, flownet.preprocessor.json and flownet.eval.json",
+    )
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
@@ -202,9 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     reports: list[ParseReport] = []
     if args.synthetic:
         print(f"generating {args.synthetic:,} records per scenario (seed {args.seed})")
-        records = list(
-            generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows
-        )
+        records = list(generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows)
     else:
         records = []
         for raw in args.file:
@@ -228,9 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         print("no records to train on", file=sys.stderr)
         return 1
 
-    records.sort(
-        key=lambda record: record.timestamp
-    )  # window_flows needs arrival order
+    records.sort(key=lambda record: record.timestamp)  # window_flows needs arrival order
     windows = window_flows(records, key=key)
     print(f"{len(records):,} records -> {len(windows):,} windows keyed by {key.value}")
 
@@ -351,6 +358,39 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     minutes = elapsed / 60.0
+    if args.checkpoint:
+        # Serving needs the weights, the exact input width, the fitted scaler and
+        # vocabularies (R-62), and the evaluation that was measured on this model.
+        os.makedirs(args.checkpoint, exist_ok=True)
+        torch.save(model.state_dict(), os.path.join(args.checkpoint, "flownet.pt"))
+        with open(
+            os.path.join(args.checkpoint, "flownet.config.json"), "w", encoding="utf-8"
+        ) as handle:
+            json.dump(
+                {
+                    "model_id": "flownet-v0.1.0",
+                    "input_dim": width,
+                    "d_model": model.config.d_model,
+                    "nhead": model.config.nhead,
+                    "dim_feedforward": model.config.dim_feedforward,
+                    "max_seq_len": model.config.max_seq_len,
+                    "window_size": FLOW_WINDOW_SIZE,
+                    "window_key": key.value,
+                    "split_policy": args.split_policy,
+                    "sample_frac": args.sample_frac,
+                    "epochs": args.epochs,
+                    "seed": args.seed,
+                },
+                handle,
+                indent=2,
+            )
+            handle.write("\n")
+        preprocessor.save(os.path.join(args.checkpoint, "flownet.preprocessor.json"))
+        with open(
+            os.path.join(args.checkpoint, "flownet.eval.json"), "w", encoding="utf-8"
+        ) as handle:
+            handle.write(report.model_dump_json(indent=2))
+            handle.write("\n")
     log: dict[str, object] = {
         "task": "T-201",
         "model_id": "flownet-v0.1.0",
@@ -385,9 +425,7 @@ def main(argv: list[str] | None = None) -> int:
                 "target_parameters": PARAMETER_TARGET,
                 "band": [int(PARAMETER_TARGET * 0.8), int(PARAMETER_TARGET * 1.2)],
                 "actual_parameters": params,
-                "passed": bool(
-                    0.8 * PARAMETER_TARGET <= params <= 1.2 * PARAMETER_TARGET
-                ),
+                "passed": bool(0.8 * PARAMETER_TARGET <= params <= 1.2 * PARAMETER_TARGET),
             },
         },
         "report": json.loads(report.model_dump_json()),
@@ -404,9 +442,7 @@ def main(argv: list[str] | None = None) -> int:
         f"(band {band[0]:,}-{band[1]:,}): "
         f"{'within' if band[0] <= params <= band[1] else 'OUTSIDE'}"
     )
-    print(
-        f"test fold: {report.positives:,} attack / {report.negatives:,} benign windows"
-    )
+    print(f"test fold: {report.positives:,} attack / {report.negatives:,} benign windows")
     print(
         f"ROC-AUC {report.metrics.roc_auc:.4f}  "
         f"PR-AUC {report.metrics.pr_auc:.4f}  "

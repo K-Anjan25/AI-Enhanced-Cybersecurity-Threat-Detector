@@ -120,6 +120,10 @@ class Settings(BaseSettings):
 
     ml_service_url: str = Field(default="http://localhost:8001")
 
+    # Directory of ``eval@2`` reports (``*.eval.json`` with their ``*.config.json``)
+    # to attach to registered model versions. Empty means no evaluations are loaded.
+    ml_eval_reports_dir: str = Field(default="")
+
     # Alert stream (FR-20). The interval is both how often a quiet stream says
     # "still here" and, per architecture.md §14, how often a dashboard whose
     # socket dropped polls instead -- 15 s by default.

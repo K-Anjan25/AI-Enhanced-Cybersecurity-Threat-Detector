@@ -45,30 +45,7 @@ REGISTERED_MODELS: list[dict[str, Any]] = [
             "dns_ratio",
         ],
         "artifact_uri": "ml-service://statistical-anomaly-v1",
-        "metrics": {
-            "precision": 0.78,
-            "recall": 0.65,
-            "f1": 0.71,
-            "roc_auc": 0.82,
-        },
-    },
-    {
-        "model_id": "flownet-v1",
-        "kind": "flow",
-        "status": "active",
-        "description": "FlowNet transformer: 4-layer encoder with reconstruction + anomaly heads (~1.2M params). Detects novel patterns via reconstruction error.",  # noqa: E501
-        "version": "1.0.0",
-        "features": [
-            "reconstruction_error",
-            "anomaly_logits",
-            "composite_score",
-        ],
-        "artifact_uri": "ml-service://flownet-v1",
-        "metrics": {
-            "architecture": "Transformer encoder (4 layers, d_model=176, 8 heads)",
-            "parameters": "1,158,840",
-            "training": "Self-supervised reconstruction + supervised anomaly head",
-        },
+        "metrics": {},
     },
     {
         "model_id": "lognet-v1",
@@ -89,15 +66,57 @@ REGISTERED_MODELS: list[dict[str, Any]] = [
 ]
 
 
+def flownet_entry(directory: str | None = None) -> dict[str, Any] | None:
+    """The FlowNet model as it exists on disk, or ``None`` when no checkpoint is there.
+
+    The model id and content address come from the checkpoint itself (R-68). A
+    model that has no checkpoint is not listed, rather than listed under a name
+    that identifies nothing.
+    """
+    import json  # noqa: PLC0415
+    import os  # noqa: PLC0415
+
+    from aegis_ml.serving.flownet_scorer import (  # noqa: PLC0415
+        CONFIG_FILE,
+        WEIGHTS_FILE,
+        sha256_file,
+    )
+
+    root = directory or os.environ.get("AEGIS_FLOWNET_CHECKPOINT_DIR", "/models/flownet")
+    weights = os.path.join(root, WEIGHTS_FILE)
+    config_path = os.path.join(root, CONFIG_FILE)
+    if not (os.path.isfile(weights) and os.path.isfile(config_path)):
+        return None
+    with open(config_path, encoding="utf-8") as handle:
+        config = json.load(handle)
+    return {
+        "model_id": config["model_id"],
+        "kind": "flow",
+        "status": "active",
+        "description": "FlowNet transformer trained on flow@1 windows (see its eval@2 report).",
+        "version": "0.1.0",
+        "features": ["reconstruction_error", "anomaly_logits"],
+        "artifact_uri": f"ml-service://{config['model_id']}",
+        "sha256": sha256_file(weights),
+        "metrics": {},
+    }
+
+
 @router.get(
     "/models",
     summary="List registered models in the ML service",
 )
 def list_models() -> dict[str, Any]:
     """Return all models registered in this ML service."""
+    models = list(REGISTERED_MODELS)
+    flownet = flownet_entry()
+    if flownet is not None:
+        # FlowNet first: it is the trained flow model, and the registrar treats the
+        # first active flow model as the incumbent.
+        models.insert(0, flownet)
     return {
-        "models": REGISTERED_MODELS,
-        "count": len(REGISTERED_MODELS),
+        "models": models,
+        "count": len(models),
     }
 
 

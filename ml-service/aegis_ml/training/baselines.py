@@ -61,15 +61,24 @@ def design_matrix(
     for window in windows:
         if window.label is None:
             continue
-        scaled = preprocessor.scaler.transform(list(window.numeric))
-        for name, value in zip(CATEGORICAL_FEATURES, window.categorical, strict=True):
-            vocabulary = preprocessor.vocabularies[name]
-            encoded = [0.0] * len(vocabulary.values)
-            encoded[vocabulary.encode(value)] = 1.0
-            scaled.extend(encoded)
-        rows.append(scaled)
+        rows.append(encode_row(window, preprocessor))
         targets.append(0 if window.label == "normal" else 1)
     return rows, targets
+
+
+def encode_row(window: FlowFeatures, preprocessor: Preprocessor) -> list[float]:
+    """One feature row as the model sees it: scaled numerics, then one-hot categoricals.
+
+    Shared by training (:func:`design_matrix`) and serving, so the two cannot
+    encode the same flow differently. Does not look at the label.
+    """
+    scaled = preprocessor.scaler.transform(list(window.numeric))
+    for name, value in zip(CATEGORICAL_FEATURES, window.categorical, strict=True):
+        vocabulary = preprocessor.vocabularies[name]
+        encoded = [0.0] * len(vocabulary.values)
+        encoded[vocabulary.encode(value)] = 1.0
+        scaled.extend(encoded)
+    return scaled
 
 
 class LogisticRegression(BaseModel):

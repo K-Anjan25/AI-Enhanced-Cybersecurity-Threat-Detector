@@ -175,6 +175,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ml_service_url=ml_url,
         model_ops=app.state.model_ops,
         interval=30.0,
+        eval_reports_dir=getattr(app.state.settings, "ml_eval_reports_dir", "") or None,
     )
     app.state.model_registrar = model_registrar
     model_registrar.start()
