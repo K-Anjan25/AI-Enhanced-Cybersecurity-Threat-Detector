@@ -77,7 +77,7 @@ describe('ScoreHistogramComparison', () => {
     };
     render(<ScoreHistogramComparison left={side('flow-a', 'runs/a.json')} right={missing} />);
 
-    expect(screen.getByText('Two recorded histograms are required')).toBeInTheDocument();
+    expect(screen.getByText('No evaluation recorded')).toBeInTheDocument();
     expect(screen.queryByRole('img')).toBeNull();
   });
 

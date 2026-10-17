@@ -40,10 +40,7 @@ export function ComparisonEvidence({
         <Skeleton lines={4} label={`${title} evaluation evidence is loading`} />
       ) : error !== null ? (
         error instanceof ApiError && error.status === 404 ? (
-          <EmptyState
-            title="No recorded evaluation for this version"
-            description="No evaluation run attached."
-          />
+          <EmptyState title="No evaluation recorded" />
         ) : (
           <ErrorState message="Recorded evaluation evidence could not be read" />
         )

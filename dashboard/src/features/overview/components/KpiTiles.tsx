@@ -29,12 +29,12 @@ export interface KpiTilesProps {
 
 export function KpiTiles({ tiles }: KpiTilesProps) {
   return (
-    <dl className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
       {tiles.map((tile) => (
-        <div key={tile.label} className="rounded-card border border-line bg-base p-4">
-          <dt className="flex items-center gap-2">
+        <div key={tile.label} className="min-w-0 rounded-card border border-line bg-base p-4">
+          <dt className="flex items-center gap-2 text-caption uppercase tracking-wide text-muted">
             {tile.severity === undefined ? (
-              <span className="text-caption uppercase tracking-wide text-muted">{tile.label}</span>
+              <span>{tile.label}</span>
             ) : (
               <SeverityPill severity={tile.severity} />
             )}

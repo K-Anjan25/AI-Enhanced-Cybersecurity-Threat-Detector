@@ -68,7 +68,6 @@ export function SeverityAreaChart({
       }
       empty={{
         title: `No alerts in the ${rangeLabel}.`,
-        description: 'Widen the range to see activity.',
       }}
       {...(onRetry === undefined
         ? {}

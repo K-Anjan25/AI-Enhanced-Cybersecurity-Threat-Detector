@@ -22,7 +22,7 @@ export function LandingPage() {
 
   return (
     <main className="landing-backdrop relative flex min-h-screen flex-col overflow-hidden text-ink">
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 md:px-12">
+      <header className="relative z-10 mx-auto flex w-full max-w-[1200px] items-center justify-between px-6 py-4 md:px-12">
         <span className="flex items-center gap-2 text-h2 font-semibold">
           <AegisLogo />
           AEGIS

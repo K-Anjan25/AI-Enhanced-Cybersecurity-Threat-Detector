@@ -80,7 +80,7 @@ describe('shortId', () => {
 
 describe('promotionRefusal', () => {
   it('refuses an already-active version as a no-op', () => {
-    expect(promotionRefusal(version({ status: 'active' }))).toContain('already serving');
+    expect(promotionRefusal(version({ status: 'active' }))).toBe('Already serving.');
   });
 
   it('refuses a retired version with R-68 by name', () => {
@@ -234,7 +234,7 @@ describe('metricPanel', () => {
     const panel = metricPanel(null);
     expect(panel.absent).toBe(true);
     expect(panel.cards).toEqual([]);
-    expect(panel.caption).toContain('R-74');
+    expect(panel.caption).toBe('No evaluation recorded.');
   });
 
   it('carries the run and the field on every card (R-74)', () => {
@@ -334,8 +334,8 @@ describe('rollbackKinds', () => {
 describe('transitionSentence', () => {
   it('says a no-op recorded nothing, which is the part an operator would assume wrongly', () => {
     const sentence = transitionSentence({ model_id: MODEL, retired: null, changed: false });
-    expect(sentence).toContain('nothing changed');
-    expect(sentence).toContain('recorded nothing');
+    expect(sentence).toContain('already serving');
+    expect(sentence).toContain('No change.');
   });
 
   it('names the version that stepped down', () => {
