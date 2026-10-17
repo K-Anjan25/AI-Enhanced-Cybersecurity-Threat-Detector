@@ -322,7 +322,7 @@ describe('design.md agreement', () => {
   });
 
   it('implements the badge rule with the published ratios', () => {
-    expect(dark['--color-on-severity']).toBe('#0a1f8f');
+    expect(dark['--color-on-severity']).toBe('#0f232e');
     expect(light['--color-on-severity']).toBe(dark['--color-on-severity']);
     const rule = section('**Badge rule.**');
     for (const severity of SEVERITIES) {

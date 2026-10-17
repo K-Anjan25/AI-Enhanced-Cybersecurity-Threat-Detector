@@ -216,29 +216,29 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-The blue of the reference: a deep cobalt field, graded from navy to cobalt, with white type, halftone imagery, and white pill buttons. The field is tuned to a saturation near 0.84 so it reads as a calm brand blue, not a neon one. Dark is the default. Light is a full peer on the same blue. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, Mariana Blue `#0F232E`, and White. Dark is the default: a Mariana Blue field with white and Grey type, and white accents, so nothing glares. Light is a full peer on Dawning Mist, with Deep Blue as its accent. Halftone imagery and white pill buttons carry over from the reference. The surface tint `#16303D` (dark) and the muted text `#3E5160` (light) are shades derived from the palette, because the brand sheet has no equivalent. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
 
 ### 5.1 Colour — dark theme (default)
 
 | Token            | Value     | Contrast                                         | Use                                                    |
 |---|---|---|---|
-| `bg.base`        | `#1347D6` | —                                                | App background                                         |
-| `bg.surface`     | `#0C38B8` | —                                                | Cards, panels, tables                                  |
-| `border.default` | `#8FA6E0` | decorative                                       | Hairlines; never the sole separator for essential info |
-| `text.primary`   | `#FFFFFF` | 7.24 : 1 on `bg.base` · 9.24 : 1 on `bg.surface` | Body, headings                                         |
-| `text.muted`     | `#DBE5FF` | 5.75 : 1 on `bg.base` · 7.33 : 1 on `bg.surface` | Secondary labels, metadata                             |
-| `accent`         | `#FFFFFF` | 7.24 : 1 on `bg.base` · 9.24 : 1 on `bg.surface` | Links, focus, primary actions                          |
+| `bg.base`        | `#0F232E` | —                                                | App background                                         |
+| `bg.surface`     | `#16303D` | —                                                | Cards, panels, tables                                  |
+| `border.default` | `#9BAAB9` | decorative                                       | Hairlines; never the sole separator for essential info |
+| `text.primary`   | `#FFFFFF` | 16.15 : 1 on `bg.base` · 13.78 : 1 on `bg.surface` | Body, headings                                         |
+| `text.muted`     | `#9BAAB9` | 6.80 : 1 on `bg.base` · 5.80 : 1 on `bg.surface` | Secondary labels, metadata                             |
+| `accent`         | `#FFFFFF` | 16.15 : 1 on `bg.base` · 13.78 : 1 on `bg.surface` | Links, focus, primary actions                          |
 
 ### 5.2 Colour — light theme
 
 | Token            | Value     | Contrast                                           | Use                           |
 |---|---|---|---|
-| `bg.base`        | `#F3F6FF` | —                                                  | App background                |
+| `bg.base`        | `#DBE2E9` | —                                                  | App background                |
 | `bg.surface`     | `#FFFFFF` | —                                                  | Cards, panels, tables         |
-| `border.default` | `#B8C8F5` | decorative                                         | Hairlines                     |
-| `text.primary`   | `#0A1F8F` | 12.11 : 1 on `bg.base` · 13.08 : 1 on `bg.surface` | Body, headings                |
-| `text.muted`     | `#2F4BB3` | 7.00 : 1 on `bg.base` · 7.56 : 1 on `bg.surface`   | Secondary labels              |
-| `accent`         | `#1446C8` | 7.09 : 1 on `bg.base` · 7.66 : 1 on `bg.surface`   | Links, focus, primary actions |
+| `border.default` | `#9BAAB9` | decorative                                         | Hairlines                     |
+| `text.primary`   | `#0F232E` | 12.36 : 1 on `bg.base` · 16.15 : 1 on `bg.surface` | Body, headings                |
+| `text.muted`     | `#3E5160` | 6.30 : 1 on `bg.base` · 8.23 : 1 on `bg.surface`   | Secondary labels              |
+| `accent`         | `#0000FF` | 6.57 : 1 on `bg.base` · 8.59 : 1 on `bg.surface`   | Links, focus, primary actions |
 
 ### 5.3 Severity palette
 
@@ -246,18 +246,18 @@ Severity has **two** tokens per level. The base hue is for fills, borders, chart
 
 | Severity   | Base (fill / chart) | Text on dark            | Text on light           | Glyph                   |
 |---|---|---|---|---|
-| `critical` | `#FF8AA0`           | `#FFC6D3` — 5.12 / 6.44 | `#B0124A` — 6.41 / 6.93 | `●` filled + solid ring |
-| `high`     | `#FF9A5C`           | `#FFC49E` — 4.90 / 6.15 | `#A03A00` — 6.27 / 6.77 | `●` filled              |
-| `medium`   | `#FFE14D`           | `#FFF17A` — 6.50 / 8.17 | `#6B5300` — 6.79 / 7.34 | `◐` half                |
-| `low`      | `#4DE1FF`           | `#9CF0FF` — 5.86 / 7.36 | `#00607D` — 6.55 / 7.07 | `○` hollow              |
-| `info`     | `#B9A6FF`           | `#D6CCFF` — 5.00 / 6.29 | `#4630B0` — 8.41 / 9.09 | `○` hollow              |
-| `benign`   | `#4DFFB8`           | `#9DFFD9` — 6.37 / 8.00 | `#06673F` — 6.44 / 6.95 | `✓`                     |
+| `critical` | `#FF8AA0`           | `#FFC6D3` — 10.98 / 9.36 | `#B0124A` — 5.30 / 6.93 | `●` filled + solid ring |
+| `high`     | `#FF9A5C`           | `#FFC49E` — 10.49 / 8.95 | `#A03A00` — 5.18 / 6.77 | `●` filled              |
+| `medium`   | `#FFE14D`           | `#FFF17A` — 13.93 / 11.88 | `#6B5300` — 5.61 / 7.34 | `◐` half                |
+| `low`      | `#4DE1FF`           | `#9CF0FF` — 12.55 / 10.71 | `#00607D` — 5.41 / 7.07 | `○` hollow              |
+| `info`     | `#B9A6FF`           | `#D6CCFF` — 10.72 / 9.15 | `#4630B0` — 6.96 / 9.09 | `○` hollow              |
+| `benign`   | `#4DFFB8`           | `#9DFFD9` — 13.64 / 11.64 | `#06673F` — 5.32 / 6.95 | `✓`                     |
 
 _Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes._
 
-**Badge rule.** A severity badge is a base-hue fill with `#0A1F8F` text. Measured: critical 5.85, high 6.25, medium 10.05, low 8.43, info 6.20, benign 10.16 — all ≥ 4.5 : 1. White text on these fills fails (critical 2.97, medium 1.30) and is prohibited.
+**Badge rule.** A severity badge is a base-hue fill with `#0F232E` text. Measured: critical 7.23, high 7.71, medium 12.41, low 10.41, info 7.66, benign 12.55 — all ≥ 4.5 : 1. White text on these fills fails (critical 2.24, medium 1.30) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 7.24 : 1 (dark) and 7.09 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 16.15 : 1 (dark) and 6.57 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 
@@ -396,3 +396,4 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 | 2026-10-07 | 0.3     | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081).                                                                                                                               |
 | 2026-10-17 | 0.4     | Restyled to the blue reference: blue-only palette (§5), Inter for UI text, plain cards in place of the decorative overview. Removed the connection indicator, reconnect banner, staleness stamps, and explanatory text from every screen (§6, §8.1). Added an unauthenticated landing page at `/`; other paths show sign-in.                                   |
 | 2026-10-17 | 0.5     | Rebuilt the landing page to the reference layout: hero headline, halftone art field (artwork supplied as `dashboard/public/landing-hero.jpg`), three feature cards, primary and secondary CTAs. Added `type.hero` (64/68) and `type.stat` (48/52) to §5.4.                                                                                                     |
+| 2026-10-17 | 0.6 | Re-based the palette on the brand sheet: Mariana Blue field and Grey type in dark, Dawning Mist field and Deep Blue accent in light. Replaced the cobalt values in §5.1 and §5.2; updated the severity text and badge ratios and the focus ring to match. |
