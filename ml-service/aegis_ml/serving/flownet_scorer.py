@@ -18,14 +18,17 @@ import json
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from aegis_ml.data.features import CATEGORICAL_FEATURES, NUMERIC_FEATURES, extract_flow_window
 from aegis_ml.data.preprocess import Preprocessor
 from aegis_ml.data.records import FlowRecord
 from aegis_ml.data.windowing import WindowKey
-from aegis_ml.models.flownet import FlowNet, FlowNetConfig
 from aegis_ml.scoring.explanation import Reason, explain
 from aegis_ml.training.baselines import encode_row
+
+if TYPE_CHECKING:
+    from aegis_ml.models.flownet import FlowNet
 
 WEIGHTS_FILE = "flownet.pt"
 CONFIG_FILE = "flownet.config.json"
@@ -108,7 +111,16 @@ class FlowNetScorer:
         Raises:
             CheckpointError: if a file is missing or the parts disagree.
         """
-        import torch  # noqa: PLC0415
+        # torch is the [training] extra, not a core dependency. Importing it here, not at
+        # module level, lets the service start and report "no model" without it.
+        try:
+            import torch  # noqa: PLC0415
+
+            from aegis_ml.models.flownet import FlowNet, FlowNetConfig  # noqa: PLC0415
+        except ImportError as exc:
+            raise CheckpointError(
+                "the flow model needs torch: install ml-service[training]"
+            ) from exc
 
         paths = {name: os.path.join(directory, name) for name in (WEIGHTS_FILE, CONFIG_FILE)}
         preprocessor_path = os.path.join(directory, PREPROCESSOR_FILE)
