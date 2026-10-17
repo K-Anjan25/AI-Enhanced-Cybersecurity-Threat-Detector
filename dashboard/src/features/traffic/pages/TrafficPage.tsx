@@ -25,8 +25,7 @@
 import { useMemo, useState } from 'react';
 
 import { useChartPalette } from '../../../components/charts/palette';
-import { Button, ConnectionStatus, ErrorState, Panel, Skeleton } from '../../../components/ui';
-import { useConnectionView } from '../../../components/realtime/useConnectionView';
+import { Button, ErrorState, Panel, Skeleton } from '../../../components/ui';
 import { FLOW_DIRECTIONS, FLOW_PROTOCOLS } from '../../../api/flows';
 import { BrushSeries } from '../components/BrushSeries';
 import { EntityGraph } from '../components/EntityGraph';
@@ -54,7 +53,6 @@ export function TrafficPage() {
   // the view below — so a committed selection never blanks the screen it was drawn on.
   const brushed = useTrafficBrush(range, filters, brush, true);
   const palette = useChartPalette();
-  const connection = useConnectionView();
 
   const full = window.data;
   const panels = brushed.data ?? full;
@@ -79,7 +77,6 @@ export function TrafficPage() {
           <h1 className="text-h1">Traffic</h1>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <ConnectionStatus state={connection.state} detail={connection.detail} />
           <div className="flex items-center gap-2">
             <label className="text-caption text-muted" htmlFor="traffic-range">
               Window

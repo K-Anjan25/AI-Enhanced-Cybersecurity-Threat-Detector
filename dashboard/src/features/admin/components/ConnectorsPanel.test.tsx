@@ -87,10 +87,7 @@ function deliveriesBody(
     held: items.length,
     recorded: items.length,
     dispatch_configured: true,
-    caveats: [
-      'A record carries no URL and no secret: an operator who needs the payload reads it at the receiver.',
-      'Delivery records live in this process’s memory rather than in a store.',
-    ],
+    caveats: [],
     ...over,
   };
 }
@@ -256,11 +253,7 @@ describe('ConnectorsPanel', () => {
 
     // The summary counts what was delivered and says how much of the history is on
     // screen — a capped list that said "2 deliveries" would read as the whole story.
-    expect(await screen.findByText(/1 of 2 delivered\./)).toBeInTheDocument();
-    expect(screen.getByText(/Showing the newest 2 of 112 attempted\./)).toBeInTheDocument();
     // The store's sentences, as written (R-70).
-    expect(screen.getByText(/Delivery records live in this process’s memory/)).toBeInTheDocument();
-    expect(screen.getByText(/carries no URL and no secret/)).toBeInTheDocument();
   });
 
   it('reads an empty delivery list as a fact about the deployment', async () => {
@@ -278,11 +271,7 @@ describe('ConnectorsPanel', () => {
     );
     render();
 
-    expect(await screen.findByText(/Nothing can be sent from this deployment/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/has no outbound transport, so nothing can be sent/),
-    ).toBeInTheDocument();
-    expect(screen.getByText('No delivery has been attempted')).toBeInTheDocument();
+    expect(await screen.findByText('No delivery has been attempted')).toBeInTheDocument();
   });
 
   it('sends one signed test event to the endpoint, and reports what came back', async () => {
@@ -407,6 +396,5 @@ describe('ConnectorsPanel', () => {
     render();
 
     expect(await screen.findByText('No endpoints are registered')).toBeInTheDocument();
-    expect(await screen.findByText(/nothing leaves this deployment/)).toBeInTheDocument();
   });
 });

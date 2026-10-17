@@ -50,13 +50,6 @@ export function TimelinePanel({ detail }: { detail: AlertDetail }) {
           {view.emptyLine}
         </p>
       )}
-
-      {view.firstAnomaly === null ? null : (
-        <p className="mt-2 text-body-sm text-ink">
-          first anomalous window{' '}
-          <span className="font-mono">{formatInstant(view.firstAnomaly)}</span>
-        </p>
-      )}
     </Card>
   );
 }

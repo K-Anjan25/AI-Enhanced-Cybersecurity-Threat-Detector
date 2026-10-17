@@ -12,76 +12,68 @@
  * Dark theme is the default (SOC context: dim rooms, long shifts).
  */
 
+/* Dark is the default: the blue field of the reference, with white type. */
 :root,
 [data-theme='dark'] {
-  --color-bg-base: #0b0e08;
-  --color-bg-surface: #121709;
-  --color-border: #2c3b1c;
-  --color-text-primary: #d7f54a; /* 15.78:1 on base, 14.80:1 on surface */
-  --color-text-muted: #8da150; /* 6.80:1 on base, 6.38:1 on surface */
-  --color-accent: #d7f54a; /* 15.78:1 on base, 14.80:1 on surface */
-  --color-on-accent: #0b0e08;
+  --color-bg-base: #0c3ae8;
+  --color-bg-surface: #0a2fc4;
+  --color-border: #6f8ff7;
+  --color-text-primary: #ffffff; /* 7.54:1 on base, 9.47:1 on surface */
+  --color-text-muted: #dbe5ff; /* 5.98:1 on base, 7.52:1 on surface */
+  --color-accent: #ffffff; /* 7.54:1 on base, 9.47:1 on surface */
+  --color-on-accent: #0a2fc4; /* text on the accent fill; asserted in tokens.test.ts */
 
   /* Severity: base hues for fills, charts, and the alert rail. */
-  --severity-critical: #ff2a6d;
-  --severity-high: #ff6b35;
-  --severity-medium: #fcee0a;
-  --severity-low: #00f0ff;
-  --severity-info: #8b72ff;
-  --severity-benign: #05ffa1;
+  --severity-critical: #ff8aa0;
+  --severity-high: #ff9a5c;
+  --severity-medium: #ffe14d;
+  --severity-low: #4de1ff;
+  --severity-info: #b9a6ff;
+  --severity-benign: #4dffb8;
 
-  /* Severity text variants: the base hues fail AA as text, so text uses these. */
-  --severity-text-critical: #ff5c8a; /* 6.62 / 6.21 */
-  --severity-text-high: #ff9e6b; /* 9.58 / 8.99 */
-  --severity-text-medium: #fcee0a; /* 16.08 / 15.08 */
-  --severity-text-low: #4df7ff; /* 14.87 / 13.94 */
-  --severity-text-info: #b69fff; /* 8.69 / 8.15 */
-  --severity-text-benign: #4dffc2; /* 15.18 / 14.23 */
+  /* Severity text variants: the base hues do not all reach AA as text, so text uses these. */
+  --severity-text-critical: #ffc6d3; /* 5.12 / 6.44 */
+  --severity-text-high: #ffc49e; /* 4.90 / 6.15 */
+  --severity-text-medium: #fff17a; /* 6.50 / 8.17 */
+  --severity-text-low: #9cf0ff; /* 5.86 / 7.36 */
+  --severity-text-info: #d6ccff; /* 5.00 / 6.29 */
+  --severity-text-benign: #9dffd9; /* 6.37 / 8.00 */
 
-  /* Badge rule (design.md §5.3): base-hue fill with #0b0e08 text.
-     critical 5.37, high 6.85, medium 16.08, low 13.80, info 5.51, benign 14.65.
-     White text on these fills fails (3.62 on critical, 1.21 on medium) and is prohibited. */
-  --color-on-severity: #0b0e08;
+  /* Badge rule (design.md §5.3): base-hue fill with #0a1f8f text, all >= 4.5:1. */
+  --color-on-severity: #0a1f8f;
 
-  --focus-ring: #d7f54a; /* 15.78:1 against base, above the 3:1 requirement */
+  --focus-ring: #ffffff; /* 7.54:1 against base, above the 3:1 requirement */
 
-  /* Elevation (design.md §5.5). Exactly one shadow token exists, because
-     "elevation is reserved for overlays — dropdowns, modals, toasts, command
-     palette": a card cannot acquire a shadow from the token layer, it gets
-     border.default. The blur and spread are implementation values; design.md
-     fixes the policy, not the numbers, and says so here rather than implying a
-     documented value. --shadow-overlay is the only #hex-free colour in this
-     file: a shadow is black at an alpha, and the light theme uses a blue-grey
-     so it does not read as a smudge. */
-  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 45%);
+  /* Elevation (design.md §5.5). Exactly one shadow token exists. */
+  --shadow-overlay: 0 8px 24px rgb(4 18 90 / 45%);
 }
 
 [data-theme='light'] {
-  --color-bg-base: #eef2e6;
+  --color-bg-base: #f3f6ff;
   --color-bg-surface: #ffffff;
-  --color-border: #c6d3aa;
-  --color-text-primary: #111a06; /* 15.74:1 on base, 17.88:1 on surface */
-  --color-text-muted: #4b5a2a; /* 6.61:1 on base, 7.51:1 on surface */
-  --color-accent: #3d6100; /* 6.35:1 on base, 7.22:1 on surface */
-  --color-on-accent: #ffffff;
+  --color-border: #b8c8f5;
+  --color-text-primary: #0a1f8f; /* 12.11:1 on base, 13.08:1 on surface */
+  --color-text-muted: #2f4bb3; /* 7.00:1 on base, 7.56:1 on surface */
+  --color-accent: #0c3ae8; /* 6.98:1 on base, 7.54:1 on surface */
+  --color-on-accent: #ffffff; /* text on the accent fill; asserted in tokens.test.ts */
 
-  --severity-critical: #ff2a6d;
-  --severity-high: #ff6b35;
-  --severity-medium: #fcee0a;
-  --severity-low: #00f0ff;
-  --severity-info: #8b72ff;
-  --severity-benign: #05ffa1;
+  --severity-critical: #ff8aa0;
+  --severity-high: #ff9a5c;
+  --severity-medium: #ffe14d;
+  --severity-low: #4de1ff;
+  --severity-info: #b9a6ff;
+  --severity-benign: #4dffb8;
 
-  --severity-text-critical: #a8124a; /* 6.48 / 7.37 */
-  --severity-text-high: #9c3b00; /* 6.08 / 6.91 */
-  --severity-text-medium: #6b5000; /* 6.66 / 7.57 */
-  --severity-text-low: #005f7f; /* 6.28 / 7.13 */
-  --severity-text-info: #4a3fa0; /* 7.36 / 8.37 */
-  --severity-text-benign: #0a6b42; /* 5.78 / 6.57 */
+  --severity-text-critical: #b0124a; /* 6.41 / 6.93 */
+  --severity-text-high: #a03a00; /* 6.27 / 6.77 */
+  --severity-text-medium: #6b5300; /* 6.79 / 7.34 */
+  --severity-text-low: #00607d; /* 6.55 / 7.07 */
+  --severity-text-info: #4630b0; /* 8.41 / 9.09 */
+  --severity-text-benign: #06673f; /* 6.44 / 6.95 */
 
-  --color-on-severity: #0b0e08;
-  --focus-ring: #3d6100; /* 6.35:1 against base */
-  --shadow-overlay: 0 6px 16px rgb(16 24 40 / 12%);
+  --color-on-severity: #0a1f8f;
+  --focus-ring: #0c3ae8; /* 6.98:1 against base */
+  --shadow-overlay: 0 6px 16px rgb(10 31 143 / 14%);
 }
 
 /*

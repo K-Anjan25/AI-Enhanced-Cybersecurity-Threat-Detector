@@ -23,7 +23,7 @@
  */
 import { useState } from 'react';
 
-import { Button, Card, ConnectionStatus, EmptyState } from '../../../components/ui';
+import { Button, Card, EmptyState } from '../../../components/ui';
 import {
   emptyTally,
   entitiesFromOverview,
@@ -41,7 +41,6 @@ import {
   RANGES,
   useDocumentVisible,
   useMetrics,
-  useNow,
   useOverviewWindow,
   usePrefersReducedMotion,
   usePrevious,
@@ -50,14 +49,13 @@ import {
 } from '../hooks';
 import { useChartPalette } from '../palette';
 import { readPipeline } from '../pipeline';
-import { bucketLabel, connectionState, kpiTiles, panelState, staleness } from '../view';
+import { bucketLabel, kpiTiles, panelState } from '../view';
 
 export function OverviewPage() {
   const [rangeKey, setRangeKey] = useState<RangeKey>('24h');
   const range = rangeSpec(rangeKey);
 
   const visible = useDocumentVisible();
-  const now = useNow(1_000, visible);
   const overview = useOverviewWindow(range, visible);
   const metrics = useMetrics(visible);
   const readiness = useReadiness(visible);
@@ -82,12 +80,6 @@ export function OverviewPage() {
   const state = panelState(overview.status, alerts);
   // The window's own label, and the count is the window's, not a page walk's.
   const windowLabel = `${range.label} \u00b7 ${String(alerts)} alerts in this window`;
-  const age = staleness(overview.dataUpdatedAt === 0 ? null : overview.dataUpdatedAt, now);
-  const connection = connectionState({
-    alertsFailed: overview.isError,
-    metricsFailed: metrics.isError,
-    stale: age.stale,
-  });
 
   const stages =
     metrics.data === undefined ? [] : readPipeline(metrics.data, previousMetrics ?? null);
@@ -97,17 +89,8 @@ export function OverviewPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-h1">Overview</h1>
-          <p className="mt-1 text-body-sm text-muted">
-            Detection posture and pipeline health. Every panel below is one read of the{' '}
-            {range.label} window.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <p className={`text-caption ${age.stale ? 'text-severityText-critical' : 'text-muted'}`}>
-            {age.label}
-            {age.stale ? ' \u2014 stale' : ''}
-          </p>
-          <ConnectionStatus state={connection} detail={range.label} />
           <div className="flex items-center gap-2">
             <label className="text-caption text-muted" htmlFor="overview-range">
               Window

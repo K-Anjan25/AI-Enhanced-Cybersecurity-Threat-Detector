@@ -32,8 +32,8 @@
 import { useMemo, useState } from 'react';
 
 import { Button, EmptyState, ErrorState, Panel, Skeleton } from '../../../components/ui';
-import { useDocumentVisible, useNow } from '../../../components/hooks/polling';
-import { formatCount, formatSince } from '../../../lib/format';
+import { useDocumentVisible } from '../../../components/hooks/polling';
+import { formatCount } from '../../../lib/format';
 import { ClusterTable } from '../components/ClusterTable';
 import { RawLines } from '../components/RawLines';
 import { TailControls } from '../components/TailControls';
@@ -64,7 +64,6 @@ export function LogsPage() {
 
   const tail = useLogTail(window, filters, visible && !paused, refreshMsFor(spanMs));
   const lines = useLogLines(window, openKey, visible);
-  const now = useNow(5_000);
 
   // What this deployment can be asked for follows what answered: a store deployment
   // is offered an hour and a day as well, and a tail deployment keeps the retained
@@ -102,18 +101,12 @@ export function LogsPage() {
   };
 
   const openRow = view.rows.find((row) => row.key === openKey) ?? null;
-  const staleDetail = paused
-    ? 'The view is paused, so this window will not change until it is resumed.'
-    : view.state === 'loading'
-      ? 'Reading the logs.'
-      : `Last read ${formatSince(new Date(tail.dataUpdatedAt).toISOString(), now)}.`;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1">Logs</h1>
-          <p className="mt-1 text-body-sm text-muted">{view.sourceLabel}</p>
         </div>
       </header>
 
@@ -137,7 +130,7 @@ export function LogsPage() {
           <span className="text-caption text-muted">
             {view.state === 'loading'
               ? 'Reading the logs…'
-              : `${formatCount(view.clustersSeen)} clusters · ${formatCount(view.linesSeen)} lines · ${formatCount(view.notableCount)} with an error or worse`}
+              : `${formatCount(view.clustersSeen)} clusters · ${formatCount(view.linesSeen)} lines`}
           </span>
         }
       >
@@ -165,12 +158,6 @@ export function LogsPage() {
         failed={lines.isError}
         onClose={() => setOpenKey(null)}
       />
-
-      <section aria-label="What this screen is showing" className="flex flex-col gap-1">
-        <p className="text-caption text-muted">
-          {view.retention} {staleDetail}
-        </p>
-      </section>
     </div>
   );
 }
