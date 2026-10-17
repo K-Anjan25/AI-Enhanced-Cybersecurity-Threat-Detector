@@ -175,7 +175,11 @@
 .landing-halftone {
   background-image: radial-gradient(circle, var(--color-text-primary) 1.6px, transparent 2px);
   background-size: 9px 9px;
-  mask-image: radial-gradient(ellipse at center, var(--color-text-primary) 30%, transparent 75%);
+  mask-image: radial-gradient(
+    ellipse closest-side,
+    var(--color-text-primary) 40%,
+    transparent 100%
+  );
   opacity: 0.45;
 }
 

@@ -192,11 +192,6 @@ export function ModelsPage() {
             setPromotion(row);
           }}
         />
-        <p className="px-4 py-3 text-caption text-muted">
-          Promotion and rollback need the <code className="font-mono">admin</code> role, and both
-          are audit records (FR-42): the justification and the reason stay on the version record,
-          while the trail keeps the ids, the kind and the status.
-        </p>
       </Card>
 
       <ComparePanel rows={rows} />
@@ -248,8 +243,7 @@ function ServingRow({ row }: { row: VersionRow }) {
       error={error}
       absenceNote={
         error === null
-          ? (metricsAbsenceMessage(null) ??
-            'This version has no recorded evaluation attached to it.')
+          ? (metricsAbsenceMessage(null) ?? 'No evaluation recorded.')
           : (metricsAbsenceMessage(error) ?? 'The metrics could not be read.')
       }
     />

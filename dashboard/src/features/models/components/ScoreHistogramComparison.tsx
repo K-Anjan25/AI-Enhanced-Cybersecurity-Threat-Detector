@@ -54,10 +54,7 @@ export function ScoreHistogramComparison({ left, right }: ScoreHistogramComparis
           <Skeleton lines={5} label="Score-distribution comparison is loading" />
         </div>
       ) : missingRun !== undefined ? (
-        <EmptyState
-          title="Two recorded histograms are required"
-          description="No recorded evaluation."
-        />
+        <EmptyState title="No evaluation recorded" />
       ) : failedRead !== undefined ? (
         <ErrorState message="Recorded score histograms could not be read" />
       ) : left.histogram === null || right.histogram === null ? (

@@ -167,7 +167,7 @@ export function rollbackRefusalMessage(error: Error | null): string | null {
 export function metricsAbsenceMessage(error: Error | null): string | null {
   if (error === null) return null;
   if (error instanceof ApiError && error.status === 404) {
-    return 'This version has no recorded evaluation, so FR-31 has no numbers to show for it.';
+    return 'No evaluation recorded.';
   }
   if (error instanceof ApiError && error.status === 403) {
     return 'Reading model metrics needs a signed-in account with read access.';
