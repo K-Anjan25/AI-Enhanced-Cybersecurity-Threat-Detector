@@ -53,7 +53,9 @@ def _compute_distribution(flows: list[dict[str, Any]], feature: str) -> dict[str
         if feature == "dst_port":
             counter[_bucket_port(int(f.get("dst_port", 0)))] += 1
         elif feature == "proto":
-            counter[str(f.get("proto", "tcp"))] += 1
+            # flow@1 (what ingest stores) names it `protocol`; `proto` is the legacy name.
+            # Reading only `proto` counted every ingested flow as TCP.
+            counter[str(f.get("protocol", f.get("proto", "tcp")))] += 1
     return {k: v / total for k, v in counter.items()}
 
 
