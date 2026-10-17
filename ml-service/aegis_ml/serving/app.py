@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 
 from aegis_ml.registry.model_registry import ModelRegistry
 from aegis_ml.serving.drift import router as drift_router
+from aegis_ml.serving.flow_window import router as flow_window_router
 from aegis_ml.serving.health import ServiceHealth, build_health
 from aegis_ml.serving.models import router as models_router
 from aegis_ml.serving.scoring import router as scoring_router
@@ -34,6 +35,7 @@ def create_app(registry: ModelRegistry | None = None) -> FastAPI:
 
     # Include scoring, drift, and model endpoints
     app.include_router(scoring_router)
+    app.include_router(flow_window_router)
     app.include_router(drift_router)
     app.include_router(models_router)
 
