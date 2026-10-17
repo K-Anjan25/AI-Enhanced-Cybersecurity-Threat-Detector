@@ -52,10 +52,7 @@ export function SavedHunts({
       </Button>
       {open ? (
         <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-2">
-          <p className="text-caption text-muted">
-            Saved and recent hunts live in this browser only. They are not shared with anyone else,
-            and clearing site data removes them.
-          </p>
+          <p className="text-caption text-muted">Stored in this browser only.</p>
           {saved.length === 0 ? (
             <p className="text-body-sm text-muted">No saved hunts yet.</p>
           ) : (

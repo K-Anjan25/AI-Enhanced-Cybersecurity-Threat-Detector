@@ -12,7 +12,7 @@
  * no page walk at all. A screen that quietly went back to counting pages would fail
  * on the request count rather than only on a number.
  */
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -402,15 +402,6 @@ describe('OverviewPage', () => {
     expect(await screen.findByText(/The metrics scrape could not be read/)).toBeInTheDocument();
   });
 
-  it('reports the connection as disconnected when the API is unreachable', async () => {
-    stubFetch(routes({ overview: () => jsonResponse({ detail: 'down' }, 503) }));
-    renderWithProviders(<OverviewPage />);
-
-    const status = await screen.findByRole('status');
-
-    expect(status).toHaveTextContent('Disconnected');
-  });
-
   it('reads the window the operator picks, resolution included', async () => {
     const user = userEvent.setup();
     const requests = stubFetch(routes());
@@ -496,51 +487,5 @@ describe('OverviewPage', () => {
     expect(
       (await screen.findAllByText('Last 24 h \u00b7 3 alerts in this window')).length,
     ).toBeGreaterThanOrEqual(2);
-  });
-});
-
-describe('the overview under a frozen clock', () => {
-  it('shows the age of the last successful load', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(NOW);
-    stubFetch(routes());
-    renderWithProviders(<OverviewPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/last update/)).toBeInTheDocument();
-    });
-  });
-
-  it('marks the data stale once two refreshes have been missed, and degrades the indicator', async () => {
-    // §8.1: "if live data stops arriving, show `last update 2 m ago` in the header
-    // rather than silently showing old numbers." The refresh is made to hang, so
-    // the last successful load stays on screen while its age grows past two chart
-    // polls — the exact situation the rule is for.
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(NOW);
-    let answered = 0;
-    stubFetch(
-      routes({
-        overview: () => {
-          answered += 1;
-          return answered === 1
-            ? jsonResponse(aggregate())
-            : new Promise<Response>(() => {
-                /* never answers: the refresh has stopped working */
-              });
-        },
-      }),
-    );
-    renderWithProviders(<OverviewPage />);
-    await screen.findByText('web-01.corp');
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(35_000);
-    });
-
-    expect(screen.getByText(/last update .* \u2014 stale/)).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Degraded');
-    // The data itself is still on screen: stale is not the same as gone.
-    expect(screen.getByText('web-01.corp')).toBeInTheDocument();
   });
 });

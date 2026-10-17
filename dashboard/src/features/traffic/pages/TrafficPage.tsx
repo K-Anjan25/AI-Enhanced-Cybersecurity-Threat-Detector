@@ -25,8 +25,7 @@
 import { useMemo, useState } from 'react';
 
 import { useChartPalette } from '../../../components/charts/palette';
-import { Button, ConnectionStatus, ErrorState, Panel, Skeleton } from '../../../components/ui';
-import { useConnectionView } from '../../../components/realtime/useConnectionView';
+import { Button, ErrorState, Panel, Skeleton } from '../../../components/ui';
 import { FLOW_DIRECTIONS, FLOW_PROTOCOLS } from '../../../api/flows';
 import { BrushSeries } from '../components/BrushSeries';
 import { EntityGraph } from '../components/EntityGraph';
@@ -54,7 +53,6 @@ export function TrafficPage() {
   // the view below — so a committed selection never blanks the screen it was drawn on.
   const brushed = useTrafficBrush(range, filters, brush, true);
   const palette = useChartPalette();
-  const connection = useConnectionView();
 
   const full = window.data;
   const panels = brushed.data ?? full;
@@ -77,13 +75,8 @@ export function TrafficPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1">Traffic</h1>
-          <p className="mt-1 text-body-sm text-muted">
-            Flow volume and composite score over the window, with the addresses those flows belong
-            to. Brushing the series re-reads the selected window for the table and the graph.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <ConnectionStatus state={connection.state} detail={connection.detail} />
           <div className="flex items-center gap-2">
             <label className="text-caption text-muted" htmlFor="traffic-range">
               Window
@@ -112,7 +105,6 @@ export function TrafficPage() {
       {window.isError && full === undefined ? (
         <ErrorState
           message="The traffic window could not be loaded"
-          detail="It reads the flow API over the selected window, which composes the alert overlay."
           action={<Button onClick={() => void window.refetch()}>Retry</Button>}
         />
       ) : null}
@@ -120,7 +112,6 @@ export function TrafficPage() {
       {brushed.isError && brush !== null ? (
         <ErrorState
           message="The brushed window could not be loaded"
-          detail="The table and the graph still describe the whole window; widen the brush to see everything again."
           action={<Button onClick={() => setBrush(null)}>Clear the brush</Button>}
         />
       ) : null}

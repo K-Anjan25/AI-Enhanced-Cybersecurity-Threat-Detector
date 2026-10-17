@@ -75,7 +75,6 @@ export function FamilyMixChart({
         : {
             error: {
               message: 'The family mix could not be loaded',
-              detail: 'It reads the same alert window as the tiles.',
               action: <Button onClick={onRetry}>Retry</Button>,
             },
           })}

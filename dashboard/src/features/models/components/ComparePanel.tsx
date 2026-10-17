@@ -152,11 +152,6 @@ export function ComparePanel({ rows }: ComparePanelProps) {
               error: rightFetch.error ?? null,
             }}
           />
-          {left !== null && right !== null && left.id === right.id ? (
-            <p className="px-4 pb-3 text-caption text-muted">
-              Both sides name the same version, so every delta is zero by construction.
-            </p>
-          ) : null}
         </>
       )}
     </Card>
