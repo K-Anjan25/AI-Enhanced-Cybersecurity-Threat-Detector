@@ -75,6 +75,7 @@ from app.services.log_source import TailLogSource, store_requested, tail_reason
 from app.services.log_store import PostgresLogStore
 from app.services.log_tail import LogTail
 from app.services.ml_calibration import MlCalibrator
+from app.services.ml_window_scorer import MlWindowScorer
 from app.services.model_ops import ModelOpsService
 from app.services.model_registrar import ModelRegistrar
 from app.services.recalibration import (
@@ -300,10 +301,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.alert_store = InMemoryAlertStore()
     # Rule-based detection engine: runs in background, reads buffered flows,
     # applies heuristic rules, and writes alerts to the alert store.
+    ml_scorer = None
+    if getattr(app.state.settings, "ml_detection_enabled", False):
+        ml_scorer = MlWindowScorer(app.state.settings.ml_service_url)
     app.state.detection_engine = DetectionEngine(
         app.state.alert_store,
         interval=15.0,
         max_buffer=10_000,
+        ml_scorer=ml_scorer,
     )
     # Drift monitor (T-421): computes PSI from recent flows and publishes
     # aegis_drift_psi{feature} gauges to /metrics so the DriftPage draws bars.

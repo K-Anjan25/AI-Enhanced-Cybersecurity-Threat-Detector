@@ -60,7 +60,21 @@ def test_a_401_logs_in_again_and_the_next_batch_is_accepted(
 
     monkeypatch.setattr(bridge.urllib.request, "urlopen", fake_urlopen)
 
-    record = [{"ts": 1.0}]
+    # A valid flow: send_batch drops anything that is not flow@1 before it posts.
+    record = [
+        {
+            "timestamp": "2026-10-17T10:00:00+00:00",
+            "src_ip": "10.0.0.5",
+            "dst_ip": "8.8.8.8",
+            "src_port": 1,
+            "dst_port": 2,
+            "protocol": "tcp",
+            "src_bytes": 1,
+            "dst_bytes": 1,
+            "packets": 2,
+            "duration": 0.1,
+        }
+    ]
     assert bridge.send_batch(record) == 0  # the expired token is refused once
     assert len(logins) == 1
     assert bridge.TOKEN == "fresh-token"

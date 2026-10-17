@@ -81,7 +81,14 @@ def reset_scorer() -> None:
 def score_flow_window(request: FlowWindowRequest) -> FlowWindowScore:
     """Score a window and explain it. The score is the highest chunk score (see scorer)."""
     scorer = get_scorer()
-    result = scorer.score(request.flows)
+    try:
+        result = scorer.score(request.flows)
+    except ValueError as exc:
+        # A window the model cannot be given (for example one that mixes sources) is a
+        # bad request. It is not a server fault, so it must not come back as a 500.
+        raise HTTPException(
+            status_code=422, detail={"error": "invalid_window", "reason": str(exc)}
+        ) from exc
     return FlowWindowScore(
         score=result.score,
         model_id=result.model_id,

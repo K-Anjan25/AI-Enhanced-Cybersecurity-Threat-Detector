@@ -12,7 +12,7 @@ from collections import deque
 from typing import TYPE_CHECKING
 
 from app.core.logging import get_logger
-from app.services.rule_detector import RuleDetector
+from app.services.rule_detector import MlWindowScorerLike, RuleDetector
 
 if TYPE_CHECKING:
     from app.services.alert_store import AlertStore
@@ -36,9 +36,13 @@ class DetectionEngine:
         *,
         interval: float = 15.0,
         max_buffer: int = 10_000,
+        ml_scorer: MlWindowScorerLike | None = None,
     ) -> None:
-        """Bind the detector to an alert store and the scoring cadence."""
-        self._detector = RuleDetector(alert_store)
+        """Bind the detector to an alert store and the scoring cadence.
+
+        ``ml_scorer`` is optional: the trained flow model (see :class:`RuleDetector`).
+        """
+        self._detector = RuleDetector(alert_store, ml_scorer=ml_scorer)
         self._interval = interval
         self._max_buffer = max_buffer
         self._buffer: deque[dict[str, object]] = deque(maxlen=max_buffer)

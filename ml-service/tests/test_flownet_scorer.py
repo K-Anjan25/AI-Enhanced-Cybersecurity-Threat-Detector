@@ -158,6 +158,19 @@ def test_endpoint_scores_a_window(checkpoint, windows, monkeypatch):
     assert len(payload["reasons"]) >= 3
 
 
+def test_endpoint_refuses_a_mixed_source_window_as_422(checkpoint, windows, monkeypatch):
+    """A window spanning two sources is a client error, not a server fault."""
+    monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", checkpoint)
+    client = TestClient(create_app())
+    flows = [r.model_dump(mode="json") for r in windows[0].records]
+    other = [r.model_dump(mode="json") for r in windows[1].records]
+    if {f["src_ip"] for f in flows} == {f["src_ip"] for f in other}:
+        pytest.skip("fixture windows share a source; cannot build a mixed window")
+    response = client.post("/score/windows", json={"flows": flows[:2] + other[:2]})
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"]["error"] == "invalid_window"
+
+
 def test_endpoint_refuses_without_a_checkpoint(tmp_path, windows, monkeypatch):
     monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", str(tmp_path / "absent"))
     client = TestClient(create_app())
