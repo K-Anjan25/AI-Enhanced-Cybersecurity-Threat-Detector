@@ -12,7 +12,13 @@ WORKDIR /app
 # Install dependencies first so the layer caches independently of source edits.
 COPY pyproject.toml ./
 COPY app ./app
-RUN pip install --no-cache-dir .
+# aegis_ml is the ML package the backend shares with training: the windowing and
+# fusion contracts the live Kafka consumer uses (D-085). Only its base install is
+# needed (pydantic, fastapi, uvicorn), not torch. The build passes it as the named
+# context `aegis_ml` (docker/docker-compose.yml, .github/workflows/release.yml).
+COPY --from=aegis_ml . /tmp/aegis-ml
+RUN pip install --no-cache-dir /tmp/aegis-ml . \
+    && rm -rf /tmp/aegis-ml
 
 # Run as an unprivileged user (architecture.md §12).
 RUN useradd --create-home --uid 10001 aegis

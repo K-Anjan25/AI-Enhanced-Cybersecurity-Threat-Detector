@@ -143,6 +143,8 @@ services:
   backend:
     build:
       context: ../backend
+      additional_contexts:
+        aegis_ml: ../ml-service
     environment:
       AEGIS_ENV: development
       AEGIS_SERVICE_NAME: aegis-backend
