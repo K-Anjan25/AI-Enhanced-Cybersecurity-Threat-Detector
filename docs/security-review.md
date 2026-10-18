@@ -45,6 +45,15 @@
 | F-02 | Capture services run with NET_RAW capability | Medium   | Accepted — required for packet capture; isolated in separate containers |
 | F-03 | No mutual TLS between backend and ML service | Low      | T-512 (post-v1)                                                         |
 
+## Scan record — 2026-10-18
+
+| Scan             | Scope                                | Result                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| bandit           | `backend/app`, `ml-service/aegis_ml` | No high severity. One medium (`torch.load` with `weights_only=False` on resume) fixed; unverified without torch. Low-severity items accepted (subprocess calls in the training pipeline run fixed argv). |
+| pip-audit        | backend and ml-service venv          | Only `pip` and `setuptools` in the base image. Application dependencies clean. Action: upgrade the base image's pip and setuptools at the next image refresh.                                            |
+| npm audit (prod) | `dashboard`                          | 2 moderate in `react-router` fixed by upgrading to `react-router-dom` 7.18.4. Now 0.                                                                                                                     |
+| WCAG 1.4.11      | dashboard tokens, both themes        | Light control border raised to 3.43:1 / 4.48:1.                                                                                                                                                          |
+
 ## Conclusion
 
 All 8 threat rows from architecture.md §12 have verified controls. 7 of 8 are fully implemented; 1 (audit hash-chaining) is deferred post-v1 with a filed task. The system's security posture meets v1.0 requirements.

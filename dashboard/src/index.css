@@ -51,7 +51,10 @@
 [data-theme='light'] {
   --color-bg-base: #dbe2e9;
   --color-bg-surface: #ffffff;
-  --color-border: #9baab9;
+
+  /* WCAG 1.4.11: control boundaries need 3:1. Mariana Blue at 55% (the palette's own
+     blue-grey family): 3.43:1 on base, 4.48:1 on surface. Grey #9BAAB9 gave 1.82 / 2.37. */
+  --color-border: #6b7982;
   --color-text-primary: #0f232e; /* 12.36:1 on base, 16.15:1 on surface */
   --color-text-muted: #3e5160; /* 6.30:1 on base, 8.23:1 on surface */
   --color-accent: #0000ff; /* 6.57:1 on base, 8.59:1 on surface */

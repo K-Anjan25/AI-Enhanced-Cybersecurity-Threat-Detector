@@ -3760,6 +3760,24 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Open.** Offsets are in memory (restart replays from the earliest retained offset). One backend replica only. Log and metric lag for the consumer is not yet exported.
 
+### D-086 — Leakage-free temporal evaluation has no attack positives on the data available here; LOAO is the leakage-free protocol (PRD §8, item 4, 2026-10-18)
+
+**Finding.** Ran the default `entity-disjoint` policy (R-60 + R-61) and `temporal-only` on the official 10k UNSW sample and on the full CIC-IDS2017 Friday file. Under `entity-disjoint` the test fold has **0 attack rows** on both, and the pipeline refuses to train (D-014). `temporal-only` on the 10k sample also has a test fold with 0 positives. CIC Friday's attacks all come from one source, `172.16.0.1`, so leave-one-attacker-out cannot hold it out without leaving training with no attacks. So on these files no temporal split is both leakage-free and attack-positive.
+
+**Consequence.** The recorded temporal numbers (`cfcfc35f`, 15 shared entities) were produced with `temporal-only` on purpose and are labelled leaky. A leakage-free temporal number cannot be produced from these data. The leakage-free, attack-positive protocol is LOAO on UNSW-NB15 (several attacker sources), run on the desktop from the full corpus. The PRD §8 wording "temporal held-out split" and the R-61 gate need a PRD decision, not a code change. Asked the user.
+
+**Not run.** Full-scale cross-dataset (UNSW → CIC): needs a FlowNet checkpoint trained on the full UNSW corpus, which is not in this sandbox. HDFS is not in the fetch manifest; BGL is only the 2,000-line sample.
+
+### D-087 — Light-theme control borders meet WCAG 1.4.11; drift baselines are measured, not typed; dependency and security scans recorded (2026-10-18)
+
+- **Contrast.** Computed 28 WCAG pairs per theme. Dark passes all. Light failed on the border: Grey `#9BAAB9` is 1.82:1 on the base and 2.37:1 on the surface, below 3:1 for control boundaries. Light `border.default` is now `#6B7982` (Mariana Blue at 55%, on palette): 3.43:1 base, 4.48:1 surface. Dark unchanged.
+- **Drift.** The `dst_port` and `proto` baselines were hand-typed. Replaced with the benign distribution of CIC-IDS2017 Friday and Thursday (265,904 flows), 0.1% floor on empty buckets. These are 2017 lab traffic: a deployment must re-baseline from its own benign traffic. The other ml-service features (`duration_bucket` and others) are still typed and are open.
+- **Dependencies.** `npm audit`: 2 moderate in `react-router` (open redirect, GHSA-wrjc-x8rr-h8h6). Upgraded `react-router-dom` to 7.18.4; audit is clean, typecheck clean, 1,143 tests pass, build passes. `pip-audit`: findings only in `pip` and `setuptools` inside the base images; app dependencies clean.
+- **Static analysis.** bandit on `app/` and `aegis_ml/`: no high-severity findings. One medium: `torch.load(weights_only=False)` on the training resume path. Changed to `weights_only=True`; the saved state is model and optimiser `state_dict`s. **Not run here** (torch is not installed in the sandbox), so the resume path is unverified.
+- **Coverage.** Backend `pytest --cov=app`: 89% (gate 80%). ml-service: 565 passed, 17 skipped (torch absent).
+
+**Not done.** Live stack measurements (Kafka smoke, first-malicious-flow to alert, HTTP load test, clean-clone Docker time), the M4 triage loop on live data, the browser checks, Item 3 logs, the broker heartbeat timeouts. These need Docker, a browser, a checkpoint or the user's logs.
+
 ## Change log
 
 | Date | Version | Change |
