@@ -155,7 +155,13 @@ export function versionRows(versions: readonly ModelVersion[]): VersionRow[] {
       statusTone: STATUS_TONES[version.status] ?? 'neutral',
       promotedBy: version.promoted_by ?? 'not recorded',
       promotedAt:
-        version.promoted_at === null ? 'never promoted' : formatStamp(version.promoted_at),
+        version.promoted_at !== null
+          ? formatStamp(version.promoted_at)
+          : // Serving without a promotion record means it was loaded at startup, which
+            // is not the same as never having been promoted.
+            version.status === 'active'
+            ? 'not recorded'
+            : 'never promoted',
       manifestLabel: version.manifest_present ? 'present' : 'missing',
       promotable: refusal === null,
       promotableReason: refusal,
