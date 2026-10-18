@@ -3732,6 +3732,20 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Consequences.** Any UNSW number quoted from this branch must name the split policy, the scoring unit (window), and whether the split is leaky. `loao_summary.{md,csv}` in `data/runs/` is the table of record for LOAO.
 
+### D-084 — Kafka is not a backend startup dependency until a publisher is wired; the Bitnami subchart is removed (Item 1, Item 9, 2026-10-18)
+
+**Finding.** Kafka is not integrated at runtime. `app.state.flow_publisher` is never set in production code, so ingest never publishes to `flows.raw`. `FlowProducer` and `ScoringWorker` run only in the in-memory golden-test pipeline. No Kafka client is constructed by the app. The backend, however, `depends_on` the broker and `kafka-init`, so a broker hiccup (the heartbeat timeouts seen on 2026-10-18) blocked the API for no benefit.
+
+**Decision.** Remove the `kafka` and `kafka-init` startup dependency from the backend in compose. The broker and topic init still start with the stack. The dependency returns in the same change that wires the publisher. Wiring the publisher and a consumer that feeds `ScoringWorker` is the open work item (Q-08 stays MIGRATED, unverified, until a live broker run).
+
+**Topic warning.** The "period ('.') or underscore ('_')" warning from `kafka-init` is informational. The only topic is `flows.raw`; no underscore topic exists. Not changed.
+
+**Bitnami.** The Helm chart declared the Bitnami `postgresql` 13.2.24 subchart (disabled by default, images not published). No template referenced it. Removed from `Chart.yaml`, along with its inert values block. Production uses an external database through `aegis-secrets`. The compose stack's Postgres is the official `postgres:16` image.
+
+**Item 5 (nginx).** The nginx container is `dashboard`, not `postgres`; the pasted Postgres log is healthy (checkpoints, clean restart). Helm and raw manifests mount writable `emptyDir` volumes for `/var/cache/nginx`, `/var/run`, `/etc/nginx/conf.d` and `/tmp`, which covers the entrypoint and resolver writes under `readOnlyRootFilesystem`. Static only; not run in a container here.
+
+**Desktop LOAO.** The runner reads `data\raw\unsw_s15\headered_{1..4}.csv`, a 15% sample that must be created first from the raw parts with `scripts\prepare_unsw_raw.py --src data\raw\unsw --out data\raw\unsw_s15 --sample-frac 0.15`. Verified here with the same input: 380,144 rows written.
+
 ## Change log
 
 | Date | Version | Change |
