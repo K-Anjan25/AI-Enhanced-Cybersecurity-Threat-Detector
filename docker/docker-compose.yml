@@ -68,7 +68,11 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_LOG_DIRS: '/var/lib/kafka/data'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      # Topics are created explicitly by kafka-init below, with the partition count
+      # the backend producer assumes. Auto-create would give flows.raw the broker
+      # default (one partition), and src_ip partitioning would silently do nothing.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_NUM_PARTITIONS: '6'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
@@ -82,6 +86,22 @@ services:
       timeout: 10s
       retries: 12
       start_period: 30s
+
+  kafka-init:
+    # One-shot: creates flows.raw with 6 partitions (FLOW_TOPIC in
+    # backend/app/messaging/partitioner.py, num_partitions default in producer.py).
+    # Idempotent: --if-not-exists makes restarts safe.
+    image: apache/kafka:3.9.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
+        --if-not-exists --topic flows.raw --partitions 6 --replication-factor 1
+    restart: 'no'
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
@@ -151,6 +171,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       elasticsearch:
         condition: service_healthy
       ml-service:
