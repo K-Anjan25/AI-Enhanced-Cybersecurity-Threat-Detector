@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import re
 import sys
 import time
@@ -56,6 +57,20 @@ def _request(
         raise SystemExit(
             f"cannot reach {url}: {exc}. Is the stack up (docker compose ps)?"
         ) from exc
+
+
+def _env_file_values(path: pathlib.Path) -> dict[str, str]:
+    """Read KEY=VALUE pairs from docker/.env (the file compose reads), if it exists."""
+    values: dict[str, str] = {}
+    if not path.is_file():
+        return values
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value.strip().strip("\"'")
+    return values
 
 
 def _login(base: str, email: str, password: str) -> str:
@@ -106,13 +121,18 @@ def main(argv: list[str] | None = None) -> int:
     """Run the smoke check; return 0 on pass, 1 on fail."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--base", default="http://localhost:8000")
-    parser.add_argument("--email", default=DEFAULT_EMAIL)
-    parser.add_argument("--password", default=DEFAULT_PASSWORD)
+    parser.add_argument("--email", default=None)
+    parser.add_argument("--password", default=None)
     args = parser.parse_args(argv)
     base = args.base.rstrip("/")
+    # The backend takes its admin login from docker/.env when that file sets it, so the
+    # smoke check must read the same file; the compose default is only the fallback.
+    env = _env_file_values(pathlib.Path(__file__).resolve().parents[1] / "docker" / ".env")
+    email = args.email or env.get("AEGIS_BOOTSTRAP_ADMIN_EMAIL") or DEFAULT_EMAIL
+    password = args.password or env.get("AEGIS_BOOTSTRAP_ADMIN_PASSWORD") or DEFAULT_PASSWORD
 
     print(f"1. sign in to {base}")
-    token = _login(base, args.email, args.password)
+    token = _login(base, email, password)
 
     before = _scored_windows(base)
     print(f"2. ingest {FLOWS} flows from {SOURCE} (scored windows so far: {before:.0f})")
