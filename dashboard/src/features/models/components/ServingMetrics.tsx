@@ -59,11 +59,6 @@ export function ServingMetrics({
             ))}
           </div>
           <p className="px-4 pb-4 text-caption text-muted">{panel.caption}</p>
-          {panel.caveat !== null ? (
-            <p role="note" className="px-4 pb-4 text-caption text-muted">
-              {panel.caveat}
-            </p>
-          ) : null}
         </>
       )}
     </Card>
