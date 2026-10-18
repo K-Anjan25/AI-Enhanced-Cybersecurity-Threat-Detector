@@ -205,8 +205,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--max-train-rows",
         type=int,
-        default=15000,
-        help="Deterministically thin the training rows to this many.",
+        default=0,
+        help=(
+            "Deterministically thin the training rows to this many. 0 (default) fits on "
+            "every training row, so the baselines are not handicapped by a compute cap."
+        ),
     )
     parser.add_argument("--stumps", type=int, default=DEFAULT_STUMP_COUNT)
     parser.add_argument("--out", default="data/runs/baselines.json")
@@ -422,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
         "window_key": key.value,
         "split_policy": args.split_policy,
         "holdout_entity": args.holdout_entity,
+        "max_train_rows": args.max_train_rows,
         "split_audit": audit,
         "rows_read": sum(r.rows_read for r in reports) if reports else len(records),
         "rows_parsed": len(records),
