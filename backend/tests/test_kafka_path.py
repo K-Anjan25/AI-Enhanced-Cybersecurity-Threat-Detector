@@ -11,6 +11,7 @@ acks under load). That check is the operator's run against docker compose.
 
 from __future__ import annotations
 
+import pathlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -346,3 +347,31 @@ def test_ingest_hands_flows_to_the_publisher_and_does_not_feed_the_in_process_en
         == "0123456789abcdef0123456789abcdef"  # pragma: allowlist secret  # noqa: E501
     )  # pragma: allowlist secret  # noqa: E501
     assert engine.fed == []
+
+
+def test_client_kwargs_are_accepted_by_the_installed_kafka_client() -> None:
+    """The real constructors reject unknown kwargs (kafka-python-ng asserts on them).
+
+    The fake-client tests never reach the real constructor, so a config key the
+    installed library does not support (enable_idempotence) only failed
+    at the first ingest in the Docker image. Compare against the library's own
+    DEFAULT_CONFIG so this fails offline.
+    """
+    import re
+
+    import kafka  # type: ignore[import-untyped]
+
+    source = (
+        pathlib.Path(__file__).resolve().parents[1] / "app" / "messaging" / "kafka_bus.py"
+    ).read_text()
+    producer_kw = set(re.findall(r"KafkaProducer\(.*?\)", source, re.S))
+    assert producer_kw, "KafkaProducer call not found"
+    keys = set(re.findall(r"^\s+(\w+)=", next(iter(producer_kw)), re.M))
+    unknown = keys - set(kafka.KafkaProducer.DEFAULT_CONFIG)
+    assert not unknown, f"KafkaProducer kwargs unsupported by the installed client: {unknown}"
+
+    consumer_kw = set(re.findall(r"KafkaConsumer\(.*?\)", source, re.S))
+    assert consumer_kw, "KafkaConsumer call not found"
+    keys = set(re.findall(r"^\s+(\w+)=", next(iter(consumer_kw)), re.M))
+    unknown = keys - set(kafka.KafkaConsumer.DEFAULT_CONFIG)
+    assert not unknown, f"KafkaConsumer kwargs unsupported by the installed client: {unknown}"

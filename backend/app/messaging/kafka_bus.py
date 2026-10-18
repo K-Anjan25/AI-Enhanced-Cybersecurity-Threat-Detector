@@ -6,9 +6,12 @@ implements those calls over kafka-python-ng, so the same ``FlowProducer``,
 ``FlowConsumer`` and ``ScoringWorker`` run against a broker in production and
 against ``InProcessBus`` in the golden test.
 
-Producer guarantees: ``acks=all`` with idempotence, and ``flush()`` raises when any
-record was not acknowledged. The ingest route calls ``flush()`` before it answers,
-so a record is only counted as taken in once the broker has it.
+Producer guarantees: ``acks=all`` with retries, so delivery is at-least-once: a retried
+send can duplicate a flow. kafka-python-ng 2.2 has no idempotent producer, and the
+correlator keys alerts by evidence identity, so a replayed flow does not open a second
+alert. ``flush()`` raises when any record was not acknowledged. The ingest route calls
+``flush()`` before it answers, so a record is only counted as taken in once the broker
+has it.
 
 Consumer guarantees: one consumer per partition, assigned explicitly (no consumer
 group and no broker-side commits). The position is the caller's (the worker's
@@ -82,7 +85,6 @@ class KafkaBus:
         return KafkaProducer(
             bootstrap_servers=self._bootstrap,
             acks="all",
-            enable_idempotence=True,
             linger_ms=5,
             retries=5,
             value_serializer=None,
