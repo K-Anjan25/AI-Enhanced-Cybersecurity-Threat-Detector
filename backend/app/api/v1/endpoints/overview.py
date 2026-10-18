@@ -151,6 +151,7 @@ def _response(
             unrecorded=summary.unrecorded,
             verdicts_measured=summary.verdicts_measured,
             mean_time_to_verdict_seconds=summary.mean_time_to_verdict_seconds,
+            median_time_to_verdict_seconds=summary.median_time_to_verdict_seconds,
         ),
         series=[
             OverviewBucket(

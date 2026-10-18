@@ -43,6 +43,7 @@ __all__ = [
     "UNMATCHED_ROUTE",
     "metric_label_names",
     "observe_alert_created",
+    "observe_detection_to_alert",
     "observe_drift_psi",
     "observe_http_request",
     "observe_ingest",
@@ -81,6 +82,16 @@ ALERTS_CREATED = Counter(
     labelnames=("severity",),
 )
 
+# PRD section 8 budget: median first malicious flow to alert <= 5 s. This measures
+# from the detection's timestamp (the window that raised it), which is the
+# earliest time the pipeline knows about the case. Time from the first flow of
+# the window is a stricter number and is not measured here.
+ALERT_LATENCY = Histogram(
+    "aegis_detection_to_alert_seconds",
+    "Seconds from a detection's timestamp to the alert it opened.",
+    buckets=(0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 30.0, 60.0, 300.0),
+)
+
 DRIFT_PSI = Gauge(
     "aegis_drift_psi",
     "Population stability index per feature, from the drift report.",
@@ -106,6 +117,7 @@ _OWNED: Final[tuple[Counter | Gauge | Histogram, ...]] = (
     RECORDS_REJECTED,
     SCORE_LATENCY,
     ALERTS_CREATED,
+    ALERT_LATENCY,
     DRIFT_PSI,
     HTTP_REQUESTS,
     HTTP_LATENCY,
@@ -152,6 +164,14 @@ def observe_alert_created(severity: str) -> None:
     dashboard must not be fooled by.
     """
     ALERTS_CREATED.labels(severity=severity).inc()
+
+
+def observe_detection_to_alert(seconds: float) -> None:
+    """Record the seconds from a detection's timestamp to the alert it opened."""
+    if seconds < 0:
+        msg = f"a duration cannot be negative, got {seconds}"
+        raise ValueError(msg)
+    ALERT_LATENCY.observe(seconds)
 
 
 def observe_drift_psi(feature: str, value: float) -> None:

@@ -95,9 +95,7 @@ def load_documents(problems: list[str]) -> list[dict[str, Any]]:
     return documents
 
 
-def check_deployment(
-    document: dict[str, Any], problems: list[str], fields: set[str]
-) -> None:
+def check_deployment(document: dict[str, Any], problems: list[str], fields: set[str]) -> None:
     """Validate one Deployment against the app it runs."""
     name = document["metadata"]["name"]
     if name not in WORKLOADS:
@@ -148,9 +146,7 @@ def check_deployment(
     check_env(name, container, problems, fields)
 
 
-def check_probes(
-    name: str, container: dict[str, Any], port: int, problems: list[str]
-) -> None:
+def check_probes(name: str, container: dict[str, Any], port: int, problems: list[str]) -> None:
     """Both probes must exist and point at a route the app really serves."""
     if name == "dashboard":
         return  # nginx serves static files; its routes are not introspectable
@@ -162,16 +158,12 @@ def check_probes(
             continue
         path = spec.get("httpGet", {}).get("path")
         if path not in routes:
-            fail(
-                problems, f"{name}: {probe} targets {path}, which is not a served route"
-            )
+            fail(problems, f"{name}: {probe} targets {path}, which is not a served route")
         if spec.get("httpGet", {}).get("port") != port:
             fail(problems, f"{name}: {probe} targets the wrong port")
 
 
-def check_env(
-    name: str, container: dict[str, Any], problems: list[str], fields: set[str]
-) -> None:
+def check_env(name: str, container: dict[str, Any], problems: list[str], fields: set[str]) -> None:
     """Every AEGIS_* variable must be real, and secrets must come by reference."""
     for entry in container.get("env", []) or []:
         variable = entry.get("name", "")
@@ -180,9 +172,7 @@ def check_env(
         if variable not in fields:
             fail(problems, f"{name}: {variable} is not a field on Settings")
         if variable in SECRET_ONLY and "value" in entry:
-            fail(
-                problems, f"{name}: {variable} must come from a secretRef, not a value"
-            )
+            fail(problems, f"{name}: {variable} must come from a secretRef, not a value")
 
     for source in container.get("envFrom", []) or []:
         if "secretRef" in source:
@@ -195,9 +185,7 @@ def check_env(
         )
 
 
-def check_configmap(
-    document: dict[str, Any], problems: list[str], fields: set[str]
-) -> None:
+def check_configmap(document: dict[str, Any], problems: list[str], fields: set[str]) -> None:
     """Every AEGIS_* key in the ConfigMap must be a real Settings field.
 
     These become environment variables through ``envFrom``, so an unrecognised
@@ -210,9 +198,7 @@ def check_configmap(
             fail(problems, f"configmap {name}: {key} is not a field on Settings")
 
 
-def check_service(
-    document: dict[str, Any], deployments: set[str], problems: list[str]
-) -> None:
+def check_service(document: dict[str, Any], deployments: set[str], problems: list[str]) -> None:
     """A Service must select a workload that exists and expose its port."""
     name = document["metadata"]["name"]
     selector = document.get("spec", {}).get("selector", {})
@@ -230,9 +216,7 @@ def check_service(
         fail(problems, f"service {name}: exposes {exposed}, expected [{port}]")
 
 
-def check_hpa(
-    document: dict[str, Any], deployments: set[str], problems: list[str]
-) -> None:
+def check_hpa(document: dict[str, Any], deployments: set[str], problems: list[str]) -> None:
     """An HPA must target a real Deployment and never scale below the minimum."""
     name = document["metadata"]["name"]
     spec = document.get("spec", {})
@@ -248,9 +232,7 @@ def check_hpa(
         fail(problems, f"hpa {name}: maxReplicas is below minReplicas")
 
 
-def check_ingress(
-    document: dict[str, Any], services: set[str], problems: list[str]
-) -> None:
+def check_ingress(document: dict[str, Any], services: set[str], problems: list[str]) -> None:
     """TLS must be configured and every backend must name a real Service."""
     name = document["metadata"]["name"]
     spec = document.get("spec", {})
@@ -284,9 +266,7 @@ def main() -> int:
         if document.get("kind") == "Deployment"
     }
     services = {
-        document["metadata"]["name"]
-        for document in documents
-        if document.get("kind") == "Service"
+        document["metadata"]["name"] for document in documents if document.get("kind") == "Service"
     }
 
     for document in documents:

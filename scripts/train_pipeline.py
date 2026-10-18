@@ -79,9 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"reading {path}")
     parsed = PARSERS[args.dataset](path)
     parsed.report.raise_for_empty()
-    print(
-        f"  {parsed.report.parsed:,} rows parsed ({parsed.report.rejected:,} rejected)"
-    )
+    print(f"  {parsed.report.parsed:,} rows parsed ({parsed.report.rejected:,} rejected)")
 
     key = WindowKey.SOURCE if args.key == "source" else WindowKey.DESTINATION
     records = sorted(parsed.records, key=lambda record: record.timestamp)
@@ -97,9 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.split_policy == "entity-only":
         split = group_split(windows)
     else:
-        split = split_windows(
-            windows, entity_disjoint=args.split_policy != "temporal-only"
-        )
+        split = split_windows(windows, entity_disjoint=args.split_policy != "temporal-only")
     print(f"  split {args.split_policy}: {split.audit()}")
 
     preprocessor = _fit(split.train, key)
@@ -113,9 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         for window in split.train
         for feature in extract_flow_window(window.records, key=key)
     ]
-    audit = audit_trained(
-        split, preprocessor.scaler, audit_train_rows, fit_on=split.train
-    )
+    audit = audit_trained(split, preprocessor.scaler, audit_train_rows, fit_on=split.train)
     blockers = blocking_findings(audit, split)
     declared = [f for f in audit.findings if f not in blockers]
     for finding in declared:
@@ -123,9 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     if blockers:
         for finding in blockers:
             print(f"leakage audit: {finding}", file=sys.stderr)
-        print(
-            "refusing to train: the leakage audit failed (T-203, R-62)", file=sys.stderr
-        )
+        print("refusing to train: the leakage audit failed (T-203, R-62)", file=sys.stderr)
         return 1
     print("  leakage audit: no blocking findings (T-203)")
     train_seq, train_y, _ = _sequences(split.train, key, preprocessor, 50)
@@ -143,11 +135,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     digest = DatasetDigest.of(path)
     sha, dirty = git_state()
-    out_dir = (
-        args.out_dir
-        if os.path.isabs(args.out_dir)
-        else os.path.join(ROOT, args.out_dir)
-    )
+    out_dir = args.out_dir if os.path.isabs(args.out_dir) else os.path.join(ROOT, args.out_dir)
     os.makedirs(out_dir, exist_ok=True)
 
     aucs: list[float] = []
@@ -210,9 +198,7 @@ def main(argv: list[str] | None = None) -> int:
             "declared_by_policy": [str(f) for f in declared],
         },
     }
-    with open(
-        os.path.join(out_dir, "reproducibility.json"), "w", encoding="utf-8"
-    ) as handle:
+    with open(os.path.join(out_dir, "reproducibility.json"), "w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2)
         handle.write("\n")
     print(f"wrote {out_dir}")

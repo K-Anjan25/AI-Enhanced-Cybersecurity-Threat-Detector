@@ -636,7 +636,7 @@ Tracked here; referenced from [prd.md](prd.md#12-open-questions). A question is 
 | **Q-01** | Should `LogNet` use a frozen pretrained DistilBERT encoder over raw log messages, or a from-scratch transformer over Drain3-mined template IDs? | Model lead | **T-204** | **CLOSED by D-019 (2026-10-04)** — from-scratch over mined template IDs. 103 templates at 0.9530 purity means the input barely contains language, the miner already exists, and NFR-05's 150 ms cap rules out DistilBERT on CPU. |
 
 | **Q-02** | Is Elasticsearch justified at v1.0, or does partitioned PostgreSQL with full-text search cover the hunt console? | Backend lead | **T-305** | **CLOSED 2026-10-05 — partitioned PostgreSQL (D-034)**; Elasticsearch deferred to T-6xx, with measured re-open triggers |
-| **Q-03** | What absolute false-positive budget (alerts/day) will the reference customer tolerate? | Product | Threshold defaults, T-207 | OPEN — needed to set the shipped defaults rather than guessing |
+| **Q-03** | What absolute false-positive budget (alerts/day) will the reference customer tolerate? | Product | Threshold defaults, T-207 | DECIDED — 40 actionable alerts per analyst per day (PRD §2), default `high` band (score ≥ 0.75). See D-082. Customer confirmation still welcome. |
 | **Q-04** | Which reference deployment supplies real flow records, and in what format (NetFlow v5/v9, IPFIX, Zeek)? | Product | NFR-02 validation, T-612 | OPEN |
 | **Q-05** | Do we need multi-tenancy at v1.0, or is single-tenant per deployment acceptable? | Product | Schema design, T-301 | OPEN — currently assumed single-tenant per deployment (D-001 context); the schema includes `tenant_id` on thresholds only |
 | **Q-06** | For volumetric attacks, should a flow window be keyed on the source entity, the destination, or both? | Model lead | **T-108**, T-201 | **CLOSED by D-013 (2026-10-03)** — both, chosen per family. Raised by T-107. `architecture.md` §7.1 keys the window on one source entity, but the synthetic DDoS scenario spreads a single flood across ~40 sources, so each per-source window holds about one flow and the attack is invisible at that granularity. Either the window key changes, or volumetric detection needs a destination-side feature path |
@@ -3699,6 +3699,24 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 **Decision.** Install the same `TokenService` in the application composition root and add status, first-admin setup, password login, single-use refresh, and logout routes. Passwords are Argon2id-hashed; unknown accounts and wrong passwords share one refusal; successful session mutations are audited without recording passwords or tokens. In production, the initial administrator is configured from deployment secrets. Browser setup is disabled by default and available only when explicitly enabled in a development environment; the operator chooses the first account's credentials. There is no demo/default account. The dashboard gates protected pages, returns to the requested route after sign-in, stores credentials only in tab-scoped `sessionStorage`, rotates once after a 401, and guards against stale refresh responses resurrecting or replacing a session. A WebSocket 4401 clears invalid credentials; 4403 is a permission refusal and keeps them.
 
 **Consequences.** Dashboard API calls can now carry an actual bearer credential and the server still enforces RBAC. Account/password hashes, the refresh replay/revocation store, and the other default application stores are process-local; restart loses them, and separate replicas do not share them. Bootstrap secrets can recreate the initial account on startup but do not implement durable user management or coherent multi-process refresh revocation. Production identity and refresh-state adapters backed by the database, plus deployment/session lifecycle review, remain required before claiming durable production auth. The development setup switch must stay off on a shared or public deployment. No credential or evaluation evidence is fabricated.
+
+### D-082 — The alert budget is the PRD's 40 per analyst per day, enforced at the `high` band, and the per-day number is measured on a live stream (Q-03, 2026-10-18)
+
+**Status:** accepted.
+
+**Context.** Q-03 asked for the false-positive budget the reference customer will tolerate. None has been given. The default threshold cannot be set without a budget, and the PRD already states one (§2: ≤ 40 actionable alerts per analyst per day).
+
+**Decision.**
+1. The budget is 40 actionable alerts per analyst per day, as PRD §2 states. Actionable means `high` or `critical`. `medium` and `low` are muted by default (PRD §10).
+2. The default operating point is the `high` band, score ≥ 0.75 (FR-13). It is the deployed default in `schemas/thresholds.py`, and no change is made to it here.
+3. The budget is enforced by a Prometheus alert on the existing counter `aegis_alerts_created_total{severity=~"high|critical"}`, summed over 24 h and divided by the number of analysts on shift. It fires above 40. The rule is documented in `docs/operate.md`.
+
+**Evidence.** On the UNSW-NB15 LOAO runs (15% sample), FlowNet scored 0 false positives at 0.75 across the four held-out folds. That is 0 of 4 × 1,165 = 4,660 benign windows. The 95% upper bound on the window FPR is about 3/4,660 ≈ 0.064%, using the rule of three. This is a window-level bound. It is not an alerts-per-day figure, because an alert per day depends on how many entities a live stream produces.
+
+**Consequences.**
+- The per-day number is not yet measured on a live benign stream. The 40/day rule is the enforcement mechanism, and the first live run is the measurement.
+- If the customer sets a different budget, the threshold guardrail T-207 and recalibration T-322 are the place to change it. Changing the default needs a new decision entry.
+- Analyst-verdict agreement with the top-1 family (PRD §8, ≥ 70%) cannot be measured yet. Verdicts record true positive, false positive, or benign, with no family field. Adding one changes the verdict schema, so it needs approval first.
 
 ## Change log
 

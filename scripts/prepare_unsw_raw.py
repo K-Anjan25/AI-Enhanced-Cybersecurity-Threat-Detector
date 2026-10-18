@@ -35,10 +35,22 @@ HEADER = (
 
 #: Published SHA-256 and row count of each raw part (UNSW-NB15 official release).
 EXPECTED: dict[int, tuple[str, int]] = {
-    1: ("7d851bbeabd27894ce39c8e78835c73341fc946652fb7743b9eff193b55eb511", 700_001),
-    2: ("6130ad02873cc6069ae695cf2844f2e8c2e9a9a1b7532dd82ab8f202757cacf8", 700_001),
-    3: ("ae990a96c3dfcd425ce2801aadb1727a34d5e0ae6d8215dbcdae60dedfaef640", 700_001),
-    4: ("cdf563692d51d405541dd659ddcdad9fa01f001f05fe9fc4b67f00ca12fbc96a", 440_044),
+    1: (
+        "7d851bbeabd27894ce39c8e78835c73341fc946652fb7743b9eff193b55eb511",  # pragma: allowlist secret  # noqa: E501
+        700_001,
+    ),
+    2: (
+        "6130ad02873cc6069ae695cf2844f2e8c2e9a9a1b7532dd82ab8f202757cacf8",  # pragma: allowlist secret  # noqa: E501
+        700_001,
+    ),
+    3: (
+        "ae990a96c3dfcd425ce2801aadb1727a34d5e0ae6d8215dbcdae60dedfaef640",  # pragma: allowlist secret  # noqa: E501
+        700_001,
+    ),
+    4: (
+        "cdf563692d51d405541dd659ddcdad9fa01f001f05fe9fc4b67f00ca12fbc96a",  # pragma: allowlist secret  # noqa: E501
+        440_044,
+    ),
 }
 
 BOM = b"\xef\xbb\xbf"

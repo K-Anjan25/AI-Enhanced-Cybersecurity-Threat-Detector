@@ -60,7 +60,9 @@ API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")
 EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
 PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
-DEV_DEFAULT_PASSWORD = "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+DEV_DEFAULT_PASSWORD = (
+    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+)
 BATCH_SIZE = 100
 FLUSH_INTERVAL = 5
 

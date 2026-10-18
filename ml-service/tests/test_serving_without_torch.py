@@ -11,8 +11,7 @@ import subprocess
 import sys
 import textwrap
 
-SCRIPT = textwrap.dedent(
-    """
+SCRIPT = textwrap.dedent("""
     import sys
     sys.modules["torch"] = None  # any `import torch` now raises ImportError
     from fastapi.testclient import TestClient
@@ -30,8 +29,7 @@ SCRIPT = textwrap.dedent(
     assert response.status_code == 503, response.text
     assert "torch" in response.json()["detail"]["reason"], response.text
     print("ok")
-    """
-)
+    """)
 
 
 def test_service_serves_without_torch(tmp_path, monkeypatch) -> None:

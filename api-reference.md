@@ -849,6 +849,7 @@ The KPI tiles: the window's counts, complete rather than capped.
 | `unrecorded` | `integer` | yes | — |
 | `verdicts_measured` | `integer` | yes | — |
 | `mean_time_to_verdict_seconds` | `number` or `null` | yes | — |
+| `median_time_to_verdict_seconds` | `number` or `null` | no | — |
 
 ### `OverviewWindow`
 
