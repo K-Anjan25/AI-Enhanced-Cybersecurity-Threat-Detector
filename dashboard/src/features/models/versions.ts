@@ -214,7 +214,15 @@ export interface MetricPanel {
   caption: string;
   /** True when the version has no recorded evaluation at all. */
   absent: boolean;
+  /**
+   * Set when the split cannot show generalisation. A temporal-only split lets the same
+   * entities appear in training and test, so its scores measure fit to that split.
+   */
+  caveat: string | null;
 }
+
+const TEMPORAL_ONLY_CAVEAT =
+  'Temporal-only split: the same entities appear in training and test, so these scores measure fit to this split, not generalisation.';
 
 /**
  * The metric cards for one version.
@@ -232,6 +240,7 @@ export function metricPanel(
       cards: [],
       caption: 'No evaluation recorded.',
       absent: true,
+      caveat: null,
     };
   }
   const stamp = options.evaluatedAt ?? formatStamp;
@@ -251,6 +260,7 @@ export function metricPanel(
     cards,
     caption: `Measured on ${metrics.split}, evaluated ${stamp(metrics.evaluated_at)}.`,
     absent: false,
+    caveat: metrics.split === 'temporal-only' ? TEMPORAL_ONLY_CAVEAT : null,
   };
 }
 

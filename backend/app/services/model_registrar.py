@@ -215,7 +215,8 @@ class ModelRegistrar:
                 status=status,
                 artifact_uri=model.get("artifact_uri", f"ml-service://{model_id}"),
                 sha256=sha256,
-                manifest_present=True,
+                # R-63: the ML service reports whether the manifest is complete.
+                manifest_present=model.get("manifest_present") is True,
             )
             self._model_ops.register(version)
         except Exception as exc:  # noqa: BLE001 - one bad entry must not stop the others

@@ -19,8 +19,10 @@ a pad equal the training mean rather than an arbitrary constant.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import sys
 import time
 from collections.abc import Sequence
@@ -138,6 +140,85 @@ def _sequences(
     return sequences, labels, padded
 
 
+MANIFEST_FILE = "training_manifest.json"
+
+
+def _sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_sha() -> str | None:
+    """The commit the code ran from, or None outside a git checkout (R-63)."""
+    try:
+        out = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            ["git", "rev-parse", "HEAD"],  # noqa: S607 - git is looked up on PATH by design
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+def _manifest(
+    args: argparse.Namespace,
+    *,
+    model_id: str,
+    width: int,
+    params: int,
+    key: WindowKey,
+    report: EvalReport,
+) -> dict[str, object]:
+    """The R-63 training manifest for one artifact.
+
+    ``dataset_files`` is empty for synthetic runs and ``baseline`` is null when no
+    baseline run was named. The serving side only calls a manifest complete when both
+    are present, so neither gap is hidden.
+    """
+    dataset_files: list[dict[str, str]] = []
+    if not args.synthetic:
+        for raw in args.file:
+            path = raw if os.path.isabs(raw) else os.path.join(ROOT, raw)
+            if not os.path.isfile(path):
+                path = os.path.join(ROOT, "data", "raw", os.path.basename(raw))
+            dataset_files.append({"name": os.path.basename(path), "sha256": _sha256_file(path)})
+    baseline: dict[str, str] | None = None
+    if args.baseline_run:
+        if not os.path.isfile(args.baseline_run):
+            raise SystemExit(f"--baseline-run {args.baseline_run} does not exist")
+        baseline = {
+            "name": os.path.basename(args.baseline_run),
+            "sha256": _sha256_file(args.baseline_run),
+        }
+    return {
+        "schema": "training_manifest@1",
+        "model_id": model_id,
+        "dataset_files": dataset_files,
+        "git_sha": _git_sha(),
+        "seed": args.seed,
+        "config": {
+            "split_policy": args.split_policy,
+            "holdout_family": list(args.holdout_family or []),
+            "sample_frac": args.sample_frac,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "learning_rate": args.learning_rate,
+            "window_key": key.value,
+            "input_dim": width,
+            "parameters": params,
+        },
+        "metrics": json.loads(report.model_dump_json()),
+        "baseline": baseline,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments, train FlowNet, and write the run log."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -169,6 +250,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="directory to write the serving artifacts to: flownet.pt (weights), "
         "flownet.config.json, flownet.preprocessor.json and flownet.eval.json",
+    )
+    parser.add_argument(
+        "--baseline-run",
+        default=None,
+        help="run log written by scripts/run_baselines.py on the same data (R-64). "
+        "Its name and hash go into the training manifest.",
     )
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -390,6 +477,20 @@ def main(argv: list[str] | None = None) -> int:
             os.path.join(args.checkpoint, "flownet.eval.json"), "w", encoding="utf-8"
         ) as handle:
             handle.write(report.model_dump_json(indent=2))
+            handle.write("\n")
+        with open(os.path.join(args.checkpoint, MANIFEST_FILE), "w", encoding="utf-8") as handle:
+            json.dump(
+                _manifest(
+                    args,
+                    model_id="flownet-v0.1.0",
+                    width=width,
+                    params=params,
+                    key=key,
+                    report=report,
+                ),
+                handle,
+                indent=2,
+            )
             handle.write("\n")
     log: dict[str, object] = {
         "task": "T-201",

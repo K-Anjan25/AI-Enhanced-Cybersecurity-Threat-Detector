@@ -7,6 +7,9 @@ page shows real model information.
 
 from __future__ import annotations
 
+import json
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -66,6 +69,39 @@ REGISTERED_MODELS: list[dict[str, Any]] = [
 ]
 
 
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+
+
+def manifest_complete(path: str) -> bool:
+    """Whether ``training_manifest.json`` at ``path`` carries everything R-63 names.
+
+    A manifest is complete when it names the dataset files with their SHA-256, the git
+    commit, the seed, the metrics, and the baseline it was compared with. A missing file,
+    a synthetic run (no dataset files), or no baseline is incomplete, and an incomplete
+    manifest cannot be promoted.
+    """
+    if not os.path.isfile(path):
+        return False
+    try:
+        with open(path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (OSError, ValueError):
+        return False
+    if not isinstance(manifest, dict) or manifest.get("schema") != "training_manifest@1":
+        return False
+    files = manifest.get("dataset_files")
+    if not isinstance(files, list) or not files:
+        return False
+    if not all(isinstance(f, dict) and _HEX64.match(str(f.get("sha256", ""))) for f in files):
+        return False
+    baseline = manifest.get("baseline")
+    if not isinstance(baseline, dict) or not _HEX64.match(str(baseline.get("sha256", ""))):
+        return False
+    if not manifest.get("git_sha") or "seed" not in manifest:
+        return False
+    return isinstance(manifest.get("metrics"), dict)
+
+
 def flownet_entry(directory: str | None = None) -> dict[str, Any] | None:
     """The FlowNet model as it exists on disk, or ``None`` when no checkpoint is there.
 
@@ -98,6 +134,7 @@ def flownet_entry(directory: str | None = None) -> dict[str, Any] | None:
         "features": ["reconstruction_error", "anomaly_logits"],
         "artifact_uri": f"ml-service://{config['model_id']}",
         "sha256": sha256_file(weights),
+        "manifest_present": manifest_complete(os.path.join(root, "training_manifest.json")),
         "metrics": {},
     }
 

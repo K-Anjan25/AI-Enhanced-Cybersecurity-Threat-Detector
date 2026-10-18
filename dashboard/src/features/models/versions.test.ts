@@ -250,6 +250,15 @@ describe('metricPanel', () => {
     expect(panel.cards[0]?.provenance).toBe('read from runs/roc_auc.json at test.roc_auc');
   });
 
+  it('warns that a temporal-only split measures fit, not generalisation', () => {
+    const panel = metricPanel({ ...metrics({ roc_auc: 1 }), split: 'temporal-only' });
+    expect(panel.caveat).toContain('not generalisation');
+  });
+
+  it('gives no warning for a split that is not temporal-only', () => {
+    expect(metricPanel(metrics({ roc_auc: 1 })).caveat).toBeNull();
+  });
+
   it('names the split and the run date in the caption', () => {
     const panel = metricPanel(metrics({ f1: 0.5 }));
     expect(panel.caption).toContain('temporal:2025-Q4');
