@@ -93,3 +93,26 @@ See `ops/backup-restore.sh`:
 ./ops/backup-restore.sh restore   # Restore from backup
 ./ops/backup-restore.sh verify    # Verify restored data
 ```
+
+## Kafka flow path (D-085)
+
+With `AEGIS_KAFKA_BOOTSTRAP_SERVERS` set (compose sets `kafka:9092`), flows take this path:
+
+1. `POST /api/v1/ingest/flows` publishes each accepted record to `flows.raw` (6 partitions, keyed by `src_ip`, `acks=all`, idempotent producer). The route answers only after the broker has acknowledged the batch; a refused batch returns an error and the client retries.
+2. A live consumer thread in the backend reads each partition, windows the flows per source, and scores each 50-flow window with the ML service. Partial windows are scored after 5 s with no new flows.
+3. A window whose score cannot be obtained (ML service down, no checkpoint) is not committed. It is retried, not reported as clean.
+4. The in-process rule engine is not fed in this mode, so every flow is scored once.
+
+Check it on a running stack:
+
+```
+docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml ps        # kafka healthy, kafka-init exited 0, backend healthy
+python scripts/kafka_smoke.py                          # PASS when the broker, consumer and ML service all worked
+```
+
+Limits, stated so they are not mistaken for guarantees:
+
+- Committed offsets are held in memory. A backend restart replays `flows.raw` from its earliest retained offset and rebuilds alerts from it. Retention (Kafka default 7 days) decides how far back that goes.
+- Records are not deduplicated at the broker; the correlator's duplicate handling covers replays.
+- The consumer is one thread per backend replica, and every replica consumes every partition. Run one backend replica until offsets are persisted.

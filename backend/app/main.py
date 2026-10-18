@@ -70,6 +70,7 @@ from app.services.flow_read_model import InProcessFlowRollup
 from app.services.flow_source import RollupFlowSource, flow_rollup_reason
 from app.services.flow_store import PostgresFlowStore
 from app.services.health_service import ReadinessRegistry
+from app.services.kafka_pipeline import build_kafka_pipeline
 from app.services.limits import AdmissionController, RateLimitPolicy
 from app.services.log_source import TailLogSource, store_requested, tail_reason
 from app.services.log_store import PostgresLogStore
@@ -165,6 +166,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if detection_engine is not None:
         detection_engine.start()
         logger.info("detection_engine_started", interval=15)
+    # Start the live Kafka consumer, when the Kafka path is configured (D-085).
+    live_scoring = getattr(app.state, "live_scoring", None)
+    if live_scoring is not None:
+        live_scoring.start()
+        logger.info("kafka_live_scoring_started")
     # Start the drift monitor (T-421)
     drift_monitor = getattr(app.state, "drift_monitor", None)
     if drift_monitor is not None:
@@ -187,6 +193,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Stop the detection engine
         if detection_engine is not None:
             detection_engine.stop()
+        # Stop the live consumer first, so it scores what it has read and stops
+        # reading, then close the broker clients.
+        if live_scoring is not None:
+            live_scoring.stop()
+        kafka_bus = getattr(app.state, "kafka_bus", None)
+        if kafka_bus is not None:
+            kafka_bus.close()
         # Stop the drift monitor
         if drift_monitor is not None:
             drift_monitor.stop()
@@ -322,6 +335,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # overview resolves `entity_id` through it. D-053 records the persistent
     # writer (`entities`) as unwired, like the store above.
     app.state.entity_registry = EntityRegistry()
+    # The Kafka path (D-085). When a broker is configured, ingest publishes to
+    # flows.raw and the live loop scores it, so the in-process engine is not fed
+    # (see ingest). Built after the registry and the alert store it writes into.
+    app.state.flow_publisher = None
+    app.state.live_scoring = None
+    app.state.kafka_bus = None
+    kafka_servers = getattr(resolved, "kafka_bootstrap_servers", "") or ""
+    if kafka_servers.strip():
+        publisher, live, kafka_bus = build_kafka_pipeline(
+            bootstrap_servers=kafka_servers,
+            ml_client=MlWindowScorer(resolved.ml_service_url),
+            alerts=app.state.alert_store,
+            hub=app.state.alert_hub,
+            registry=app.state.entity_registry,
+        )
+        app.state.flow_publisher = publisher
+        app.state.live_scoring = live
+        app.state.kafka_bus = kafka_bus
     # The log tail (T-407). A bounded in-process copy of the accepted lines, for the
     # deployment that has no log store -- and the thing the store's own wiring below
     # replaces when the deployment configures one.

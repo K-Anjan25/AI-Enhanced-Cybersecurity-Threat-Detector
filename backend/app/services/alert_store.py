@@ -37,10 +37,12 @@ is the mean of a bucket's scores and counts only the rows whose score is a
 
 from __future__ import annotations
 
+import functools
+import threading
 from collections.abc import Mapping
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from app.db.models import SCORE_SCALE, Alert, AlertStatus
 from app.db.repository import TimeRange
@@ -131,6 +133,17 @@ class AlertStore(Protocol):
         ...
 
 
+def _locked(method: Any) -> Any:
+    """Run one store method under the store's lock (writes come from the scoring thread)."""
+
+    @functools.wraps(method)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
+
 class InMemoryAlertStore:
     """An :class:`AlertStore` in a list, for tests and single-process runs.
 
@@ -140,14 +153,17 @@ class InMemoryAlertStore:
     which store it was given.
     """
 
-    __slots__ = ("_case_ids", "_next_id", "_rows")
+    __slots__ = ("_case_ids", "_next_id", "_rows", "_lock")
 
     def __init__(self) -> None:
         """Start empty, with database-style ids from 1."""
         self._rows: list[Alert] = []
         self._case_ids: dict[str, int] = {}
         self._next_id = 1
+        # The consumer thread writes alerts while the API reads them (D-085).
+        self._lock = threading.RLock()
 
+    @_locked
     def save(self, case_id: str, values: Mapping[str, object], *, created_at: datetime) -> Alert:
         """Store or refresh one case's row, keeping its id and creation time."""
         existing = self._case_ids.get(case_id)
@@ -167,6 +183,7 @@ class InMemoryAlertStore:
         self._rows.append(row)
         return row
 
+    @_locked
     def get(self, alert_id: int, created_at: datetime) -> Alert | None:
         """Return the stored row with this ``(id, created_at)``, or ``None``."""
         for row in self._rows:
@@ -174,6 +191,7 @@ class InMemoryAlertStore:
                 return row
         return None
 
+    @_locked
     def aggregate(
         self,
         window: TimeRange,
@@ -198,6 +216,7 @@ class InMemoryAlertStore:
             family_limit=family_limit,
         )
 
+    @_locked
     def fetch(self, query: AlertQuery) -> list[Alert]:
         """Apply the query's predicates, order and cursor to the stored rows."""
         window = TimeRange(start=query.start, end=query.end)
@@ -213,10 +232,12 @@ class InMemoryAlertStore:
         matching.sort(key=lambda row: (row.created_at, row.id), reverse=query.order == "desc")
         return matching[: query.limit + 1]
 
+    @_locked
     def rows(self) -> tuple[Alert, ...]:
         """Every stored row, for assertions and diagnostics."""
         return tuple(self._rows)
 
+    @_locked
     def __len__(self) -> int:
         """How many rows are stored."""
         return len(self._rows)
