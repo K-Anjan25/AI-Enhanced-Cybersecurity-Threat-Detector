@@ -53,6 +53,7 @@ from aegis_ml.data.splits import (  # noqa: E402
     group_split,
     leave_one_entity_out,
     split_windows,
+    window_families,
 )
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
 from aegis_ml.training.baselines import (  # noqa: E402
@@ -61,8 +62,10 @@ from aegis_ml.training.baselines import (  # noqa: E402
     GradientBoostedStumps,
     LogisticRegression,
     design_matrix,
+    encode_row,
 )
 from aegis_ml.training.evaluation import EvalReport, evaluate  # noqa: E402
+from aegis_ml.training.loao_eval import loao_report, window_scores  # noqa: E402
 
 PARSERS = {
     "cic-ids2017": parse_cic_ids2017,
@@ -86,6 +89,29 @@ def _sha256(path: str) -> str:
         while chunk := handle.read(1 << 20):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _encode_windows(
+    windows: Sequence[Window[FlowRecord]], key: WindowKey, preprocessor: Preprocessor
+) -> list[list[list[float]]]:
+    """Encode every flow of every window: one list of design rows per window."""
+    return [
+        [encode_row(row, preprocessor) for row in extract_flow_window(window.records, key=key)]
+        for window in windows
+    ]
+
+
+def _loao_for(
+    model: LogisticRegression | GradientBoostedStumps,
+    encoded_test: list[list[list[float]]],
+    test_labels: list[bool],
+    encoded_valid: list[list[list[float]]],
+    valid_labels: list[bool],
+) -> dict[str, object]:
+    """Score a model per window and report on the held-out attacker."""
+    test_scores = window_scores([[model.score(r) for r in win] for win in encoded_test])
+    valid_scores = window_scores([[model.score(r) for r in win] for win in encoded_valid])
+    return loao_report(test_scores, test_labels, valid_scores, valid_labels)
 
 
 def _features(
@@ -310,12 +336,16 @@ def main(argv: list[str] | None = None) -> int:
     # using all of them costs nothing and is strictly better.
     preprocessor = _fit_preprocessor(train)
     all_train_rows, all_train_targets = design_matrix(train, preprocessor)
-    test_rows, test_targets = design_matrix(test, preprocessor)
+    loao = args.split_policy == "leave-one-attacker-out"
+    # Under leave-one-attacker-out the test fold is scored per window with the
+    # any-attack rule (loao_eval), so row-level test labels are not used there.
+    test_rows, test_targets = ([], []) if loao else design_matrix(test, preprocessor)
 
     # A fold holding only one class cannot produce a ranking metric, and the
     # failure is a property of the data rather than of the model. Report it as
     # such instead of letting it surface as a crash from inside the harness.
-    for fold, targets in (("train", all_train_targets), ("test", test_targets)):
+    folds = [("train", all_train_targets)] + ([] if loao else [("test", test_targets)])
+    for fold, targets in folds:
         positives = sum(targets)
         if positives in (0, len(targets)):
             print(
@@ -335,25 +365,55 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     results: dict[str, object] = {}
+    loao_results: dict[str, object] = {}
+    if loao:
+        encoded_test = _encode_windows(split.test, key, preprocessor)
+        encoded_valid = _encode_windows(split.valid, key, preprocessor)
+        test_window_labels = [bool(window_families(w)) for w in split.test]
+        valid_window_labels = [bool(window_families(w)) for w in split.valid]
+
     print(f"fitting logistic regression ({args.epochs} epochs)")
     logistic = LogisticRegression.fit(train_rows, train_targets, epochs=args.epochs)
-    results["logistic_regression"] = _metrics(
-        evaluate(
-            [logistic.score(r) for r in test_rows],
-            [bool(t) for t in test_targets],
-            model_id="baseline-logreg",
+    if loao:
+        try:
+            loao_results["logistic_regression"] = _loao_for(
+                logistic, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+            )
+        except ValueError as exc:
+            print(f"refusing to report: {exc}", file=sys.stderr)
+            return 1
+    else:
+        results["logistic_regression"] = _metrics(
+            evaluate(
+                [logistic.score(r) for r in test_rows],
+                [bool(t) for t in test_targets],
+                model_id="baseline-logreg",
+            )
         )
-    )
 
     print(f"fitting gradient boosting ({args.stumps} stumps)")
     boosted = GradientBoostedStumps.fit(train_rows, train_targets, n_stumps=args.stumps)
-    results["gradient_boosting"] = _metrics(
-        evaluate(
-            [boosted.score(r) for r in test_rows],
-            [bool(t) for t in test_targets],
-            model_id="baseline-gbdt",
+    if loao:
+        try:
+            loao_results["gradient_boosting"] = _loao_for(
+                boosted, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+            )
+        except ValueError as exc:
+            print(f"refusing to report: {exc}", file=sys.stderr)
+            return 1
+    else:
+        results["gradient_boosting"] = _metrics(
+            evaluate(
+                [boosted.score(r) for r in test_rows],
+                [bool(t) for t in test_targets],
+                model_id="baseline-gbdt",
+            )
         )
-    )
+
+    if loao:
+        test_positive_rate = sum(test_window_labels) / len(test_window_labels)
+    else:
+        test_positive_rate = sum(test_targets) / len(test_targets)
 
     log = {
         "dataset": args.dataset,
@@ -378,8 +438,12 @@ def main(argv: list[str] | None = None) -> int:
         },
         "train_rows_fitted": len(train_rows),
         "positive_rate_train": sum(train_targets) / len(train_targets),
-        "positive_rate_test": sum(test_targets) / len(test_targets),
+        "positive_rate_test": test_positive_rate,
         "models": results,
+        "loao": loao_results,
+        "loao_scoring": (
+            "window-level, any-attack labels, max flow score per window" if loao else None
+        ),
         "elapsed_seconds": round(time.time() - started, 2),
     }
 
@@ -393,6 +457,19 @@ def main(argv: list[str] | None = None) -> int:
         f"(train {log['positive_rate_train']:.4f})"
     )
 
+    for name, payload in loao_results.items():
+        entry = cast("dict[str, object]", payload)
+        print(
+            f"  {name:<22} roc_auc={float(entry['roc_auc']):.4f} "
+            f"pr_auc={float(entry['pr_auc']):.4f} (window level, held-out "
+            f"{args.holdout_entity})"
+        )
+        print(
+            f"    threshold {float(entry['threshold']):.6f} set on validation benign "
+            f"(FPR<={float(entry['max_benign_fpr']):.3f}): "
+            f"precision={float(entry['precision']):.4f} "
+            f"recall={float(entry['recall']):.4f} fpr={float(entry['fpr']):.4f}"
+        )
     for name, payload in results.items():
         # precision/recall/f1 sit at the top of the EvalReport; the rank metrics
         # are nested under its `metrics` member. Reading all five from one level

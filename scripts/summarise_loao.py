@@ -4,10 +4,13 @@ Reads ``loao_baselines_<entity>.json`` (from run_baselines.py) and
 ``loao_flownet_<entity>.json`` (from train_flownet.py) and writes a Markdown table
 and a CSV, one row per (held-out attacker, model).
 
-Threshold-free metrics (ROC-AUC, PR-AUC) come from the run logs unchanged. The
-fixed-threshold columns use threshold 0.5, the same for every model. The best-F1
-threshold is chosen on the test fold, so it is shown only for transparency and is
-not used here.
+Current logs carry a ``loao`` block: both models are scored per window with the
+same any-attack labels, and the threshold is set on validation benign windows at
+FPR <= 0.5% (PRD section 8). Those rows are the ones to quote.
+
+Older logs without a ``loao`` block hold row-level baseline scores at a fixed 0.5
+threshold. They are kept for reference and marked as such, because their test
+sets differ from FlowNet's.
 
 Usage:
     python scripts/summarise_loao.py --runs data/runs --out data/runs/loao_summary
@@ -21,6 +24,10 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+LOAO_BASIS = "window, any-attack, threshold from validation benign at FPR<=0.5%"
+LEGACY_BASIS = "row-level, fixed 0.5 (superseded)"
 
 
 @dataclass(frozen=True)
@@ -29,6 +36,8 @@ class Row:
 
     holdout: str
     model: str
+    basis: str
+    threshold: float
     positives: int
     negatives: int
     roc_auc: float
@@ -40,12 +49,16 @@ class Row:
     fp: int
     fn: int
     tn: int
+    high_precision: float | None
+    high_recall: float | None
 
     def as_list(self) -> list[object]:
         """The row as table cells, in HEADER order."""
         return [
             self.holdout,
             self.model,
+            self.basis,
+            f"{self.threshold:.6f}",
             self.positives,
             self.negatives,
             f"{self.roc_auc:.4f}",
@@ -57,23 +70,29 @@ class Row:
             self.fp,
             self.fn,
             self.tn,
+            "n/a" if self.high_precision is None else f"{self.high_precision:.4f}",
+            "n/a" if self.high_recall is None else f"{self.high_recall:.4f}",
         ]
 
 
 HEADER = [
     "held_out_attacker",
     "model",
+    "scoring",
+    "threshold",
     "test_positives",
     "test_negatives",
     "roc_auc",
     "pr_auc",
-    "precision@0.5",
-    "recall@0.5",
-    "fpr@0.5",
+    "precision",
+    "recall",
+    "fpr",
     "tp",
     "fp",
     "fn",
     "tn",
+    "precision@0.75",
+    "recall@0.75",
 ]
 
 
@@ -85,45 +104,47 @@ def _rates(confusion: dict[str, int]) -> tuple[float, float, float]:
     return precision, recall, fpr
 
 
-def _baseline_rows(path: Path) -> list[Row]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    holdout = data["holdout_entity"]
-    rows: list[Row] = []
-    for model, body in data["models"].items():
-        confusion = body["confusion"]
-        precision, recall, fpr = _rates(confusion)
-        rows.append(
-            Row(
-                holdout=holdout,
-                model=model,
-                positives=body["positives"],
-                negatives=body["negatives"],
-                roc_auc=body["metrics"]["roc_auc"],
-                pr_auc=body["metrics"]["pr_auc"],
-                precision=precision,
-                recall=recall,
-                fpr=fpr,
-                tp=confusion["tp"],
-                fp=confusion["fp"],
-                fn=confusion["fn"],
-                tn=confusion["tn"],
-            )
-        )
-    return rows
+def _loao_row(holdout: str, model: str, block: dict[str, Any]) -> Row:
+    high = block["at_high"]
+    return Row(
+        holdout=holdout,
+        model=model,
+        basis=LOAO_BASIS,
+        threshold=float(block["threshold"]),
+        positives=int(block["test_positive_windows"]),
+        negatives=int(block["test_negative_windows"]),
+        roc_auc=float(block["roc_auc"]),
+        pr_auc=float(block["pr_auc"]),
+        precision=float(block["precision"]),
+        recall=float(block["recall"]),
+        fpr=float(block["fpr"]),
+        tp=int(block["tp"]),
+        fp=int(block["fp"]),
+        fn=int(block["fn"]),
+        tn=int(block["tn"]),
+        high_precision=float(high["precision"]),
+        high_recall=float(high["recall"]),
+    )
 
 
-def _flownet_row(path: Path) -> Row:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    report = data["report"]
-    confusion = report["confusion"]
+def _legacy_row(
+    holdout: str,
+    model: str,
+    positives: int,
+    negatives: int,
+    metrics: dict[str, float],
+    confusion: dict[str, int],
+) -> Row:
     precision, recall, fpr = _rates(confusion)
     return Row(
-        holdout=data["holdout_entity"],
-        model="flownet",
-        positives=report["positives"],
-        negatives=report["negatives"],
-        roc_auc=report["metrics"]["roc_auc"],
-        pr_auc=report["metrics"]["pr_auc"],
+        holdout=holdout,
+        model=model,
+        basis=LEGACY_BASIS,
+        threshold=0.5,
+        positives=positives,
+        negatives=negatives,
+        roc_auc=metrics["roc_auc"],
+        pr_auc=metrics["pr_auc"],
         precision=precision,
         recall=recall,
         fpr=fpr,
@@ -131,6 +152,45 @@ def _flownet_row(path: Path) -> Row:
         fp=confusion["fp"],
         fn=confusion["fn"],
         tn=confusion["tn"],
+        high_precision=None,
+        high_recall=None,
+    )
+
+
+def _baseline_rows(path: Path) -> list[Row]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    holdout = data["holdout_entity"]
+    loao = data.get("loao") or {}
+    if loao:
+        return [_loao_row(holdout, model, block) for model, block in loao.items()]
+    rows: list[Row] = []
+    for model, body in data["models"].items():
+        rows.append(
+            _legacy_row(
+                holdout,
+                model,
+                body["positives"],
+                body["negatives"],
+                body["metrics"],
+                body["confusion"],
+            )
+        )
+    return rows
+
+
+def _flownet_row(path: Path) -> Row:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    holdout = data["holdout_entity"]
+    if data.get("loao"):
+        return _loao_row(holdout, "flownet", data["loao"])
+    report = data["report"]
+    return _legacy_row(
+        holdout,
+        "flownet",
+        report["positives"],
+        report["negatives"],
+        report["metrics"],
+        report["confusion"],
     )
 
 
@@ -141,7 +201,7 @@ def collect(runs: Path) -> list[Row]:
         rows.extend(_baseline_rows(path))
     for path in sorted(runs.glob("loao_flownet_*.json")):
         rows.append(_flownet_row(path))
-    rows.sort(key=lambda r: (r.holdout, r.model))
+    rows.sort(key=lambda r: (r.holdout, r.basis, r.model))
     return rows
 
 
@@ -155,8 +215,10 @@ def _markdown(rows: list[Row]) -> str:
     lines.append("")
     lines.append(
         "Each row holds out one attacker source for test; the other attackers train. "
-        "Fixed-threshold columns use 0.5. ROC/PR are threshold-free. The four folds "
-        "share benign traffic and are not independent samples."
+        "Rows with the LOAO scoring basis score both models on the same windows, "
+        "with a window labelled attack if any of its flows is an attack. The threshold "
+        "is set on validation benign windows only. ROC/PR are threshold-free. The four "
+        "folds share benign traffic and are not independent samples."
     )
     return "\n".join(lines) + "\n"
 

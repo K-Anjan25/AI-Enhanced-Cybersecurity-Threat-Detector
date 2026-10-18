@@ -64,6 +64,7 @@ from aegis_ml.data.windowing import (  # noqa: E402
 )
 from aegis_ml.training.baselines import design_matrix  # noqa: E402
 from aegis_ml.training.evaluation import EvalReport, evaluate  # noqa: E402
+from aegis_ml.training.loao_eval import loao_report  # noqa: E402
 
 PARSERS = {
     "cic-ids2017": parse_cic_ids2017,
@@ -142,6 +143,8 @@ def _sequences(
 
 
 MANIFEST_FILE = "training_manifest.json"
+# Keys of the LOAO report that are printed as a one-line summary.
+LOAO_PRINT = ("roc_auc", "pr_auc", "threshold", "recall", "fpr")
 
 
 def _sha256_file(path: str) -> str:
@@ -413,6 +416,21 @@ def main(argv: list[str] | None = None) -> int:
     preprocessor = _fit(split.train, key)
     train_seq, train_y, _ = _sequences(split.train, key, preprocessor, 50)
     test_seq, test_y, padded = _sequences(split.test, key, preprocessor, 50)
+    loao = args.split_policy == "leave-one-attacker-out"
+    valid_seq: list[list[list[float]]] = []
+    valid_y: list[int] = []
+    if loao:
+        # The threshold is set on validation benign windows only (loao_eval), so
+        # the held-out attacker never influences it. Refuse before training if a
+        # fold cannot support that: no benign validation window, or a test fold
+        # with only one class.
+        valid_seq, valid_y, _ = _sequences(split.valid, key, preprocessor, 50)
+        if not any(label == 0 for label in valid_y):
+            print("refusing to train: no benign validation windows", file=sys.stderr)
+            return 1
+        if not (any(test_y) and not all(test_y)):
+            print("refusing to train: the test fold needs both classes", file=sys.stderr)
+            return 1
 
     if 0.0 < args.sample_frac < 1.0:
         # A stride, not a draw, so two runs train on the same windows (R-67).
@@ -470,6 +488,24 @@ def main(argv: list[str] | None = None) -> int:
         [bool(t) for t in test_y],
         model_id="flownet-v0.1.0",
     )
+    loao_block: dict[str, object] | None = None
+    if loao:
+        with torch.no_grad():
+            valid_scores = torch.sigmoid(
+                model(torch.tensor(valid_seq, dtype=torch.float32)).anomaly_logits
+            ).tolist()
+        loao_block = loao_report(
+            [float(s) for s in scores],
+            [bool(t) for t in test_y],
+            [float(s) for s in valid_scores],
+            [bool(t) for t in valid_y],
+        )
+        summary = {name: float(value) for name, value in loao_block.items() if name in LOAO_PRINT}
+        print(
+            f"loao {args.holdout_entity}: roc_auc={summary['roc_auc']:.4f} "
+            f"pr_auc={summary['pr_auc']:.4f} threshold={summary['threshold']:.6f} "
+            f"recall={summary['recall']:.4f} fpr={summary['fpr']:.4f}"
+        )
 
     minutes = elapsed / 60.0
     if args.checkpoint:
@@ -558,6 +594,10 @@ def main(argv: list[str] | None = None) -> int:
             },
         },
         "report": json.loads(report.model_dump_json()),
+        "loao": loao_block,
+        "loao_scoring": (
+            "window-level, any-attack labels, max flow score per window" if loao else None
+        ),
     }
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as handle:
