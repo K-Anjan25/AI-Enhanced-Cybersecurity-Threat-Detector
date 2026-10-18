@@ -92,9 +92,7 @@ def main(argv: list[str] | None = None) -> int:
 
     with open(args.output, "w", encoding="utf-8") as handle:
         handle.write(rendered)
-    print(
-        f"wrote {os.path.relpath(args.output, ROOT)} ({len(rendered.splitlines())} lines)"
-    )
+    print(f"wrote {os.path.relpath(args.output, ROOT)} ({len(rendered.splitlines())} lines)")
     return 0
 
 

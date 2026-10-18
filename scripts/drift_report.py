@@ -42,9 +42,7 @@ from aegis_ml.scoring.drift import (  # noqa: E402
 from scripts.train_flownet import PARSERS  # noqa: E402
 
 
-def _columns(
-    path: str, dataset: str, key: WindowKey, max_rows: int
-) -> dict[str, list[object]]:
+def _columns(path: str, dataset: str, key: WindowKey, max_rows: int) -> dict[str, list[object]]:
     """Parse one corpus and return one column per feature."""
     resolved = path if os.path.isabs(path) else os.path.join(ROOT, path)
     if not os.path.isfile(resolved):
@@ -61,11 +59,7 @@ def _columns(
     # extract_flow_window covers exactly one entity, so the records have to be
     # grouped into per-entity windows first rather than fed in as one stream.
     windows = window_flows(records, key=key)
-    rows = [
-        row
-        for window in windows
-        for row in extract_flow_window(window.records, key=key)
-    ]
+    rows = [row for window in windows for row in extract_flow_window(window.records, key=key)]
     print(
         f"  {parsed.report.parsed:,} rows parsed -> {len(windows):,} windows, "
         f"{len(rows):,} feature rows used"
@@ -82,13 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     """Compute per-feature PSI between a reference and an incoming corpus."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--reference", required=True)
-    parser.add_argument(
-        "--reference-dataset", choices=sorted(PARSERS), default="unsw-nb15"
-    )
+    parser.add_argument("--reference-dataset", choices=sorted(PARSERS), default="unsw-nb15")
     parser.add_argument("--actual", required=True)
-    parser.add_argument(
-        "--actual-dataset", choices=sorted(PARSERS), default="cic-ids2017"
-    )
+    parser.add_argument("--actual-dataset", choices=sorted(PARSERS), default="cic-ids2017")
     parser.add_argument("--key", choices=("source", "destination"), default="source")
     parser.add_argument("--max-rows", type=int, default=20000)
     parser.add_argument("--bins", type=int, default=10)
@@ -102,9 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     actual = _columns(args.actual, args.actual_dataset, key, args.max_rows)
 
     sink = InMemoryMetricSink()
-    report = measure_drift(
-        reference, actual, bins=args.bins, threshold=args.threshold, sink=sink
-    )
+    report = measure_drift(reference, actual, bins=args.bins, threshold=args.threshold, sink=sink)
 
     ordered = sorted(report.features, key=lambda entry: -entry.psi)
     print(

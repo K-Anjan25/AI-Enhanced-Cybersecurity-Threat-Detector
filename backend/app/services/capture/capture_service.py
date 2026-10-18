@@ -33,7 +33,9 @@ __all__ = ["FlowAggregator", "CaptureService"]
 API_BASE = os.environ.get("AEGIS_API_URL", "http://backend:8000")
 API_EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
 API_PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
-DEV_DEFAULT_PASSWORD = "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+DEV_DEFAULT_PASSWORD = (
+    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+)
 INTERFACE = os.environ.get("AEGIS_CAPTURE_INTERFACE", "eth0")
 FLUSH_INTERVAL = int(os.environ.get("AEGIS_FLUSH_INTERVAL", "10"))
 BATCH_SIZE = int(os.environ.get("AEGIS_BATCH_SIZE", "200"))

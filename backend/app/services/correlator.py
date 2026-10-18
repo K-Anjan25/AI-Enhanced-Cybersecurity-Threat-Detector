@@ -54,7 +54,7 @@ from __future__ import annotations
 import enum
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from app.db.models import AlertStatus, Severity
@@ -609,6 +609,9 @@ class Correlator:
             # Created, not absorbed: FR-15's repeat increments a count, and
             # "alerts created" must not be read as "detections seen".
             metrics.observe_alert_created(outcome.case.severity.value)
+            metrics.observe_detection_to_alert(
+                max(0.0, (datetime.now(UTC) - detection.at).total_seconds())
+            )
         return outcome
 
     def _correlate(self, detection: Detection) -> Outcome:

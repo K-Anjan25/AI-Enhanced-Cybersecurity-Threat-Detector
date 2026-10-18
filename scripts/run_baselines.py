@@ -101,6 +101,20 @@ def _encode_windows(
     ]
 
 
+def _window_report(
+    model: LogisticRegression | GradientBoostedStumps,
+    encoded_test: list[list[list[float]]],
+    test_labels: list[bool],
+    encoded_valid: list[list[list[float]]],
+    valid_labels: list[bool],
+) -> dict[str, object] | None:
+    """The window-level report, or ``None`` when the fold cannot support one."""
+    try:
+        return _loao_for(model, encoded_test, test_labels, encoded_valid, valid_labels)
+    except ValueError:
+        return None
+
+
 def _loao_for(
     model: LogisticRegression | GradientBoostedStumps,
     encoded_test: list[list[list[float]]],
@@ -114,9 +128,7 @@ def _loao_for(
     return loao_report(test_scores, test_labels, valid_scores, valid_labels)
 
 
-def _features(
-    windows: Sequence[Window[FlowRecord]], key: WindowKey
-) -> list[FlowFeatures]:
+def _features(windows: Sequence[Window[FlowRecord]], key: WindowKey) -> list[FlowFeatures]:
     """Extract ``features@1`` rows for every flow in every window.
 
     ``extract_flow_window`` yields one row per flow — per-flow measurements
@@ -198,9 +210,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Attacker source IP to hold out, for --split-policy leave-one-attacker-out.",
     )
-    parser.add_argument(
-        "--limit", type=int, default=0, help="Parse only the first N rows."
-    )
+    parser.add_argument("--limit", type=int, default=0, help="Parse only the first N rows.")
     parser.add_argument("--epochs", type=int, default=DEFAULT_LR_EPOCHS)
     parser.add_argument(
         "--max-train-rows",
@@ -327,9 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     train = _features(split.train, key)
     valid = _features(split.valid, key)
     test = _features(split.test, key)
-    print(
-        f"  feature rows: train={len(train):,} valid={len(valid):,} test={len(test):,}"
-    )
+    print(f"  feature rows: train={len(train):,} valid={len(valid):,} test={len(test):,}")
     if not train or not test:
         print("refusing to train: a fold produced no feature rows", file=sys.stderr)
         return 1
@@ -359,9 +367,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-    train_rows, train_targets = _subsample(
-        all_train_rows, all_train_targets, args.max_train_rows
-    )
+    train_rows, train_targets = _subsample(all_train_rows, all_train_targets, args.max_train_rows)
     print(
         f"  design matrix: {len(train_rows[0])} columns; "
         f"fitting on {len(train_rows):,} of {len(all_train_rows):,} train rows"
@@ -369,11 +375,13 @@ def main(argv: list[str] | None = None) -> int:
 
     results: dict[str, object] = {}
     loao_results: dict[str, object] = {}
-    if loao:
-        encoded_test = _encode_windows(split.test, key, preprocessor)
-        encoded_valid = _encode_windows(split.valid, key, preprocessor)
-        test_window_labels = [bool(window_families(w)) for w in split.test]
-        valid_window_labels = [bool(window_families(w)) for w in split.valid]
+    # Window-level scoring runs for every policy, so the baselines are compared
+    # with FlowNet on the same windows. Row-level results stay for non-LOAO runs.
+    window_results: dict[str, object] = {}
+    encoded_test = _encode_windows(split.test, key, preprocessor)
+    encoded_valid = _encode_windows(split.valid, key, preprocessor)
+    test_window_labels = [bool(window_families(w)) for w in split.test]
+    valid_window_labels = [bool(window_families(w)) for w in split.valid]
 
     print(f"fitting logistic regression ({args.epochs} epochs)")
     logistic = LogisticRegression.fit(train_rows, train_targets, epochs=args.epochs)
@@ -393,6 +401,11 @@ def main(argv: list[str] | None = None) -> int:
                 model_id="baseline-logreg",
             )
         )
+        window = _window_report(
+            logistic, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+        )
+        if window is not None:
+            window_results["logistic_regression"] = window
 
     print(f"fitting gradient boosting ({args.stumps} stumps)")
     boosted = GradientBoostedStumps.fit(train_rows, train_targets, n_stumps=args.stumps)
@@ -412,6 +425,11 @@ def main(argv: list[str] | None = None) -> int:
                 model_id="baseline-gbdt",
             )
         )
+        window = _window_report(
+            boosted, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+        )
+        if window is not None:
+            window_results["gradient_boosting"] = window
 
     if loao:
         test_positive_rate = sum(test_window_labels) / len(test_window_labels)
@@ -445,6 +463,7 @@ def main(argv: list[str] | None = None) -> int:
         "positive_rate_test": test_positive_rate,
         "models": results,
         "loao": loao_results,
+        "window_eval": window_results,
         "loao_scoring": (
             "window-level, any-attack labels, max flow score per window" if loao else None
         ),
@@ -461,18 +480,18 @@ def main(argv: list[str] | None = None) -> int:
         f"(train {log['positive_rate_train']:.4f})"
     )
 
-    for name, payload in loao_results.items():
-        entry = cast("dict[str, object]", payload)
+    for name, payload in {**loao_results, **window_results}.items():
+        loao_entry = cast("dict[str, float]", payload)
         print(
-            f"  {name:<22} roc_auc={float(entry['roc_auc']):.4f} "
-            f"pr_auc={float(entry['pr_auc']):.4f} (window level, held-out "
-            f"{args.holdout_entity})"
+            f"  {name:<22} roc_auc={float(loao_entry['roc_auc']):.4f} "
+            f"pr_auc={float(loao_entry['pr_auc']):.4f} (window level, "
+            f"{args.holdout_entity or args.split_policy})"
         )
         print(
-            f"    threshold {float(entry['threshold']):.6f} set on validation benign "
-            f"(FPR<={float(entry['max_benign_fpr']):.3f}): "
-            f"precision={float(entry['precision']):.4f} "
-            f"recall={float(entry['recall']):.4f} fpr={float(entry['fpr']):.4f}"
+            f"    threshold {float(loao_entry['threshold']):.6f} set on validation benign "
+            f"(FPR<={float(loao_entry['max_benign_fpr']):.3f}): "
+            f"precision={float(loao_entry['precision']):.4f} "
+            f"recall={float(loao_entry['recall']):.4f} fpr={float(loao_entry['fpr']):.4f}"
         )
     for name, payload in results.items():
         # precision/recall/f1 sit at the top of the EvalReport; the rank metrics

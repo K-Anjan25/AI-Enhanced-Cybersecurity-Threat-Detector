@@ -165,9 +165,7 @@ def declared_driver_packages() -> set[str]:
 
 def database_urls(services: dict[str, Any]) -> list[str]:
     """Every configured URL: the compose file's, and the application's own default."""
-    environment = cast(
-        dict[str, Any], services.get("backend", {}).get("environment", {})
-    )
+    environment = cast(dict[str, Any], services.get("backend", {}).get("environment", {}))
     urls = [
         str(value)
         for value in environment.values()
@@ -342,9 +340,7 @@ def check_dashboard_healthcheck(services: dict[str, Any], problems: list[str]) -
     container that serves nothing.
     """
     service = services.get("dashboard", {})
-    published = {
-        str(entry).split(":")[-1].split("/")[0] for entry in service.get("ports", [])
-    }
+    published = {str(entry).split(":")[-1].split("/")[0] for entry in service.get("ports", [])}
     test = " ".join(service.get("healthcheck", {}).get("test", []))
     found = re.search(r"localhost:(\d+)", test)
     if not found:
@@ -409,9 +405,7 @@ def main() -> int:
         return 1
 
     print("compose static consistency: all checks passed")
-    print(
-        "note: this does not build images or start the stack — that needs a Docker daemon"
-    )
+    print("note: this does not build images or start the stack — that needs a Docker daemon")
     return 0
 
 

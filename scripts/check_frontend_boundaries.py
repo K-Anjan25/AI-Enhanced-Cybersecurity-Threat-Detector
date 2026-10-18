@@ -196,11 +196,7 @@ def check_boundaries(problems: list[str]) -> tuple[int, int]:
             target_layer, target_feature = parts(target)
             target_rank = rank_of(target_layer)
 
-            if (
-                importer_feature
-                and target_feature
-                and importer_feature != target_feature
-            ):
+            if importer_feature and target_feature and importer_feature != target_feature:
                 fail(
                     problems,
                     f"{label(path)} (feature '{importer_feature}') imports "

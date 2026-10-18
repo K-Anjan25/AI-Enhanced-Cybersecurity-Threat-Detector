@@ -55,6 +55,7 @@ class OverviewTotals(BaseModel):
     unrecorded: int = Field(ge=0)
     verdicts_measured: int = Field(ge=0)
     mean_time_to_verdict_seconds: float | None
+    median_time_to_verdict_seconds: float | None = None
 
 
 class OverviewBucket(BaseModel):

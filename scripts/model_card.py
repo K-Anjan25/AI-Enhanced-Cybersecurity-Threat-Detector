@@ -102,9 +102,7 @@ def main(argv: list[str] | None = None) -> int:
             handle.write("\n")
         print(f"wrote {json_out}")
 
-    print(
-        f"{len(card.metrics)} metrics, all cited; {len(card.limitations)} limitations"
-    )
+    print(f"{len(card.metrics)} metrics, all cited; {len(card.limitations)} limitations")
     return 0
 
 

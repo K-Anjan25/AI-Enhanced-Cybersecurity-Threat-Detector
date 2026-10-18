@@ -87,9 +87,7 @@ def _windows(path: str, dataset: str, key: WindowKey) -> tuple[Window[FlowRecord
     print(f"reading {resolved}")
     parsed = PARSERS[dataset](resolved)
     parsed.report.raise_for_empty()
-    print(
-        f"  {parsed.report.parsed:,} rows parsed ({parsed.report.rejected:,} rejected)"
-    )
+    print(f"  {parsed.report.parsed:,} rows parsed ({parsed.report.rejected:,} rejected)")
     # window_flows needs arrival order; a benchmark CSV need not be in it.
     records = sorted(parsed.records, key=lambda record: record.timestamp)
     return window_flows(records, key=key)
@@ -99,13 +97,9 @@ def main(argv: list[str] | None = None) -> int:
     """Train on the source, score the target, and gate on recall."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--source", required=True)
-    parser.add_argument(
-        "--source-dataset", choices=sorted(PARSERS), default="unsw-nb15"
-    )
+    parser.add_argument("--source-dataset", choices=sorted(PARSERS), default="unsw-nb15")
     parser.add_argument("--target", required=True)
-    parser.add_argument(
-        "--target-dataset", choices=sorted(PARSERS), default="cic-ids2017"
-    )
+    parser.add_argument("--target-dataset", choices=sorted(PARSERS), default="cic-ids2017")
     parser.add_argument("--key", choices=("source", "destination"), default="source")
     parser.add_argument(
         "--split-policy",
@@ -150,9 +144,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.split_policy == "entity-only":
         split = group_split(source_windows)
     else:
-        split = split_windows(
-            source_windows, entity_disjoint=args.split_policy != "temporal-only"
-        )
+        split = split_windows(source_windows, entity_disjoint=args.split_policy != "temporal-only")
     print(f"source split {args.split_policy}: {split.audit()}")
 
     # T-203 before anything is trained: a transfer number from a leaking source
@@ -171,9 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     if blockers:
         for finding in blockers:
             print(f"leakage audit: {finding}", file=sys.stderr)
-        print(
-            "refusing to train: the leakage audit failed (T-203, R-62)", file=sys.stderr
-        )
+        print("refusing to train: the leakage audit failed (T-203, R-62)", file=sys.stderr)
         return 1
     print("  leakage audit: no blocking findings (T-203)")
 

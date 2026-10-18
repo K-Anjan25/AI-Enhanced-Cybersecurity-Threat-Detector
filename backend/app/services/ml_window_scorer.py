@@ -71,7 +71,9 @@ class MlWindowScorer:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as response:  # noqa: S310  # nosec B310
+            with urllib.request.urlopen(  # noqa: S310  # nosec B310
+                request, timeout=self._timeout
+            ) as response:
                 payload = json.loads(response.read())
         except urllib.error.HTTPError as exc:
             logger.warning("ml_window_scorer_refused status=%d", exc.code)
