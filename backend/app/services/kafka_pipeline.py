@@ -26,7 +26,7 @@ from app.schemas.ingest import FlowRecordIn
 
 if TYPE_CHECKING:
     from app.pipeline import Pipeline
-    from app.services.ml_window_scorer import MlWindowScorerLike
+    from app.services.rule_detector import MlWindowScorerLike
 
 _LOG = get_logger("aegis.kafka_pipeline")
 

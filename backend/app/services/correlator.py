@@ -257,8 +257,15 @@ class FusedScoreLike(Protocol):
     root injects the rule and the backend image stays free of it.
     """
 
-    score: float
-    partial_evidence: bool
+    @property
+    def score(self) -> float:
+        """Fused score in [0, 1]."""
+        ...
+
+    @property
+    def partial_evidence(self) -> bool:
+        """True when a modality was missing."""
+        ...
 
 
 class FusionRule(Protocol):
