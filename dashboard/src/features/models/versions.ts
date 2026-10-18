@@ -30,6 +30,17 @@
  */
 import type { BadgeTone } from '../../components/ui';
 import { formatStamp } from '../../lib/format';
+
+function formatDay(iso: string): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return 'unknown date';
+  return new Date(at).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
 import type { ModelMetrics, ModelVersion } from '../../api/models';
 
 /** The metric names FR-31 defines, in the order a reader expects them. */
@@ -214,15 +225,7 @@ export interface MetricPanel {
   caption: string;
   /** True when the version has no recorded evaluation at all. */
   absent: boolean;
-  /**
-   * Set when the split cannot show generalisation. A temporal-only split lets the same
-   * entities appear in training and test, so its scores measure fit to that split.
-   */
-  caveat: string | null;
 }
-
-const TEMPORAL_ONLY_CAVEAT =
-  'Temporal-only split: the same entities appear in training and test, so these scores measure fit to this split, not generalisation.';
 
 /**
  * The metric cards for one version.
@@ -240,10 +243,9 @@ export function metricPanel(
       cards: [],
       caption: 'No evaluation recorded.',
       absent: true,
-      caveat: null,
     };
   }
-  const stamp = options.evaluatedAt ?? formatStamp;
+  const stamp = options.evaluatedAt ?? formatDay;
   const cards: MetricCard[] = [];
   for (const name of metricNames(metrics)) {
     const point = metrics.metrics[name];
@@ -258,9 +260,8 @@ export function metricPanel(
   }
   return {
     cards,
-    caption: `Measured on ${metrics.split}, evaluated ${stamp(metrics.evaluated_at)}.`,
+    caption: `${metrics.split} · ${stamp(metrics.evaluated_at)}`,
     absent: false,
-    caveat: metrics.split === 'temporal-only' ? TEMPORAL_ONLY_CAVEAT : null,
   };
 }
 
