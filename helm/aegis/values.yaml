@@ -109,21 +109,14 @@ dashboard:
       memory: 256Mi
 
 # ──────────────────────────────────────────────
-# PostgreSQL (optional — use external managed DB in production)
+# PostgreSQL: external. The chart deploys no database; aegis-secrets supplies
+# AEGIS_DATABASE_URL (see secrets below). The Bitnami subchart was
+# removed because its images are no longer published.
 # ──────────────────────────────────────────────
-postgresql:
-  enabled: false
-  auth:
-    database: aegis
-    username: aegis
-  primary:
-    persistence:
-      size: 20Gi
 
 # ──────────────────────────────────────────────
 # Kafka: not deployed by this chart. Provision Apache Kafka (apache/kafka, KRaft)
-# outside the release, as k8s/README.md describes. The Bitnami subchart was removed
-# because its images are no longer published.
+# outside the release, as k8s/README.md describes.
 # ──────────────────────────────────────────────
 
 # ──────────────────────────────────────────────

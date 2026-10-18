@@ -21,8 +21,4 @@ keywords:
 maintainers:
   - name: AEGIS team
 
-dependencies:
-  - name: postgresql
-    version: '13.2.24'
-    repository: https://charts.bitnami.com/bitnami
-    condition: postgresql.enabled
+# No subchart dependencies. The database is external (see values.yaml).

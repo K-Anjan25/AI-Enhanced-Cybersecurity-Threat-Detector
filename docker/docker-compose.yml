@@ -169,10 +169,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
+      # Kafka is deliberately not a startup dependency. Nothing in the running
+      # backend publishes to or consumes from flows.raw yet (app.state.flow_publisher
+      # is never set), so waiting on the broker only lets a broker hiccup block the
+      # API. The broker and kafka-init still start with the stack; add the
+      # dependency back in the same change that wires the publisher.
       elasticsearch:
         condition: service_healthy
       ml-service:
