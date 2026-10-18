@@ -235,7 +235,7 @@ The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, 
 |---|---|---|---|
 | `bg.base`        | `#DBE2E9` | —                                                  | App background                |
 | `bg.surface`     | `#FFFFFF` | —                                                  | Cards, panels, tables         |
-| `border.default` | `#9BAAB9` | decorative                                         | Hairlines                     |
+| `border.default` | `#6B7982` | 3.43 : 1 on `bg.base` · 4.48 : 1 on `bg.surface` | Hairlines and control boundaries (WCAG 1.4.11). Mariana Blue at 55%; Grey `#9BAAB9` fails at 1.82 / 2.37 |
 | `text.primary`   | `#0F232E` | 12.36 : 1 on `bg.base` · 16.15 : 1 on `bg.surface` | Body, headings                |
 | `text.muted`     | `#3E5160` | 6.30 : 1 on `bg.base` · 8.23 : 1 on `bg.surface`   | Secondary labels              |
 | `accent`         | `#0000FF` | 6.57 : 1 on `bg.base` · 8.59 : 1 on `bg.surface`   | Links, focus, primary actions |

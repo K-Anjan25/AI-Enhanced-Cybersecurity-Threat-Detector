@@ -15,18 +15,23 @@ logger = logging.getLogger(__name__)
 __all__ = ["DriftMonitor"]
 
 FEATURE_BASELINES: dict[str, dict[str, float]] = {
+    # Measured, not typed: benign rows of CIC-IDS2017 Friday (DDoS) and Thursday (web
+    # attacks), 265,904 flows, Destination Port and Protocol. A bucket with no benign rows
+    # takes a 0.1% floor and the rest renormalise, so a port absent from the reference
+    # does not produce an unbounded PSI. This is 2017 lab traffic: a deployment must
+    # re-baseline from its own benign traffic before the PSI means anything there.
     "dst_port": {
-        "80": 0.25,
-        "443": 0.35,
-        "53": 0.15,
-        "22": 0.05,
-        "3389": 0.02,
-        "25": 0.03,
-        "993": 0.03,
-        "587": 0.02,
-        "other": 0.10,
+        "53": 0.4064,
+        "other": 0.2963,
+        "443": 0.1848,
+        "80": 0.1034,
+        "22": 0.0052,
+        "3389": 0.001,
+        "25": 0.001,
+        "993": 0.001,
+        "587": 0.001,
     },
-    "proto": {"tcp": 0.70, "udp": 0.25, "icmp": 0.05},
+    "proto": {"tcp": 0.5674, "udp": 0.4306, "icmp": 0.001, "other": 0.001},
 }
 
 
