@@ -3718,6 +3718,20 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 - If the customer sets a different budget, the threshold guardrail T-207 and recalibration T-322 are the place to change it. Changing the default needs a new decision entry.
 - Analyst-verdict agreement with the top-1 family (PRD §8, ≥ 70%) cannot be measured yet. Verdicts record true positive, false positive, or benign, with no family field. Adding one changes the verdict schema, so it needs approval first.
 
+### D-083 — UNSW evaluation: every split is scored per window, baselines run on all training rows, and the PRD temporal split is reported as leaky (T-UNSW, 2026-10-18)
+
+**Decision.** All UNSW evaluation paths score the baselines and FlowNet on the same windows (any attack flow = attack window, max flow score per window, threshold from validation benign at FPR ≤ 0.5%). The row-level `models` block stays for non-LOAO runs only as a legacy reference. The window block is `window_eval` for temporal and `loao` for LOAO. Baselines train on all training rows (no cap), and the dataset is the 15% sample (`sample15`, seed 20260114, 372,635 usable records).
+
+**LOAO (uncapped baselines, 6 epochs, four holdouts, 1,165 benign test windows each).** FlowNet: ROC-AUC 1.000 on all four; recall 1.000 at FPR 0.26–0.69%; precision at score ≥ 0.75 ≥ 0.99; 0 false positives at 0.75 on every fold. Gradient boosting moved from the capped run: ROC-AUC 0.9744 → 0.9695 (`.0`), 0.9448 → 0.9909 (`.1`), 0.9155 → 0.9525 (`.2`), 0.9225 → 0.9561 (`.3`). Logistic regression is unchanged within 0.003. The uncapped gain is real on three folds and a loss on `.0`, so it is reported per fold, not as an average.
+
+**Temporal-only (PRD split, leaky by construction: 15 entities shared train/test).** Window scoring. FlowNet ROC-AUC 0.9987, PR-AUC 0.9971; at score ≥ 0.75 precision 1.000, recall 0.987, FPR 0.0%. Gradient boosting ROC-AUC 0.9729, PR-AUC 0.9604, recall 0.951 at FPR 0.08%. Logistic regression ROC-AUC 0.794, PR-AUC 0.374. Row-level baseline numbers from before this change (ROC-AUC 0.9996) are not comparable and are not used.
+
+**PRD §8 status on the sample.** Met on the threshold-free metrics (ROC ≥ 0.97, PR ≥ 0.92) for FlowNet on LOAO and temporal, and for gradient boosting on temporal. Not measured: entity-disjoint recall at the `high` band across all folds (LOAO recall at 0.75 is FlowNet-only), end-to-end latency (≤ 5 s), alert volume per analyst per day (≤ 40), verdict-to-family agreement (≥ 70%), cross-dataset recall on CIC (≥ 0.70). Those remain open.
+
+**Latency (NFR-01, per-window scoring only, not end-to-end).** `scripts/inference_benchmark.py --input-dim 52` (the trained UNSW width): p95 47.1 ms on 2 vCPU, budget 150 ms. At the default width 23: p95 19.0 ms. The HTTP `/score/windows` load test cannot run in this sandbox (no FlowNet checkpoint, no Docker); it stays open for the user's machine.
+
+**Consequences.** Any UNSW number quoted from this branch must name the split policy, the scoring unit (window), and whether the split is leaky. `loao_summary.{md,csv}` in `data/runs/` is the table of record for LOAO.
+
 ## Change log
 
 | Date | Version | Change |
