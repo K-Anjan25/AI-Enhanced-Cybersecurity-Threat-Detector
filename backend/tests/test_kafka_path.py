@@ -342,6 +342,7 @@ def test_ingest_hands_flows_to_the_publisher_and_does_not_feed_the_in_process_en
     assert count == 3
     assert traceparent is not None
     assert (
-        traceparent.split("-")[1] == "0123456789abcdef0123456789abcdef"  # pragma: allowlist secret  # noqa: E501
+        traceparent.split("-")[1]
+        == "0123456789abcdef0123456789abcdef"  # pragma: allowlist secret  # noqa: E501
     )  # pragma: allowlist secret  # noqa: E501
     assert engine.fed == []

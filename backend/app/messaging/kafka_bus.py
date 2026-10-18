@@ -89,7 +89,7 @@ class KafkaBus:
         )
 
     def _default_consumer(self) -> Any:
-        from kafka import KafkaConsumer  # type: ignore[import-untyped]
+        from kafka import KafkaConsumer
 
         return KafkaConsumer(
             bootstrap_servers=self._bootstrap,
@@ -108,7 +108,7 @@ class KafkaBus:
         with self._lock:
             consumer = self._consumers.get(partition)
             if consumer is None:
-                from kafka import TopicPartition  # type: ignore[import-untyped]
+                from kafka import TopicPartition
 
                 consumer = self._consumer_factory()
                 consumer.assign([TopicPartition(self.topic, partition)])
@@ -156,7 +156,7 @@ class KafkaBus:
         self, topic: str, partition: int, from_offset: int, limit: int
     ) -> list[tuple[int, bytes, Mapping[str, str]]]:
         """Return up to ``limit`` records at or after ``from_offset``, oldest first."""
-        from kafka import TopicPartition  # type: ignore[import-untyped]
+        from kafka import TopicPartition
 
         consumer = self._consumer_for(partition)
         tp = TopicPartition(topic, partition)
@@ -167,7 +167,7 @@ class KafkaBus:
 
     def end_offset(self, topic: str, partition: int) -> int:
         """The log end offset of ``partition``, for lag."""
-        from kafka import TopicPartition  # type: ignore[import-untyped]
+        from kafka import TopicPartition
 
         consumer = self._consumer_for(partition)
         tp = TopicPartition(topic, partition)
