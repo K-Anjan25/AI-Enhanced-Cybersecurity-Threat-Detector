@@ -120,6 +120,11 @@ class Settings(BaseSettings):
 
     ml_service_url: str = Field(default="http://localhost:8001")
 
+    # Kafka bootstrap servers (host:port). Empty keeps the flow path in-process (the
+    # rule-based DetectionEngine). Set, flows go to flows.raw and a live consumer
+    # scores them (D-085). Compose sets kafka:9092.
+    kafka_bootstrap_servers: str = Field(default="")
+
     # Directory of ``eval@2`` reports (``*.eval.json`` with their ``*.config.json``)
     # to attach to registered model versions. Empty means no evaluations are loaded.
     ml_eval_reports_dir: str = Field(default="")

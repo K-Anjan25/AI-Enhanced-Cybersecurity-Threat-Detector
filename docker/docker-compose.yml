@@ -150,6 +150,9 @@ services:
       AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
       AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
+      # The flow path runs over the broker (D-085): ingest publishes to flows.raw and
+      # the live consumer scores it. Empty would keep scoring in-process.
+      AEGIS_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       # The eval@2 report sits beside the checkpoint; the registrar attaches it to the model.
       AEGIS_ML_EVAL_REPORTS_DIR: /models/flownet
       AEGIS_HOST: 0.0.0.0
@@ -169,11 +172,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # Kafka is deliberately not a startup dependency. Nothing in the running
-      # backend publishes to or consumes from flows.raw yet (app.state.flow_publisher
-      # is never set), so waiting on the broker only lets a broker hiccup block the
-      # API. The broker and kafka-init still start with the stack; add the
-      # dependency back in the same change that wires the publisher.
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       elasticsearch:
         condition: service_healthy
       ml-service:

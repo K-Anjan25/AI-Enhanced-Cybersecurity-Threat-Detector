@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from app.db.models import Alert
 from app.messaging.partitioner import FLOW_TOPIC
@@ -285,7 +286,7 @@ def _utcnow() -> datetime:
 class Pipeline:
     """The composed path, with every external system injected (T-319)."""
 
-    bus: InProcessBus
+    bus: Any  # InProcessBus in tests, KafkaBus in production
     producer: FlowProducer
     consumer: FlowConsumer
     worker: ScoringWorker
@@ -329,13 +330,20 @@ def build_pipeline(
     partitions: int = 6,
     window_size: int = 50,
     clock: Callable[[], datetime] | None = None,
+    bus: Any = None,
 ) -> Pipeline:
-    """Assemble the in-process pipeline over the injected dependencies.
+    """Assemble the pipeline over the injected dependencies.
 
-    The parameters are the systems this environment does not have; the wiring
-    between them is the production wiring, and it is what the golden test drives.
+    ``bus`` is the broker: the in-memory bus when omitted (tests), or a
+    ``KafkaBus`` in production. Either must offer ``send``, ``read``,
+    ``end_offset`` and ``partitions``. The parameters are the systems this
+    environment does not have; the wiring between them is the production wiring,
+    and it is what the golden test drives.
     """
-    bus = InProcessBus(partitions=partitions)
+    if bus is None:
+        bus = InProcessBus(partitions=partitions)
+    else:
+        partitions = bus.partitions
     entities = registry or EntityRegistry()
     correlator = Correlator(InMemoryCaseStore(), fuse)
     writer = AlertWriter(alerts, hub=hub, clock=clock)

@@ -247,12 +247,25 @@ class ScoringWorker:
         """
         return FlowRecord(**wire.model_dump())
 
-    def run(self, consumer: Consumer, partition: int, *, max_batches: int | None = None) -> int:
+    def run(
+        self,
+        consumer: Consumer,
+        partition: int,
+        *,
+        max_batches: int | None = None,
+        flush: bool = True,
+    ) -> int:
         """Process one partition until it is drained.
 
         Returns the number of records processed. Commits after each batch is
         emitted, so a crash replays at most one batch -- and replay is safe
         because emission is idempotent.
+
+        ``flush=True`` (the default, used by batch replays and tests) also scores
+        the partial windows left at the end. A live consumer passes ``flush=False``
+        and calls :meth:`flush` only once the stream has gone quiet; otherwise every
+        poll would cut windows at whatever size happened to be waiting, and the
+        scores would not be the 50-flow windows the model was trained on.
         """
         total = 0
         batches = 0
@@ -271,9 +284,15 @@ class ScoringWorker:
             position = records[-1].offset + 1
 
         # The partition is drained: score whatever is left rather than dropping
-        # the newest flows, which a live stream always has.
-        self._emit((), flush=True)
+        # the newest flows, which a live stream always has. A live caller defers
+        # this to flush() so partial windows are not scored early.
+        if flush:
+            self._emit((), flush=True)
         return total
+
+    def flush(self) -> None:
+        """Score every buffered partial window, for a stream that has gone quiet."""
+        self._emit((), flush=True)
 
     def _emit(
         self,

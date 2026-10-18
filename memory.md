@@ -3746,6 +3746,20 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Desktop LOAO.** The runner reads `data\raw\unsw_s15\headered_{1..4}.csv`, a 15% sample that must be created first from the raw parts with `scripts\prepare_unsw_raw.py --src data\raw\unsw --out data\raw\unsw_s15 --sample-frac 0.15`. Verified here with the same input: 380,144 rows written.
 
+### D-085 — The flow path runs over Kafka when a broker is configured; the in-process engine steps aside (Item 1, 2026-10-18)
+
+**Decision.** With `AEGIS_KAFKA_BOOTSTRAP_SERVERS` set, ingest publishes to `flows.raw` through a real kafka-python-ng `KafkaBus` (acks=all, idempotent, flush before the route answers). A live consumer thread reads each partition, windows per source and scores with the ML service via `MlWindowAdapter`. The in-process `DetectionEngine` is not fed in this mode, so no flow is scored twice. Scoring failures raise, the offset is not committed, and the batch is retried.
+
+**Worker change.** `ScoringWorker.run` gained `flush=` (default True, unchanged for replays). The live loop passes False and calls `flush()` only after 5 s with no new flows. Without this, every poll cut windows at whatever size was waiting, so live scores would not match the 50-flow windows the model was trained on.
+
+**Alert store.** `InMemoryAlertStore` now takes a lock on every method; the scoring thread writes while the API reads.
+
+**Verified offline.** `backend/tests/test_kafka_path.py` (12 tests) drives the real bus, publisher, worker and ML adapter over a fake kafka client that shares one log: partitioning and headers, flush failure, seek and limit, full-window scoring with the tail on flush, ML outage leaving offsets uncommitted, ingest route handing flows to the publisher and not to the engine. Backend suite 2,014 passed.
+
+**Not verified.** No real broker has run this code (no Docker in the sandbox). Operator check: `scripts/kafka_smoke.py` after `docker compose up`. Q-08 stays MIGRATED until it passes.
+
+**Open.** Offsets are in memory (restart replays from the earliest retained offset). One backend replica only. Log and metric lag for the consumer is not yet exported.
+
 ## Change log
 
 | Date | Version | Change |
