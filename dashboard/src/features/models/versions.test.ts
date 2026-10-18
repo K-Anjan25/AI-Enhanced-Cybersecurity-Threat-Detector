@@ -133,6 +133,11 @@ describe('versionRows', () => {
     expect(row?.promotedAt).toBe('never promoted');
   });
 
+  it('does not say “never promoted” about a version that is serving', () => {
+    const [row] = versionRows([version({ status: 'active' })]);
+    expect(row?.promotedAt).toBe('not recorded');
+  });
+
   it('marks a version serving its kind', () => {
     const [row] = versionRows([version({ status: 'active', kind: 'log' })]);
     expect(row?.servingNote).toBe('Serving Log traffic.');
