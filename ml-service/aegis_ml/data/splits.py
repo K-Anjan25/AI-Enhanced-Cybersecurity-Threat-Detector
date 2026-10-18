@@ -294,6 +294,107 @@ def group_split(
     )
 
 
+def leave_one_entity_out(
+    windows: Sequence[Window[R]],
+    *,
+    holdout: str,
+    test_fraction: float = DEFAULT_TEST_FRACTION,
+    valid_fraction: float = DEFAULT_VALID_FRACTION,
+) -> Split[R]:
+    """Hold out one attacker entity and test detection of it (leave-one-attacker-out).
+
+    Built for a capture with only a few attacker sources, where a hash split
+    (:func:`group_split`) can leave every attacker in training. Here each attacker
+    is held out in turn, so the test fold always scores an attacker the model has
+    never seen.
+
+    * **test**: every window of the held-out entity, plus benign-only entities whose
+      hash falls in the test bucket, so the negatives come from unseen hosts;
+    * **train**: every other attacker entity, so training always sees attacks, plus
+      the benign entities outside the test and validation buckets;
+    * **valid**: benign-only entities whose hash falls in the validation bucket.
+      Neither script reads this fold for a decision; it is kept for the audit.
+
+    No other attacker entity is placed in test, so the test fold scores exactly one
+    attacker. Entity disjointness is exact by construction. Time order is ignored,
+    as in :func:`group_split`, so ``temporal_enforced`` is false and the audit says so.
+
+    Raises:
+        ValueError: if the input is empty, ``holdout`` is empty or not an entity of
+            the data, the holdout carries no attack traffic, the fractions are
+            unusable, or a fold lacks the classes it needs.
+    """
+    if not windows:
+        raise ValueError("cannot split an empty sequence of windows")
+    if not holdout:
+        raise ValueError("holdout must name one entity")
+    for name, value in (("test_fraction", test_fraction), ("valid_fraction", valid_fraction)):
+        if not 0.0 < value < 1.0:
+            raise ValueError(f"{name} must be in (0, 1), got {value}")
+    if test_fraction + valid_fraction >= 1.0:
+        raise ValueError("test_fraction and valid_fraction must leave room for training")
+
+    keys = {window.key for window in windows}
+    if holdout not in keys:
+        raise ValueError(f"holdout entity {holdout!r} is not an entity in the data")
+    attack_keys = {window.key for window in windows if window_families(window)}
+    if holdout not in attack_keys:
+        raise ValueError(
+            f"holdout entity {holdout!r} carries no attack traffic; holding it out scores nothing"
+        )
+
+    test_cut = int(test_fraction * ENTITY_BUCKETS)
+    valid_cut = int((test_fraction + valid_fraction) * ENTITY_BUCKETS)
+
+    train: list[Window[R]] = []
+    valid: list[Window[R]] = []
+    test: list[Window[R]] = []
+    for window in windows:
+        if window.key == holdout:
+            test.append(window)
+            continue
+        if window.key in attack_keys:
+            # Other attackers always train, so training is never attack-free.
+            train.append(window)
+            continue
+        bucket = _entity_bucket(window.key)
+        if bucket < test_cut:
+            test.append(window)
+        elif bucket < valid_cut:
+            valid.append(window)
+        else:
+            train.append(window)
+
+    if not any(window_families(w) for w in test):
+        raise ValueError("leave-one-entity-out test fold has no attack windows")
+    if all(window_families(w) for w in test):
+        raise ValueError(
+            "leave-one-entity-out test fold has no benign windows; too few benign "
+            "entities for the requested test fraction"
+        )
+    if not train or not valid:
+        raise ValueError(
+            f"leave-one-entity-out produced empty folds (train={len(train)}, valid={len(valid)})"
+        )
+    if not any(window_families(w) for w in train):
+        raise ValueError(
+            "leave-one-entity-out training fold has no attack windows; the other attackers "
+            "all fell outside the training bucket"
+        )
+
+    latest = max(window.start for window in windows)
+    return Split(
+        train=tuple(train),
+        valid=tuple(valid),
+        test=tuple(test),
+        test_cutoff=latest,
+        valid_cutoff=latest,
+        dropped=0,
+        entity_disjoint_enforced=True,
+        temporal_enforced=False,
+    )
+
+
 def window_families(window: Window[R]) -> frozenset[str]:
     """The non-benign labels present in a window.
 

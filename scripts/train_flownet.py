@@ -51,6 +51,7 @@ from aegis_ml.data.records import FlowRecord  # noqa: E402
 from aegis_ml.data.splits import (  # noqa: E402
     family_split,
     group_split,
+    leave_one_entity_out,
     split_windows,
     window_families,
 )
@@ -206,6 +207,7 @@ def _manifest(
         "config": {
             "split_policy": args.split_policy,
             "holdout_family": list(args.holdout_family or []),
+            "holdout_entity": args.holdout_entity,
             "sample_frac": args.sample_frac,
             "epochs": args.epochs,
             "batch_size": args.batch_size,
@@ -263,7 +265,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument(
         "--split-policy",
-        choices=("entity-disjoint", "temporal-only", "entity-only", "family-holdout"),
+        choices=(
+            "entity-disjoint",
+            "temporal-only",
+            "entity-only",
+            "family-holdout",
+            "leave-one-attacker-out",
+        ),
         default="entity-disjoint",
         help=(
             "temporal = chronological and entity-disjoint (R-60/R-61). "
@@ -279,6 +287,11 @@ def main(argv: list[str] | None = None) -> int:
             "Attack family to withhold from training, for --split-policy "
             "family-holdout. Repeatable. Required by that policy."
         ),
+    )
+    parser.add_argument(
+        "--holdout-entity",
+        default=None,
+        help="Attacker source IP to hold out, for --split-policy leave-one-attacker-out.",
     )
     parser.add_argument(
         "--sample-frac",
@@ -338,6 +351,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         split = family_split(windows, holdout=args.holdout_family)
+    elif args.split_policy == "leave-one-attacker-out":
+        if key != WindowKey.SOURCE:
+            print("leave-one-attacker-out holds out a source: use --key source", file=sys.stderr)
+            return 1
+        if not args.holdout_entity:
+            print("leave-one-attacker-out needs --holdout-entity", file=sys.stderr)
+            return 1
+        split = leave_one_entity_out(windows, holdout=args.holdout_entity)
     elif entity_only:
         split = group_split(windows)
     else:
@@ -352,6 +373,12 @@ def main(argv: list[str] | None = None) -> int:
             f"warning: holding out {sorted(args.holdout_family)}; the model has never "
             "seen this family. Neither leakage invariant is enforced, because the "
             "thing held out is the attack type, not the host - read the audit",
+            file=sys.stderr,
+        )
+    elif args.split_policy == "leave-one-attacker-out":
+        print(
+            f"warning: leave-one-attacker-out holds out {args.holdout_entity}. R-61 holds "
+            "exactly; R-60 is dropped. Measures detection of an unseen attacker.",
             file=sys.stderr,
         )
     elif entity_only:
@@ -501,6 +528,7 @@ def main(argv: list[str] | None = None) -> int:
         "windows": len(windows),
         "split_policy": args.split_policy,
         "holdout_family": list(args.holdout_family or []),
+        "holdout_entity": args.holdout_entity,
         "split_audit": audit,
         "train_windows": len(train_seq),
         "test_windows": len(test_seq),

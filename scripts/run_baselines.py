@@ -48,7 +48,12 @@ from aegis_ml.data.preprocess import (  # noqa: E402
     Vocabulary,
 )
 from aegis_ml.data.records import FlowRecord  # noqa: E402
-from aegis_ml.data.splits import Split, group_split, split_windows  # noqa: E402
+from aegis_ml.data.splits import (  # noqa: E402
+    Split,
+    group_split,
+    leave_one_entity_out,
+    split_windows,
+)
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
 from aegis_ml.training.baselines import (  # noqa: E402
     DEFAULT_LR_EPOCHS,
@@ -148,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--key", choices=["source", "destination"], default="source")
     parser.add_argument(
         "--split-policy",
-        choices=["entity-disjoint", "temporal-only", "entity-only"],
+        choices=["entity-disjoint", "temporal-only", "entity-only", "leave-one-attacker-out"],
         default="entity-disjoint",
         help=(
             "entity-disjoint (default) enforces R-61 and is the only policy a "
@@ -161,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
             "entity it has never seen, which is the question no temporal split can "
             "ask on a capture whose attack sources are persistent."
         ),
+    )
+    parser.add_argument(
+        "--holdout-entity",
+        default=None,
+        help="Attacker source IP to hold out, for --split-policy leave-one-attacker-out.",
     )
     parser.add_argument(
         "--limit", type=int, default=0, help="Parse only the first N rows."
@@ -226,19 +236,27 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {len(windows):,} windows keyed by {key.value}")
 
     entity_only = args.split_policy == "entity-only"
+    loao = args.split_policy == "leave-one-attacker-out"
     entity_disjoint = args.split_policy != "temporal-only"
-    split: Split[FlowRecord] = (
-        group_split(windows)
-        if entity_only
-        else split_windows(windows, entity_disjoint=entity_disjoint)
-    )
+    if loao:
+        if key != WindowKey.SOURCE:
+            print("leave-one-attacker-out holds out a source: use --key source", file=sys.stderr)
+            return 1
+        if not args.holdout_entity:
+            print("leave-one-attacker-out needs --holdout-entity", file=sys.stderr)
+            return 1
+        split: Split[FlowRecord] = leave_one_entity_out(windows, holdout=args.holdout_entity)
+    elif entity_only:
+        split = group_split(windows)
+    else:
+        split = split_windows(windows, entity_disjoint=entity_disjoint)
     audit = split.audit()
     print(f"  split policy: {args.split_policy}")
     print(f"  split: {audit}")
 
     # R-60 is unconditional for every policy that claims it. entity-only drops it
     # by design and says so, rather than being allowed to fail it silently.
-    if not entity_only and not audit["test_after_train"]:
+    if not (entity_only or loao) and not audit["test_after_train"]:
         print(
             "refusing to train: the split violates the temporal invariant (R-60)",
             file=sys.stderr,
@@ -251,6 +269,12 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+    if loao:
+        print(
+            f"  leave-one-attacker-out: held out {args.holdout_entity}. R-61 holds exactly; "
+            "R-60 is dropped. Measures detection of an unseen attacker, not temporal drift.",
+            file=sys.stderr,
+        )
     if entity_only:
         print(
             "  entity-only split: R-61 holds exactly (0 shared entities by "
@@ -337,6 +361,7 @@ def main(argv: list[str] | None = None) -> int:
         "source_sha256": source_sha,
         "window_key": key.value,
         "split_policy": args.split_policy,
+        "holdout_entity": args.holdout_entity,
         "split_audit": audit,
         "rows_read": sum(r.rows_read for r in reports) if reports else len(records),
         "rows_parsed": len(records),
