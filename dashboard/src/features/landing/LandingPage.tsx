@@ -69,7 +69,7 @@ export function LandingPage() {
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 top-16 bottom-0 hidden md:block"
           >
-            <div className="absolute inset-y-0 left-1/2 w-[46%] -translate-x-1/2">
+            <div className="landing-hero-art absolute inset-y-0 left-1/2 w-[46%] -translate-x-1/2">
               <div className="landing-halftone absolute inset-0" />
               {artLoaded ? (
                 <img

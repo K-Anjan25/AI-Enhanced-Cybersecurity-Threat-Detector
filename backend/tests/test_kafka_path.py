@@ -375,3 +375,73 @@ def test_client_kwargs_are_accepted_by_the_installed_kafka_client() -> None:
     keys = set(re.findall(r"^\s+(\w+)=", next(iter(consumer_kw)), re.M))
     unknown = keys - set(kafka.KafkaConsumer.DEFAULT_CONFIG)
     assert not unknown, f"KafkaConsumer kwargs unsupported by the installed client: {unknown}"
+
+
+class _Admin:
+    """A fake KafkaAdminClient: each create_topics call pops the next scripted outcome."""
+
+    def __init__(self, outcomes: list[object]) -> None:
+        self.outcomes = outcomes
+        self.calls: list[list[object]] = []
+        self.closed = 0
+
+    def create_topics(self, topics: list[object]) -> object:
+        self.calls.append(topics)
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+    def close(self) -> None:
+        self.closed += 1
+
+
+def _response(*errors: tuple[str, int, str]) -> object:
+    from types import SimpleNamespace
+
+    return SimpleNamespace(topic_errors=list(errors))
+
+
+def _bus_with(admin: _Admin) -> KafkaBus:
+    return KafkaBus("kafka:9092", admin_factory=lambda: admin)
+
+
+def test_ensure_topic_creates_with_the_producer_partition_count() -> None:
+    admin = _Admin([_response((TOPIC, 0, ""))])
+    _bus_with(admin).ensure_topic(sleep=lambda _s: None)
+    (topics,) = admin.calls
+    (new_topic,) = topics
+    assert new_topic.name == TOPIC
+    assert new_topic.num_partitions == 6
+    assert admin.closed == 1
+
+
+def test_ensure_topic_accepts_an_existing_topic() -> None:
+    """Restarts are routine: a topic that already exists is success, not an error."""
+    admin = _Admin([_response((TOPIC, 36, "Topic 'flows.raw' already exists."))])
+    _bus_with(admin).ensure_topic(sleep=lambda _s: None)
+    assert len(admin.calls) == 1
+
+
+def test_ensure_topic_retries_while_the_broker_starts() -> None:
+    from kafka.errors import KafkaError  # type: ignore[import-untyped]
+
+    sleeps: list[float] = []
+    admin = _Admin(
+        [
+            KafkaError("NoBrokersAvailable"),
+            KafkaError("NoBrokersAvailable"),
+            _response((TOPIC, 0, "")),
+        ]
+    )
+    _bus_with(admin).ensure_topic(attempts=5, delay_s=2.0, sleep=sleeps.append)
+    assert len(admin.calls) == 3
+    assert sleeps == [2.0, 2.0]
+    assert admin.closed == 3
+
+
+def test_ensure_topic_raises_when_a_topic_error_persists() -> None:
+    admin = _Admin([_response((TOPIC, 37, "invalid partitions"))] * 2)
+    with pytest.raises(KafkaBusError, match="code 37"):
+        _bus_with(admin).ensure_topic(attempts=2, sleep=lambda _s: None)
+    assert len(admin.calls) == 2

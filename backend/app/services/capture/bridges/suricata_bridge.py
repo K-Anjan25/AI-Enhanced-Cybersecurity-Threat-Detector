@@ -458,6 +458,14 @@ def main() -> None:
     parser.add_argument("--email", help="Login email", default=EMAIL)
     parser.add_argument("--password", help="Login password", default=PASSWORD)
     parser.add_argument("--batch-size", "-b", type=int, default=BATCH_SIZE)
+    # Suricata's flow events describe the same connections as Zeek's conn.log. Ingesting
+    # both counts every connection twice, so flows are off by default and Zeek is the
+    # flow source. Pass --flows only on a host where Zeek is not running.
+    parser.add_argument(
+        "--flows",
+        action="store_true",
+        help="also ingest Suricata flow events as flows (default: off; Zeek supplies flows)",
+    )
     args = parser.parse_args()
 
     API_URL = args.api
@@ -476,7 +484,8 @@ def main() -> None:
         sys.exit(1)
 
     print(f"[SURICATA] Bridge started. API={API_URL}", file=sys.stderr)
-    print("[SURICATA] Sending: alerts→logs, flows→flows, dns/http/tls→logs", file=sys.stderr)
+    flows_note = "flows→flows" if args.flows else "flows skipped (Zeek is the flow source)"
+    print(f"[SURICATA] Sending: alerts→logs, {flows_note}, dns/http/tls→logs", file=sys.stderr)
 
     flow_batch: list[dict[str, Any]] = []
     log_batch: list[dict[str, Any]] = []
@@ -512,7 +521,7 @@ def main() -> None:
             if event_type == "alert":
                 log_batch.append(parse_alert(event))
                 counts["alerts"] += 1
-            elif event_type == "flow":
+            elif event_type == "flow" and args.flows:
                 flow_batch.append(parse_flow(event))
                 counts["flows"] += 1
             elif event_type == "dns":

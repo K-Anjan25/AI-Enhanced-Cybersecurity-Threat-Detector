@@ -48,13 +48,11 @@ DRIVER_PACKAGES = {"psycopg": "psycopg", "psycopg2": "psycopg2", "asyncpg": "asy
 
 #: Network capture containers. Their AEGIS_* variables configure the standalone
 #: bridge scripts (read from the environment by the entrypoints), not Settings.
-CAPTURE_SERVICES = {"capture", "zeek", "suricata", "tshark"}
+CAPTURE_SERVICES = {"capture"}
 
 EXPECTED_SERVICES = {
     "postgres",
-    "redis",
     "kafka",
-    "kafka-init",
     "elasticsearch",
     "backend",
     "ml-service",

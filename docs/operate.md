@@ -107,7 +107,7 @@ Check it on a running stack:
 
 ```
 docker compose -f docker/docker-compose.yml up -d --build
-docker compose -f docker/docker-compose.yml ps        # kafka healthy, kafka-init exited 0, backend healthy
+docker compose -f docker/docker-compose.yml ps        # kafka healthy, backend healthy (topic is created by the backend)
 python scripts/kafka_smoke.py                          # PASS when the broker, consumer and ML service all worked
 ```
 

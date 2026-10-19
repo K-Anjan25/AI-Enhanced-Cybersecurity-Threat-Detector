@@ -37,7 +37,7 @@
 
 **Steps:**
 
-1. Verify capture services are running: `docker compose ps | grep -E "tcpdump|zeek|suricata|tshark"`
+1. Verify the capture service is running: `docker compose ps capture`, then `docker compose logs --tail 50 capture` (one line per engine: `[ZEEK]`, `[SURICATA]`).
 2. Check detection status: `curl http://localhost:8000/api/v1/detection/status`
 3. Check if flows are being ingested: `curl http://localhost:8000/metrics | grep aegis_flows`
 4. Check ML service: `curl http://localhost:8001/health`

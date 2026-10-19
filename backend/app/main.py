@@ -7,6 +7,7 @@ reported as a single actionable line rather than a traceback (rule R-06).
 from __future__ import annotations
 
 import sys
+import threading
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -48,6 +49,7 @@ from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
 from app.db.models import PARTITIONED_TABLES
+from app.messaging.kafka_bus import KafkaBus, KafkaBusError
 from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
@@ -166,6 +168,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if detection_engine is not None:
         detection_engine.start()
         logger.info("detection_engine_started", interval=15)
+    # Create the flow topic in the background (replaces the kafka-init container). The
+    # API starts without waiting for the broker; ingest reports 503 until it is ready.
+    kafka_bus = getattr(app.state, "kafka_bus", None)
+    if kafka_bus is not None:
+        threading.Thread(
+            target=_ensure_flow_topic, args=(kafka_bus,), name="kafka-topic-setup", daemon=True
+        ).start()
     # Start the live Kafka consumer, when the Kafka path is configured (D-085).
     live_scoring = getattr(app.state, "live_scoring", None)
     if live_scoring is not None:
@@ -256,6 +265,17 @@ def _no_runner(statement: str) -> bool:
         "wire app.state.partition_runner to a session-backed runner"
     )
     raise RuntimeError(msg)
+
+
+def _ensure_flow_topic(bus: KafkaBus) -> None:
+    """Create the flow topic, logging instead of raising: the API must keep serving."""
+    logger = get_logger("aegis.backend")
+    try:
+        bus.ensure_topic()
+    except KafkaBusError as exc:
+        logger.error("kafka_topic_unavailable", error=str(exc))
+    else:
+        logger.info("kafka_topic_ready", topic=bus.topic, partitions=bus.partitions)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
