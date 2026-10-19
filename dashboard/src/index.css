@@ -18,9 +18,9 @@
   --color-bg-base: #0f232e;
   --color-bg-surface: #16303d;
   --color-border: #9baab9;
-  --color-text-primary: #ffffff; /* 16.15:1 on base, 13.78:1 on surface */
+  --color-text-primary: #dbe2e9; /* Dawning Mist: headings and body. 12.36:1 on base, 10.54:1 on surface */
   --color-text-muted: #9baab9; /* 6.80:1 on base, 5.80:1 on surface */
-  --color-accent: #ffffff; /* 16.15:1 on base, 13.78:1 on surface */
+  --color-accent: #dbe2e9; /* links and primary fill. 12.36:1 on base, 10.54:1 on surface */
 
   /* Deep Blue (#0000FF) toned down to a half-mix with Mariana Blue for dark. */
   --color-brand-blue: #081297;
@@ -45,7 +45,7 @@
   /* Badge rule (design.md §5.3): base-hue fill with #0f232e text, all >= 4.5:1. */
   --color-on-severity: #0f232e;
 
-  --focus-ring: #ffffff; /* 16.15:1 against base, above the 3:1 requirement */
+  --focus-ring: #dbe2e9; /* 12.36:1 against base, above the 3:1 requirement */
 
   /* Elevation (design.md §5.5). Exactly one shadow token exists. */
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / 40%);
