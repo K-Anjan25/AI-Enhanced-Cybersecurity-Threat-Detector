@@ -82,7 +82,7 @@ if (-not $SkipBuild) {
 $worker = {
     param($image, $mount, $name, $memory, $cpus, $holdout, $data, $runs, $epochs, $log)
     & docker run --name $name --no-healthcheck --memory "${memory}m" --cpus $cpus -v $mount -w /work $image `
-        python scripts/loao_one_holdout.py $holdout $data $runs $epochs *> $log
+        python scripts/loao_one_holdout.py $holdout $data $runs $epochs --baselines-only *> $log
     $LASTEXITCODE
 }
 
@@ -120,6 +120,22 @@ foreach ($job in Get-Job) {
 
 if ($failed.Count -gt 0) {
     throw "$($failed.Count) holdout(s) failed. Read the kept logs, fix the cause, then re-run with -Holdouts set to the failed ones. The summary reads every run in the folder."
+}
+
+# FlowNet runs on the host, not in the containers, so it can use the GPU when torch can see one.
+# One FlowNet run at a time: the GPU has limited memory and FlowNet is a small model.
+Write-Host ""
+Write-Host "=== FlowNet (host, device auto) ==="
+foreach ($holdout in $Holdouts) {
+    $log = Join-Path $logDir "flownet_$holdout.log"
+    Write-Host "FlowNet $holdout (log: $log)"
+    & python scripts\train_flownet.py --dataset unsw-nb15 `
+        --file (Join-Path $DataDir "headered_1.csv") --file (Join-Path $DataDir "headered_2.csv") `
+        --file (Join-Path $DataDir "headered_3.csv") --file (Join-Path $DataDir "headered_4.csv") `
+        --split-policy leave-one-attacker-out --holdout-entity $holdout --key source `
+        --epochs $Epochs --device auto --out (Join-Path $RunsDir "loao_flownet_$holdout.json") *> $log
+    if ($LASTEXITCODE -ne 0) { throw "FlowNet failed for $holdout (exit $LASTEXITCODE). Log: $log" }
+    Write-Host "OK    FlowNet $holdout"
 }
 
 Write-Host ""
