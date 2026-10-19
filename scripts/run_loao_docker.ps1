@@ -69,6 +69,9 @@ if ($Parallel -le 0) {
 $memoryPerRun = [math]::Min(4096, [math]::Floor($usableMB / $Parallel))
 $cpusPerRun = [math]::Max(1, [math]::Floor($vmCpus / $Parallel))
 Write-Host "Docker VM: $vmCpus CPUs, $vmMemMB MB. Running $Parallel container(s) at a time, $cpusPerRun CPU and $memoryPerRun MB each."
+if ($Parallel -eq 1 -and $Holdouts.Count -gt 1) {
+    Write-Host "Only one container fits: raise Docker Desktop memory (Settings > Resources) to about 6 GB, then re-run."
+}
 
 if (-not $SkipBuild) {
     Write-Host "Building $Image from ml-service (torch is cached after the first build)."
@@ -78,7 +81,7 @@ if (-not $SkipBuild) {
 
 $worker = {
     param($image, $mount, $name, $memory, $cpus, $holdout, $data, $runs, $epochs, $log)
-    & docker run --name $name --memory "${memory}m" --cpus $cpus -v $mount -w /work $image `
+    & docker run --name $name --no-healthcheck --memory "${memory}m" --cpus $cpus -v $mount -w /work $image `
         python scripts/loao_one_holdout.py $holdout $data $runs $epochs *> $log
     $LASTEXITCODE
 }
