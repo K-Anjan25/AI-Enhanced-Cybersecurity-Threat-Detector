@@ -195,7 +195,7 @@ services:
   # flows and suricata supplies alerts and protocol logs. tshark is opt-in: it
   # aggregates the same connections as zeek, so enabling it counts flows twice.
   capture:
-    mem_limit: 512m
+    mem_limit: 1g
     build:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile.capture
@@ -205,9 +205,10 @@ services:
       # No default: the capture service refuses to start without a non-default password.
       AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
       AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-zeek,suricata}
-      AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-eth0}
-      AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-eth0}
-      AEGIS_TSHARK_INTERFACE: ${AEGIS_TSHARK_INTERFACE:-any}
+      # AEGIS_CAPTURE_INTERFACE is still honoured as the fallback for every engine.
+      AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
+      AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
+      AEGIS_TSHARK_INTERFACE: ${AEGIS_TSHARK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-any}}
     network_mode: host
     depends_on:
       backend:
