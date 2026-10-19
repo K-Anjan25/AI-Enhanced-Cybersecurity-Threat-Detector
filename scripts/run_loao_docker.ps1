@@ -88,9 +88,13 @@ $worker = {
 
 $stamp = Get-Date -Format "yyyyMMddHHmmss"
 $mount = "${repo}:/work"
+# Only this run's jobs. Get-Job lists every job in the session, including old ones.
+$jobs = @()
 $running = @{}
 foreach ($holdout in $Holdouts) {
-    while ((@(Get-Job -State Running)).Count -ge $Parallel) { Start-Sleep -Seconds 5 }
+    while ((@($jobs | Where-Object { $_.State -eq "Running" })).Count -ge $Parallel) {
+        Start-Sleep -Seconds 5
+    }
     $safe = $holdout -replace '\.', '-'
     $name = "aegis-loao-$safe-$stamp"
     $log = Join-Path $logDir "loao_$holdout.log"
@@ -99,21 +103,24 @@ foreach ($holdout in $Holdouts) {
         $Image, $mount, $name, $memoryPerRun, $cpusPerRun, $holdout,
         ($DataDir -replace '\\', '/'), ($RunsDir -replace '\\', '/'), $Epochs, $log
     )
+    $jobs += $job
     $running[$job.Id] = @{ holdout = $holdout; name = $name; log = $log }
 }
 
-Get-Job | Wait-Job | Out-Null
+Wait-Job -Job $jobs | Out-Null
 
 $failed = @()
-foreach ($job in Get-Job) {
+foreach ($job in $jobs) {
     $info = $running[$job.Id]
-    $code = @(Receive-Job $job)[-1]
+    $output = @(Receive-Job $job)
+    $code = if ($job.State -eq "Failed" -or $output.Count -eq 0) { -1 } else { $output[-1] }
     if ($code -eq 0) {
         docker rm $info.name | Out-Null
         Write-Host "OK    $($info.holdout)  (container removed)"
     } else {
         $failed += $info
         Write-Host "FAIL  $($info.holdout)  exit $code  container kept: $($info.name)  log: $($info.log)"
+        if (Test-Path $info.log) { Get-Content $info.log -Tail 8 | ForEach-Object { Write-Host "      $_" } }
     }
     Remove-Job $job
 }
