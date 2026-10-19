@@ -27,7 +27,7 @@
  * height the design asks for became the height the bar needed.
  */
 import { useState, type ReactNode } from 'react';
-import { LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { LogOut, Menu, Search } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
@@ -93,11 +93,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
                   `nav.test.ts` now scans the source for. The two panel icons are the
                   pair every editor uses for the same control, and the button's own
                   label already names the action. */}
-              {collapsed ? (
-                <PanelLeftOpen aria-hidden="true" className="size-icon-md" />
-              ) : (
-                <PanelLeftClose aria-hidden="true" className="size-icon-md" />
-              )}
+              <Menu aria-hidden="true" className="size-icon-md" />
             </button>
           </div>
 
@@ -174,6 +170,9 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
         {narrow ? <NarrowNotice showQueueLink /> : null}
 
         <main className="flex-1 p-6">{children ?? <Outlet />}</main>
+        <footer className="border-t border-line px-6 py-3 text-caption text-muted">
+          AEGIS · Threat detection
+        </footer>
       </div>
     </div>
   );
