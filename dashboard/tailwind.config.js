@@ -34,6 +34,7 @@ const colors = {
   ink: 'var(--color-text-primary)',
   muted: 'var(--color-text-muted)',
   accent: 'var(--color-accent)',
+  brand: 'var(--color-brand-blue)',
   // Text that sits *on* a fill rather than on a surface: the badge rule's
   // near-black (§5.3) and the primary button's on-accent. Both variables existed
   // in index.css from the start; without a utility here the badge rule had no way

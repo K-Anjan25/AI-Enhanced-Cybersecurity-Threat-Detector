@@ -117,7 +117,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
                         `flex items-center gap-2 px-4 py-2 text-body ${
                           collapsed ? 'justify-center' : ''
                         } ${
-                          isActive ? 'border-l-2 border-accent text-ink' : 'text-muted'
+                          isActive ? 'border-l-2 border-brand text-ink' : 'text-muted'
                         } hover:text-ink`
                       }
                     >

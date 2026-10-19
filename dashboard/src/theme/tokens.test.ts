@@ -298,6 +298,7 @@ describe('design.md agreement', () => {
     expect(Object.keys(dark).sort()).toEqual(
       [
         '--color-accent',
+        '--color-brand-blue',
         '--color-bg-base',
         '--color-bg-surface',
         '--color-border',

@@ -249,6 +249,7 @@ describe('compiled colour utilities', () => {
         'ink',
         'muted',
         'accent',
+        'brand',
         'severity',
         'severityText',
         'onAccent',
