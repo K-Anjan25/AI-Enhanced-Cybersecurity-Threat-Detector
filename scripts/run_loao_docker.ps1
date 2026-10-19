@@ -17,6 +17,7 @@
 # Optional:
 #   .\scripts\run_loao_docker.ps1 -Parallel 2            # cap concurrent containers
 #   .\scripts\run_loao_docker.ps1 -SkipBuild             # reuse an existing image
+#   .\scripts\run_loao_docker.ps1 -SkipBaselines         # only FlowNet and the summary; keeps existing baseline JSON
 
 param(
     [string]$DataDir = "data\raw\unsw_s15",
@@ -25,7 +26,8 @@ param(
     [string]$RunsDir = "data\runs",
     [string]$Image = "aegis-train",
     [int]$Parallel = 0,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$SkipBaselines
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,7 +75,9 @@ if ($Parallel -eq 1 -and $Holdouts.Count -gt 1) {
     Write-Host "Only one container fits: raise Docker Desktop memory (Settings > Resources) to about 6 GB, then re-run."
 }
 
-if (-not $SkipBuild) {
+$jobHoldouts = if ($SkipBaselines) { @() } else { $Holdouts }
+
+if (-not $SkipBuild -and -not $SkipBaselines) {
     Write-Host "Building $Image from ml-service (torch is cached after the first build)."
     docker build -t $Image (Join-Path $repo "ml-service")
     if ($LASTEXITCODE -ne 0) { throw "docker build failed (exit $LASTEXITCODE)" }
@@ -91,7 +95,7 @@ $mount = "${repo}:/work"
 # Only this run's jobs. Get-Job lists every job in the session, including old ones.
 $jobs = @()
 $running = @{}
-foreach ($holdout in $Holdouts) {
+foreach ($holdout in $jobHoldouts) {
     while ((@($jobs | Where-Object { $_.State -eq "Running" })).Count -ge $Parallel) {
         Start-Sleep -Seconds 5
     }
@@ -107,7 +111,7 @@ foreach ($holdout in $Holdouts) {
     $running[$job.Id] = @{ holdout = $holdout; name = $name; log = $log }
 }
 
-Wait-Job -Job $jobs | Out-Null
+if ($jobs.Count -gt 0) { Wait-Job -Job $jobs | Out-Null }
 
 $failed = @()
 foreach ($job in $jobs) {
