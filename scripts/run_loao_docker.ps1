@@ -140,18 +140,28 @@ Write-Host "=== FlowNet (host, device auto) ==="
 foreach ($holdout in $Holdouts) {
     $log = Join-Path $logDir "flownet_$holdout.log"
     Write-Host "FlowNet $holdout (log: $log)"
+    # Python writes warnings to stderr. Under Stop, PowerShell would end the script on that,
+    # so only the exit code decides success here.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
     & python scripts\train_flownet.py --dataset unsw-nb15 `
         --file (Join-Path $DataDir "headered_1.csv") --file (Join-Path $DataDir "headered_2.csv") `
         --file (Join-Path $DataDir "headered_3.csv") --file (Join-Path $DataDir "headered_4.csv") `
         --split-policy leave-one-attacker-out --holdout-entity $holdout --key source `
         --epochs $Epochs --device auto --out (Join-Path $RunsDir "loao_flownet_$holdout.json") *> $log
-    if ($LASTEXITCODE -ne 0) { throw "FlowNet failed for $holdout (exit $LASTEXITCODE). Log: $log" }
+    $flownetExit = $LASTEXITCODE
+    $ErrorActionPreference = $previousPreference
+    if ($flownetExit -ne 0) { throw "FlowNet failed for $holdout (exit $flownetExit). Log: $log" }
     Write-Host "OK    FlowNet $holdout"
 }
 
 Write-Host ""
 Write-Host "=== Summary ==="
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 & python scripts\summarise_loao.py --runs $RunsDir --out (Join-Path $RunsDir "loao_summary")
-if ($LASTEXITCODE -ne 0) { throw "summary failed (exit $LASTEXITCODE)" }
+$summaryExit = $LASTEXITCODE
+$ErrorActionPreference = $previousPreference
+if ($summaryExit -ne 0) { throw "summary failed (exit $summaryExit)" }
 Write-Host ""
 Write-Host "Done. Table: $(Join-Path $RunsDir 'loao_summary.md')"
