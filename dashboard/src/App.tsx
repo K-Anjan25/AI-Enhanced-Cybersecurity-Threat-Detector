@@ -28,7 +28,7 @@
  * `/alerts` and `/alerts/:alertId` are the loop §8.3 keeps, so they are not wrapped.
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { sessionToken, onSessionTokenChange } from './api/session';
 import { signOut } from './api/auth';
@@ -139,6 +139,8 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
             </Offered>
           }
         />
+        {/* Signing in leaves the URL on /sign-in; send the user to Overview instead of 404. */}
+        <Route path="/sign-in" element={<Navigate to="/" replace />} />
         <Route
           path="*"
           element={
