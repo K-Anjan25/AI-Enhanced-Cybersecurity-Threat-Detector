@@ -216,7 +216,7 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, Mariana Blue `#0F232E`, and White. Dark is the default: a Mariana Blue field with white and Grey type, and white accents, so nothing glares. Light is a full peer on Dawning Mist, with Deep Blue as its accent. Halftone imagery and white pill buttons carry over from the reference. The surface tint `#16303D` (dark) and the muted text `#3E5160` (light) are shades derived from the palette, because the brand sheet has no equivalent. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, Mariana Blue `#0F232E`, and White. Dark is the default: a Mariana Blue field with Dawning Mist and Grey type, Mist accents, and Deep Blue held to a muted `#081297` for selected and active states, so nothing glares. Light is a full peer on Dawning Mist, with Deep Blue as its accent. Halftone imagery and white pill buttons carry over from the reference. The surface tint `#16303D` (dark) and the muted text `#3E5160` (light) are shades derived from the palette, because the brand sheet has no equivalent. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
 
 ### 5.1 Colour — dark theme (default)
 
@@ -225,9 +225,9 @@ The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, 
 | `bg.base`        | `#0F232E` | —                                                | App background                                         |
 | `bg.surface`     | `#16303D` | —                                                | Cards, panels, tables                                  |
 | `border.default` | `#9BAAB9` | decorative                                       | Hairlines; never the sole separator for essential info |
-| `text.primary`   | `#FFFFFF` | 16.15 : 1 on `bg.base` · 13.78 : 1 on `bg.surface` | Body, headings                                         |
+| `text.primary`   | `#DBE2E9` | 12.36 : 1 on `bg.base` · 10.54 : 1 on `bg.surface` | Body, headings                                         |
 | `text.muted`     | `#9BAAB9` | 6.80 : 1 on `bg.base` · 5.80 : 1 on `bg.surface` | Secondary labels, metadata                             |
-| `accent`         | `#FFFFFF` | 16.15 : 1 on `bg.base` · 13.78 : 1 on `bg.surface` | Links, focus, primary actions                          |
+| `accent`         | `#DBE2E9` | 12.36 : 1 on `bg.base` · 10.54 : 1 on `bg.surface` | Links, focus, primary actions                          |
 
 ### 5.2 Colour — light theme
 
@@ -257,7 +257,7 @@ _Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥
 
 **Badge rule.** A severity badge is a base-hue fill with `#0F232E` text. Measured: critical 5.20, high 5.73, medium 7.89, low 5.45, info 6.80, benign 5.67 — all ≥ 4.5 : 1. White text on these fills fails (critical 3.11, medium 2.05) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 16.15 : 1 (dark) and 6.57 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 12.36 : 1 (dark) and 6.57 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 

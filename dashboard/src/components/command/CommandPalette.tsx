@@ -148,7 +148,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
                         onMouseMove={() => setActive(index)}
                         className={`flex w-full flex-col rounded-control border-l-2 px-2 py-1 text-left ${
                           isActive
-                            ? 'border-accent bg-surface text-ink'
+                            ? 'border-brand bg-surface text-ink'
                             : 'border-transparent text-muted'
                         }`}
                       >
