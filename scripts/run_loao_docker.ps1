@@ -34,8 +34,15 @@ if (-not $env:VIRTUAL_ENV) {
     throw "Activate the venv first (the summary runs on the host): .\.venv\Scripts\Activate.ps1"
 }
 
+# Docker's stderr is a native-command error under Stop, so relax the preference for this probe.
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $null = docker version --format '{{.Server.Version}}' 2>$null
-if ($LASTEXITCODE -ne 0) { throw "Docker is not running. Start Docker Desktop and retry." }
+$dockerExit = $LASTEXITCODE
+$ErrorActionPreference = $previousPreference
+if ($dockerExit -ne 0) {
+    throw "Docker engine is not reachable. Open Docker Desktop, wait until it says 'Engine running', then run: docker version"
+}
 
 $repo = (Resolve-Path ".").Path
 $dataPath = Join-Path $repo $DataDir
