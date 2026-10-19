@@ -224,6 +224,15 @@ def _manifest(
     }
 
 
+def _resolve_device(choice: str, cuda_ok: bool) -> str:
+    """Pick the training device. ``auto`` uses CUDA when torch can see a GPU."""
+    if choice == "cuda" and not cuda_ok:
+        raise SystemExit("--device cuda requested, but torch cannot see a CUDA GPU")
+    if choice == "cpu" or (choice == "auto" and not cuda_ok):
+        return "cpu"
+    return "cuda"
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments, train FlowNet, and write the run log."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -266,6 +275,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--device",
+        choices=["auto", "cpu", "cuda"],
+        default="auto",
+        help="auto uses CUDA when torch can see a GPU, otherwise the CPU",
+    )
     parser.add_argument(
         "--split-policy",
         choices=(
@@ -455,12 +470,14 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(train_seq):,} train / {len(test_seq):,} test windows"
     )
 
-    x_train = torch.tensor(train_seq, dtype=torch.float32)
-    y_train = torch.tensor(train_y, dtype=torch.float32)
+    device = _resolve_device(args.device, torch.cuda.is_available())
+    model.to(device)
+    x_train = torch.tensor(train_seq, dtype=torch.float32, device=device)
+    y_train = torch.tensor(train_y, dtype=torch.float32, device=device)
     optimiser = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     bce = torch.nn.BCEWithLogitsLoss()
 
-    print(f"training {args.epochs} epochs on CPU")
+    print(f"training {args.epochs} epochs on {device}")
     started = time.perf_counter()
     model.train()
     for epoch in range(args.epochs):
@@ -470,6 +487,7 @@ def main(argv: list[str] | None = None) -> int:
         total, batches = 0.0, 0
         for start in range(0, order.numel(), args.batch_size):
             index = order[start : start + args.batch_size]
+            index = index.to(device)
             x, y = x_train[index], y_train[index]
             optimiser.zero_grad()
             output = model(x)
@@ -482,9 +500,9 @@ def main(argv: list[str] | None = None) -> int:
     elapsed = time.perf_counter() - started
 
     model.eval()
-    x_test = torch.tensor(test_seq, dtype=torch.float32)
+    x_test = torch.tensor(test_seq, dtype=torch.float32, device=device)
     with torch.no_grad():
-        scores = torch.sigmoid(model(x_test).anomaly_logits).tolist()
+        scores = torch.sigmoid(model(x_test).anomaly_logits).cpu().tolist()
     report: EvalReport = evaluate(
         [float(s) for s in scores],
         [bool(t) for t in test_y],
@@ -493,9 +511,15 @@ def main(argv: list[str] | None = None) -> int:
     window_block: dict[str, object] | None = None
     if window_capable:
         with torch.no_grad():
-            valid_scores = torch.sigmoid(
-                model(torch.tensor(valid_seq, dtype=torch.float32)).anomaly_logits
-            ).tolist()
+            valid_scores = (
+                torch.sigmoid(
+                    model(
+                        torch.tensor(valid_seq, dtype=torch.float32, device=device)
+                    ).anomaly_logits
+                )
+                .cpu()
+                .tolist()
+            )
         window_block = loao_report(
             [float(s) for s in scores],
             [bool(t) for t in test_y],
@@ -512,6 +536,8 @@ def main(argv: list[str] | None = None) -> int:
     loao_block = window_block if loao else None
 
     minutes = elapsed / 60.0
+    # Serving loads the weights on the CPU, so the checkpoint is written from the CPU copy.
+    model.to("cpu")
     if args.checkpoint:
         # Serving needs the weights, the exact input width, the fitted scaler and
         # vocabularies (R-62), and the evaluation that was measured on this model.
