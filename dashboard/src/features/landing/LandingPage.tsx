@@ -121,6 +121,12 @@ export function LandingPage() {
           </article>
         </section>
       </div>
+      <footer className="relative z-10 flex items-center justify-between border-t border-line px-6 py-4 text-caption text-muted">
+        <span>AEGIS · Threat detection</span>
+        <Link to="/sign-in" className="underline underline-offset-4 hover:text-ink">
+          Sign in
+        </Link>
+      </footer>
     </main>
   );
 }

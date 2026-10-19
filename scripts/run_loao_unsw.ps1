@@ -14,6 +14,7 @@ param(
     [string]$DataDir = "data\raw\unsw_s15",
     [string[]]$Holdouts = @("175.45.176.0", "175.45.176.1", "175.45.176.2", "175.45.176.3"),
     [int]$Epochs = 6,
+    [int]$MaxTrainRows = 0,
     [string]$RunsDir = "data\runs"
 )
 
@@ -40,6 +41,7 @@ foreach ($holdout in $Holdouts) {
     Write-Host "=== Holding out $holdout : baselines ==="
     & python scripts\run_baselines.py --dataset unsw-nb15 @files `
         --split-policy leave-one-attacker-out --holdout-entity $holdout --key source `
+        --max-train-rows $MaxTrainRows `
         --out (Join-Path $RunsDir "loao_baselines_$holdout.json")
     if ($LASTEXITCODE -ne 0) { throw "run_baselines failed for holdout $holdout (exit $LASTEXITCODE)" }
 

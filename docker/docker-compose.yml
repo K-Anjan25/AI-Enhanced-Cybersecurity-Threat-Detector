@@ -16,6 +16,7 @@ name: aegis
 
 services:
   postgres:
+    mem_limit: 512m
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: aegis
@@ -32,6 +33,7 @@ services:
       - '5432:5432'
 
   kafka:
+    mem_limit: 1g
     # Official Apache Kafka image (Q-08). The earlier bitnamilegacy/kafka:3.9 was
     # frozen and unpatched. This image is configured with KAFKA_* variables and
     # runs as a single-node KRaft cluster (no ZooKeeper). Its data lives in
@@ -57,6 +59,7 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      KAFKA_HEAP_OPTS: '-Xms256m -Xmx512m'
       # Topics are created explicitly by the backend at startup (ensure_topic), with the
       # partition count the producer assumes. Auto-create would give flows.raw the broker
       # default (one partition), and src_ip partitioning would silently do nothing.
@@ -77,6 +80,7 @@ services:
       start_period: 30s
 
   elasticsearch:
+    mem_limit: 1g
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
     environment:
       discovery.type: single-node
@@ -93,6 +97,7 @@ services:
       start_period: 40s
 
   ml-service:
+    mem_limit: 1536m
     build:
       context: ../ml-service
     environment:
@@ -114,6 +119,7 @@ services:
       start_period: 10s
 
   backend:
+    mem_limit: 768m
     build:
       context: ../backend
       additional_contexts:
@@ -161,6 +167,7 @@ services:
       start_period: 10s
 
   dashboard:
+    mem_limit: 128m
     build:
       context: ../dashboard
     ports:
@@ -188,6 +195,7 @@ services:
   # flows and suricata supplies alerts and protocol logs. tshark is opt-in: it
   # aggregates the same connections as zeek, so enabling it counts flows twice.
   capture:
+    mem_limit: 512m
     build:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile.capture
