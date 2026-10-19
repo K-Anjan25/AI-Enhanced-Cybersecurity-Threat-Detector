@@ -24,11 +24,18 @@ broker; the real broker run is the operator's check (see docs/operate.md).
 
 from __future__ import annotations
 
+import contextlib
 import threading
+import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from kafka.errors import KafkaError  # type: ignore[import-untyped]
+
 from app.messaging.partitioner import FLOW_TOPIC
+
+_NO_ERROR = 0
+_TOPIC_ALREADY_EXISTS = 36
 
 
 class KafkaBusError(RuntimeError):
@@ -57,6 +64,7 @@ class KafkaBus:
         poll_timeout_ms: int = 100,
         producer_factory: Callable[[], Any] | None = None,
         consumer_factory: Callable[[], Any] | None = None,
+        admin_factory: Callable[[], Any] | None = None,
     ) -> None:
         """Remember where the broker is. Clients are created on first use."""
         if not bootstrap_servers.strip():
@@ -72,6 +80,7 @@ class KafkaBus:
         self._poll_timeout_ms = poll_timeout_ms
         self._producer_factory = producer_factory or self._default_producer
         self._consumer_factory = consumer_factory or self._default_consumer
+        self._admin_factory = admin_factory or self._default_admin
         self._producer: Any | None = None
         self._consumers: dict[int, Any] = {}
         self._pending: list[Any] = []
@@ -89,6 +98,11 @@ class KafkaBus:
             retries=5,
             value_serializer=None,
         )
+
+    def _default_admin(self) -> Any:
+        from kafka.admin import KafkaAdminClient  # type: ignore[import-untyped]
+
+        return KafkaAdminClient(bootstrap_servers=self._bootstrap, client_id="aegis-topic-setup")
 
     def _default_consumer(self) -> Any:
         from kafka import KafkaConsumer
@@ -118,6 +132,58 @@ class KafkaBus:
             return consumer
 
     # -- Producer ----------------------------------------------------------------
+
+    def ensure_topic(
+        self,
+        *,
+        attempts: int = 20,
+        delay_s: float = 3.0,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        """Create the flow topic with the configured partition count, if it is missing.
+
+        This replaces the one-shot kafka-init container, so the partition count the
+        producer assumes lives in the code that uses it. It is idempotent: a topic that
+        already exists is success. The broker may still be starting, so failures are
+        retried; the error is raised only after the last attempt.
+
+        ``create_topics`` in kafka-python-ng does not raise on a per-topic error, so the
+        response's ``topic_errors`` is checked here: code 0 is created, 36 is already there.
+        """
+        last: str = "no attempt made"
+        for attempt in range(1, attempts + 1):
+            admin: Any | None = None
+            try:
+                admin = self._admin_factory()
+                from kafka.admin import NewTopic
+
+                response = admin.create_topics(
+                    [
+                        NewTopic(
+                            name=self.topic,
+                            num_partitions=self.partitions,
+                            replication_factor=1,
+                        )
+                    ]
+                )
+                errors = [
+                    (name, code, message)
+                    for name, code, message in getattr(response, "topic_errors", [])
+                    if code not in (_NO_ERROR, _TOPIC_ALREADY_EXISTS)
+                ]
+                if not errors:
+                    return
+                last = "; ".join(f"{name}: code {code} {message}" for name, code, message in errors)
+            except Exception as exc:  # noqa: BLE001 - broker not up yet, or auth refused
+                last = str(exc) or type(exc).__name__
+            finally:
+                if admin is not None:
+                    with contextlib.suppress(KafkaError, OSError):
+                        admin.close()
+            if attempt < attempts:
+                sleep(delay_s)
+        msg = f"could not create topic {self.topic!r} after {attempts} attempts: {last}"
+        raise KafkaBusError(msg)
 
     def send(
         self,

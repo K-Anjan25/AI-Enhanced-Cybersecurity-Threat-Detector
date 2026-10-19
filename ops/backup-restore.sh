@@ -15,7 +15,6 @@ BACKUP_DIR="${AEGIS_BACKUP_DIR:-./ops/backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 PG_CONTAINER="${AEGIS_PG_CONTAINER:-postgres}"
 KAFKA_CONTAINER="${AEGIS_KAFKA_CONTAINER:-kafka}"
-REDIS_CONTAINER="${AEGIS_REDIS_CONTAINER:-redis}"
 
 mkdir -p "$BACKUP_DIR"
 
@@ -46,15 +45,6 @@ backup_kafka() {
         --bootstrap-server localhost:9092 --list > "$kafka_dir/topics.txt" 2>/dev/null || true
 
     echo "Kafka backup: $kafka_dir"
-}
-
-backup_redis() {
-    echo "=== Backing up Redis ==="
-    local redis_dump="$BACKUP_DIR/redis_${TIMESTAMP}.rdb"
-    docker exec "$REDIS_CONTAINER" redis-cli BGSAVE >/dev/null 2>&1 || true
-    sleep 2
-    docker cp "$REDIS_CONTAINER:/data/dump.rdb" "$redis_dump" 2>/dev/null || echo "  Redis: no dump.rdb found"
-    echo "Redis backup: $redis_dump"
 }
 
 restore_postgres() {
@@ -105,7 +95,6 @@ case "${1:-help}" in
         echo "AEGIS Backup — $TIMESTAMP"
         backup_postgres
         backup_kafka
-        backup_redis
         echo "=== Backup complete ==="
         ;;
     restore)

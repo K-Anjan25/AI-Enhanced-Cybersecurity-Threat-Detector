@@ -193,3 +193,13 @@
 .landing-backdrop {
   background-image: linear-gradient(150deg, var(--color-bg-surface) 0%, var(--color-bg-base) 60%);
 }
+
+/*
+ * Light theme only: the portrait's own backdrop is a lighter tone than the light page,
+ * which left its rectangle visible at the top-left corner. Fading the image's edges
+ * into the page removes the box. The file itself is untouched; dark mode already
+ * matches its backdrop and is left as it was.
+ */
+[data-theme='light'] .landing-hero-art img {
+  mask-image: radial-gradient(ellipse closest-side, black 62%, transparent 100%);
+}

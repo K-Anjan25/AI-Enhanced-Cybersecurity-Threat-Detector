@@ -31,17 +31,6 @@ services:
     ports:
       - '5432:5432'
 
-  redis:
-    image: redis:7-alpine
-    command: ['redis-server', '--appendonly', 'yes']
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   kafka:
     # Official Apache Kafka image (Q-08). The earlier bitnamilegacy/kafka:3.9 was
     # frozen and unpatched. This image is configured with KAFKA_* variables and
@@ -68,8 +57,8 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_LOG_DIRS: '/var/lib/kafka/data'
-      # Topics are created explicitly by kafka-init below, with the partition count
-      # the backend producer assumes. Auto-create would give flows.raw the broker
+      # Topics are created explicitly by the backend at startup (ensure_topic), with the
+      # partition count the producer assumes. Auto-create would give flows.raw the broker
       # default (one partition), and src_ip partitioning would silently do nothing.
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
       KAFKA_NUM_PARTITIONS: '6'
@@ -86,22 +75,6 @@ services:
       timeout: 10s
       retries: 12
       start_period: 30s
-
-  kafka-init:
-    # One-shot: creates flows.raw with 6 partitions (FLOW_TOPIC in
-    # backend/app/messaging/partitioner.py, num_partitions default in producer.py).
-    # Idempotent: --if-not-exists makes restarts safe.
-    image: apache/kafka:3.9.0
-    depends_on:
-      kafka:
-        condition: service_healthy
-    command:
-      - /bin/sh
-      - -c
-      - >-
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create
-        --if-not-exists --topic flows.raw --partitions 6 --replication-factor 1
-    restart: 'no'
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
@@ -172,12 +145,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       kafka:
         condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
       elasticsearch:
         condition: service_healthy
       ml-service:
@@ -214,76 +183,23 @@ services:
   # adapter, so little real traffic is seen. See
   # backend/app/services/capture/bridges/README.md ("Docker Desktop").
   # Default interface per service differs; see the same README for the table.
+  # Network capture: one container, one image (replaces capture, zeek, suricata and
+  # tshark). Engines run side by side, chosen by AEGIS_CAPTURE_ENGINES. zeek supplies
+  # flows and suricata supplies alerts and protocol logs. tshark is opt-in: it
+  # aggregates the same connections as zeek, so enabling it counts flows twice.
   capture:
     build:
       context: ../backend
-      dockerfile: app/services/capture/Dockerfile
+      dockerfile: app/services/capture/Dockerfile.capture
     environment:
       AEGIS_API_URL: http://localhost:8000
       AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
       # No default: the capture service refuses to start without a non-default password.
       AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
-      AEGIS_FLUSH_INTERVAL: '10'
-    network_mode: host
-    depends_on:
-      backend:
-        condition: service_healthy
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
-  # Zeek network analyzer — deep protocol analysis + flow logging
-  # Produces conn.log with detailed connection metadata
-  zeek:
-    build:
-      context: ../backend
-      dockerfile: app/services/capture/Dockerfile.zeek
-    environment:
-      AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
-      # No default: the capture service refuses to start without a non-default password.
-      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
-    network_mode: host
-    depends_on:
-      backend:
-        condition: service_healthy
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
-  # Suricata IDS — signature-based threat detection
-  # Produces eve.json with alerts, flows, DNS events
-  suricata:
-    build:
-      context: ../backend
-      dockerfile: app/services/capture/Dockerfile.suricata
-    environment:
-      AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
-      # No default: the capture service refuses to start without a non-default password.
-      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
-    network_mode: host
-    depends_on:
-      backend:
-        condition: service_healthy
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
-  # tshark packet capture — lightweight packet-level flow extraction
-  tshark:
-    build:
-      context: ../backend
-      dockerfile: app/services/capture/Dockerfile.tshark
-    environment:
-      AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
-      # No default: the capture service refuses to start without a non-default password.
-      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
+      AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-zeek,suricata}
+      AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-eth0}
+      AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-eth0}
+      AEGIS_TSHARK_INTERFACE: ${AEGIS_TSHARK_INTERFACE:-any}
     network_mode: host
     depends_on:
       backend:
@@ -294,6 +210,5 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
   kafka-kraft-data:
   es-data:

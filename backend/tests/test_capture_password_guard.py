@@ -61,9 +61,7 @@ def test_bridges_refuse(script: str, password: str | None) -> None:
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
-@pytest.mark.parametrize(
-    "script", ["zeek_entrypoint.sh", "suricata_entrypoint.sh", "tshark_entrypoint.sh"]
-)
+@pytest.mark.parametrize("script", ["capture_entrypoint.sh"])
 @pytest.mark.parametrize("password", PASSWORDS)
 def test_entrypoints_refuse_before_starting(script: str, password: str | None) -> None:
     result = _run(["bash", script], password)
@@ -77,3 +75,26 @@ def test_compose_has_no_default_capture_password() -> None:
     compose = (CAPTURE.parents[3] / "docker" / "docker-compose.yml").read_text()
     assert "AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}" in compose
     assert "AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789}" not in compose
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
+def test_unknown_engine_is_refused_before_anything_starts() -> None:
+    """A typo in AEGIS_CAPTURE_ENGINES must not start a partial capture set."""
+    env = {
+        **os.environ,
+        "AEGIS_PASSWORD": "a-real-password-42",  # pragma: allowlist secret - test value
+        "AEGIS_CAPTURE_ENGINES": "zeke",
+    }
+    result = subprocess.run(
+        ["bash", "capture_entrypoint.sh"],  # noqa: S607 - bash is on PATH in every test env
+        cwd=CAPTURE,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 2, result.stderr
+    assert "unknown engine 'zeke'" in result.stderr
+    # The banner may print, but no engine may start.
+    assert "Starting on" not in result.stdout

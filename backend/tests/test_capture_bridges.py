@@ -19,12 +19,12 @@ import pytest
 CAPTURE = Path(__file__).resolve().parents[1] / "app" / "services" / "capture"
 BRIDGES = CAPTURE / "bridges"
 
-# entrypoint -> the bridge it pipes into
-PIPELINES = {
-    "zeek_entrypoint.sh": "zeek_bridge.py",
-    "suricata_entrypoint.sh": "suricata_bridge.py",
-    "tshark_entrypoint.sh": "tcpdump_bridge.py",
-}
+# (entrypoint, bridge) pairs: the one capture entrypoint pipes three engines into their bridges
+PIPELINES = [
+    ("capture_entrypoint.sh", "zeek_bridge.py"),
+    ("capture_entrypoint.sh", "suricata_bridge.py"),
+    ("capture_entrypoint.sh", "tcpdump_bridge.py"),
+]
 
 
 def _help(bridge: str) -> str:
@@ -59,12 +59,12 @@ def _entrypoint_flags(entrypoint: str, bridge: str) -> set[str]:
     return flags
 
 
-@pytest.mark.parametrize("bridge", sorted(set(PIPELINES.values())))
+@pytest.mark.parametrize("bridge", sorted({bridge for _, bridge in PIPELINES}))
 def test_bridge_starts_and_documents_its_options(bridge: str) -> None:
     assert "--api" in _help(bridge)
 
 
-@pytest.mark.parametrize(("entrypoint", "bridge"), sorted(PIPELINES.items()))
+@pytest.mark.parametrize(("entrypoint", "bridge"), sorted(PIPELINES))
 def test_entrypoint_passes_only_options_the_bridge_defines(entrypoint: str, bridge: str) -> None:
     help_text = _help(bridge)
     passed = _entrypoint_flags(entrypoint, bridge)
@@ -73,7 +73,7 @@ def test_entrypoint_passes_only_options_the_bridge_defines(entrypoint: str, brid
     assert not missing, f"{entrypoint} passes {missing}, which {bridge} does not define"
 
 
-@pytest.mark.parametrize("bridge", sorted(set(PIPELINES.values())))
+@pytest.mark.parametrize("bridge", sorted({bridge for _, bridge in PIPELINES}))
 def test_abbreviated_option_is_rejected_not_guessed(bridge: str) -> None:
     result = subprocess.run(
         [sys.executable, str(BRIDGES / bridge), "--log", "conn"],
@@ -112,5 +112,17 @@ def test_suricata_entrypoint_does_not_override_outputs_with_set() -> None:
     ``outputs`` is a YAML list there, so the override fails with
     SC_ERR_INVALID_ARGUMENT and eve.json is never written.
     """
-    text = (CAPTURE / "suricata_entrypoint.sh").read_text()
+    text = (CAPTURE / "capture_entrypoint.sh").read_text()
     assert "--set outputs." not in text
+
+
+def test_suricata_flow_events_are_off_by_default() -> None:
+    """Zeek is the flow source; Suricata flow events describe the same connections.
+
+    Ingesting both counts every connection twice. The flag must exist, and the flow
+    branch must check it.
+    """
+    source = (BRIDGES / "suricata_bridge.py").read_text()
+    assert '"--flows"' in source
+    assert 'event_type == "flow" and args.flows' in source
+    assert "--flows" in _help("suricata_bridge.py")

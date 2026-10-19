@@ -3778,6 +3778,20 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Not done.** Live stack measurements (Kafka smoke, first-malicious-flow to alert, HTTP load test, clean-clone Docker time), the M4 triage loop on live data, the browser checks, Item 3 logs, the broker heartbeat timeouts. These need Docker, a browser, a checkpoint or the user's logs.
 
+### D-088 — One capture container, one flow source, topic created by the backend (2026-10-19)
+
+**Containers 12 → 7.** `capture`, `zeek`, `suricata` and `tshark` were four images on host networking, all posting to the same API. They are now one image (`Dockerfile.capture`) and one service, with the engines chosen by `AEGIS_CAPTURE_ENGINES` (default `zeek,suricata`). Each engine is a pipeline (engine → `tail -F` → bridge); the container exits when any engine or bridge exits, so the restart policy restarts the set. The password guard is unchanged.
+
+**Duplicate flows removed.** The same traffic was counted by up to four sources: Zeek `conn.log`, Suricata flow events, tshark packet aggregation and the scapy service. Zeek is now the only flow source. Suricata flow events are off unless `--flows` is passed; its alerts, DNS, HTTP and TLS still arrive. tshark is opt-in for the same reason. The scapy service is no longer deployed; `capture_service.py` stays only for its converter tests.
+
+**kafka-init removed.** The backend creates `flows.raw` with the producer's partition count (`KafkaBus.ensure_topic`, a background thread at startup). It is idempotent, treats code 36 (exists) as success, and retries while the broker starts. `KafkaAdminClient.create_topics` does not raise on per-topic errors, so the response is checked.
+
+**redis removed.** No backend code or config used it. `ops/backup-restore.sh` no longer backs it up.
+
+**Not verified.** No Docker here: the merged image is not built, and the three bridges have not been run inside it. Offline tests cover the entrypoint refusals, the unknown-engine refusal, the topic logic against a fake admin and the Suricata flow switch. Before relying on it: `docker compose up -d --build capture` and read the `[ZEEK]`/`[SURICATA]` lines.
+
+**Open.** A flow-count reconciliation between Zeek and the packet capture is not measured. Docs beyond deploy and runbook still describe the old layout in places.
+
 ## Change log
 
 | Date | Version | Change |
