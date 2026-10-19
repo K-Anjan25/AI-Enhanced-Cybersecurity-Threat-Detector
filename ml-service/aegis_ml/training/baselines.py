@@ -112,7 +112,7 @@ def _logistic_numpy(
     for _ in range(epochs):
         error = _sigmoid_array(design @ weights + bias) - y
         grad = design.T @ error
-        grad_bias = float(error.sum())
+        grad_bias = float(np.cumsum(error)[-1])  # sequential, as the reference adds it
         weights = weights - learning_rate * (grad / count + l2 * weights)
         bias -= learning_rate * (grad_bias / count)
     return [float(w) for w in weights], float(bias)
@@ -131,8 +131,10 @@ def _best_stump_sorted(
     if not valid.any():
         return None
     left_sum = np.cumsum(sorted_residuals)[:-1]
-    total_sum = float(sorted_residuals.sum())
-    total_sq = float(np.square(sorted_residuals).sum())
+    # cumsum adds left to right, as the reference's Python sum does; .sum() would pairwise-add
+    # and can round differently, which flips near-tied splits.
+    total_sum = float(np.cumsum(sorted_residuals)[-1])
+    total_sq = float(np.cumsum(np.square(sorted_residuals))[-1])
     left_n = np.arange(1, count, dtype=np.float64)
     right_sum = total_sum - left_sum
     right_n = count - left_n
