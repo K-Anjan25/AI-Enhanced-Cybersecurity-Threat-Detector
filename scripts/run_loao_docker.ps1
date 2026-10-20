@@ -28,10 +28,10 @@ param(
     [int]$Parallel = 0,
     [switch]$SkipBuild,
     [switch]$SkipBaselines,
-    # Reported numbers use the CPU: they match the recorded runs and what serving runs on.
-    # Use -FlowNetDevice auto to train on the GPU for quick experiments.
+    # auto uses the GPU when torch sees one. The GPU run repeated exactly, so it is the reporting default.
+    # Use -FlowNetDevice cpu to compare; CPU numbers were not repeatable in the runs so far.
     [ValidateSet("cpu", "auto", "cuda")]
-    [string]$FlowNetDevice = "cpu"
+    [string]$FlowNetDevice = "auto"
 )
 
 $ErrorActionPreference = "Stop"
@@ -76,7 +76,7 @@ $memoryPerRun = [math]::Min(4096, [math]::Floor($usableMB / $Parallel))
 $cpusPerRun = [math]::Max(1, [math]::Floor($vmCpus / $Parallel))
 Write-Host "Docker VM: $vmCpus CPUs, $vmMemMB MB. Running $Parallel container(s) at a time, $cpusPerRun CPU and $memoryPerRun MB each."
 if ($Parallel -eq 1 -and $Holdouts.Count -gt 1) {
-    Write-Host "Only one container fits: raise Docker Desktop memory (Settings > Resources) to about 6 GB, then re-run."
+    Write-Host "Running holdouts one after another to stay within the Docker VM memory."
 }
 
 $jobHoldouts = if ($SkipBaselines) { @() } else { $Holdouts }
@@ -100,7 +100,8 @@ $mount = "${repo}:/work"
 $jobs = @()
 $running = @{}
 foreach ($holdout in $jobHoldouts) {
-    while ((@($jobs | Where-Object { $_.State -eq "Running" })).Count -ge $Parallel) {
+    # Count jobs that are starting as well as running; a new job is NotStarted for a moment.
+    while ((@($jobs | Where-Object { $_.State -eq "Running" -or $_.State -eq "NotStarted" })).Count -ge $Parallel) {
         Start-Sleep -Seconds 5
     }
     $safe = $holdout -replace '\.', '-'
@@ -137,7 +138,7 @@ if ($failed.Count -gt 0) {
     throw "$($failed.Count) holdout(s) failed. Read the kept logs, fix the cause, then re-run with -Holdouts set to the failed ones. The summary reads every run in the folder."
 }
 
-# FlowNet runs on the host, not in the containers. The reported numbers use the CPU (see -FlowNetDevice).
+# FlowNet runs on the host, not in the containers (device set by -FlowNetDevice).
 # One FlowNet run at a time: the GPU has limited memory and FlowNet is a small model.
 Write-Host ""
 Write-Host "=== FlowNet (host, device $FlowNetDevice) ==="
