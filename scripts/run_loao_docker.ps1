@@ -27,7 +27,11 @@ param(
     [string]$Image = "aegis-train",
     [int]$Parallel = 0,
     [switch]$SkipBuild,
-    [switch]$SkipBaselines
+    [switch]$SkipBaselines,
+    # Reported numbers use the CPU: they match the recorded runs and what serving runs on.
+    # Use -FlowNetDevice auto to train on the GPU for quick experiments.
+    [ValidateSet("cpu", "auto", "cuda")]
+    [string]$FlowNetDevice = "cpu"
 )
 
 $ErrorActionPreference = "Stop"
@@ -133,10 +137,10 @@ if ($failed.Count -gt 0) {
     throw "$($failed.Count) holdout(s) failed. Read the kept logs, fix the cause, then re-run with -Holdouts set to the failed ones. The summary reads every run in the folder."
 }
 
-# FlowNet runs on the host, not in the containers, so it can use the GPU when torch can see one.
+# FlowNet runs on the host, not in the containers. The reported numbers use the CPU (see -FlowNetDevice).
 # One FlowNet run at a time: the GPU has limited memory and FlowNet is a small model.
 Write-Host ""
-Write-Host "=== FlowNet (host, device auto) ==="
+Write-Host "=== FlowNet (host, device $FlowNetDevice) ==="
 foreach ($holdout in $Holdouts) {
     $log = Join-Path $logDir "flownet_$holdout.log"
     Write-Host "FlowNet $holdout (log: $log)"
@@ -148,7 +152,7 @@ foreach ($holdout in $Holdouts) {
         --file (Join-Path $DataDir "headered_1.csv") --file (Join-Path $DataDir "headered_2.csv") `
         --file (Join-Path $DataDir "headered_3.csv") --file (Join-Path $DataDir "headered_4.csv") `
         --split-policy leave-one-attacker-out --holdout-entity $holdout --key source `
-        --epochs $Epochs --device auto --out (Join-Path $RunsDir "loao_flownet_$holdout.json") *> $log
+        --epochs $Epochs --device $FlowNetDevice --out (Join-Path $RunsDir "loao_flownet_$holdout.json") *> $log
     $flownetExit = $LASTEXITCODE
     $ErrorActionPreference = $previousPreference
     if ($flownetExit -ne 0) { throw "FlowNet failed for $holdout (exit $flownetExit). Log: $log" }
