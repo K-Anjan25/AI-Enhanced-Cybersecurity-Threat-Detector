@@ -5,6 +5,25 @@ global:
   imagePullSecrets: []
 
 # ──────────────────────────────────────────────
+# Redis: login-throttle counters shared by every backend replica (see templates/redis.yaml).
+# ──────────────────────────────────────────────
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: '7-alpine'
+    pullPolicy: IfNotPresent
+  # Memory ceiling for the counters. Keys carry a TTL, and volatile-ttl evicts those first.
+  maxmemoryMb: 64
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+# ──────────────────────────────────────────────
 # Backend
 # ──────────────────────────────────────────────
 backend:
@@ -28,8 +47,9 @@ backend:
     AEGIS_PORT: '8000'
     AEGIS_HOST: '0.0.0.0'
     AEGIS_LOG_LEVEL: INFO
-    # Shared login-throttle counters across replicas. Empty means per-process counters,
-    # which a multi-replica deployment must not rely on; set it to the Redis URL there.
+    # Shared login-throttle counters across replicas. Left empty, the chart points this at
+    # the Redis it deploys (redis.enabled). Empty with redis disabled means per-process
+    # counters, which a multi-replica deployment must not rely on.
     AEGIS_REDIS_URL: ''
   secretEnv:
     - AEGIS_SECRET_KEY

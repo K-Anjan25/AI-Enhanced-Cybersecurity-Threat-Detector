@@ -65,3 +65,14 @@ app.kubernetes.io/component: ml-service
 app.kubernetes.io/name: aegis-dashboard
 app.kubernetes.io/component: dashboard
 {{- end }}
+
+{{- define "aegis.redis.labels" -}}
+{{ include "aegis.labels" . }}
+{{ include "aegis.redis.selectorLabels" . }}
+{{- end }}
+
+{{- define "aegis.redis.selectorLabels" -}}
+{{ include "aegis.selectorLabels" . }}
+app.kubernetes.io/name: aegis-redis
+app.kubernetes.io/component: login-throttle
+{{- end }}

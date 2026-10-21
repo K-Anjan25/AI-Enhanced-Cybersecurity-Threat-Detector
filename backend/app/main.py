@@ -11,9 +11,9 @@ import threading
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
+from sqlalchemy import create_engine
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -48,7 +48,6 @@ from app.auth.tokens import TokenService
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
-from app.db.models import PARTITIONED_TABLES
 from app.messaging.kafka_bus import KafkaBus, KafkaBusError
 from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
@@ -89,6 +88,7 @@ from app.services.recalibration import (
     RecalibrationService,
 )
 from app.services.retention import RetentionPolicy
+from app.services.retention_catalog import CatalogRunner, list_partitions, sweep_expired_rows
 from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
 from app.services.user_directory import InMemoryUserDirectory, UserAdminService
 from app.services.verdict_service import (
@@ -228,30 +228,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("shutdown", service=settings.service_name)
 
 
-def _known_partitions_stand_in() -> set[tuple[str, int, int]]:
-    """The monthly partitions a deployment that has run for a while would have.
+def _no_catalog() -> set[tuple[str, int, int]]:
+    """The catalog of a deployment with no database configured: there are no partitions.
 
-    A stand-in for the catalog query, and named as one. The real implementation
-    reads ``pg_class`` for partitions of the tables in ``PARTITIONED_TABLES``; it
-    is not written here because no session is wired into the request path (D-030),
-    and a query that cannot be executed is better named than faked. What this
-    returns is enough for the preview to show the boundary rule honestly: the last
-    36 months for each partitioned table.
+    Retention plans over what exists. With no database nothing exists, so the plan is
+    empty and says so; it must not show months that were never stored.
     """
-    today = datetime.now(UTC).date()
-    year, month = today.year, today.month - 35
-    while month < 1:
-        month += 12
-        year -= 1
-    present: set[tuple[str, int, int]] = set()
-    cursor_year, cursor_month = year, month
-    while (cursor_year, cursor_month) <= (today.year, today.month):
-        for table in PARTITIONED_TABLES:
-            present.add((table, cursor_year, cursor_month))
-        cursor_month += 1
-        if cursor_month == 13:
-            cursor_year, cursor_month = cursor_year + 1, 1
-    return present
+    return set()
 
 
 def _no_runner(statement: str) -> bool:
@@ -370,6 +353,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             alerts=app.state.alert_store,
             hub=app.state.alert_hub,
             registry=app.state.entity_registry,
+            retention_ms=resolved.kafka_retention_hours * 3_600_000,
         )
         app.state.flow_publisher = publisher
         app.state.live_scoring = live
@@ -465,8 +449,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # the app is wired with a catalog of the months a deployment that has run for
     # a while would have, and a runner that refuses. The retention route fails
     # loudly rather than reporting a clean run it did not perform.
-    app.state.known_partitions = _known_partitions_stand_in
-    app.state.partition_runner = _no_runner
+    if "database_url" in resolved.model_fields_set:
+        retention_engine = create_engine(resolved.database_url, pool_pre_ping=True)
+        app.state.known_partitions = lambda: list_partitions(retention_engine)
+        app.state.partition_runner = CatalogRunner(retention_engine)
+        app.state.retention_sweeper = lambda cutoff: sweep_expired_rows(
+            retention_engine, cutoff=cutoff
+        )
+    else:
+        app.state.known_partitions = _no_catalog
+        app.state.partition_runner = _no_runner
+        app.state.retention_sweeper = None
     # Erasure (NFR-05). Entity redaction and account deletion, over the in-memory
     # models of both stores, because neither table has an adapter here yet. The
     # ledger holds tombstones; the redactor derives them from AEGIS_SECRET_KEY.

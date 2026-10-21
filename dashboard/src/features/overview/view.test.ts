@@ -50,7 +50,7 @@ describe('kpiTiles', () => {
     const verdict = tiles.at(-1);
 
     expect(verdict?.value).toBeNull();
-    expect(verdict?.caption).toBe('Target ≤ 60 s');
+    expect(verdict?.caption).toBe('No verdicts recorded in this window · target ≤ 60 s');
   });
 
   it('shows the mean with the number of verdicts it covers', () => {

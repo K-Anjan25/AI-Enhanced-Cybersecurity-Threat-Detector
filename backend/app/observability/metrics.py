@@ -92,6 +92,22 @@ ALERT_LATENCY = Histogram(
     buckets=(0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 30.0, 60.0, 300.0),
 )
 
+# architecture.md section 5 budgets: "Fusion + correlate + persist" is 30 ms, and the
+# live-stream hand-off is "WebSocket delivery", 20 ms. These two histograms are the
+# measurements behind those rows; the pipeline strip reads them, so a stage with no
+# histogram shows "latency not measured" rather than a number nothing timed.
+CORRELATE_LATENCY = Histogram(
+    "aegis_correlate_latency_seconds",
+    "Time to correlate one detection and persist the case it produced.",
+    buckets=(0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+)
+
+NOTIFY_LATENCY = Histogram(
+    "aegis_notify_latency_seconds",
+    "Time to hand one stored alert to the live stream.",
+    buckets=(0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0),
+)
+
 DRIFT_PSI = Gauge(
     "aegis_drift_psi",
     "Population stability index per feature, from the drift report.",
@@ -118,6 +134,8 @@ _OWNED: Final[tuple[Counter | Gauge | Histogram, ...]] = (
     SCORE_LATENCY,
     ALERTS_CREATED,
     ALERT_LATENCY,
+    CORRELATE_LATENCY,
+    NOTIFY_LATENCY,
     DRIFT_PSI,
     HTTP_REQUESTS,
     HTTP_LATENCY,
@@ -172,6 +190,22 @@ def observe_detection_to_alert(seconds: float) -> None:
         msg = f"a duration cannot be negative, got {seconds}"
         raise ValueError(msg)
     ALERT_LATENCY.observe(seconds)
+
+
+def observe_correlate_latency(seconds: float) -> None:
+    """Record the seconds one detection took to correlate and persist."""
+    if seconds < 0:
+        msg = f"a duration cannot be negative, got {seconds}"
+        raise ValueError(msg)
+    CORRELATE_LATENCY.observe(seconds)
+
+
+def observe_notify_latency(seconds: float) -> None:
+    """Record the seconds one stored alert took to reach the live stream."""
+    if seconds < 0:
+        msg = f"a duration cannot be negative, got {seconds}"
+        raise ValueError(msg)
+    NOTIFY_LATENCY.observe(seconds)
 
 
 def observe_drift_psi(feature: str, value: float) -> None:

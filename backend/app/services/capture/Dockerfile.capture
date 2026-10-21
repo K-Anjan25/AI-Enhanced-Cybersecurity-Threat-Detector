@@ -29,6 +29,10 @@ RUN suricata-update 2>/dev/null || true
 ENV PATH="/opt/zeek/bin:${PATH}"
 
 WORKDIR /app
+# The spool directory exists in the image so a named volume mounted over it inherits
+# writable ownership. The engines run as root because packet capture needs raw sockets;
+# the privilege is granted explicitly by compose (cap_add: NET_ADMIN), not by --privileged.
+RUN mkdir -p /var/lib/aegis-spool
 
 COPY app/services/capture/bridges/zeek_bridge.py \
      app/services/capture/bridges/suricata_bridge.py \

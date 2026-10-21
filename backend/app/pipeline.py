@@ -32,6 +32,7 @@ rather than the path a diagram describes.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -40,6 +41,7 @@ from typing import Any
 from app.db.models import Alert
 from app.messaging.partitioner import FLOW_TOPIC
 from app.messaging.producer import FlowProducer, OffsetTracker, SentRecord
+from app.observability.metrics import observe_correlate_latency, observe_notify_latency
 from app.observability.tracing import TRACEPARENT_HEADER
 from app.schemas.ingest import FlowRecordIn
 from app.services.alert_store import AlertStore
@@ -240,7 +242,11 @@ class DetectionSink:
             model_id=self._model_id,
             traceparent=traceparent,
         )
+        # Timed around correlate *and* persist: the architecture budget covers both, and
+        # the store write is the part that can be slow under load.
+        started = time.perf_counter()
         self._publish(self._correlator.ingest(detection))
+        observe_correlate_latency(time.perf_counter() - started)
 
 
 class AlertWriter:
@@ -273,7 +279,9 @@ class AlertWriter:
             return None
         row = self._alerts.save(outcome.case.id, alert_row(outcome.case), created_at=self._clock())
         if self._hub is not None:
+            started = time.perf_counter()
             self._hub.publish(alert_row_of(row))
+            observe_notify_latency(time.perf_counter() - started)
         return row
 
 

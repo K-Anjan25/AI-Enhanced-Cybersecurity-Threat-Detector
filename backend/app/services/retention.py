@@ -32,14 +32,17 @@ derived summaries may outlive the raw payloads they came from (design.md's
 sensitive artefact -- the raw record -- longer than the derived one would have
 inverted the privacy intent of FR-05.
 
-**What this module cannot evict is reported, not hidden.** ``audit_log`` is not
-partitioned and R-31 forbids rewriting its rows, so no partition drop reaches it
-and no row delete is allowed; ``log_events`` (T-419's store) is not partitioned
-either, so an old log line in it survives every plan this module can make. Both appear
-in every plan as ``unevictable``, with the reason. The same is true of the raw records themselves
-(FR-05's 30 days): they live in Kafka and Elasticsearch, whose retention is
-configured in the deployment rather than executed here, so the plan names the
-window and the mechanism instead of pretending to have trimmed them.
+**Every table is either dropped, swept or kept by decision, and the plan says which.**
+Partitioned tables (``alerts``, ``ingest_stats``) age out by partition drop. The two
+unpartitioned tables that hold raw-derived data, ``log_events`` and ``flow_events``, age
+out by a batched row sweep bounded by FR-05's raw window (see
+:mod:`app.services.retention_catalog`); a row delete leaves dead tuples until vacuum, so
+the report names it as the weaker mechanism. ``audit_log`` is kept, by decision: R-31
+makes it append-only, and the trail of what was erased and when is the evidence that an
+erasure happened. A deployment that needs it shorter must partition it first, which is a
+schema change this module will not make silently. The raw records are held by Kafka,
+whose window is enforced by the broker (``retention.ms``); no Elasticsearch index is
+written by this service, so there is nothing there to age out.
 """
 
 from __future__ import annotations
@@ -57,6 +60,7 @@ __all__ = [
     "DEFAULT_RAW_RECORD_DAYS",
     "DEFAULT_STATS_DAYS",
     "PARTITION_WINDOWS",
+    "ROW_SWEPT_WINDOWS",
     "DropPlan",
     "DroppedPartition",
     "RetentionPlan",
@@ -92,33 +96,36 @@ PARTITION_WINDOWS: dict[str, str] = {
     "ingest_stats": "stats_days",
 }
 
-#: Non-partitioned tables that carry retained data, and why they cannot be
-#: evicted. Reported in every plan: an operator reading a retention report is
-#: entitled to know what it did *not* reach.
+#: Non-partitioned tables that no partition drop reaches, and the reason each is kept.
+#: Reported in every plan: an operator reading a retention report is entitled to know
+#: what it did *not* reach.
 UNEVICTABLE_REASONS: dict[str, str] = {
     "audit_log": (
-        "append-only (R-31) and not partitioned: no partition drop reaches it and "
-        "a row delete is forbidden. Retention for the trail needs its own "
-        "partitioning, which is a schema change (recorded, not done here)"
+        "kept by decision: append-only (R-31) and not partitioned, so neither a partition "
+        "drop nor a row delete may touch it. It records each erasure, so it is the "
+        "evidence that data was removed. Shortening it requires partitioning, a schema change"
     ),
-    "log_events": (
-        "the log store (T-419), not partitioned: FR-05's raw-record window reaches "
-        "it through a sweep of its own, which is not built, so no plan here removes "
-        "an old line. Named rather than omitted because 'retention covers "
-        "everything' is exactly the assumption a report like this must not invite"
-    ),
-    "flow_events": (
-        "the traffic read model (T-418), not partitioned and swept by nothing: the "
-        "same gap the log store names, and the same reason for naming it here -- a "
-        "deployment reading this report must not believe the flows age out"
-    ),
+}
+
+#: Non-partitioned tables aged out by a batched row sweep, and the window that governs
+#: them. The sweep itself is :func:`app.services.retention_catalog.sweep_expired_rows`.
+ROW_SWEPT_WINDOWS: dict[str, str] = {
+    "log_events": "raw_records_days",
+    "flow_events": "raw_records_days",
 }
 
 #: Where FR-05's raw records live, and what enforces their window. Named because
 #: the plan is the natural place to look for them.
 EXTERNAL_RETENTION: dict[str, str] = {
-    "kafka": "AEGIS_KAFKA_RETENTION_HOURS on the flow/log topics",
-    "elasticsearch": "index lifecycle management policy for the flow/log indices",
+    "kafka": (
+        "AEGIS_KAFKA_RETENTION_HOURS, applied as retention.ms on the flow topic at create "
+        "and re-asserted on every start; it may not exceed the raw-record window"
+    ),
+    "elasticsearch": (
+        "not used: no component of this service writes to Elasticsearch, so it holds no "
+        "raw records and has no index to age out. If a writer is added, its lifecycle "
+        "policy must ship with it"
+    ),
 }
 
 
@@ -257,6 +264,7 @@ class RetentionPlan:
             reaches.
         external: the raw-record window and what enforces it, reported because
             FR-05 names the window and this service does not execute it.
+        row_swept: tables aged out by a row sweep, with the window that governs them.
     """
 
     planned_at: date
@@ -266,6 +274,7 @@ class RetentionPlan:
     missing: tuple[tuple[str, int, int], ...]
     unevictable: tuple[Unevictable, ...]
     external: dict[str, str] = field(default_factory=dict)
+    row_swept: dict[str, str] = field(default_factory=dict)
 
     @property
     def statements(self) -> tuple[str, ...]:
@@ -289,17 +298,19 @@ class RetentionRun:
         already_absent: partitions the plan expected but the catalog no longer
             had -- the second run of the same plan reports every one of these,
             which is what "idempotent" means for a ``DROP TABLE IF EXISTS``.
+        swept: rows deleted per row-swept table in this run.
     """
 
     started_at: datetime
     planned: tuple[DroppedPartition, ...]
     dropped: tuple[DroppedPartition, ...]
     already_absent: tuple[DroppedPartition, ...]
+    swept: dict[str, int] = field(default_factory=dict)
 
     @property
     def is_noop(self) -> bool:
         """Whether the run changed nothing."""
-        return not self.dropped
+        return not self.dropped and not any(self.swept.values())
 
 
 def existing_partitions(months: Iterable[tuple[str, int, int]]) -> set[tuple[str, int, int]]:
@@ -388,6 +399,10 @@ def plan_retention(
             for table, reason in sorted(UNEVICTABLE_REASONS.items())
         ),
         external=dict(EXTERNAL_RETENTION),
+        row_swept={
+            table: f"rows older than {getattr(policy, field_name)} days, in batches"
+            for table, field_name in sorted(ROW_SWEPT_WINDOWS.items())
+        },
     )
 
 

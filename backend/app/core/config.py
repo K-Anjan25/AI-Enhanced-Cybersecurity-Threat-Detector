@@ -190,6 +190,10 @@ class Settings(BaseSettings):
     retention_raw_records_days: int = Field(default=30, ge=1, le=3650)
     retention_alerts_days: int = Field(default=400, ge=1, le=3650)
     retention_stats_days: int = Field(default=400, ge=1, le=3650)
+    # FR-05's raw window, applied by the broker to the flow topic (``retention.ms``).
+    # Kafka is where raw records live, so it may not hold them longer than the policy
+    # promises: the validator below refuses a value above the raw window.
+    kafka_retention_hours: int = Field(default=720, ge=1, le=87_600)
 
     @field_validator("log_level")
     @classmethod
@@ -230,6 +234,18 @@ class Settings(BaseSettings):
         ):
             raise ValueError("AEGIS_BOOTSTRAP_ADMIN_EMAIL must be a valid email address")
         return normalised
+
+    @model_validator(mode="after")
+    def _validate_kafka_retention(self) -> Settings:
+        """Refuse a Kafka window that outlives the raw-record window FR-05 promises."""
+        raw_hours = self.retention_raw_records_days * 24
+        if self.kafka_retention_hours > raw_hours:
+            raise ValueError(
+                f"AEGIS_KAFKA_RETENTION_HOURS ({self.kafka_retention_hours}) must not exceed "
+                f"the raw-record window, AEGIS_RETENTION_RAW_RECORDS_DAYS x 24 = {raw_hours}: "
+                "Kafka holding raw records longer than the policy is the inversion FR-05 forbids"
+            )
+        return self
 
     @model_validator(mode="after")
     def _validate_auth_bootstrap(self) -> Settings:

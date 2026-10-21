@@ -192,3 +192,50 @@ def test_the_shipper_reports_its_counters_as_a_plain_mapping(monkeypatch) -> Non
     ship.send([_flow(1)])
     counters: dict[str, int | str] = ship.stats.as_dict()
     assert counters["accepted"] == 1 and counters["dropped"] == 0
+
+
+def _http_error_with(code: int, retry_after: str | None) -> urllib.error.HTTPError:
+    headers = {} if retry_after is None else {"Retry-After": retry_after}
+    import email.message
+
+    message = email.message.Message()
+    for key, value in headers.items():
+        message[key] = value
+    return urllib.error.HTTPError("http://api", code, "x", message, io.BytesIO(b"full"))  # type: ignore[arg-type]
+
+
+def test_a_503_with_retry_after_waits_as_the_server_asked(monkeypatch) -> None:
+    api = _Api([_http_error_with(503, "7"), "ok"])
+    ship, sleeps = _make(monkeypatch, api, attempts=3)
+    assert ship.send([_flow(1)]) == 1
+    assert sleeps == [7.0]
+
+
+def test_retry_after_is_capped_so_a_bad_server_cannot_stall_the_capture(monkeypatch) -> None:
+    api = _Api([_http_error_with(503, "100000"), "ok"])
+    ship, sleeps = _make(monkeypatch, api, attempts=3)
+    ship.send([_flow(1)])
+    assert sleeps == [shipper.MAX_RETRY_AFTER]
+
+
+def test_an_unusable_retry_after_falls_back_to_backoff(monkeypatch) -> None:
+    api = _Api([_http_error_with(503, "Wed, 21 Oct 2026 10:00:00 GMT"), "ok"])
+    ship, sleeps = _make(monkeypatch, api, attempts=3)
+    ship.send([_flow(1)])
+    assert sleeps == [0.5]  # rng is pinned to 1.0, so the first backoff is base * 2**0
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, None),
+        ("0", 0.0),
+        ("2.5", 2.5),
+        (" 3 ", 3.0),
+        ("-1", None),
+        ("nan", None),
+        ("x", None),
+    ],
+)
+def test_parse_retry_after(value, expected) -> None:
+    assert shipper.parse_retry_after(value) == expected

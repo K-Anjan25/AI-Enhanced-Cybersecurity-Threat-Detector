@@ -109,7 +109,7 @@ export function kpiTiles(
       unit: 's',
       caption:
         verdict.meanSeconds === null
-          ? 'Target \u2264 60 s'
+          ? 'No verdicts recorded in this window \u00b7 target \u2264 60 s'
           : `${String(verdict.measured)} verdict${verdict.measured === 1 ? '' : 's'} measured \u00b7 target \u2264 60 s`,
     },
   ];
