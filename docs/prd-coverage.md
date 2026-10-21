@@ -103,7 +103,7 @@ reached**. M0–M4 were not re-checked milestone by milestone in this pass.
 
 ## Status note on CI
 
-Pre-commit runs every hook over every file. Two hooks failed on the new files: prettier on the browser scripts and on this report. Both are formatted now. A green run on the head commit is the only proof, and it is recorded below once it exists.
+Confirmed: the run for `eb66d28` is green on all seven jobs, including Pre-commit hooks (run 39641783444).
 
 ## Next major steps
 
