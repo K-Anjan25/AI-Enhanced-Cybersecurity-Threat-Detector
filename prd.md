@@ -4,9 +4,9 @@
 |---|---|
 | **Codename** | AEGIS |
 | **Document** | Product Requirements Document |
-| **Version** | 0.1 (foundation) |
-| **Last updated** | 2026-10-02 |
-| **Status** | Approved for build — no code exists yet |
+| **Version** | 0.2 |
+| **Last updated** | 2026-10-21 |
+| **Status** | Approved for build; in build. The ML pipeline, backend API, dashboard and deployment manifests exist. Per-task status is in [task.md](task.md). |
 | **Related** | [architecture.md](architecture.md) · [rules.md](rules.md) · [design.md](design.md) · [task.md](task.md) · [memory.md](memory.md) |
 
 ---
@@ -271,4 +271,5 @@ Core references for the team. Verified links are in the table; the rest are cano
 
 | Date | Version | Change | Author |
 |---|---|---|---|
+| 2026-10-21 | 0.2 | Status refreshed from the repository: the 0.1 note "no code exists yet" is out of date. Added login throttling on failed passwords (per account and address, shared through Redis) and a shared capture shipper with retry and a disk spool. No FR or NFR changed. | AEGIS team |
 | 2026-10-02 | 0.1 | Initial PRD written from the project brief. Repository reset to documentation-only. | AEGIS team |
