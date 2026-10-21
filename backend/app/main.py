@@ -11,6 +11,7 @@ import threading
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 from fastapi import FastAPI, Request
 from sqlalchemy import create_engine
@@ -355,6 +356,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             registry=app.state.entity_registry,
             retention_ms=resolved.kafka_retention_hours * 3_600_000,
             max_window_wait_seconds=resolved.live_max_window_wait_seconds,
+            cool_down=timedelta(minutes=resolved.alert_cool_down_minutes),
         )
         app.state.flow_publisher = publisher
         app.state.live_scoring = live

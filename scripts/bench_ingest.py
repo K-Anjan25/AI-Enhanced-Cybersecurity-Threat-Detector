@@ -69,7 +69,15 @@ def main() -> None:
     parser.add_argument("--seconds", type=float, default=30.0)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--batch", type=int, default=1000, help="records per request, max 1000")
+    parser.add_argument(
+        "--rate",
+        type=float,
+        default=0.0,
+        help="offer this many records/s in total, paced across threads (0 = unpaced)",
+    )
     args = parser.parse_args()
+    if args.rate < 0:
+        raise SystemExit("--rate must be zero or positive")
     if not 1 <= args.batch <= 1000:
         raise SystemExit("--batch must be 1..1000 (the ingest route's cap)")
 
@@ -91,7 +99,16 @@ def main() -> None:
         nonlocal accepted, requests_ok
         conn = http.client.HTTPConnection(url.hostname or "127.0.0.1", url.port or 80, timeout=60)
         seq = worker_id * 10_000_000
+        period = args.batch * args.threads / args.rate if args.rate > 0 else 0.0
+        due = time.monotonic()
         while time.monotonic() < deadline:
+            if period:
+                # Pace to the offered rate: sleep until this slot, so the load is the
+                # rate asked for and not whatever the server lets through.
+                wait = due - time.monotonic()
+                if wait > 0:
+                    time.sleep(wait)
+                due += period
             lines = []
             for _ in range(args.batch):
                 seq += 1
@@ -147,6 +164,7 @@ def main() -> None:
                 "batch": args.batch,
                 "wall_seconds": round(wall, 2),
                 "requests": total_requests,
+                "offered_records_per_second": args.rate or None,
                 "accepted_records": accepted,
                 "accepted_records_per_second": round(accepted / wall, 1) if wall else 0.0,
                 "p95_request_ms": round(p95, 1) if p95 is not None else None,

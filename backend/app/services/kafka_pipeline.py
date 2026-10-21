@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Sequence
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from app.core.logging import get_logger
@@ -147,12 +148,13 @@ def build_kafka_pipeline(
     bus: KafkaBus | None = None,
     retention_ms: int | None = None,
     max_window_wait_seconds: float = 2.0,
+    cool_down: timedelta | None = None,
 ) -> tuple[FlowPublisher, LiveScoringLoop, KafkaBus]:
     """Assemble publisher, live loop and bus around the production dependencies."""
     from aegis_ml.scoring.fusion import fuse  # type: ignore[import-not-found]
 
     from app.pipeline import build_pipeline
-    from app.services.correlator import Modality
+    from app.services.correlator import CorrelatorConfig, Modality
 
     kafka_bus = bus or KafkaBus(bootstrap_servers, partitions=partitions, retention_ms=retention_ms)
     pipeline = build_pipeline(
@@ -166,6 +168,7 @@ def build_kafka_pipeline(
         partitions=partitions,
         window_size=window_size,
         bus=kafka_bus,
+        correlator_config=None if cool_down is None else CorrelatorConfig(cool_down=cool_down),
     )
     live = LiveScoringLoop(pipeline, max_window_wait_seconds=max_window_wait_seconds)
     return FlowPublisher(pipeline, kafka_bus), live, kafka_bus

@@ -197,6 +197,9 @@ class Settings(BaseSettings):
     # The longest a flow waits for its 50-flow window before the window is scored partial
     # (live path). 0 scores every flow as it arrives; large values approach batch windows.
     live_max_window_wait_seconds: float = Field(default=2.0, ge=0.0, le=300.0)
+    # FR-15: a repeat of the same (entity, family) inside this window is absorbed into
+    # the open alert as one more occurrence, not raised as a new alert.
+    alert_cool_down_minutes: int = Field(default=15, ge=1, le=1440)
 
     @field_validator("log_level")
     @classmethod

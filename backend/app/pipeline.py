@@ -49,6 +49,7 @@ from app.services.alert_stream import AlertHub
 from app.services.correlator import (
     Action,
     Correlator,
+    CorrelatorConfig,
     Detection,
     FusionRule,
     InMemoryCaseStore,
@@ -339,6 +340,7 @@ def build_pipeline(
     window_size: int = 50,
     clock: Callable[[], datetime] | None = None,
     bus: Any = None,
+    correlator_config: CorrelatorConfig | None = None,
 ) -> Pipeline:
     """Assemble the pipeline over the injected dependencies.
 
@@ -353,7 +355,7 @@ def build_pipeline(
     else:
         partitions = bus.partitions
     entities = registry or EntityRegistry()
-    correlator = Correlator(InMemoryCaseStore(), fuse)
+    correlator = Correlator(InMemoryCaseStore(), fuse, config=correlator_config)
     writer = AlertWriter(alerts, hub=hub, clock=clock)
     sink = DetectionSink(
         correlator,
