@@ -64,7 +64,7 @@ DEV_DEFAULT_PASSWORD = (
     "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
 )
 BATCH_SIZE = 1000  # the ingest API cap
-FLUSH_INTERVAL = 5
+FLUSH_INTERVAL = 1  # seconds: the longest a captured record waits before it is sent
 
 
 def authenticate(force: bool = False) -> bool:

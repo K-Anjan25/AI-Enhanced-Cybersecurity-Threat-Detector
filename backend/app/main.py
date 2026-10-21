@@ -354,6 +354,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             hub=app.state.alert_hub,
             registry=app.state.entity_registry,
             retention_ms=resolved.kafka_retention_hours * 3_600_000,
+            max_window_wait_seconds=resolved.live_max_window_wait_seconds,
         )
         app.state.flow_publisher = publisher
         app.state.live_scoring = live
