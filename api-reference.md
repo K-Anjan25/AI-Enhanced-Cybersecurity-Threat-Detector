@@ -972,6 +972,7 @@ What a retention run would do, now.
 | `missing` | list of `string` | yes | — |
 | `unevictable` | `UnevictableOut` | yes | — |
 | `external` | map of string to `string` | yes | — |
+| `row_swept` | map of string to `string` | no | — |
 | `statements` | list of `string` | yes | — |
 
 ### `RetentionPolicyOut`
@@ -994,6 +995,7 @@ What a retention run did, including how much of it was already done.
 | `planned` | list of `string` | yes | — |
 | `dropped` | list of `string` | yes | — |
 | `already_absent` | list of `string` | yes | — |
+| `swept` | map of string to `integer` | no | — |
 | `changed_anything` | `boolean` | yes | — |
 
 ### `RoleChangeOut`

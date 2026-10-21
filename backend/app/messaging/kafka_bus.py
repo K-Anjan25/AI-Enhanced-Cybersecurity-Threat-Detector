@@ -60,6 +60,7 @@ class KafkaBus:
         *,
         topic: str = FLOW_TOPIC,
         partitions: int = 6,
+        retention_ms: int | None = None,
         send_timeout_s: float = 10.0,
         poll_timeout_ms: int = 100,
         producer_factory: Callable[[], Any] | None = None,
@@ -75,6 +76,12 @@ class KafkaBus:
             raise ValueError(msg)
         self.topic = topic
         self.partitions = partitions
+        if retention_ms is not None and retention_ms < 1:
+            msg = f"retention_ms must be at least 1, got {retention_ms}"
+            raise ValueError(msg)
+        #: The broker's ``retention.ms`` for the flow topic, or None to leave the broker's
+        #: default. Applied on create and re-asserted on every start (see ensure_topic).
+        self.retention_ms = retention_ms
         self._bootstrap = bootstrap_servers
         self._send_timeout = send_timeout_s
         self._poll_timeout_ms = poll_timeout_ms
@@ -163,6 +170,7 @@ class KafkaBus:
                             name=self.topic,
                             num_partitions=self.partitions,
                             replication_factor=1,
+                            topic_configs=self._topic_configs(),
                         )
                     ]
                 )
@@ -172,6 +180,10 @@ class KafkaBus:
                     if code not in (_NO_ERROR, _TOPIC_ALREADY_EXISTS)
                 ]
                 if not errors:
+                    # create_topics leaves an existing topic's configuration alone, so the
+                    # retention is asserted here as well: a topic created before the
+                    # setting changed must not keep the old window (FR-05).
+                    self._enforce_config(admin)
                     return
                 last = "; ".join(f"{name}: code {code} {message}" for name, code, message in errors)
             except Exception as exc:  # noqa: BLE001 - broker not up yet, or auth refused
@@ -184,6 +196,35 @@ class KafkaBus:
                 sleep(delay_s)
         msg = f"could not create topic {self.topic!r} after {attempts} attempts: {last}"
         raise KafkaBusError(msg)
+
+    def _topic_configs(self) -> dict[str, str] | None:
+        """The topic configuration this bus owns, or None when it owns none."""
+        if self.retention_ms is None:
+            return None
+        return {"retention.ms": str(self.retention_ms)}
+
+    def _enforce_config(self, admin: Any) -> None:
+        """Set the topic's owned configuration, failing loudly if the broker refuses.
+
+        ``alter_configs`` replaces the listed keys and does not touch the rest; the flow
+        topic is owned by this service, so the listed keys are the whole contract.
+
+        Raises:
+            KafkaBusError: if the broker rejects the change for the topic.
+        """
+        configs = self._topic_configs()
+        if configs is None:
+            return
+        from kafka.admin import ConfigResource, ConfigResourceType
+
+        response = admin.alter_configs(
+            [ConfigResource(ConfigResourceType.TOPIC, self.topic, configs=configs)]
+        )
+        for resource in getattr(response, "resources", []):
+            code, message = resource[0], resource[1]
+            if code != _NO_ERROR:
+                msg = f"could not set {configs} on {self.topic!r}: code {code} {message}"
+                raise KafkaBusError(msg)
 
     def send(
         self,

@@ -32,7 +32,8 @@ touched, because "we erased them" is a claim about where the data is not.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -110,6 +111,7 @@ def _plan_out(plan: RetentionPlan) -> RetentionPlanOut:
             UnevictableOut(table=item.table, reason=item.reason) for item in plan.unevictable
         ],
         external=plan.external,
+        row_swept=plan.row_swept,
         statements=list(plan.statements),
     )
 
@@ -121,6 +123,7 @@ def _run_out(run: RetentionRun) -> RetentionRunOut:
         planned=[partition.name for partition in run.planned],
         dropped=[partition.name for partition in run.dropped],
         already_absent=[partition.name for partition in run.already_absent],
+        swept=run.swept,
         changed_anything=not run.is_noop,
     )
 
@@ -155,6 +158,30 @@ def _ledger_out(entry: LedgerEntry) -> ErasureLedgerEntryOut:
         requested_by=entry.requested_by,
         targets=[ErasureTargetOut(name=name, affected=count) for name, count in entry.targets],
     )
+
+
+def _sweep_rows(
+    request: Request, plan: RetentionPlan, policy: RetentionPolicy, at: datetime
+) -> dict[str, int]:
+    """Delete expired rows from the row-swept tables, cut at the raw-record window.
+
+    Raises:
+        RuntimeError: if the plan names row-swept tables and no sweeper is wired. The
+            same rule as the partition runner: a run that cannot sweep must not report
+            a clean run in which the raw tables kept everything.
+    """
+    if not plan.row_swept:
+        return {}
+    sweeper = getattr(request.app.state, "retention_sweeper", None)
+    if sweeper is None:
+        msg = (
+            "retention_sweeper is not configured on app.state: the row-swept tables "
+            f"{sorted(plan.row_swept)} would never age out"
+        )
+        raise RuntimeError(msg)
+    cutoff = at - timedelta(days=policy.raw_records_days)
+    result: dict[str, int] = sweeper(cutoff)
+    return result
 
 
 def _plan_for(request: Request, policy: RetentionPolicy) -> RetentionPlan:
@@ -203,8 +230,10 @@ def run_retention(
         HTTPException: 500 when a drop fails, with the partition named -- the
             run's exception carries which statement failed.
     """
-    plan = _plan_for(request, retention_policy(request))
+    policy = retention_policy(request)
+    plan = _plan_for(request, policy)
     run = apply_retention(plan, partition_runner(request), at=datetime.now(UTC))
+    run = replace(run, swept=_sweep_rows(request, plan, policy, run.started_at))
     record_action(
         audit_trail(request),
         action=AuditAction.retention_apply,
@@ -217,6 +246,7 @@ def run_retention(
         detail={
             "dropped": [partition.name for partition in run.dropped],
             "already_absent": [partition.name for partition in run.already_absent],
+            "swept": run.swept,
         },
         ip=client_ip(request),
     )

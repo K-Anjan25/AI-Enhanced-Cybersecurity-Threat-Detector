@@ -8,6 +8,11 @@ here is static YAML, applied with `kubectl apply -k .` or `kubectl apply -f .`.
 - **Datastores.** Postgres, Kafka and Elasticsearch are provisioned outside
   these manifests — managed services or a dedicated operator. `AEGIS_DATABASE_HOST`
   in `10-configmap.yaml` points at whatever provides them.
+- **Redis.** The Helm chart (`helm/aegis`) can run Redis in the cluster
+  (`redis.enabled`, with the backend's `AEGIS_REDIS_URL` derived from it). These
+  raw manifests do not include Redis. Without `AEGIS_REDIS_URL`, login throttling
+  counts failures per process, so a multi-replica deployment must set the variable
+  to a Redis it can reach, or the per-account limit is multiplied by the replica count.
 - **Scoring workers.** `architecture.md` §11.2 lists them, but no worker code
   exists yet; the workload lands with T-2xx rather than as a manifest that
   cannot run.

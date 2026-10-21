@@ -44,7 +44,10 @@ def auth() -> TokenService:
 
 
 @pytest.fixture
-def settings() -> Settings:
+def settings(monkeypatch: pytest.MonkeyPatch) -> Settings:
+    # Settings read the environment: a shell with a database URL must not turn these
+    # into database-backed tests. The live database is exercised in test_retention_live.
+    monkeypatch.delenv("AEGIS_DATABASE_URL", raising=False)
     return Settings(
         env="test",
         service_name="aegis-backend-test",
@@ -53,10 +56,38 @@ def settings() -> Settings:
     )
 
 
+def _thirty_six_months() -> set[tuple[str, int, int]]:
+    """A fixed catalog for the tests: 36 months of every partitioned table.
+
+    The composition root without a database has an empty catalog (no partitions exist
+    when there is no database). Tests that exercise the plan need partitions, so they
+    get them from here, as explicit fixture data, rather than from the app.
+    """
+    today = datetime.now(UTC).date()
+    year, month = today.year, today.month - 35
+    while month < 1:
+        month += 12
+        year -= 1
+    present: set[tuple[str, int, int]] = set()
+    while (year, month) <= (today.year, today.month):
+        for table in ("alerts", "ingest_stats"):
+            present.add((table, year, month))
+        month += 1
+        if month == 13:
+            year, month = year + 1, 1
+    return present
+
+
 def build(settings: Settings, auth: TokenService, **state: Any) -> TestClient:
-    """The real application, with any state seam a test wants to replace."""
+    """The real application, with any state seam a test wants to replace.
+
+    The catalog and the sweeper default to fixture data; a test that wants the shipped
+    wiring builds the app without them (see ``test_retention_wiring.py``).
+    """
     app = create_app(settings)
     app.state.token_service = auth
+    state.setdefault("known_partitions", _thirty_six_months())
+    state.setdefault("retention_sweeper", lambda cutoff: {})
     for name, value in state.items():
         setattr(app.state, name, value)
     return TestClient(app)
@@ -148,12 +179,9 @@ def test_the_preview_shows_the_policy_and_the_boundary_rule(client: TestClient) 
     # Every unevictable table is named with a reason, and both stores are among them
     # (T-419, T-418): FR-05's raw-record window reaches each through a sweep that is
     # not built, and a plan that omitted either would invite the opposite assumption.
-    assert {item["table"] for item in body["unevictable"]} == {
-        "audit_log",
-        "log_events",
-        "flow_events",
-    }
+    assert {item["table"] for item in body["unevictable"]} == {"audit_log"}
     assert all(item["reason"] for item in body["unevictable"])
+    assert set(body["row_swept"]) == {"log_events", "flow_events"}
     assert set(body["external"]) == {"kafka", "elasticsearch"}
 
 

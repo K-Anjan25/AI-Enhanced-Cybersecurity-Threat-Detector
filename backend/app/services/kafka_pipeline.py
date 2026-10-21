@@ -144,6 +144,7 @@ def build_kafka_pipeline(
     partitions: int = 6,
     window_size: int = 50,
     bus: KafkaBus | None = None,
+    retention_ms: int | None = None,
 ) -> tuple[FlowPublisher, LiveScoringLoop, KafkaBus]:
     """Assemble publisher, live loop and bus around the production dependencies."""
     from aegis_ml.scoring.fusion import fuse  # type: ignore[import-not-found]
@@ -151,7 +152,7 @@ def build_kafka_pipeline(
     from app.pipeline import build_pipeline
     from app.services.correlator import Modality
 
-    kafka_bus = bus or KafkaBus(bootstrap_servers, partitions=partitions)
+    kafka_bus = bus or KafkaBus(bootstrap_servers, partitions=partitions, retention_ms=retention_ms)
     pipeline = build_pipeline(
         MlWindowAdapter(ml_client),
         fuse=fuse,

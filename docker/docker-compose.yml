@@ -241,6 +241,12 @@ services:
       AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
       AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
       AEGIS_TSHARK_INTERFACE: ${AEGIS_TSHARK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-any}}
+      # Records the API refused to take during an outage wait here, on a named volume, so a
+      # container restart does not lose them. Capped by AEGIS_SPOOL_MAX_MB in the shipper.
+      AEGIS_SPOOL_DIR: /var/lib/aegis-spool
+      AEGIS_SPOOL_MAX_MB: ${AEGIS_SPOOL_MAX_MB:-64}
+    volumes:
+      - capture-spool:/var/lib/aegis-spool
     network_mode: host
     depends_on:
       backend:
@@ -253,3 +259,4 @@ volumes:
   postgres-data:
   kafka-kraft-data:
   es-data:
+  capture-spool:

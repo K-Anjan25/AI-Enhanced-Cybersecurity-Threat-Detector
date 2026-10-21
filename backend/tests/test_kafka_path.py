@@ -445,3 +445,61 @@ def test_ensure_topic_raises_when_a_topic_error_persists() -> None:
     with pytest.raises(KafkaBusError, match="code 37"):
         _bus_with(admin).ensure_topic(attempts=2, sleep=lambda _s: None)
     assert len(admin.calls) == 2
+
+
+# -- the stage timers the pipeline strip reads -----------------------------------------
+
+
+class _RecordingHub:
+    """Stands in for the live stream: records each alert handed to it."""
+
+    def __init__(self) -> None:
+        self.published: list[Any] = []
+
+    def publish(self, row: Any) -> None:
+        self.published.append(row)
+
+
+def _sample(name: str) -> float:
+    from prometheus_client import REGISTRY
+
+    return REGISTRY.get_sample_value(name) or 0.0
+
+
+def test_a_scored_window_times_its_correlate_and_notify_stages() -> None:
+    """The strip's correlate and notify latencies come from these two histograms.
+
+    A window that opens an alert must pass through both timers exactly once per
+    detection, so the counts move together with the work that was done.
+    """
+    hub = _RecordingHub()
+    bus, _ = _bus()
+    publisher, live, _bus_obj = build_kafka_pipeline(
+        bootstrap_servers="kafka:9092",
+        ml_client=_FakeMl(),  # type: ignore[arg-type]
+        alerts=InMemoryAlertStore(),
+        hub=hub,
+        registry=EntityRegistry(),
+        bus=bus,
+    )
+    before_correlate = _sample("aegis_correlate_latency_seconds_count")
+    before_notify = _sample("aegis_notify_latency_seconds_count")
+
+    publisher.publish([_flow(i) for i in range(50)])
+    live.run_once()
+
+    scored = _sample("aegis_correlate_latency_seconds_count") - before_correlate
+    notified = _sample("aegis_notify_latency_seconds_count") - before_notify
+    assert scored >= 1
+    assert notified == len(hub.published)
+    assert notified >= 1
+
+
+def test_the_stage_observers_refuse_a_negative_duration() -> None:
+    import pytest
+    from app.observability.metrics import observe_correlate_latency, observe_notify_latency
+
+    with pytest.raises(ValueError):
+        observe_correlate_latency(-0.001)
+    with pytest.raises(ValueError):
+        observe_notify_latency(-0.001)

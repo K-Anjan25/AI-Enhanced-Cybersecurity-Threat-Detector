@@ -43,13 +43,44 @@ MAX_BATCH = 1000
 #: HTTP statuses worth retrying: the request might succeed later.
 TRANSIENT_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
+#: The longest wait a server's Retry-After may impose. The ingest buffer answers 503
+#: with a short hint; a larger value is treated as a misconfiguration, not obeyed.
+MAX_RETRY_AFTER = 60.0
+
+
+def parse_retry_after(value: str | None) -> float | None:
+    """Seconds from a Retry-After header, or ``None`` when it is absent or not a number.
+
+    HTTP-date values are not used by the ingest API, so anything that is not a
+    plain non-negative number is ignored and the caller falls back to its backoff.
+    """
+    if value is None:
+        return None
+    try:
+        seconds = float(value.strip())
+    except ValueError:
+        return None
+    if seconds != seconds or seconds < 0:  # NaN or negative
+        return None
+    return min(seconds, MAX_RETRY_AFTER)
+
 
 class AuthRefused(Exception):
     """The API answered 401: the bearer token is missing or expired."""
 
 
 class TransientFailure(Exception):
-    """A failure that a later attempt may not repeat (network, 429, 5xx)."""
+    """A failure that a later attempt may not repeat (network, 429, 5xx).
+
+    ``retry_after`` carries the server's own wait when it sent one (503 from the
+    ingest buffer does), so the shipper waits as the server asked rather than
+    guessing with its backoff.
+    """
+
+    def __init__(self, message: str, retry_after: float | None = None) -> None:
+        """Carry the message and the server's ``Retry-After`` hint, if it sent one."""
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 class Rejected(Exception):
@@ -112,7 +143,8 @@ def post_ndjson(
         if exc.code == 401:
             raise AuthRefused(detail) from exc
         if exc.code in TRANSIENT_STATUSES:
-            raise TransientFailure(f"HTTP {exc.code}: {detail}") from exc
+            hint = parse_retry_after(exc.headers.get("Retry-After") if exc.headers else None)
+            raise TransientFailure(f"HTTP {exc.code}: {detail}", retry_after=hint) from exc
         raise Rejected(f"HTTP {exc.code}: {detail}") from exc
     except (urllib.error.URLError, OSError) as exc:
         raise TransientFailure(str(exc)) from exc
@@ -243,7 +275,9 @@ class Shipper:
                 if attempt + 1 >= self._attempts:
                     raise
                 self.stats.retried += 1
-                self._sleep(self._backoff(attempt))
+                self._sleep(
+                    exc.retry_after if exc.retry_after is not None else self._backoff(attempt)
+                )
         raise TransientFailure("retries exhausted")
 
     def send(self, records: Iterable[dict[str, Any]], modality: str = "flows") -> int:

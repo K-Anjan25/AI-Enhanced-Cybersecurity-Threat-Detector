@@ -87,6 +87,7 @@ class RetentionPlanOut(BaseModel):
     missing: list[str]
     unevictable: list[UnevictableOut]
     external: dict[str, str]
+    row_swept: dict[str, str] = Field(default_factory=dict)
     statements: list[str]
 
 
@@ -99,6 +100,7 @@ class RetentionRunOut(BaseModel):
     planned: list[str]
     dropped: list[str]
     already_absent: list[str]
+    swept: dict[str, int] = Field(default_factory=dict)
     changed_anything: bool
 
 

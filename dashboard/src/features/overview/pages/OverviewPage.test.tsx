@@ -246,7 +246,9 @@ describe('OverviewPage', () => {
     const tile = (await screen.findByText('Mean time to verdict')).closest('div');
 
     expect(within(tile as HTMLElement).getByText('—')).toBeInTheDocument();
-    expect(within(tile as HTMLElement).getByText(/Target ≤ 60 s/)).toBeInTheDocument();
+    expect(
+      within(tile as HTMLElement).getByText(/No verdicts recorded in this window/),
+    ).toBeInTheDocument();
   });
 
   it('offers the chart as a table, which is the alternative §9 requires', async () => {

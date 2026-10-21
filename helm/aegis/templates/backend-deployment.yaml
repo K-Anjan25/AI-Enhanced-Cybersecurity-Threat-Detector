@@ -49,7 +49,11 @@ spec:
           env:
             {{- range $key, $value := .Values.backend.env }}
             - name: {{ $key }}
+              {{- if and (eq $key "AEGIS_REDIS_URL") (not $value) $.Values.redis.enabled }}
+              value: {{ printf "redis://%s-redis:6379/0" (include "aegis.fullname" $) | quote }}
+              {{- else }}
               value: {{ $value | quote }}
+              {{- end }}
             {{- end }}
             {{- range .Values.backend.secretEnv }}
             - name: {{ . }}
