@@ -74,6 +74,20 @@ export function LandingPage() {
       {/* Hero: the 3D field fills the section; text sits on three depth layers. */}
       <section className="relative isolate flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden">
         <ThreeField />
+        {/*
+          Scrim between the animated field and the copy. The wireframe runs behind the
+          headline; this layer fades the base colour over the text area so every glyph
+          sits on a surface that passes AA (D-091). It is decorative, so it is hidden from
+          assistive technology, and it uses the theme's base token so both themes work.
+        */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 62% 58% at 50% 50%, color-mix(in srgb, var(--color-bg-base) 90%, transparent) 0%, color-mix(in srgb, var(--color-bg-base) 74%, transparent) 62%, transparent 100%)',
+          }}
+        />
         <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-10 px-6 py-16 md:grid-cols-12 md:px-12">
           <div
             className="landing-layer z-10 flex flex-col gap-8 md:col-span-4"
