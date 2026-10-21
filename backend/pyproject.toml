@@ -51,6 +51,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Shared login throttle (app/services/login_throttle.py). Optional: without it the
+# throttle counts per process and says so through backend_errors.
+redis = ["redis>=5"]
 # T-310. uvicorn needs a WebSocket protocol implementation to serve /alerts/ws
 # in production; it is not needed for the tests, which drive the ASGI contract
 # directly, and it is not installed in the sandbox -- recorded, not implied.
@@ -64,6 +67,9 @@ otlp = ["opentelemetry-exporter-otlp-proto-http>=1.45"]
 
 dev = [
     "pytest>=9.1",
+    # Redis-backed throttle tests run against an in-process fake, not a server.
+    "fakeredis>=2.26",
+    "redis>=5",
     # check_all.sh and CI run `pytest --cov=app` and `lint-imports` for this
     # service, so both must be declared here rather than hand-installed.
     "pytest-cov>=7.0",

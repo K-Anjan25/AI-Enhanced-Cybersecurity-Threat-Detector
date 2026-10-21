@@ -77,6 +77,7 @@ from app.services.limits import AdmissionController, RateLimitPolicy
 from app.services.log_source import TailLogSource, store_requested, tail_reason
 from app.services.log_store import PostgresLogStore
 from app.services.log_tail import LogTail
+from app.services.login_throttle import ThrottleSettings, build_login_throttle
 from app.services.ml_calibration import MlCalibrator
 from app.services.ml_window_scorer import MlWindowScorer
 from app.services.model_ops import ModelOpsService
@@ -510,6 +511,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # directory, and both remain process-local until the database adapter lands.
     user_directory = InMemoryUserDirectory()
     app.state.auth_accounts = AuthAccountStore(user_directory)
+    app.state.login_throttle = build_login_throttle(
+        ThrottleSettings(
+            account_max_failures=resolved.login_account_max_failures,
+            address_max_failures=resolved.login_address_max_failures,
+            window_seconds=resolved.login_window_seconds,
+        ),
+        redis_url=resolved.redis_url,
+    )
     if resolved.bootstrap_admin_email is not None and resolved.bootstrap_admin_password is not None:
         app.state.auth_accounts.create_initial_admin(
             resolved.bootstrap_admin_email,

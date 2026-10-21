@@ -113,6 +113,16 @@ class Settings(BaseSettings):
     # without limit and dropping something later.
     ingest_max_in_flight_records: int = Field(default=20_000, ge=1)
 
+    # Shared state (memory.md multi-replica note). Empty keeps every counter in the
+    # process. Set, the login throttle counts failures in Redis so N replicas share
+    # one limit rather than allowing N times the guesses. Compose caps Redis memory.
+    redis_url: str = Field(default="")
+    # Login throttle (T4 credential abuse). Per account, and per source address with
+    # a larger allowance because many users can share one NAT address.
+    login_account_max_failures: int = Field(default=5, ge=1)
+    login_address_max_failures: int = Field(default=100, ge=1)
+    login_window_seconds: int = Field(default=900, ge=1)
+
     # Tracing (NFR-07, T-317). Empty means no exporter: spans are still created
     # and their ids still propagate to the alert record, and nothing leaves the
     # process. Set it to an OTLP/HTTP endpoint to ship spans to a collector.
