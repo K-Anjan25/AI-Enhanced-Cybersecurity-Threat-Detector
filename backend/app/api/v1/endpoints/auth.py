@@ -20,7 +20,12 @@ from app.auth.tokens import MalformedToken, TokenPair, TokenService
 from app.core.config import Environment
 from app.schemas.auth import AuthStatusOut, CredentialsIn, RefreshIn, TokenPairOut
 from app.services.audit_log import AuditAction, record_action
-from app.services.auth_accounts import AccountAlreadyProvisioned, AuthAccountStore
+from app.services.auth_accounts import (
+    AccountAlreadyProvisioned,
+    AuthAccountStore,
+    normalise_email,
+)
+from app.services.login_throttle import LoginThrottle
 from app.services.user_directory import UserRecord
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -131,13 +136,31 @@ def setup_first_admin(
 def login(body: CredentialsIn, request: Request, response: Response) -> TokenPairOut:
     """Authenticate an account without disclosing whether its email exists."""
     _no_store(response)
+    throttle: LoginThrottle = request.app.state.login_throttle
+    address = client_ip(request)
+    # Keyed on the canonical address, so "Admin@x" and "admin@x" share one counter. An
+    # address that cannot be normalised is refused like any other bad password below,
+    # but it is still counted against the source address.
+    try:
+        key_email = normalise_email(body.email)
+    except ValueError:
+        key_email = body.email.strip().lower()
+    decision = throttle.check(key_email, address)
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many sign-in attempts; try again later",
+            headers={"Retry-After": str(decision.retry_after_seconds)},
+        )
     account = _accounts(request).authenticate(body.email, body.password.get_secret_value())
     if account is None:
+        throttle.record_failure(key_email, address)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="email or password is incorrect",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    throttle.record_success(key_email)
     result = _issue(request, account)
     record_action(
         audit_trail(request),

@@ -17,8 +17,14 @@ COPY app ./app
 # needed (pydantic, fastapi, uvicorn), not torch. The build passes it as the named
 # context `aegis_ml` (docker/docker-compose.yml, .github/workflows/release.yml).
 COPY --from=aegis_ml . /tmp/aegis-ml
-RUN pip install --no-cache-dir /tmp/aegis-ml . \
+RUN pip install --no-cache-dir /tmp/aegis-ml ".[redis]" \
     && rm -rf /tmp/aegis-ml
+
+# Fail the build, not the container, when the shared ML contract is missing. The live
+# consumer and the scoring worker import these modules at start-up; a build that
+# dropped aegis_ml used to ship and then exit on the first import.
+RUN python -c "import aegis_ml.data.records, aegis_ml.data.windowing, aegis_ml.scoring.fusion" \
+    && python -c "import app.main, app.workers.scoring_worker"
 
 # Run as an unprivileged user (architecture.md §12).
 RUN useradd --create-home --uid 10001 aegis

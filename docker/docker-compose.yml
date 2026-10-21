@@ -32,6 +32,22 @@ services:
     ports:
       - '5432:5432'
 
+  # Shared, memory-capped state for the backend (login throttle across replicas).
+  # Redis is not a telemetry bus (memory.md, Kafka decision): it holds only expiring
+  # counters, so eviction under pressure is harmless. The backend starts without it
+  # and falls back to a per-process limit, so this is a soft dependency.
+  redis:
+    mem_limit: 96m
+    image: redis:7-alpine
+    # No persistence: every key is a time-limited counter. volatile-ttl evicts only
+    # keys that have an expiry, which every AEGIS key has, so nothing else is lost.
+    command: ['redis-server', '--maxmemory', '64mb', '--maxmemory-policy', 'volatile-ttl', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   kafka:
     mem_limit: 1g
     # Official Apache Kafka image (Q-08). The earlier bitnamilegacy/kafka:3.9 was
@@ -131,6 +147,8 @@ services:
       AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
       AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
+      # Shared login throttle (see app/services/login_throttle.py). Empty = per process.
+      AEGIS_REDIS_URL: redis://redis:6379/0
       # The flow path runs over the broker (D-085): ingest publishes to flows.raw and
       # the live consumer scores it. Empty would keep scoring in-process.
       AEGIS_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -157,6 +175,9 @@ services:
         condition: service_healthy
       ml-service:
         condition: service_healthy
+      # Soft: the backend runs without Redis, with a per-process login limit.
+      redis:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL

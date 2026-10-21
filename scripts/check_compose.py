@@ -50,8 +50,11 @@ DRIVER_PACKAGES = {"psycopg": "psycopg", "psycopg2": "psycopg2", "asyncpg": "asy
 #: bridge scripts (read from the environment by the entrypoints), not Settings.
 CAPTURE_SERVICES = {"capture"}
 
+# redis holds only expiring shared counters (the login throttle). It is a soft
+# dependency: the backend starts and degrades to a per-process limit without it.
 EXPECTED_SERVICES = {
     "postgres",
+    "redis",
     "kafka",
     "elasticsearch",
     "backend",
