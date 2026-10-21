@@ -194,6 +194,9 @@ class Settings(BaseSettings):
     # Kafka is where raw records live, so it may not hold them longer than the policy
     # promises: the validator below refuses a value above the raw window.
     kafka_retention_hours: int = Field(default=720, ge=1, le=87_600)
+    # The longest a flow waits for its 50-flow window before the window is scored partial
+    # (live path). 0 scores every flow as it arrives; large values approach batch windows.
+    live_max_window_wait_seconds: float = Field(default=2.0, ge=0.0, le=300.0)
 
     @field_validator("log_level")
     @classmethod

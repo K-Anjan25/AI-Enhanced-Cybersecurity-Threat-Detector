@@ -16,8 +16,7 @@ window whose score could not be obtained is retried, not reported as clean.
 from __future__ import annotations
 
 import threading
-import time
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 from app.core.logging import get_logger
@@ -80,17 +79,23 @@ class LiveScoringLoop:
         pipeline: Pipeline,
         *,
         poll_interval: float = 0.2,
-        idle_flush_seconds: float = 5.0,
-        clock: Callable[[], float] = time.monotonic,
+        max_window_wait_seconds: float = 2.0,
     ) -> None:
-        """Remember the pipeline. Nothing runs until :meth:`start`."""
+        """Remember the pipeline. Nothing runs until :meth:`start`.
+
+        ``max_window_wait_seconds`` bounds how long a flow can wait for its 50-flow
+        window to fill before the window is scored partial. It replaces an idle-based
+        flush that never fired under a steady trickle, because any movement reset the
+        idle clock; that is the cause of records arriving in bursts.
+        """
+        if max_window_wait_seconds < 0:
+            msg = f"max_window_wait_seconds must be >= 0, got {max_window_wait_seconds}"
+            raise ValueError(msg)
         self._pipeline = pipeline
         self._poll_interval = poll_interval
-        self._idle_flush = idle_flush_seconds
-        self._clock = clock
+        self._max_wait = max_window_wait_seconds
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
-        self._last_activity = clock()
 
     def start(self) -> None:
         """Start the consumer thread (idempotent)."""
@@ -116,11 +121,7 @@ class LiveScoringLoop:
         moved = 0
         for partition in range(self._pipeline.bus.partitions):
             moved += self._pipeline.worker.run(self._pipeline.consumer, partition, flush=False)
-        if moved:
-            self._last_activity = self._clock()
-        elif self._clock() - self._last_activity >= self._idle_flush:
-            self._pipeline.worker.flush()
-            self._last_activity = self._clock()
+        self._pipeline.worker.flush_stale(self._max_wait)
         return moved
 
     def _run(self) -> None:
@@ -145,6 +146,7 @@ def build_kafka_pipeline(
     window_size: int = 50,
     bus: KafkaBus | None = None,
     retention_ms: int | None = None,
+    max_window_wait_seconds: float = 2.0,
 ) -> tuple[FlowPublisher, LiveScoringLoop, KafkaBus]:
     """Assemble publisher, live loop and bus around the production dependencies."""
     from aegis_ml.scoring.fusion import fuse  # type: ignore[import-not-found]
@@ -165,4 +167,5 @@ def build_kafka_pipeline(
         window_size=window_size,
         bus=kafka_bus,
     )
-    return FlowPublisher(pipeline, kafka_bus), LiveScoringLoop(pipeline), kafka_bus
+    live = LiveScoringLoop(pipeline, max_window_wait_seconds=max_window_wait_seconds)
+    return FlowPublisher(pipeline, kafka_bus), live, kafka_bus
