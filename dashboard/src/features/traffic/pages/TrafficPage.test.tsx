@@ -21,7 +21,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { expectAccessible } from '../../../test/axe';
+import { expectAxeClean } from '../../../test/axe';
 import { jsonResponse, Providers, stubFetch } from '../../../test/query';
 import { TrafficPage } from './TrafficPage';
 import type { FlowAggregate, FlowBucket, FlowEntity } from '../../../api/flows';
@@ -481,11 +481,11 @@ describe('TrafficPage', () => {
     expect(new Set(open)).toEqual(new Set(['1', '0']));
   });
 
-  it('has no serious accessibility violations', async () => {
+  it('has no accessibility violations at any impact level (WCAG 2.2 AA and best practice)', async () => {
     stubTraffic();
     const { container } = renderPage();
     await series();
 
-    await expectAccessible(container as HTMLElement);
+    await expectAxeClean(container as HTMLElement);
   });
 });

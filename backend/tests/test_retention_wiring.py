@@ -18,7 +18,7 @@ from app.main import create_app
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-SECRET = "retention-wiring-secret-0123456789abcdef"
+SECRET = "retention-wiring-secret-0123456789abcdef"  # pragma: allowlist secret
 
 
 @pytest.fixture(autouse=True)
