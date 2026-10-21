@@ -267,7 +267,7 @@ def build_login_throttle(settings: ThrottleSettings, redis_url: str = "") -> Log
     if not redis_url:
         return LoginThrottle(settings)
     try:
-        import redis  # type: ignore[import-not-found]
+        import redis
     except ImportError:
         return LoginThrottle(settings)
     client = redis.Redis.from_url(redis_url, socket_timeout=0.5, socket_connect_timeout=0.5)

@@ -152,6 +152,12 @@ ignore_missing_imports = true
 module = ["scapy.*"]
 ignore_missing_imports = true
 
+# The capture bridges are standalone scripts that import their sibling shipper.py
+# at runtime (it sits beside them in the capture image). mypy cannot see that path.
+[[tool.mypy.overrides]]
+module = ["shipper"]
+ignore_missing_imports = true
+
 # --- pytest (R-80..R-89) ---------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]

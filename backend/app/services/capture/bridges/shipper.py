@@ -220,7 +220,7 @@ class Shipper:
     def _backoff(self, attempt: int) -> float:
         """Full-jitter exponential backoff, capped."""
         ceiling = min(self._cap, self._base * (2**attempt))
-        return self._rng() * ceiling
+        return float(self._rng() * ceiling)
 
     def _send_once(self, modality: str, batch: list[dict[str, Any]]) -> int:
         """One logical delivery: retries transient failures, re-logs in on 401 once."""
