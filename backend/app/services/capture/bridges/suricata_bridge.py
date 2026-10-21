@@ -53,7 +53,7 @@ PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
 DEV_DEFAULT_PASSWORD = (
     "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
 )
-BATCH_SIZE = 100
+BATCH_SIZE = 1000  # the ingest API cap
 FLUSH_INTERVAL = 5
 
 
@@ -220,34 +220,43 @@ def to_flow_v1(record: dict[str, Any]) -> dict[str, Any] | None:
     return out
 
 
+_SHIPPER: Any = None
+# Store-and-forward for records that cannot be delivered (see shipper.py). Capped so a
+# long backend outage cannot fill the host disk.
+SPOOL_DIR = os.environ.get("AEGIS_SPOOL_DIR", "/tmp/aegis-spool")  # noqa: S108  # nosec B108
+SPOOL_MAX_MB = int(os.environ.get("AEGIS_SPOOL_MAX_MB", "64"))
+
+
+def _ship() -> Any:
+    """Build the shared shipper on first use. Policy is documented in shipper.py."""
+    global _SHIPPER
+    if _SHIPPER is None:
+        from pathlib import Path
+
+        # shipper.py sits beside this script in the container and in the repository.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import shipper as shipper_module
+
+        _SHIPPER = shipper_module.Shipper(
+            API_URL,
+            token=lambda: TOKEN,
+            reauthenticate=lambda: authenticate(force=True),
+            spool=shipper_module.Spool(Path(SPOOL_DIR), SPOOL_MAX_MB * 1024 * 1024),
+        )
+    return _SHIPPER
+
+
 def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
-    """Send records to the appropriate ingest endpoint."""
+    """Deliver records through the shared shipper and return how many the API accepted.
+
+    Batching, retries and the disk spool live in shipper.py. A 401 re-logs in once and
+    retries the batch, so a token that expired between two batches loses nothing.
+    """
     if modality == "flows":
         records = [c for c in (to_flow_v1(r) for r in records) if c is not None]
-    if not records or not TOKEN:
+    if not records:
         return 0
-    endpoint = f"/api/v1/ingest/{modality}"
-    ndjson = "\n".join(json.dumps(r) for r in records)
-    req = urllib.request.Request(  # noqa: S310 - API_URL is operator-configured
-        f"{API_URL}{endpoint}",
-        data=ndjson.encode(),
-        headers={
-            "Content-Type": "application/x-ndjson",
-            "Authorization": f"Bearer {TOKEN}",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310  # nosec B310
-            body = json.loads(resp.read())
-            return int(body.get("accepted", 0))
-    except urllib.error.HTTPError as e:
-        if e.code == 401:
-            authenticate(force=True)
-        return 0
-    except (urllib.error.URLError, OSError, ValueError) as e:
-        print(f"[SEND] Error: {e}", file=sys.stderr)
-        return 0
+    return int(_ship().send(records, modality))
 
 
 def parse_alert(event: dict[str, Any]) -> dict[str, Any]:

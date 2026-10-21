@@ -75,7 +75,9 @@ def test_a_401_logs_in_again_and_the_next_batch_is_accepted(
             "duration": 0.1,
         }
     ]
-    assert bridge.send_batch(record) == 0  # the expired token is refused once
+    # The expired token is refused once; the bridge logs in again and retries the same
+    # batch, so the record is accepted on the first call rather than lost.
+    assert bridge.send_batch(record) == 1
     assert len(logins) == 1
     assert bridge.TOKEN == "fresh-token"
     assert bridge.send_batch(record) == 1  # and the fresh token is accepted
