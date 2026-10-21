@@ -81,12 +81,11 @@ def main() -> None:
     if not 1 <= args.batch <= 1000:
         raise SystemExit("--batch must be 1..1000 (the ingest route's cap)")
 
-    token = _login(args.base, args.email, args.password)
     url = urlparse(args.base)
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/x-ndjson",
-    }
+    # The access token expires (15 minutes by default), so a long run must log in again.
+    # The first run of this script did not, and half its requests were refused with 401.
+    auth = {"token": _login(args.base, args.email, args.password)}
+    relogins = 0
 
     lock = threading.Lock()
     accepted = 0
@@ -94,6 +93,10 @@ def main() -> None:
     errors: dict[str, int] = {}
     latencies: list[float] = []
     deadline = time.monotonic() + args.seconds
+
+    def nonlocal_relogin() -> None:
+        nonlocal relogins
+        relogins += 1
 
     def worker(worker_id: int) -> None:
         nonlocal accepted, requests_ok
@@ -116,10 +119,28 @@ def main() -> None:
             body = ("\n".join(lines) + "\n").encode()
             started = time.perf_counter()
             try:
+                token_used = auth["token"]
+                headers = {
+                    "Authorization": f"Bearer {token_used}",
+                    "Content-Type": "application/x-ndjson",
+                }
                 conn.request("POST", "/api/v1/ingest/flows", body, headers)
                 response = conn.getresponse()
                 payload = response.read()
                 elapsed = time.perf_counter() - started
+                if response.status == 401:
+                    # Refresh once per expiry: whichever worker sees the old token first logs in,
+                    # and the others reuse the new one. Then the same batch is sent again.
+                    with lock:
+                        if auth["token"] == token_used:
+                            auth["token"] = _login(args.base, args.email, args.password)
+                            nonlocal_relogin()
+                    headers["Authorization"] = f"Bearer {auth['token']}"
+                    started = time.perf_counter()
+                    conn.request("POST", "/api/v1/ingest/flows", body, headers)
+                    response = conn.getresponse()
+                    payload = response.read()
+                    elapsed = time.perf_counter() - started
             except OSError as exc:
                 with lock:
                     key = type(exc).__name__
@@ -165,6 +186,7 @@ def main() -> None:
                 "wall_seconds": round(wall, 2),
                 "requests": total_requests,
                 "offered_records_per_second": args.rate or None,
+                "relogins_after_401": relogins,
                 "accepted_records": accepted,
                 "accepted_records_per_second": round(accepted / wall, 1) if wall else 0.0,
                 "p95_request_ms": round(p95, 1) if p95 is not None else None,
