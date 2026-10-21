@@ -41,7 +41,18 @@ services:
     image: redis:7-alpine
     # No persistence: every key is a time-limited counter. volatile-ttl evicts only
     # keys that have an expiry, which every AEGIS key has, so nothing else is lost.
-    command: ['redis-server', '--maxmemory', '64mb', '--maxmemory-policy', 'volatile-ttl', '--save', '', '--appendonly', 'no']
+    command:
+      [
+        'redis-server',
+        '--maxmemory',
+        '64mb',
+        '--maxmemory-policy',
+        'volatile-ttl',
+        '--save',
+        '',
+        '--appendonly',
+        'no',
+      ]
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s

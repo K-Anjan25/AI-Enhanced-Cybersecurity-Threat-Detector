@@ -137,7 +137,8 @@ def login(body: CredentialsIn, request: Request, response: Response) -> TokenPai
     """Authenticate an account without disclosing whether its email exists."""
     _no_store(response)
     throttle: LoginThrottle = request.app.state.login_throttle
-    address = client_ip(request)
+    # A request with no peer address shares one bucket: stricter than skipping the count.
+    address = client_ip(request) or "unknown"
     # Keyed on the canonical address, so "Admin@x" and "admin@x" share one counter. An
     # address that cannot be normalised is refused like any other bad password below,
     # but it is still counted against the source address.
