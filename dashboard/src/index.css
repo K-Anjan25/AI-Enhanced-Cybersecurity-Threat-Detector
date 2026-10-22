@@ -213,3 +213,71 @@
     will-change: auto;
   }
 }
+
+/*
+ * Marketing site: AEGIS brand palette (Neon Mint, Core Navy, Soft Gray, Graphite Black).
+ * Scoped to `.marketing-site`, so the app keeps its own tokens. Every pair below is
+ * above 4.5:1 for text (3:1 for the control border); see the contrast note in
+ * memory.md D-095. Declared after the theme blocks so it wins at equal specificity.
+ */
+.marketing-site {
+  --color-bg-base: #00203f; /* Core Navy */
+  --color-bg-surface: #2f2f2f; /* Graphite Black, for cards */
+  --color-border: #6f879f; /* control and hairline boundaries, 3:1 or better */
+  --color-text-primary: #e6e9ec; /* Soft Gray: 13.48:1 on base */
+  --color-text-muted: #aebbc8; /* 8.40:1 on base, 6.85:1 on graphite */
+  --color-accent: #36ecde; /* Neon Mint: 11.12:1 on base */
+  --color-brand-blue: #36ecde;
+  --color-on-accent: #00203f; /* Core Navy on Neon Mint: 11.12:1 */
+  --color-on-severity: #00203f;
+  --focus-ring: #36ecde;
+  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 40%);
+
+  color: var(--color-text-primary);
+}
+
+/* Subtle engineering grid behind the hero, drawn with the accent at low opacity. */
+.marketing-grid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-accent) 12%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-accent) 12%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse at center, currentColor 30%, transparent 75%);
+}
+
+/* Scroll-triggered fade-in. Content is visible without JavaScript or with reduced motion. */
+.marketing-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity var(--duration-page) ease-out,
+    transform var(--duration-page) ease-out;
+}
+
+.marketing-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hamburger icon bars morph into an X while the menu is open. */
+.marketing-bar {
+  transition:
+    transform var(--duration-panel) ease-out,
+    opacity var(--duration-panel) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .marketing-bar {
+    transition: none;
+  }
+}

@@ -35,7 +35,7 @@ import {
 } from 'react';
 
 import { AlertStreamClient, type SocketFactory, type StreamOptions } from '../../api/realtime';
-import { onSessionTokenChange } from '../../api/session';
+import { onSessionTokenChange, sessionToken } from '../../api/session';
 import { useDocumentVisible } from '../hooks/polling';
 import type { AlertFrame, RealtimeFrame, RealtimeState } from '../../lib/realtime';
 
@@ -117,8 +117,11 @@ export function RealtimeProvider({ children, socketFactory, options }: RealtimeP
   useEffect(() => {
     const client = clientRef.current;
     if (client === null) return undefined;
-    client.start();
+    // A signed-out visitor (the public pages) must not open a socket or poll the API:
+    // the channel is for the console. It starts once a session exists.
+    if (sessionToken() !== null) client.start();
     const unsubscribe = onSessionTokenChange(() => {
+      if (sessionToken() !== null) client.start();
       client.onTokenChanged();
     });
     return () => {

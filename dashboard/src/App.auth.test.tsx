@@ -45,13 +45,26 @@ describe('the dashboard authentication gate', () => {
     const landing = renderWithProviders(<App />, undefined, ['/']);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /detect to protect/i }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: /see the attack before it becomes an incident/i,
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Get protected' })).toHaveAttribute('href', '/sign-in');
+    expect(screen.getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/pricing');
     landing.unmount();
 
     renderWithProviders(<App />, undefined, ['/sign-in']);
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('serves the public marketing pages when signed out, without the console', async () => {
+    stubFetch(authenticatedRoutes(false));
+    renderWithProviders(<App />, undefined, ['/pricing']);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /pricing that scales/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
   });
 
   it('signs in, sends the bearer token to protected endpoints, and signs out', async () => {

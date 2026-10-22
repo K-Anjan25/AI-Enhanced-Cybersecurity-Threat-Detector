@@ -11,10 +11,11 @@
  */
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { RealtimeProvider } from '../../components/realtime/RealtimeProvider';
+import { resetSessionForTests, setSessionToken } from '../../api/session';
 import { jsonResponse, stubFetch, testQueryClient } from '../../test/query';
 import { fakeClock, fakeSockets, settle } from '../../test/socket';
 import { rangeOf, useTrafficBrush, useTrafficWindow } from './hooks';
@@ -155,7 +156,13 @@ function reads(seen: Request[], path = FLOWS_PATH): Request[] {
   return seen.filter((request) => new URL(request.url).pathname === path);
 }
 
+// The live channel starts only for a signed-in session, so these tests sign in first.
+beforeEach(() => {
+  setSessionToken('test-token');
+});
+
 afterEach(() => {
+  resetSessionForTests();
   vi.unstubAllGlobals();
 });
 

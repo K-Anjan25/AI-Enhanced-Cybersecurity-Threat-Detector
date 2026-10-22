@@ -48,6 +48,9 @@ import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
 import { LandingPage } from './features/landing/LandingPage';
+import { ContactPage } from './features/marketing/pages/ContactPage';
+import { FeaturesPage } from './features/marketing/pages/FeaturesPage';
+import { PricingPage } from './features/marketing/pages/PricingPage';
 
 /**
  * A screen, when the window is wide enough for it to be offered (§8.3).
@@ -78,6 +81,10 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
   const { openPalette } = useCommands();
   return (
     <Routes>
+      {/* Public marketing pages are reachable signed in or out. */}
+      <Route path="/features" element={<FeaturesPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route element={<AppShell onOpenPalette={openPalette} onSignOut={onSignOut} />}>
         <Route
           index
@@ -157,10 +164,14 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
-/** Signed out: `/` is the landing page, every other path is the sign-in form. */
+/** Signed out: `/` is the landing page, the public marketing pages are open, and every other path is the sign-in form. */
 function Unauthenticated() {
   const { pathname } = useLocation();
-  return pathname === '/' ? <LandingPage /> : <SignInPage />;
+  if (pathname === '/') return <LandingPage />;
+  if (pathname === '/features') return <FeaturesPage />;
+  if (pathname === '/pricing') return <PricingPage />;
+  if (pathname === '/contact') return <ContactPage />;
+  return <SignInPage />;
 }
 
 export function App() {
