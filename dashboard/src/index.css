@@ -207,38 +207,37 @@
 }
 
 /*
- * Marketing site palette: three colours, and nothing else.
- *   Midnight Blue  #0B132B  dominant: the ground for every section
- *   Slate Gray     #6C757D  secondary: borders and rules
- *   Electric Cyan  #00F0FF  accent: text, links, buttons and focus
- * Slate is 3.92:1 on Midnight, below the 4.5:1 body text needs, so it never carries
- * text. All text is Cyan (13.05:1 on Midnight), and button labels are Midnight on Cyan
- * (13.05:1). Decision and ratios: memory.md D-097.
+ * Marketing site palette: two colours, and nothing else (memory.md D-098).
+ *   Vanilla Cloud  #FDF8F2  ground for every section and card surface
+ *   Stream Blue    #1E56CD  text, borders, rules, buttons, focus
+ * Stream Blue on Vanilla Cloud is 6.09:1, so either colour carries text.
  */
 .marketing-site {
-  --color-bg-base: #0b132b;
-  --color-bg-surface: #0b132b;
-  --color-border: #6c757d;
-  --color-text-primary: #00f0ff;
-  --color-text-muted: #00f0ff;
-  --color-accent: #00f0ff;
-  --color-brand-blue: #00f0ff;
-  --color-on-accent: #0b132b;
-  --color-on-severity: #0b132b;
-  --severity-critical: #00f0ff;
-  --severity-high: #00f0ff;
-  --severity-medium: #6c757d;
-  --severity-low: #6c757d;
-  --severity-info: #6c757d;
-  --severity-benign: #6c757d;
-  --severity-text-critical: #00f0ff;
-  --severity-text-high: #00f0ff;
-  --severity-text-medium: #00f0ff;
-  --severity-text-low: #00f0ff;
-  --severity-text-info: #00f0ff;
-  --severity-text-benign: #00f0ff;
-  --focus-ring: #00f0ff;
-  --shadow-overlay: 6px 6px 0 #6c757d;
+  /* The brand palette, two colours only: Vanilla Cloud #FDF8F2 and Stream Blue #1E56CD.
+   * Stream Blue on Vanilla Cloud is 6.09:1, so both colours carry text in both directions. */
+  --color-bg-base: #fdf8f2;
+  --color-bg-surface: #fdf8f2;
+  --color-border: #1e56cd;
+  --color-text-primary: #1e56cd;
+  --color-text-muted: #1e56cd;
+  --color-accent: #1e56cd;
+  --color-brand-blue: #1e56cd;
+  --color-on-accent: #fdf8f2;
+  --color-on-severity: #fdf8f2;
+  --severity-critical: #1e56cd;
+  --severity-high: #1e56cd;
+  --severity-medium: #fdf8f2;
+  --severity-low: #fdf8f2;
+  --severity-info: #fdf8f2;
+  --severity-benign: #fdf8f2;
+  --severity-text-critical: #1e56cd;
+  --severity-text-high: #1e56cd;
+  --severity-text-medium: #1e56cd;
+  --severity-text-low: #1e56cd;
+  --severity-text-info: #1e56cd;
+  --severity-text-benign: #1e56cd;
+  --focus-ring: #1e56cd;
+  --shadow-overlay: 6px 6px 0 #1e56cd;
 
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);

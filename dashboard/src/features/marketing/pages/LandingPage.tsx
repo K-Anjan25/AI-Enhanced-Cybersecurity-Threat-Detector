@@ -54,7 +54,7 @@ const SEVERITY_FILL: Record<'high' | 'medium' | 'low', string> = {
 /**
  * The public home page, shown at `/` to anyone without a session.
  *
- * The hero is a flat Signal Blue ground with two depth layers: the copy and the alert
+ * The hero is a flat Vanilla Cloud ground with two depth layers: the copy and the alert
  * card. The scroll position is written to `--scroll` on the hero, so each layer moves
  * at its own speed. There is no 3D scene here; that is deliberately deferred.
  */
@@ -73,7 +73,7 @@ export function LandingPage() {
       title="AEGIS | AI-Enhanced Threat Detection for Security Teams"
       description="AEGIS scores network flows and system logs with machine-learning models, then turns anomalies into prioritised alerts your analysts can triage in minutes."
     >
-      {/* Hero: copy and alert card sit on two depth layers over the Signal Blue ground. */}
+      {/* Hero: copy and alert card sit on two depth layers over the Vanilla Cloud ground. */}
       <section
         ref={heroRef}
         aria-labelledby="hero-title"

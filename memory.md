@@ -3936,7 +3936,19 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
-### D-097 — Palette replaced by three colours; numbered section labels removed (2026-10-22)
+### D-098 — Palette replaced by the Vanilla Cloud and Stream Blue brand sheet (2026-10-22)
+
+**Decision.** The user supplied a new palette sheet and asked that the website use these colours completely and nothing else: Vanilla Cloud `#FDF8F2` and Stream Blue `#1E56CD`. This supersedes the three-colour palette in D-097. The public site is now a light theme. Vanilla Cloud is the ground for every section, and Stream Blue carries text, borders, rules, buttons and the focus ring. Section numbers stay removed.
+
+**Contrast.** Stream Blue on Vanilla Cloud is 6.09:1, which passes AA for body text. Vanilla Cloud on Stream Blue is also 6.09:1, so button labels and the high-severity fill use Vanilla Cloud text. Both colours can carry text, so there is no tint or grey hierarchy. Hierarchy comes from size, weight and rules.
+
+**Not used.** The beige background shown behind the swatches on the sheet is not a named palette colour, so it is not on the site.
+
+**What changed.** `.marketing-site` defines only these two values. The severity mapping uses Stream Blue for critical and high, and Vanilla Cloud for medium, low, info and benign, with Stream Blue borders and text. Placeholder images use Stream Blue on Vanilla Cloud and the reverse. `index.html` sets `color-scheme` to `light`. The app's own theme is unchanged. The logo keeps its own colours because it is an image and not a site colour.
+
+**Gates.** The dashboard test suite, types, lint, CSS lint, format and build pass. The full CI run is recorded in the session.
+
+### D-097 (superseded by D-098) — Palette replaced by three colours; numbered section labels removed (2026-10-22)
 
 **Decision.** The user set the site palette to three colours and asked that nothing else be used: Midnight Blue `#0B132B` (dominant), Slate Gray `#6C757D` (secondary) and Electric Cyan `#00F0FF` (accent). This supersedes the four-colour palette in D-096. No white, tint, translucent overlay or shadow colour remains on the public pages. Section numbers (`01 · Detect`, the `01`–`04` step markers and the header index) are removed. The stats figures are content, not section numbers, and stay.
 
