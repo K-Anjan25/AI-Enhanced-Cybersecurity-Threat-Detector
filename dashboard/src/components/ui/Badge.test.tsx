@@ -6,16 +6,34 @@ import { Badge } from './Badge';
 import { SEVERITIES } from './severity';
 
 describe('Badge', () => {
-  it.each(SEVERITIES)('fills the %s badge with its hue and near-black text', (severity) => {
-    // §5.3's rule, as a class assertion: the fill is the base hue and the text is
-    // the `onSeverity` token. No variant of this component puts light text on a fill.
-    render(<Badge tone={severity}>{severity}</Badge>);
+  it.each(['critical', 'high'] as const)(
+    'fills the %s badge with its hue and ground-coloured text',
+    (severity) => {
+      // §5.3's rule, as a class assertion: critical and high are the filled shape. The fill
+      // is the foreground colour and the text is the `onSeverity` token (the ground colour).
+      render(<Badge tone={severity}>{severity}</Badge>);
 
-    const badge = screen.getByText(severity);
-    expect(badge.className).toContain(`bg-severity-${severity}`);
-    expect(badge.className).toContain('text-onSeverity');
-    expect(badge).toHaveTextContent(severity);
-  });
+      const badge = screen.getByText(severity);
+      expect(badge.className).toContain(`bg-severity-${severity}`);
+      expect(badge.className).toContain('text-onSeverity');
+      expect(badge).toHaveTextContent(severity);
+    },
+  );
+
+  it.each(['medium', 'low', 'info', 'benign'] as const)(
+    'outlines the %s badge with its word',
+    (severity) => {
+      // The four lower levels are the outlined shape (D-099): a border in the severity colour
+      // and the severity text colour, with no fill. The word is the second encoding.
+      render(<Badge tone={severity}>{severity}</Badge>);
+
+      const badge = screen.getByText(severity);
+      expect(badge.className).toContain(`border-severity-${severity}`);
+      expect(badge.className).toContain(`text-severityText-${severity}`);
+      expect(badge.className).not.toContain(`bg-severity-${severity}`);
+      expect(badge).toHaveTextContent(severity);
+    },
+  );
 
   it('writes the severity in words and draws no symbol beside it', () => {
     // NFR-09: colour is never the only encoding. The word is the second encoding.

@@ -3936,6 +3936,18 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-099 — Two-colour palette applied to the whole dashboard; hamburger reduced to three lines (2026-10-22)
+
+**Decision.** The user asked for the Vanilla Cloud and Stream Blue palette on the dashboard too, not only on the public site. The hamburger is three plain horizontal lines with no border, and the lines no longer turn into an X. The user answered two questions. Severity is shown with a filled shape for critical and high and an outlined shape for the other four, and the word always appears. Both themes use the same two colours inverted.
+
+**Tokens.** Dark is the default: Stream Blue ground with Vanilla Cloud type. Light is Vanilla Cloud ground with Stream Blue type. Both pairs are 6.09 : 1. Surfaces match the ground and are separated by borders. Muted text is the same colour as primary. `design.md` §5.1–5.3 and the focus-ring line are updated to match, because `tokens.test.ts` checks the code against them.
+
+**Severity.** The six levels cannot be told apart by colour, so colour is not the encoding. The Badge shows critical and high as filled and the other four as outlined, with the word. Charts that plot more than one severity series now need legends or labels, because the series share one colour. This is a known limitation of the two-colour palette, and no chart was redesigned here.
+
+**Other changes.** Five `border-line/50` translucent borders became `border-line`, because a 50% tint is a third colour. `tokens.test.ts` and `Badge.test.tsx` now assert the inverted rule and the filled and outlined split.
+
+**Hamburger.** The button has no border and no hover border. It keeps its keyboard focus ring, because removing it would hide focus from keyboard users.
+
 ### D-098 — Palette replaced by the Vanilla Cloud and Stream Blue brand sheet (2026-10-22)
 
 **Decision.** The user supplied a new palette sheet and asked that the website use these colours completely and nothing else: Vanilla Cloud `#FDF8F2` and Stream Blue `#1E56CD`. This supersedes the three-colour palette in D-097. The public site is now a light theme. Vanilla Cloud is the ground for every section, and Stream Blue carries text, borders, rules, buttons and the focus ring. Section numbers stay removed.

@@ -37,7 +37,7 @@ export function TopEntities({ entities, windowLabel, capped }: TopEntitiesProps)
         {entities.map((entity, index) => (
           <li
             key={entity.entityId}
-            className="flex items-baseline justify-between gap-3 border-b border-line/50 py-2"
+            className="flex items-baseline justify-between gap-3 border-b border-line py-2"
           >
             <span className="flex items-baseline gap-2">
               <span className="text-caption tabular-nums text-muted">{index + 1}.</span>

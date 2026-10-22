@@ -146,7 +146,7 @@ export function ThresholdsPanel() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.band} className="border-b border-line/50">
+              <tr key={row.band} className="border-b border-line">
                 <th scope="row" className="py-2 text-left font-normal">
                   {row.label}
                 </th>
