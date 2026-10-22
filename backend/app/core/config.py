@@ -200,6 +200,10 @@ class Settings(BaseSettings):
     retention_raw_records_days: int = Field(default=30, ge=1, le=3650)
     retention_alerts_days: int = Field(default=400, ge=1, le=3650)
     retention_stats_days: int = Field(default=400, ge=1, le=3650)
+    # How often the scheduler runs retention (NFR-05). Retention used to run only when an
+    # operator called the route, so an unattended deployment kept everything. 0 turns the
+    # scheduler off; it is not created at all, rather than started and left idle.
+    retention_interval_seconds: int = Field(default=86_400, ge=0, le=604_800)
     # FR-05's raw window, applied by the broker to the flow topic (``retention.ms``).
     # Kafka is where raw records live, so it may not hold them longer than the policy
     # promises: the validator below refuses a value above the raw window.

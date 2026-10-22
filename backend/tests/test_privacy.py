@@ -159,7 +159,8 @@ def test_an_inverted_pair_of_windows_stops_the_process() -> None:
 
 def test_the_preview_shows_the_policy_and_the_boundary_rule(client: TestClient) -> None:
     response = client.get(
-        "/api/v1/retention", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+        "/api/v1/retention",
+        headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
     )
     assert response.status_code == 200
     body = response.json()
@@ -181,7 +182,7 @@ def test_the_preview_shows_the_policy_and_the_boundary_rule(client: TestClient) 
     # not built, and a plan that omitted either would invite the opposite assumption.
     assert {item["table"] for item in body["unevictable"]} == {"audit_log"}
     assert all(item["reason"] for item in body["unevictable"])
-    assert set(body["row_swept"]) == {"log_events", "flow_events"}
+    assert set(body["row_swept"]) == {"log_events", "flow_events", "entities"}
     assert set(body["external"]) == {"kafka", "elasticsearch"}
 
 
@@ -251,7 +252,8 @@ def test_a_run_without_a_runner_fails_loudly(client: TestClient) -> None:
     del client.app.state.partition_runner  # type: ignore[attr-defined]
     with pytest.raises(RuntimeError, match="partition_runner"):
         client.post(
-            "/api/v1/retention/run", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+            "/api/v1/retention/run",
+            headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
         )
 
 
@@ -259,7 +261,8 @@ def test_a_run_without_a_policy_fails_loudly(client: TestClient) -> None:
     del client.app.state.retention_policy  # type: ignore[attr-defined]
     with pytest.raises(RuntimeError, match="retention_policy"):
         client.get(
-            "/api/v1/retention", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+            "/api/v1/retention",
+            headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
         )
 
 
@@ -267,7 +270,8 @@ def test_a_run_without_a_catalog_fails_loudly(client: TestClient) -> None:
     del client.app.state.known_partitions  # type: ignore[attr-defined]
     with pytest.raises(RuntimeError, match="known_partitions"):
         client.get(
-            "/api/v1/retention", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+            "/api/v1/retention",
+            headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
         )
 
 
@@ -275,7 +279,8 @@ def test_a_bad_catalog_answer_is_refused_by_name(client: TestClient) -> None:
     client.app.state.known_partitions = lambda: {("users", 2026, 1)}  # type: ignore[attr-defined]
     with pytest.raises(ValueError, match="not a partitioned table"):
         client.get(
-            "/api/v1/retention", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+            "/api/v1/retention",
+            headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
         )
 
 
@@ -288,7 +293,8 @@ def test_the_catalog_seam_accepts_a_plain_collection(client: TestClient) -> None
     """
     client.app.state.known_partitions = {("alerts", 2020, 1), ("alerts", 2026, 1)}  # type: ignore[attr-defined]
     body = client.get(
-        "/api/v1/retention", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+        "/api/v1/retention",
+        headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
     ).json()
     assert [item["name"] for item in body["drop"]] == ["alerts_2020_01"]
     assert [item["name"] for item in body["kept"]] == ["alerts_2026_01"]
@@ -310,7 +316,8 @@ def test_a_failing_drop_is_a_loud_failure_not_a_clean_run(client: TestClient) ->
     client.app.state.partition_runner = runner  # type: ignore[attr-defined]
     with pytest.raises(RuntimeError, match="retention failed on alerts_"):
         client.post(
-            "/api/v1/retention/run", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+            "/api/v1/retention/run",
+            headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
         )
 
 
@@ -403,7 +410,8 @@ def test_the_ledger_lists_newest_first_with_a_cursor(client: TestClient) -> None
 def test_the_ledger_carries_no_identifier_but_does_carry_who_asked(client: TestClient) -> None:
     erase(client, value=HOSTNAME)
     page = client.get(
-        "/api/v1/privacy/erasures", headers=headers(client.app.state.token_service)  # type: ignore[attr-defined]
+        "/api/v1/privacy/erasures",
+        headers=headers(client.app.state.token_service),  # type: ignore[attr-defined]
     ).json()
     assert HOSTNAME not in repr(page)
     assert page["items"][0]["requested_by"] == "admin@corp"

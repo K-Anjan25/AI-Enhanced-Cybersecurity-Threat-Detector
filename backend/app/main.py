@@ -11,7 +11,7 @@ import threading
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, Request
 from sqlalchemy import create_engine
@@ -90,7 +90,9 @@ from app.services.recalibration import (
     RecalibrationService,
 )
 from app.services.retention import RetentionPolicy
-from app.services.retention_catalog import CatalogRunner, list_partitions, sweep_expired_rows
+from app.services.retention_catalog import CatalogRunner, list_partitions, sweep_retained
+from app.services.retention_run import SCHEDULER_ACTOR, execute_retention, record_retention_run
+from app.services.retention_scheduler import RetentionScheduler
 from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
 from app.services.user_directory import InMemoryUserDirectory, UserAdminService
 from app.services.verdict_service import (
@@ -171,6 +173,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if detection_engine is not None:
         detection_engine.start()
         logger.info("detection_engine_started", interval=15)
+    # Retention on a timer (NFR-05). Runs once at start, so a restart after downtime
+    # catches up, then every interval.
+    retention_scheduler = getattr(app.state, "retention_scheduler", None)
+    if retention_scheduler is not None:
+        retention_scheduler.start()
+        logger.info("retention_scheduler_started")
     # Create the flow topic in the background (replaces the kafka-init container). The
     # API starts without waiting for the broker; ingest reports 503 until it is ready.
     kafka_bus = getattr(app.state, "kafka_bus", None)
@@ -205,6 +213,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Stop the detection engine
         if detection_engine is not None:
             detection_engine.stop()
+        if retention_scheduler is not None:
+            retention_scheduler.stop()
         # Stop the live consumer first, so it scores what it has read and stops
         # reading, then close the broker clients.
         if live_scoring is not None:
@@ -262,6 +272,29 @@ def _ensure_flow_topic(bus: KafkaBus) -> None:
         logger.error("kafka_topic_unavailable", error=str(exc))
     else:
         logger.info("kafka_topic_ready", topic=bus.topic, partitions=bus.partitions)
+
+
+def _scheduled_retention(app: FastAPI) -> None:
+    """One scheduled run: the same steps as the operator's route, recorded as the system."""
+    at = datetime.now(UTC)
+    run = execute_retention(
+        policy=app.state.retention_policy,
+        partitions=app.state.known_partitions,
+        runner=app.state.partition_runner,
+        sweeper=app.state.retention_sweeper,
+        at=at,
+    )
+    # The trail records changes, not requests (D-041): a scheduled run that dropped and
+    # swept nothing, which is most runs, appends nothing. Every run is logged instead.
+    _logger = get_logger("aegis.retention")
+    _logger.info(
+        "retention_run",
+        dropped=len(run.dropped),
+        already_absent=len(run.already_absent),
+        swept=run.swept,
+    )
+    if not run.is_noop:
+        record_retention_run(app.state.audit_trail, run, actor=SCHEDULER_ACTOR, ip=None)
 
 
 def build_oidc_sign_in(settings: Settings) -> OidcSignIn | None:
@@ -476,13 +509,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         retention_engine = create_engine(resolved.database_url, pool_pre_ping=True)
         app.state.known_partitions = lambda: list_partitions(retention_engine)
         app.state.partition_runner = CatalogRunner(retention_engine)
-        app.state.retention_sweeper = lambda cutoff: sweep_expired_rows(
-            retention_engine, cutoff=cutoff
-        )
+        app.state.retention_sweeper = lambda cutoffs: sweep_retained(retention_engine, cutoffs)
+        if resolved.retention_interval_seconds > 0:
+            app.state.retention_scheduler = RetentionScheduler(
+                lambda: _scheduled_retention(app),
+                interval_seconds=float(resolved.retention_interval_seconds),
+            )
     else:
         app.state.known_partitions = _no_catalog
         app.state.partition_runner = _no_runner
         app.state.retention_sweeper = None
+        app.state.retention_scheduler = None
     # Erasure (NFR-05). Entity redaction and account deletion, over the in-memory
     # models of both stores, because neither table has an adapter here yet. The
     # ledger holds tombstones; the redactor derives them from AEGIS_SECRET_KEY.

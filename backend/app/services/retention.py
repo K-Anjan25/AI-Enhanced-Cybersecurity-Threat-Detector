@@ -112,6 +112,10 @@ UNEVICTABLE_REASONS: dict[str, str] = {
 ROW_SWEPT_WINDOWS: dict[str, str] = {
     "log_events": "raw_records_days",
     "flow_events": "raw_records_days",
+    # Entities are the addresses and hosts alerts name. An entity is removed only when no
+    # retained alert refers to it (the sweep guards that), and its own window is the
+    # alerts window, so an entity never outlives the evidence that gave it meaning.
+    "entities": "alerts_days",
 }
 
 #: Where FR-05's raw records live, and what enforces their window. Named because
@@ -192,6 +196,17 @@ class RetentionPolicy:
                 "PARTITION_WINDOWS rather than letting it accumulate forever"
             )
         value: int = getattr(self, field_name)
+        return value
+
+    def days_for_window(self, window: str) -> int:
+        """The number of days behind one named window (``alerts_days`` and so on).
+
+        Raises:
+            ValueError: if the name is not one of the policy's windows.
+        """
+        if window not in {"raw_records_days", "alerts_days", "stats_days"}:
+            raise ValueError(f"{window!r} is not a retention window")
+        value: int = getattr(self, window)
         return value
 
     def cutoff_for(self, table: str, *, today: date) -> date:
