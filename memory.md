@@ -3912,6 +3912,27 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-093 — Retention audit: scheduler, entity sweep and an index; the gaps that remain are named (2026-10-22)
+
+**Audit of the retention code against NFR-05, FR-05 and the plan.** Findings, each with what was done:
+
+1. **Retention ran only when an operator called the route.** A deployment nobody ran by hand kept every partition, so the 44 partitions past their window accumulated. *Fixed:* `app/services/retention_scheduler.py` runs the same path on a timer (`AEGIS_RETENTION_INTERVAL_SECONDS`, default 86400, 0 disables). The first run is delayed a minute, so a restarted deployment catches up quickly without racing start-up. A failed run is logged and the loop continues. Scheduled runs are audited only when they changed something (D-041: the trail records changes, not requests); every run is logged.
+2. **One run path, two callers.** The route and the scheduler now share `app/services/retention_run.py`, so a scheduled run cannot drift from a manual one.
+3. **`entities` had no retention window.** Entities are the addresses and hosts alerts name, so they are personal data where an address is one. *Fixed:* swept with the alerts window, and only when no retained alert refers to them (`NOT EXISTS`). The foreign key from `alerts` independently refuses to lose a referenced entity; a live test proves both.
+4. **No index on `alerts.entity_id`.** The `NOT EXISTS` would scan every alert partition per candidate. *Fixed:* `ix_alerts_entity_id` in the model and in migration `0005_alert_entity_index`, the new head.
+5. **Sweeper seam took one cutoff for every table.** *Fixed:* each row-swept table gets its own cutoff from its own window (`sweep_retained`).
+6. **Plan display text was parsed as a window name** in an early draft. Caught by a test; the run now looks windows up from `ROW_SWEPT_WINDOWS`, and `RetentionPolicy.days_for_window` refuses anything that is not a window.
+
+**Verified against a real PostgreSQL** (pgserver, a local server, not a mock): the migration chain applies to a fresh schema, the entity sweep honours the foreign key, batches drain a backlog and are idempotent, and the live retention tests that were skipped in earlier runs now run (100 passing). Full backend suite: 2139 passed with no database, 2188 with the live database configured.
+
+**Gaps that remain, and why they are not fixed here:**
+- **Elasticsearch.** `docker/docker-compose.yml` starts an Elasticsearch container that nothing writes to. The plan's statement "not used" is true of the code, but the container is still running, and it holds no lifecycle policy. The fix is a decision: remove the service, or ship an ILM policy together with a writer. Not changed here.
+- **`model_versions_history`** has a `promoted_at` and no window. It is small metadata, but it is not swept. Needs a decision on how long promotion history should last.
+- **`thresholds`, `users` and `api_keys`** are kept by design (current state and accounts, not events). They are not swept; the retention report should say so.
+- **`audit_log`** is kept by decision (R-31, D-041), as the report already states.
+- **Scheduler and several replicas.** Each replica runs its own scheduler. This is safe, because drops are `IF EXISTS` and sweeps are idempotent, but each replica may record its own audit row. One replica should run the scheduler, which is deployment configuration.
+- **Kafka** retention is re-asserted on every start (`ensure_topic` → `alter_configs`), so that claim holds.
+
 ### D-091 — Measurements on this head: ingest soak, scoring latency, browser pass, live-DB re-run; one benchmark defect found and fixed (2026-10-21)
 
 **The 30-minute ingest soak was invalid on its first run, and the cause was the benchmark.** The access token has a fixed lifetime of 900 seconds (`auth/tokens.py`). The first soak never refreshed it, so after about 15 minutes every request got 401: 4,504 of 9,004. The server behaved correctly. `scripts/bench_ingest.py` now logs in again on the first 401, resends the same batch, and reports `relogins_after_401`. A stub server that rejects the first token confirmed one re-login and no errors.

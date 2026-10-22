@@ -33,7 +33,9 @@ __all__ = [
     "SWEEPABLE_TABLES",
     "CatalogRunner",
     "list_partitions",
+    "sweep_entities",
     "sweep_expired_rows",
+    "sweep_retained",
 ]
 
 #: ``<table>_<YYYY>_<MM>``, the name :func:`partition_name` produces.
@@ -189,3 +191,67 @@ def sweep_expired_rows(
                 break
         deleted[table] = total
     return deleted
+
+
+#: Entities no retained alert refers to, last seen before the cutoff. The ``NOT EXISTS``
+#: is the reason this is safe: an entity an alert still names is never deleted, whatever
+#: its ``last_seen``, so the foreign key cannot be broken by a sweep. Indexed by
+#: ``ix_entities_last_seen`` (the range) and ``ix_alerts_entity_id`` (the check).
+_ENTITY_SWEEP = text(
+    "DELETE FROM entities WHERE id IN ("
+    "SELECT e.id FROM entities AS e "
+    "WHERE e.last_seen < :cutoff "
+    "AND NOT EXISTS (SELECT 1 FROM alerts AS a WHERE a.entity_id = e.id) "
+    "ORDER BY e.last_seen LIMIT :batch)"
+)
+
+
+def sweep_entities(
+    engine: Engine,
+    *,
+    cutoff: datetime,
+    batch_rows: int = SWEEP_BATCH_ROWS,
+    max_batches: int = SWEEP_MAX_BATCHES,
+) -> int:
+    """Delete unreferenced entities last seen before ``cutoff``, in bounded batches.
+
+    Returns:
+        Rows deleted in this run. A run that hit ``max_batches`` continues next time.
+
+    Raises:
+        ValueError: if the batch sizes are not positive.
+    """
+    if batch_rows < 1 or max_batches < 1:
+        msg = "batch_rows and max_batches must both be at least 1"
+        raise ValueError(msg)
+    total = 0
+    for _ in range(max_batches):
+        with engine.begin() as conn:
+            removed = conn.execute(_ENTITY_SWEEP, {"cutoff": cutoff, "batch": batch_rows}).rowcount
+        total += removed
+        if removed < batch_rows:
+            break
+    return total
+
+
+def sweep_retained(engine: Engine, cutoffs: dict[str, datetime]) -> dict[str, int]:
+    """Run each row-swept table's sweep against its own cutoff.
+
+    Each table has its own window (raw records for the event tables, the alerts window for
+    entities), so the caller passes one cutoff per table, and a table not named is not
+    swept.
+
+    Raises:
+        ValueError: if a table is neither a row-swept event table nor ``entities``.
+    """
+    result: dict[str, int] = {}
+    for table, cutoff in sorted(cutoffs.items()):
+        if table == "entities":
+            result[table] = sweep_entities(engine, cutoff=cutoff)
+        elif table in SWEEPABLE_TABLES:
+            column = SWEEPABLE_TABLES[table]
+            result.update(sweep_expired_rows(engine, cutoff=cutoff, tables={table: column}))
+        else:
+            msg = f"{table!r} is not a row-swept table"
+            raise ValueError(msg)
+    return result

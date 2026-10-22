@@ -245,6 +245,9 @@ class Alert(Base):
 
     __table_args__ = (
         CheckConstraint(SEVERITY_CHECK, name="ck_alerts_severity"),
+        # The entity sweep asks "is any alert still on this entity?" for each candidate;
+        # without this index every candidate is a scan of every alert partition.
+        Index("ix_alerts_entity_id", "entity_id"),
         {"postgresql_partition_by": "RANGE (created_at)"},
     )
 
