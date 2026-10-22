@@ -96,7 +96,7 @@ export function SiteHeader() {
         className={`fixed inset-0 z-30 flex-col justify-center overflow-y-auto bg-base px-6 py-16 md:px-12 ${open ? 'flex' : 'hidden'}`}
       >
         <ul className="mx-auto grid w-full max-w-[520px] list-none gap-2 p-0">
-          {NAV_ITEMS.map((item, index) => {
+          {NAV_ITEMS.map((item) => {
             const current = pathname === item.to;
             return (
               <li key={item.to}>
@@ -105,9 +105,6 @@ export function SiteHeader() {
                   aria-current={current ? 'page' : undefined}
                   className={`flex items-baseline gap-4 rounded-card border px-4 py-3 text-display no-underline hover:border-accent hover:text-accent ${current ? 'border-line text-accent' : 'border-transparent text-ink'}`}
                 >
-                  <span className="font-mono text-caption text-accent" aria-hidden="true">
-                    0{index + 1}
-                  </span>
                   {item.label}
                 </Link>
               </li>

@@ -128,7 +128,7 @@ export function PricingPage() {
 
         {/* A real table, so screen-reader users can move by row and column. */}
         <Reveal className="mt-16 min-w-0">
-          <div className="overflow-x-auto rounded-card border border-line">
+          <div className="marketing-scroll rounded-card border border-line">
             <table className="w-full min-w-[560px] border-collapse bg-surface text-left">
               <caption className="px-6 py-4 text-left text-h2 font-semibold text-ink">
                 Compare plans

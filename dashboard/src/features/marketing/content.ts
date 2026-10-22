@@ -105,10 +105,10 @@ export interface SplitSection {
 }
 
 /** Placeholder imagery from placehold.co. Swap for product screenshots before launch. */
-/** Brand-palette placeholders: Signal Blue with white text, or Cloud Mist with charcoal text. */
+/** Brand-palette placeholders: Electric Cyan on Midnight, or Slate on Midnight. */
 const PLACEHOLDER_TONES = {
-  signal: '0030cf/ffffff',
-  cloud: 'd7e1ec/13171b',
+  cyan: '00f0ff/0b132b',
+  slate: '6c757d/0b132b',
 } as const;
 
 const placeholder = (
@@ -121,7 +121,7 @@ const placeholder = (
 
 export const HOME_SECTIONS: readonly SplitSection[] = [
   {
-    eyebrow: '01 · Detect',
+    eyebrow: 'Detect',
     title: 'Scoring that adapts to your traffic',
     body: 'AEGIS groups flow records into fixed windows and scores each window against learned baselines. You see the pattern, not one noisy packet.',
     points: [
@@ -129,11 +129,11 @@ export const HOME_SECTIONS: readonly SplitSection[] = [
       ['Explainable scores.', 'Every alert shows the features that drove the score.'],
       ['Tunable thresholds.', 'Change sensitivity per model, with each change in the audit trail.'],
     ],
-    image: placeholder(960, 600, 'Detection engine', 'signal'),
+    image: placeholder(960, 600, 'Detection engine', 'cyan'),
     alt: 'Placeholder for the detection engine scoring view',
   },
   {
-    eyebrow: '02 · Triage',
+    eyebrow: 'Triage',
     title: 'Alerts ranked by risk, grouped by story',
     body: 'Related events merge into one alert, so an analyst reviews a story rather than hundreds of rows. Each verdict is recorded once and cannot be silently rewritten.',
     points: [
@@ -141,11 +141,11 @@ export const HOME_SECTIONS: readonly SplitSection[] = [
       ['Immutable verdicts.', 'Analyst decisions are stored as a permanent record.'],
       ['Priority queue.', 'Severity and score decide what appears first.'],
     ],
-    image: placeholder(960, 600, 'Triage queue', 'cloud'),
+    image: placeholder(960, 600, 'Triage queue', 'slate'),
     alt: 'Placeholder for the alert triage queue',
   },
   {
-    eyebrow: '03 · Investigate',
+    eyebrow: 'Investigate',
     title: 'Search, hunt and export without leaving the console',
     body: 'Pivot from an alert to the flows, logs and entities behind it. Every export is logged with the person who requested it.',
     points: [
@@ -153,7 +153,7 @@ export const HOME_SECTIONS: readonly SplitSection[] = [
       ['Audited exports.', 'CSV exports are logged with the requesting user.'],
       ['Role-based access.', 'Viewers, analysts, responders and admins see only what they need.'],
     ],
-    image: placeholder(960, 600, 'Investigation console', 'signal'),
+    image: placeholder(960, 600, 'Investigation console', 'cyan'),
     alt: 'Placeholder for the investigation console',
   },
 ];
@@ -177,7 +177,7 @@ export const FEATURE_SECTIONS: readonly SplitSection[] = [
         'The console shows when current traffic has moved away from the baseline.',
       ],
     ],
-    image: placeholder(960, 600, 'Model scores', 'signal'),
+    image: placeholder(960, 600, 'Model scores', 'cyan'),
     alt: 'Placeholder for model score charts',
   },
   {
@@ -193,7 +193,7 @@ export const FEATURE_SECTIONS: readonly SplitSection[] = [
       ['Scoped API keys.', 'Each key has explicit scopes and can be revoked immediately.'],
       ['Retention reports.', 'Each run lists what was swept and why some data is kept.'],
     ],
-    image: placeholder(960, 600, 'Audit trail', 'cloud'),
+    image: placeholder(960, 600, 'Audit trail', 'slate'),
     alt: 'Placeholder for the audit trail view',
   },
   {
@@ -205,7 +205,7 @@ export const FEATURE_SECTIONS: readonly SplitSection[] = [
       ['Full version history.', 'Every promotion records who promoted it and when.'],
       ['Deployment-ready.', 'Runs on Docker Compose or Kubernetes with the same services.'],
     ],
-    image: placeholder(960, 600, 'Model versions', 'signal'),
+    image: placeholder(960, 600, 'Model versions', 'cyan'),
     alt: 'Placeholder for model version history',
   },
 ];

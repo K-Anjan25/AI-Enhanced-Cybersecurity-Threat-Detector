@@ -75,7 +75,6 @@ export function FeaturesPage() {
           {ARCHITECTURE_STEPS.map(([title, body], index) => (
             <Reveal key={title} delayMs={index * 80} className="h-full">
               <li className="h-full rounded-card border-t-2 border-accent bg-surface p-6">
-                <span className="font-mono text-caption text-accent">0{index + 1}</span>
                 <h3 className="mt-2 text-h2 font-semibold text-ink">{title}</h3>
                 <p className="mb-0 mt-2 text-body-sm text-muted">{body}</p>
               </li>
