@@ -46,6 +46,8 @@ const SAMPLE_ALERTS: ReadonlyArray<{
 
 /* Palette-only badges: a solid fill for the top two levels, an outline for the lowest. */
 const SEVERITY_FILL: Record<'high' | 'medium' | 'low', string> = {
+  // Each fill sets its own text colour. The pill must not also carry `text-onSeverity`,
+  // which is the ground colour and would hide the label on the outlined pills.
   high: 'bg-accent text-onAccent',
   medium: 'border border-accent text-accent',
   low: 'border border-line text-ink',
@@ -128,7 +130,7 @@ export function LandingPage() {
                     className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-t border-line py-3"
                   >
                     <span
-                      className={`rounded-pill px-3 py-1 font-mono text-caption font-semibold uppercase text-onSeverity ${SEVERITY_FILL[alert.severity]}`}
+                      className={`rounded-pill px-3 py-1 font-mono text-caption font-semibold uppercase ${SEVERITY_FILL[alert.severity]}`}
                     >
                       {alert.severity}
                     </span>

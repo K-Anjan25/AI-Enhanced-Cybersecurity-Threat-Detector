@@ -26,7 +26,7 @@ export function StickyCta() {
   return (
     <Link
       to="/contact"
-      className="fixed bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-pill bg-accent px-6 py-3 text-caption font-semibold uppercase tracking-widest text-onAccent shadow-overlay no-underline max-md:inset-x-4 max-md:justify-center"
+      className="fixed bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-pill border border-accent bg-surface px-6 py-3 text-caption font-semibold uppercase tracking-widest text-accent shadow-overlay no-underline max-md:inset-x-4 max-md:justify-center"
     >
       <CalendarCheck aria-hidden="true" className="size-icon-md" />
       Book a demo
