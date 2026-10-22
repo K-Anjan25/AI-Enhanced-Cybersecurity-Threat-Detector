@@ -98,7 +98,7 @@ export function FamilyMixChart({
           </thead>
           <tbody>
             {sorted.map((family) => (
-              <tr key={family.family} className="border-b border-line/50">
+              <tr key={family.family} className="border-b border-line">
                 <th scope="row" className="py-1 pr-4 text-left font-normal text-ink">
                   {family.family}
                 </th>

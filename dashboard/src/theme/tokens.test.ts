@@ -323,8 +323,9 @@ describe('design.md agreement', () => {
   });
 
   it('implements the badge rule with the published ratios', () => {
-    expect(dark['--color-on-severity']).toBe('#0f232e');
-    expect(light['--color-on-severity']).toBe(dark['--color-on-severity']);
+    // Two-colour palette (D-099): filled-badge text is the ground colour of each theme.
+    expect(dark['--color-on-severity']).toBe(dark['--color-bg-base']);
+    expect(light['--color-on-severity']).toBe(light['--color-bg-base']);
     const rule = section('**Badge rule.**');
     for (const severity of SEVERITIES) {
       const published = new RegExp(`${severity} ([\\d.]+)`).exec(rule);

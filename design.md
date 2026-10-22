@@ -216,48 +216,50 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-The brand palette: Deep Blue `#0000FF`, Dawning Mist `#DBE2E9`, Grey `#9BAAB9`, Mariana Blue `#0F232E`, and White. Dark is the default: a Mariana Blue field with Dawning Mist and Grey type, Mist accents, and Deep Blue held to a muted `#081297` for selected and active states, so nothing glares. Light is a full peer on Dawning Mist, with Deep Blue as its accent. Halftone imagery and white pill buttons carry over from the reference. The surface tint `#16303D` (dark) and the muted text `#3E5160` (light) are shades derived from the palette, because the brand sheet has no equivalent. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+The brand palette is two colours: Stream Blue `#1E56CD` and Vanilla Cloud `#FDF8F2` (memory.md D-099). Nothing else is used: no tint, no third colour, no translucent overlay. Dark is the default: a Stream Blue field with Vanilla Cloud type. Light is the same pair inverted: a Vanilla Cloud field with Stream Blue type. Both pairs measure 6.09 : 1 against each other, so either theme reads at WCAG AA. Surfaces match the field and are separated by borders, because the palette has no second tint. Muted text is the same colour as primary text, so hierarchy comes from size and weight, not colour. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
 
 ### 5.1 Colour — dark theme (default)
 
-| Token            | Value     | Contrast                                         | Use                                                    |
+|Token|Value|Contrast|Use|
 |---|---|---|---|
-| `bg.base`        | `#0F232E` | —                                                | App background                                         |
-| `bg.surface`     | `#16303D` | —                                                | Cards, panels, tables                                  |
-| `border.default` | `#9BAAB9` | decorative                                       | Hairlines; never the sole separator for essential info |
-| `text.primary`   | `#DBE2E9` | 12.36 : 1 on `bg.base` · 10.54 : 1 on `bg.surface` | Body, headings                                         |
-| `text.muted`     | `#9BAAB9` | 6.80 : 1 on `bg.base` · 5.80 : 1 on `bg.surface` | Secondary labels, metadata                             |
-| `accent`         | `#DBE2E9` | 12.36 : 1 on `bg.base` · 10.54 : 1 on `bg.surface` | Links, focus, primary actions                          |
+|`bg.base`|`#1E56CD`|—|App background|
+|`bg.surface`|`#1E56CD`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Hairlines and control boundaries; never the sole separator for essential info|
+|`text.primary`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Secondary labels, metadata (same colour as primary)|
+|`accent`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.2 Colour — light theme
 
-| Token            | Value     | Contrast                                           | Use                           |
+|Token|Value|Contrast|Use|
 |---|---|---|---|
-| `bg.base`        | `#DBE2E9` | —                                                  | App background                |
-| `bg.surface`     | `#FFFFFF` | —                                                  | Cards, panels, tables         |
-| `border.default` | `#6B7982` | 3.43 : 1 on `bg.base` · 4.48 : 1 on `bg.surface` | Hairlines and control boundaries (WCAG 1.4.11). Mariana Blue at 55%; Grey `#9BAAB9` fails at 1.82 / 2.37 |
-| `text.primary`   | `#0F232E` | 12.36 : 1 on `bg.base` · 16.15 : 1 on `bg.surface` | Body, headings                |
-| `text.muted`     | `#3E5160` | 6.30 : 1 on `bg.base` · 8.23 : 1 on `bg.surface`   | Secondary labels              |
-| `accent`         | `#0000FF` | 6.57 : 1 on `bg.base` · 8.59 : 1 on `bg.surface`   | Links, focus, primary actions |
+|`bg.base`|`#FDF8F2`|—|App background|
+|`bg.surface`|`#FDF8F2`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
+|`text.primary`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
+|`accent`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.3 Severity palette
 
-Severity has **two** tokens per level. The base hue is for fills, borders, chart marks, and the 3 px alert rail. The `text` variant is for any text rendered directly on a background, because the base hues do not all reach AA as text on the blue surfaces.
+Severity has six levels, and the palette has two colours, so **colour does not tell the levels apart**. Each level is written out in words, and the filled and outlined badges differ by shape as well as by the word. The base value is the fill, border, or chart mark, and also the 3 px alert rail; the text value is for any text rendered on a background.
 
-| Severity   | Base (fill / chart) | Text on dark            | Text on light           | Label    |
+|Severity|Base (fill / border / chart)|Text|Label|Badge|
 |---|---|---|---|---|
-| `critical` | `#D27884` | `#EBA6AE` — 8.15 / 6.95 | `#8A2C3A` — 6.42 / 8.39 | `Critical` |
-| `high` | `#C98D5E` | `#EBC29F` — 9.81 / 8.36 | `#7E4620` — 5.77 / 7.54 | `High` |
-| `medium` | `#CFB35E` | `#E9D595` — 11.09 / 9.46 | `#5E4F12` — 6.17 / 8.07 | `Medium` |
-| `low` | `#6E9CB5` | `#AFD0E1` — 9.95 / 8.48 | `#2D5870` — 5.86 / 7.66 | `Low` |
-| `info` | `#9BAAB9` | `#DBE2E9` — 12.36 / 10.54 | `#3E5160` — 6.30 / 8.23 | `Info` |
-| `benign` | `#6BA58A` | `#AAD4BB` — 9.88 / 8.43 | `#2D6446` — 5.32 / 6.95 | `Benign` |
+|`critical`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Critical`|Filled|
+|`high`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`High`|Filled|
+|`medium`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Medium`|Outlined|
+|`low`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Low`|Outlined|
+|`info`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Info`|Outlined|
+|`benign`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Benign`|Outlined|
 
-_Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes._
+_Ratios are `on bg.base` / `on bg.surface`. Every text value clears WCAG AA (≥ 4.5 : 1) on both surfaces in both themes._
 
-**Badge rule.** A severity badge is a base-hue fill with `#0F232E` text. Measured: critical 5.20, high 5.73, medium 7.89, low 5.45, info 6.80, benign 5.67 — all ≥ 4.5 : 1. White text on these fills fails (critical 3.11, medium 2.05) and is prohibited.
+**Badge rule.** A severity badge is one of two shapes. Critical and high are filled with the foreground colour and carry the ground colour as text. Medium, low, info and benign are outlined with the foreground colour and carry the foreground colour as text. The filled badge text is `--color-on-severity`: `#1E56CD` on dark and `#FDF8F2` on light. Measured on the fill: critical 6.09, high 6.09, medium 6.09, low 6.09, info 6.09, benign 6.09, all ≥ 4.5 : 1. White text on these fills fails (1.00 on the dark fill) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 12.36 : 1 (dark) and 6.57 : 1 (light) — above the 3 : 1 non-text requirement.
+**Charts.** Six severity series cannot be told apart by colour. Any chart that plots more than one severity needs a legend, direct labels, or a pattern in addition to the colour.
+
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 6.09 : 1 (dark) and 6.09 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 

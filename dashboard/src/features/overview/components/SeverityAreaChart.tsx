@@ -99,7 +99,7 @@ export function SeverityAreaChart({
           </thead>
           <tbody>
             {points.map((point, index) => (
-              <tr key={point.label} className="border-b border-line/50">
+              <tr key={point.label} className="border-b border-line">
                 <th scope="row" className="py-1 pr-4 text-left font-normal text-muted">
                   {point.label}
                 </th>
