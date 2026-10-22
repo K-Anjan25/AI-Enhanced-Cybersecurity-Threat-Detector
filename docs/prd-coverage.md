@@ -111,7 +111,7 @@ Ordered by what unblocks the most, and each names what it needs.
 
 1. **Confirm CI green on the head commit.** Needs the pre-commit job to pass after the prettier fix.
 2. **Precision at the `high` threshold (largest open product metric).** Blocked here: the UNSW-NB15 and CIC-IDS2017 hosts are unreachable from this sandbox. Needs the dataset files placed under `data/raw/` (or a reachable mirror). Until then no precision number can be measured, so none is claimed.
-3. **Landing headline contrast (resolved).** The animated field is removed and the hero is a solid Midnight Blue ground with Electric Cyan text, 13.05:1. See `docs/accessibility-manual-pass.md`.
+3. **Landing headline contrast (resolved).** The animated field is removed and the hero is a solid Vanilla Cloud ground with Stream Blue text, 6.09:1. See `docs/accessibility-manual-pass.md`.
 4. **Screen-reader pass (D-087).** Needs a person with NVDA or VoiceOver. Script and results table are in `docs/accessibility-manual-pass.md`.
 5. **Docker, image builds, and `helm lint`.** Needs an environment with Docker and Helm. Neither binary is reachable from this sandbox.
 6. **End-to-end ingest→alert ≤ 5 s and the 10,000 log lines/s half of the load test.** Needs Kafka and the ML service running, and k6 installed in a runner. The flow-ingest half is already measured in-process.
