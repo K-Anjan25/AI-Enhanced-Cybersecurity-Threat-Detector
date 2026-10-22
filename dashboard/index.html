@@ -4,8 +4,62 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="color-scheme" content="dark light" />
+
+        <!-- Search and link-preview metadata for the public pages. The app updates the title and
+             description per page at runtime (features/marketing/hooks.ts); these are the defaults
+             crawlers see before any script runs. -->
+        <title>AEGIS | AI-Enhanced Threat Detection for Security Teams</title>
+        <meta
+            name="description"
+            content="AEGIS scores network flows and system logs with machine-learning models, then turns anomalies into prioritised alerts your analysts can triage in minutes."
+        />
+        <meta
+            name="keywords"
+            content="threat detection, network anomaly detection, SOC automation, security analytics, alert triage, self-hosted SIEM"
+        />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <!-- TODO: set the production origin before launch. -->
+        <link rel="canonical" href="https://www.example.com/" />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="AEGIS" />
+        <meta property="og:title" content="AEGIS | AI-Enhanced Threat Detection" />
+        <meta
+            property="og:description"
+            content="Machine-learning threat detection that turns network and log anomalies into prioritised, auditable alerts."
+        />
+        <meta property="og:url" content="https://www.example.com/" />
+        <meta property="og:image" content="https://placehold.co/1200x630?text=AEGIS" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="AEGIS | AI-Enhanced Threat Detection" />
+        <meta
+            name="twitter:description"
+            content="Prioritised, auditable alerts from machine-learning threat detection."
+        />
+
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "Organization",
+                        "name": "AEGIS",
+                        "url": "https://www.example.com/",
+                        "logo": "https://placehold.co/512x512?text=A"
+                    },
+                    {
+                        "@type": "SoftwareApplication",
+                        "name": "AEGIS",
+                        "applicationCategory": "SecurityApplication",
+                        "operatingSystem": "Linux",
+                        "description": "AI-enhanced threat detection that scores network flows and system logs and produces prioritised, auditable alerts.",
+                        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+                    }
+                ]
+            }
+        </script>
+
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <title>AEGIS — Cybersecurity Threat Detector</title>
     </head>
     <body>
         <div id="root"></div>

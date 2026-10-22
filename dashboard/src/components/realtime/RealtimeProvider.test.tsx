@@ -16,10 +16,10 @@ import { QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getJson } from '../../api/client';
-import { resetSessionForTests } from '../../api/session';
+import { resetSessionForTests, setSessionToken } from '../../api/session';
 import { AppShell } from '../layout/AppShell';
 import { jsonResponse, stubFetch, testQueryClient } from '../../test/query';
 import { fakeClock, fakeSockets } from '../../test/socket';
@@ -149,7 +149,13 @@ function stubAlertEndpoints(
   return { seen, polls };
 }
 
+// The live channel runs for a signed-in session only, so the shell tests sign in first.
+beforeEach(() => {
+  setSessionToken('test-token');
+});
+
 afterEach(() => {
+  resetSessionForTests();
   // The visibility test shadows jsdom's own getter; drop the shadow so the next
   // file's tests see a visible document.
   delete (document as unknown as Record<string, unknown>)['visibilityState'];
@@ -159,6 +165,31 @@ afterEach(() => {
 });
 
 describe('the shell and the live stream', () => {
+  it('opens no socket and polls nothing while signed out, so the public pages stay quiet', async () => {
+    // The public pages render outside the console, and must not reach the API as a visitor.
+    setSessionToken(null);
+    const sockets = fakeSockets();
+    const seen = stubFetch([
+      { match: NOTIFICATIONS_PATH, respond: () => jsonResponse({ items: [], cursor: null }) },
+    ]);
+    render(
+      <ThemeProvider>
+        <QueryClientProvider client={testQueryClient()}>
+          <RealtimeProvider
+            socketFactory={sockets.factory}
+            options={{ clock: fakeClock(), random: () => 0 }}
+          >
+            <p>public page</p>
+          </RealtimeProvider>
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText('public page')).toBeInTheDocument();
+    expect(sockets.sockets).toHaveLength(0);
+    expect(seen.filter((request) => request.url.includes(NOTIFICATIONS_PATH))).toHaveLength(0);
+  });
+
   it('replays missed alerts across a reconnect, without waiting for an interval', async () => {
     // The server's table: alerts 1 and 2 exist, and 3 is published mid-outage.
     let published = [1, 2];
