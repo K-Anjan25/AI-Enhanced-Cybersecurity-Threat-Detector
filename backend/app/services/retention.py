@@ -100,6 +100,18 @@ PARTITION_WINDOWS: dict[str, str] = {
 #: Reported in every plan: an operator reading a retention report is entitled to know
 #: what it did *not* reach.
 UNEVICTABLE_REASONS: dict[str, str] = {
+    "users": (
+        "kept by design: accounts are current state, not events, and are removed by "
+        "deletion or by the erasure path for a data subject (R-37), never by age"
+    ),
+    "api_keys": (
+        "kept by design: the record of issued and revoked keys. A revoked key's digest "
+        "cannot authenticate, and the row answers which key an action used"
+    ),
+    "thresholds": (
+        "kept by design: one row per detection family, overwritten in place, so it is "
+        "bounded by the number of families and holds no event data"
+    ),
     "audit_log": (
         "kept by decision: append-only (R-31) and not partitioned, so neither a partition "
         "drop nor a row delete may touch it. It records each erasure, so it is the "
@@ -116,6 +128,9 @@ ROW_SWEPT_WINDOWS: dict[str, str] = {
     # retained alert refers to it (the sweep guards that), and its own window is the
     # alerts window, so an entity never outlives the evidence that gave it meaning.
     "entities": "alerts_days",
+    # Reversed promotions only (see retention_catalog.sweep_reversed_promotions). An
+    # un-reversed promotion is a live rollback target and is never swept.
+    "model_versions_history": "alerts_days",
 }
 
 #: Where FR-05's raw records live, and what enforces their window. Named because
@@ -126,9 +141,9 @@ EXTERNAL_RETENTION: dict[str, str] = {
         "and re-asserted on every start; it may not exceed the raw-record window"
     ),
     "elasticsearch": (
-        "not used: no component of this service writes to Elasticsearch, so it holds no "
-        "raw records and has no index to age out. If a writer is added, its lifecycle "
-        "policy must ship with it"
+        "not deployed (D-034 deferred it): no component writes to Elasticsearch, so it "
+        "holds no raw records, is not in the compose file, and has no index to age out. "
+        "If a writer returns, its lifecycle policy must ship with it"
     ),
 }
 

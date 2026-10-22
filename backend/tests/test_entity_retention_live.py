@@ -189,3 +189,43 @@ def test_sweep_retained_refuses_a_table_it_does_not_know(migrated: object) -> No
 
     with pytest.raises(ValueError, match="not a row-swept table"):
         sweep_retained(migrated, {"users": datetime.now(UTC)})  # type: ignore[arg-type]
+
+
+def _promotion(engine: object, *, rolled_back_at: datetime | None, promoted_at: datetime) -> None:
+    with engine.begin() as conn:  # type: ignore[attr-defined]
+        model_id = conn.exec_driver_sql(
+            "INSERT INTO models (name, version, kind, artifact_uri, metrics, training_manifest, "
+            "status) VALUES ('flow-net', %s, 'flow', 'file:///m', '{}', '{}', 'retired') "
+            "RETURNING id",
+            (uuid.uuid4().hex[:8],),
+        ).scalar_one()
+        conn.exec_driver_sql(
+            "INSERT INTO model_versions_history (model_id, promoted_at, rolled_back_at) "
+            "VALUES (%s, %s, %s)",
+            (model_id, promoted_at, rolled_back_at),
+        )
+
+
+def test_reversed_promotions_age_out_and_un_reversed_ones_are_never_swept(
+    migrated: object,
+) -> None:
+    """A reversed promotion is a tombstone; an un-reversed one is a live rollback target."""
+    from app.services.retention_catalog import sweep_reversed_promotions
+
+    now = datetime.now(UTC)
+    old = now - timedelta(days=500)
+    _promotion(migrated, rolled_back_at=now - timedelta(days=450), promoted_at=old)  # swept
+    _promotion(migrated, rolled_back_at=now - timedelta(days=10), promoted_at=old)  # kept
+    _promotion(migrated, rolled_back_at=None, promoted_at=old)  # never swept, however old
+
+    deleted = sweep_reversed_promotions(migrated, cutoff=now - timedelta(days=400))  # type: ignore[arg-type]
+
+    assert deleted == 1
+    assert _count(migrated, "SELECT count(*) FROM model_versions_history") == 2
+    assert (
+        _count(
+            migrated,
+            "SELECT count(*) FROM model_versions_history WHERE rolled_back_at IS NULL",
+        )
+        == 1
+    )

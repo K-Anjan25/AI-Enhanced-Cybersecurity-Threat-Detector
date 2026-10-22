@@ -86,7 +86,12 @@ def test_the_sweep_counts_are_reported_on_the_run() -> None:
         sweeper=lambda cutoffs: dict.fromkeys(cutoffs, 5),
         at=AT,
     )
-    assert run.swept == {"log_events": 5, "flow_events": 5, "entities": 5}
+    assert run.swept == {
+        "log_events": 5,
+        "flow_events": 5,
+        "entities": 5,
+        "model_versions_history": 5,
+    }
 
 
 def test_days_for_window_refuses_a_name_that_is_not_a_window() -> None:

@@ -3912,6 +3912,16 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-094 — Remaining retention gaps decided (2026-10-22)
+
+The three gaps left open by D-093 are decided here, and the code and compose file follow the decisions.
+
+1. **Elasticsearch: removed from the compose file.** D-034 had already deferred it, and nothing writes to or reads from it, so it only cost a gigabyte of memory and made `backend` wait on its healthcheck. The service, its volume and its dependency are gone; `scripts/check_compose.py` passes with seven services. If search moves to a cluster later, its lifecycle policy ships with its writer. The retention plan still names it, as "not deployed". Docker is not available here, so the stack has not been started.
+2. **`model_versions_history`: kept for the alerts window (400 days) once reversed; un-reversed promotions are kept indefinitely.** A rollback restores the most recent un-reversed promotion, so an un-reversed row is a live rollback target and must not be swept, whatever its age. A reversed row is never read again, so it ages out. The sweep is `sweep_reversed_promotions`; a live test proves that a reversed row is deleted while an old un-reversed row is kept. The table is small, so no index was added.
+3. **`users`, `api_keys`, `thresholds`: kept by design, and the plan now says so with a reason.** Accounts are current state and leave only by deletion or by the erasure path (R-37). Revoked keys stay as the record of which key an action used. Thresholds are one row per family, overwritten in place. These reasons appear under `unevictable` in the retention report.
+
+Known open points: the un-reversed promotion rows carry `promoted_by`, a user id, so they are personal data kept indefinitely. Erasure of an account (R-37) is the path that addresses that, and it has not been verified against those rows.
+
 ### D-093 — Retention audit: scheduler, entity sweep and an index; the gaps that remain are named (2026-10-22)
 
 **Audit of the retention code against NFR-05, FR-05 and the plan.** Findings, each with what was done:

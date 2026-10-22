@@ -34,6 +34,7 @@ __all__ = [
     "CatalogRunner",
     "list_partitions",
     "sweep_entities",
+    "sweep_reversed_promotions",
     "sweep_expired_rows",
     "sweep_retained",
 ]
@@ -242,12 +243,15 @@ def sweep_retained(engine: Engine, cutoffs: dict[str, datetime]) -> dict[str, in
     swept.
 
     Raises:
-        ValueError: if a table is neither a row-swept event table nor ``entities``.
+        ValueError: if a table is not one this module sweeps (the event tables,
+            ``entities`` or ``model_versions_history``).
     """
     result: dict[str, int] = {}
     for table, cutoff in sorted(cutoffs.items()):
         if table == "entities":
             result[table] = sweep_entities(engine, cutoff=cutoff)
+        elif table == "model_versions_history":
+            result[table] = sweep_reversed_promotions(engine, cutoff=cutoff)
         elif table in SWEEPABLE_TABLES:
             column = SWEEPABLE_TABLES[table]
             result.update(sweep_expired_rows(engine, cutoff=cutoff, tables={table: column}))
@@ -255,3 +259,46 @@ def sweep_retained(engine: Engine, cutoffs: dict[str, datetime]) -> dict[str, in
             msg = f"{table!r} is not a row-swept table"
             raise ValueError(msg)
     return result
+
+
+#: Reversed promotions past the cutoff. A reversed promotion is a tombstone: rollback reads
+#: only un-reversed entries (``rolled_back_at IS NULL``), so nothing consults one again.
+#: Un-reversed promotions are never matched here, whatever their age, because each one is
+#: the version a rollback would restore. The table is small (a few rows per model
+#: promotion), so this sweep needs no index of its own.
+_PROMOTION_SWEEP = text(
+    "DELETE FROM model_versions_history WHERE id IN ("
+    "SELECT id FROM model_versions_history "
+    "WHERE rolled_back_at IS NOT NULL AND rolled_back_at < :cutoff "
+    "ORDER BY rolled_back_at LIMIT :batch)"
+)
+
+
+def sweep_reversed_promotions(
+    engine: Engine,
+    *,
+    cutoff: datetime,
+    batch_rows: int = SWEEP_BATCH_ROWS,
+    max_batches: int = SWEEP_MAX_BATCHES,
+) -> int:
+    """Delete promotion-history rows reversed before ``cutoff``, in bounded batches.
+
+    Returns:
+        Rows deleted in this run.
+
+    Raises:
+        ValueError: if the batch sizes are not positive.
+    """
+    if batch_rows < 1 or max_batches < 1:
+        msg = "batch_rows and max_batches must both be at least 1"
+        raise ValueError(msg)
+    total = 0
+    for _ in range(max_batches):
+        with engine.begin() as conn:
+            removed = conn.execute(
+                _PROMOTION_SWEEP, {"cutoff": cutoff, "batch": batch_rows}
+            ).rowcount
+        total += removed
+        if removed < batch_rows:
+            break
+    return total

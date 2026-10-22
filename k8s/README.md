@@ -5,7 +5,7 @@ here is static YAML, applied with `kubectl apply -k .` or `kubectl apply -f .`.
 
 ## What is deliberately not here
 
-- **Datastores.** Postgres, Kafka and Elasticsearch are provisioned outside
+- **Datastores.** Postgres and Kafka are provisioned outside
   these manifests — managed services or a dedicated operator. `AEGIS_DATABASE_HOST`
   in `10-configmap.yaml` points at whatever provides them.
 - **Redis.** The Helm chart (`helm/aegis`) can run Redis in the cluster

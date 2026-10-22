@@ -56,7 +56,6 @@ EXPECTED_SERVICES = {
     "postgres",
     "redis",
     "kafka",
-    "elasticsearch",
     "backend",
     "ml-service",
     "dashboard",

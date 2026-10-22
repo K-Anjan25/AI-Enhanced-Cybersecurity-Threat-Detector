@@ -268,6 +268,21 @@ def test_the_audit_trail_is_reported_as_unevictable_with_its_reason() -> None:
     assert "not partitioned" in audit.reason
 
 
+def test_the_kept_by_design_tables_each_say_why() -> None:
+    """Accounts, keys and thresholds are not swept, and the report says so with a reason."""
+    plan = plan_retention(policy(), today=TODAY, partitions=months())
+    reasons = {item.table: item.reason for item in plan.unevictable}
+    for table in ("users", "api_keys", "thresholds"):
+        assert table in reasons
+        assert "kept by design" in reasons[table]
+
+
+def test_model_promotion_history_is_swept_by_its_window_not_by_partition() -> None:
+    """Reversed promotions age out with the alerts window; the table is not partitioned."""
+    plan = plan_retention(policy(), today=TODAY, partitions=months())
+    assert plan.row_swept["model_versions_history"].startswith("rows older than 400 days")
+
+
 def test_the_raw_record_window_is_reported_with_its_external_mechanism() -> None:
     """FR-05's 30 days live in Kafka and ES, so the plan names them."""
     plan = plan_retention(policy(), today=TODAY, partitions=months())
