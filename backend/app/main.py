@@ -95,6 +95,7 @@ from app.services.retention_run import SCHEDULER_ACTOR, execute_retention, recor
 from app.services.retention_scheduler import RetentionScheduler
 from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
 from app.services.user_directory import InMemoryUserDirectory, UserAdminService
+from app.services.user_erasure_store import PostgresUserStore
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
 )
@@ -524,7 +525,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # models of both stores, because neither table has an adapter here yet. The
     # ledger holds tombstones; the redactor derives them from AEGIS_SECRET_KEY.
     app.state.entity_store = InMemoryEntityStore()
-    app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
+    # Account deletion reaches PostgreSQL when a database is configured. Accounts are
+    # still created in the in-memory directory (see the note at the user directory
+    # below), so the table holds only the rows written to it directly.
+    if "database_url" in resolved.model_fields_set:
+        app.state.user_store = PostgresUserStore(
+            create_engine(resolved.database_url, pool_pre_ping=True),
+            keys=app.state.api_key_store,
+        )
+    else:
+        app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
     app.state.erasure_ledger = InMemoryErasureLedger()
     # Verdicts (T-309) live on app.state rather than being created on first use by
     # the route, so the recalibration job (T-322) reads the same ledger the verdict

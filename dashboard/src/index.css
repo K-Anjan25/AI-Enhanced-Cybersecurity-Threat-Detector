@@ -174,14 +174,6 @@
 }
 
 /*
- * Landing page field: the reference grades from the deep surface tone at the
- * top-left into the base blue, rather than sitting on one flat colour.
- */
-.landing-backdrop {
-  background-image: linear-gradient(150deg, var(--color-bg-surface) 0%, var(--color-bg-base) 60%);
-}
-
-/*
  * Landing page depth. Each layer moves on the Y axis at its own speed as the page
  * scrolls (`--scroll` is set by LandingPage), and sits at its own Z depth under the
  * stage's perspective. Motion is removed for users who prefer reduced motion.
@@ -215,38 +207,73 @@
 }
 
 /*
- * Marketing site: AEGIS brand palette (Neon Mint, Core Navy, Soft Gray, Graphite Black).
- * Scoped to `.marketing-site`, so the app keeps its own tokens. Every pair below is
- * above 4.5:1 for text (3:1 for the control border); see the contrast note in
- * memory.md D-095. Declared after the theme blocks so it wins at equal specificity.
+ * Marketing site palette. Exactly four colours, from the AEGIS brand sheet:
+ *   Pure White      #FFFFFF  base background
+ *   Cloud Mist      #D7E1EC  alternate sections and cards
+ *   Signal Blue     #0030CF  accent, buttons, links
+ *   Deep Charcoal   #13171B  body text and structure
+ * No other colour, tint, or translucent overlay is used on the public pages. Every
+ * text pair is 4.5:1 or better, and every control border 3:1 or better (see the
+ * contrast note in memory.md D-096).
+ *
+ * Two inverted tones are set on sections that need a dark ground. They only
+ * redefine the same four colours, so the component classes stay the same.
  */
 .marketing-site {
-  --color-bg-base: #00203f; /* Core Navy */
-  --color-bg-surface: #2f2f2f; /* Graphite Black, for cards */
-  --color-border: #6f879f; /* control and hairline boundaries, 3:1 or better */
-  --color-text-primary: #e6e9ec; /* Soft Gray: 13.48:1 on base */
-  --color-text-muted: #aebbc8; /* 8.40:1 on base, 6.85:1 on graphite */
-  --color-accent: #36ecde; /* Neon Mint: 11.12:1 on base */
-  --color-brand-blue: #36ecde;
-  --color-on-accent: #00203f; /* Core Navy on Neon Mint: 11.12:1 */
-  --color-on-severity: #00203f;
-  --focus-ring: #36ecde;
-  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 40%);
+  --color-bg-base: #ffffff;
+  --color-bg-surface: #d7e1ec;
+  --color-border: #13171b;
+  --color-text-primary: #13171b;
+  --color-text-muted: #13171b;
+  --color-accent: #0030cf;
+  --color-brand-blue: #0030cf;
+  --color-on-accent: #ffffff;
+  --color-on-severity: #13171b;
+  --severity-critical: #0030cf;
+  --severity-high: #0030cf;
+  --severity-medium: #d7e1ec;
+  --severity-low: #ffffff;
+  --severity-info: #d7e1ec;
+  --severity-benign: #ffffff;
+  --severity-text-critical: #13171b;
+  --severity-text-high: #13171b;
+  --severity-text-medium: #13171b;
+  --severity-text-low: #13171b;
+  --severity-text-info: #13171b;
+  --severity-text-benign: #13171b;
+  --focus-ring: #0030cf;
+  --shadow-overlay: 6px 6px 0 #13171b;
 
+  background-color: var(--color-bg-base);
   color: var(--color-text-primary);
 }
 
-/* Subtle engineering grid behind the hero, drawn with the accent at low opacity. */
-.marketing-grid {
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--color-accent) 12%, transparent) 1px, transparent 1px),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-accent) 12%, transparent) 1px,
-      transparent 1px
-    );
-  background-size: 64px 64px;
-  mask-image: radial-gradient(ellipse at center, currentColor 30%, transparent 75%);
+/* Blue ground: hero. White text and the white accent on Signal Blue both pass AA (9.03:1). */
+.marketing-tone-brand {
+  --color-bg-base: #0030cf;
+  --color-bg-surface: #13171b;
+  --color-border: #d7e1ec;
+  --color-text-primary: #ffffff;
+  --color-text-muted: #d7e1ec;
+  --color-accent: #ffffff;
+  --color-brand-blue: #ffffff;
+  --color-on-accent: #0030cf;
+  --focus-ring: #ffffff;
+  --shadow-overlay: 6px 6px 0 #d7e1ec;
+}
+
+/* Charcoal ground: footer. Cloud Mist text is 13.5:1 on it. */
+.marketing-tone-dark {
+  --color-bg-base: #13171b;
+  --color-bg-surface: #0030cf;
+  --color-border: #d7e1ec;
+  --color-text-primary: #ffffff;
+  --color-text-muted: #d7e1ec;
+  --color-accent: #ffffff;
+  --color-brand-blue: #ffffff;
+  --color-on-accent: #13171b;
+  --focus-ring: #ffffff;
+  --shadow-overlay: 6px 6px 0 #0030cf;
 }
 
 /* Scroll-triggered fade-in. Content is visible without JavaScript or with reduced motion. */

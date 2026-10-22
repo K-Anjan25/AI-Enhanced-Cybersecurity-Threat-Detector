@@ -238,10 +238,10 @@ class Alert(Base):
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     occurrence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     verdict: Mapped[Verdict | None] = mapped_column(Enum(Verdict, name="verdict", create_type=True))
     verdict_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    verdict_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    verdict_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     __table_args__ = (
         CheckConstraint(SEVERITY_CHECK, name="ck_alerts_severity"),
@@ -286,7 +286,7 @@ class ModelVersionHistory(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     model_id: Mapped[int] = mapped_column(ForeignKey("models.id"), nullable=False)
     promoted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    promoted_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    promoted_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     rolled_back_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

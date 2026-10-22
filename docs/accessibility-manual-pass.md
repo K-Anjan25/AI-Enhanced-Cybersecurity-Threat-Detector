@@ -12,7 +12,7 @@ What the automated pass already covers, in real Chromium (`scripts/browser/`):
   Zero violations on all eight at the time of writing.
 - Colour contrast, measured on the rendered pixels behind each text element. The
   median background passes AA everywhere. The worst single pixel does not, on the
-  landing headline and its nav, because the animated wireframe runs behind the text.
+  landing headline and its nav. The animated wireframe that caused it has since been removed (see the resolved note below).
   See the open item below.
 - A keyboard Tab walk: every stop had a visible focus indicator, and no trap was found.
 
@@ -37,15 +37,12 @@ in the table, signed in where the page requires it.
 9. **Reduced motion.** With the OS reduced-motion setting on, the landing animation
    stops or is replaced.
 
-## Open item: landing headline over the animated wireframe
+## Resolved: landing headline over the animated wireframe
 
-The worst-pixel contrast on the landing headline and nav is below 4.5:1 where the blue
-wireframe lines cross the text. Options, which are a design decision and not made here:
-
-- add a scrim behind the hero text, which dims the animation there;
-- keep the animation out of the text box, so the lines stop at the headline's edge;
-- accept the current state, on the grounds that the typical background passes and the
-  wireframe is decorative. This needs an explicit sign-off that the owner records here.
+The animated 3D field has been removed from the landing hero, so no moving lines cross the
+text. The hero is now a solid Signal Blue ground with white text (9.04:1), and every text
+and control pair on the public pages uses the four brand colours and passes WCAG AA. The
+pairs are listed in memory.md D-096. A screen-reader pass is still needed (item 4 below).
 
 ## Results
 

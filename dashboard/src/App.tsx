@@ -47,7 +47,7 @@ import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
-import { LandingPage } from './features/landing/LandingPage';
+import { LandingPage } from './features/marketing/pages/LandingPage';
 import { ContactPage } from './features/marketing/pages/ContactPage';
 import { FeaturesPage } from './features/marketing/pages/FeaturesPage';
 import { PricingPage } from './features/marketing/pages/PricingPage';

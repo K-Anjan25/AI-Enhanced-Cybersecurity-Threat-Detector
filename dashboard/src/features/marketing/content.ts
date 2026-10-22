@@ -105,8 +105,19 @@ export interface SplitSection {
 }
 
 /** Placeholder imagery from placehold.co. Swap for product screenshots before launch. */
-const placeholder = (w: number, h: number, text: string, fg: string): string =>
-  `https://placehold.co/${w}x${h}/0f1729/${fg}?text=${encodeURIComponent(text)}`;
+/** Brand-palette placeholders: Signal Blue with white text, or Cloud Mist with charcoal text. */
+const PLACEHOLDER_TONES = {
+  signal: '0030cf/ffffff',
+  cloud: 'd7e1ec/13171b',
+} as const;
+
+const placeholder = (
+  w: number,
+  h: number,
+  text: string,
+  tone: keyof typeof PLACEHOLDER_TONES,
+): string =>
+  `https://placehold.co/${w}x${h}/${PLACEHOLDER_TONES[tone]}?text=${encodeURIComponent(text)}`;
 
 export const HOME_SECTIONS: readonly SplitSection[] = [
   {
@@ -118,7 +129,7 @@ export const HOME_SECTIONS: readonly SplitSection[] = [
       ['Explainable scores.', 'Every alert shows the features that drove the score.'],
       ['Tunable thresholds.', 'Change sensitivity per model, with each change in the audit trail.'],
     ],
-    image: placeholder(960, 600, 'Detection engine', '36ecde'),
+    image: placeholder(960, 600, 'Detection engine', 'signal'),
     alt: 'Placeholder for the detection engine scoring view',
   },
   {
@@ -130,7 +141,7 @@ export const HOME_SECTIONS: readonly SplitSection[] = [
       ['Immutable verdicts.', 'Analyst decisions are stored as a permanent record.'],
       ['Priority queue.', 'Severity and score decide what appears first.'],
     ],
-    image: placeholder(960, 600, 'Triage queue', 'e6e9ec'),
+    image: placeholder(960, 600, 'Triage queue', 'cloud'),
     alt: 'Placeholder for the alert triage queue',
   },
   {
@@ -142,7 +153,7 @@ export const HOME_SECTIONS: readonly SplitSection[] = [
       ['Audited exports.', 'CSV exports are logged with the requesting user.'],
       ['Role-based access.', 'Viewers, analysts, responders and admins see only what they need.'],
     ],
-    image: placeholder(960, 600, 'Investigation console', '36ecde'),
+    image: placeholder(960, 600, 'Investigation console', 'signal'),
     alt: 'Placeholder for the investigation console',
   },
 ];
@@ -166,7 +177,7 @@ export const FEATURE_SECTIONS: readonly SplitSection[] = [
         'The console shows when current traffic has moved away from the baseline.',
       ],
     ],
-    image: placeholder(960, 600, 'Model scores', '36ecde'),
+    image: placeholder(960, 600, 'Model scores', 'signal'),
     alt: 'Placeholder for model score charts',
   },
   {
@@ -182,7 +193,7 @@ export const FEATURE_SECTIONS: readonly SplitSection[] = [
       ['Scoped API keys.', 'Each key has explicit scopes and can be revoked immediately.'],
       ['Retention reports.', 'Each run lists what was swept and why some data is kept.'],
     ],
-    image: placeholder(960, 600, 'Audit trail', 'e6e9ec'),
+    image: placeholder(960, 600, 'Audit trail', 'cloud'),
     alt: 'Placeholder for the audit trail view',
   },
   {
@@ -194,7 +205,7 @@ export const FEATURE_SECTIONS: readonly SplitSection[] = [
       ['Full version history.', 'Every promotion records who promoted it and when.'],
       ['Deployment-ready.', 'Runs on Docker Compose or Kubernetes with the same services.'],
     ],
-    image: placeholder(960, 600, 'Model versions', '36ecde'),
+    image: placeholder(960, 600, 'Model versions', 'signal'),
     alt: 'Placeholder for model version history',
   },
 ];
