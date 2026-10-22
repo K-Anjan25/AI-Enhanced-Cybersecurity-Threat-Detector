@@ -207,73 +207,51 @@
 }
 
 /*
- * Marketing site palette. Exactly four colours, from the AEGIS brand sheet:
- *   Pure White      #FFFFFF  base background
- *   Cloud Mist      #D7E1EC  alternate sections and cards
- *   Signal Blue     #0030CF  accent, buttons, links
- *   Deep Charcoal   #13171B  body text and structure
- * No other colour, tint, or translucent overlay is used on the public pages. Every
- * text pair is 4.5:1 or better, and every control border 3:1 or better (see the
- * contrast note in memory.md D-096).
- *
- * Two inverted tones are set on sections that need a dark ground. They only
- * redefine the same four colours, so the component classes stay the same.
+ * Marketing site palette: three colours, and nothing else.
+ *   Midnight Blue  #0B132B  dominant: the ground for every section
+ *   Slate Gray     #6C757D  secondary: borders and rules
+ *   Electric Cyan  #00F0FF  accent: text, links, buttons and focus
+ * Slate is 3.92:1 on Midnight, below the 4.5:1 body text needs, so it never carries
+ * text. All text is Cyan (13.05:1 on Midnight), and button labels are Midnight on Cyan
+ * (13.05:1). Decision and ratios: memory.md D-097.
  */
 .marketing-site {
-  --color-bg-base: #ffffff;
-  --color-bg-surface: #d7e1ec;
-  --color-border: #13171b;
-  --color-text-primary: #13171b;
-  --color-text-muted: #13171b;
-  --color-accent: #0030cf;
-  --color-brand-blue: #0030cf;
-  --color-on-accent: #ffffff;
-  --color-on-severity: #13171b;
-  --severity-critical: #0030cf;
-  --severity-high: #0030cf;
-  --severity-medium: #d7e1ec;
-  --severity-low: #ffffff;
-  --severity-info: #d7e1ec;
-  --severity-benign: #ffffff;
-  --severity-text-critical: #13171b;
-  --severity-text-high: #13171b;
-  --severity-text-medium: #13171b;
-  --severity-text-low: #13171b;
-  --severity-text-info: #13171b;
-  --severity-text-benign: #13171b;
-  --focus-ring: #0030cf;
-  --shadow-overlay: 6px 6px 0 #13171b;
+  --color-bg-base: #0b132b;
+  --color-bg-surface: #0b132b;
+  --color-border: #6c757d;
+  --color-text-primary: #00f0ff;
+  --color-text-muted: #00f0ff;
+  --color-accent: #00f0ff;
+  --color-brand-blue: #00f0ff;
+  --color-on-accent: #0b132b;
+  --color-on-severity: #0b132b;
+  --severity-critical: #00f0ff;
+  --severity-high: #00f0ff;
+  --severity-medium: #6c757d;
+  --severity-low: #6c757d;
+  --severity-info: #6c757d;
+  --severity-benign: #6c757d;
+  --severity-text-critical: #00f0ff;
+  --severity-text-high: #00f0ff;
+  --severity-text-medium: #00f0ff;
+  --severity-text-low: #00f0ff;
+  --severity-text-info: #00f0ff;
+  --severity-text-benign: #00f0ff;
+  --focus-ring: #00f0ff;
+  --shadow-overlay: 6px 6px 0 #6c757d;
 
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
 }
 
-/* Blue ground: hero. White text and the white accent on Signal Blue both pass AA (9.03:1). */
-.marketing-tone-brand {
-  --color-bg-base: #0030cf;
-  --color-bg-surface: #13171b;
-  --color-border: #d7e1ec;
-  --color-text-primary: #ffffff;
-  --color-text-muted: #d7e1ec;
-  --color-accent: #ffffff;
-  --color-brand-blue: #ffffff;
-  --color-on-accent: #0030cf;
-  --focus-ring: #ffffff;
-  --shadow-overlay: 6px 6px 0 #d7e1ec;
-}
-
-/* Charcoal ground: footer. Cloud Mist text is 13.5:1 on it. */
-.marketing-tone-dark {
-  --color-bg-base: #13171b;
-  --color-bg-surface: #0030cf;
-  --color-border: #d7e1ec;
-  --color-text-primary: #ffffff;
-  --color-text-muted: #d7e1ec;
-  --color-accent: #ffffff;
-  --color-brand-blue: #ffffff;
-  --color-on-accent: #13171b;
-  --focus-ring: #ffffff;
-  --shadow-overlay: 6px 6px 0 #0030cf;
+/*
+ * A horizontal scroll region for wide tables. `contain: paint` keeps the table's width
+ * from being counted toward the page width. Without it, a 560 px table in a 342 px
+ * region pushed the page 136 px wider than the phone screen (memory.md D-097).
+ */
+.marketing-scroll {
+  overflow-x: auto;
+  contain: paint;
 }
 
 /* Scroll-triggered fade-in. Content is visible without JavaScript or with reduced motion. */

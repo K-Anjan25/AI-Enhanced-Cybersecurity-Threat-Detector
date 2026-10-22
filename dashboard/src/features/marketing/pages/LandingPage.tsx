@@ -47,7 +47,7 @@ const SAMPLE_ALERTS: ReadonlyArray<{
 /* Palette-only badges: a solid fill for the top two levels, an outline for the lowest. */
 const SEVERITY_FILL: Record<'high' | 'medium' | 'low', string> = {
   high: 'bg-accent text-onAccent',
-  medium: 'bg-line text-base',
+  medium: 'border border-accent text-accent',
   low: 'border border-line text-ink',
 };
 
@@ -77,7 +77,7 @@ export function LandingPage() {
       <section
         ref={heroRef}
         aria-labelledby="hero-title"
-        className="marketing-tone-brand landing-stage relative isolate flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden bg-base"
+        className="landing-stage relative isolate flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden bg-base"
       >
         <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 md:grid-cols-12 md:px-12">
           <div
@@ -238,7 +238,6 @@ export function LandingPage() {
           {PIPELINE_STEPS.map(([title, body], index) => (
             <Reveal key={title} delayMs={index * 80} className="h-full">
               <li className="h-full rounded-card border-t-2 border-accent bg-surface p-6">
-                <span className="font-mono text-caption text-accent">0{index + 1}</span>
                 <h3 className="mt-2 text-h2 font-semibold text-ink">{title}</h3>
                 <p className="mb-0 mt-2 text-body-sm text-muted">{body}</p>
               </li>

@@ -68,10 +68,7 @@ export function DotMap() {
 export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer
-      className="marketing-tone-dark mt-auto border-t border-line bg-base"
-      aria-labelledby="footer-heading"
-    >
+    <footer className="mt-auto border-t border-line bg-base" aria-labelledby="footer-heading">
       <h2 id="footer-heading" className="sr-only">
         Site footer
       </h2>
