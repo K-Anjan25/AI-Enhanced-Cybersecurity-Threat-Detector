@@ -3912,6 +3912,25 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-095 — Public site is the dashboard landing; palette scoped to it; open items worked (2026-10-22)
+
+**The public site lives in the dashboard, not in a standalone file.** The single-file draft (`site/index.html`, `0520ccc`) was superseded and removed. The user asked for the site to use the existing stack and to become the live production landing, and nginx already serves the dashboard build on port 8080. So the landing, `/features`, `/pricing` and `/contact` are React routes in `dashboard/src/features/marketing/` and `features/landing/LandingPage.tsx`. Signed-out visitors get them; signed-in users also reach them.
+
+- **Palette, scoped.** Neon Mint `#36ECDE`, Core Navy `#00203F`, Soft Gray `#E6E9EC`, Graphite Black `#2F2F2F`, defined in a `.marketing-site` block in `index.css`. The app's Mariana tokens are untouched. Cards use Graphite. Every text pair is above 4.5:1 and the control border is 3.6:1 or better. The project's rules forbid colour literals in TSX and off-token classes, so components use only token classes.
+- **Icons and fonts.** Lucide, plus `@fontsource/inter` already in the bundle. Lucide 1.x dropped brand marks, so GitHub, X and YouTube are inlined from Simple Icons (CC0-1.0). LinkedIn is omitted: Simple Icons no longer ships it.
+- **Forms** post through `postVoid` in `src/api/` (rule R-23), to `VITE_NEWSLETTER_PATH` and `VITE_CONTACT_PATH`. Both are empty by default, and the forms then say they are not connected rather than claiming to have sent anything.
+- **Figures** on the page are product defaults (50-record windows, four roles, 30-day retention, one-step rollback), not customer metrics. Prices and plan limits are placeholders until sign-off.
+- **Realtime gated on a session.** `RealtimeProvider` used to open its socket and poll `/alerts/notifications` for signed-out visitors, which put 500 and WebSocket errors on the public page. It now starts only once a session exists. The provider's tests sign in first, and a regression test asserts no socket and no poll while signed out.
+
+Verification: `tsc` clean; `eslint --max-warnings 0` clean; prettier and stylelint clean; `vite build` passes; the full dashboard suite passes (1145 tests); the built app serves all four routes and the 404 path, with no API calls from public pages and no horizontal overflow at 390 px. Known: the main bundle is about 750 kB (the chunk warning predates this work; the marketing pages are not code-split yet).
+
+**Open items, result of this pass:**
+- `httpx` moved from `dev` to runtime dependencies in `backend/pyproject.toml`, because `oidc.py` imports it at runtime.
+- `architecture.md`: the diagram, the fan-out and the compose sentences no longer name Elasticsearch. The decision-table row that records it as the rejected alternative (D-034) stays, as history.
+- `test_a_throttled_request_never_reaches_the_route`: 25 of 25 isolated runs passed. Not reproduced, so unchanged. The flake was seen only under full-suite load.
+- **Account erasure does not reach PostgreSQL.** `main.py` wires `InMemoryUserStore` into the erasure cascade, so a real user row is never deleted. `alerts.assigned_to`, `alerts.verdict_by` and `model_versions_history.promoted_by` reference `users.id` with no `ON DELETE` rule. A database-backed store therefore has to decide how those references are handled (null them, or keep a pseudonymous id). That is a privacy decision and is left to the user.
+- Precision (0.5904 against 0.80) and screen-reader testing (`docs/accessibility-manual-pass.md`) still need a licensed full UNSW-NB15 dataset and a human tester. Neither is done.
+
 ### D-094 — Remaining retention gaps decided (2026-10-22)
 
 The three gaps left open by D-093 are decided here, and the code and compose file follow the decisions.
