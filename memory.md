@@ -3953,6 +3953,8 @@ Slate fails the 4.5:1 that body text needs, so it never carries text. Secondary 
 
 **What changed.** `.marketing-site` now defines only these three values. The hero and footer no longer use a separate tone class. Placeholder images use Cyan or Slate with Midnight. The logo, the supplied icon, keeps its own colours, because it is an image and not a site colour. The app's own theme is untouched.
 
+**Pricing table at 390 px.** The 560 px comparison table in a 342 px scroll region pushed the page 136 px wider than the screen. The cause was the scroll-reveal wrapper and the table's overflow. `.marketing-scroll` (`overflow-x: auto; contain: paint`) fixes it. Measured overflow is 0 on `/`, `/features`, `/pricing` and `/contact` at 390 px.
+
 **Known trade-off.** Slate as body text was not possible without breaking AA, so the site has less visual hierarchy than a grey-text design would. If the owner wants grey secondary text, that needs a fourth colour, or a larger minimum size (Slate passes 3:1 only for text at 24 px or larger, bold at 18.66 px or larger).
 
 ### D-096 — Palette restricted to four brand colours, 3D hero removed, logo added, account erasure reaches PostgreSQL, CI green (2026-10-22)
