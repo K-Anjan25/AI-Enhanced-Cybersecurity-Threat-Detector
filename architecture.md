@@ -316,7 +316,7 @@ Non-negotiable training rules (enforced in CI where possible, see [rules.md](rul
 
 ### 11.1 Local development (primary target)
 
-`docker compose up` starts: postgres, redis, kafka + zookeeper, elasticsearch, backend, ml-service, dashboard. Everything binds inside the compose network; only the dashboard and backend publish ports. Datasets are fetched on demand into `data/raw/` — never baked into images.
+`docker compose up` starts: postgres, redis, kafka + zookeeper, backend, ml-service, dashboard. Elasticsearch is not in the compose file: hunt search uses partitioned PostgreSQL (D-034), so there is no search cluster to run locally. Everything binds inside the compose network; only the dashboard and backend publish ports. Datasets are fetched on demand into `data/raw/` — never baked into images.
 
 ### 11.2 Production (Kubernetes)
 
@@ -328,7 +328,7 @@ Non-negotiable training rules (enforced in CI where possible, see [rules.md](rul
 | dashboard (nginx static) | 2+ | HPA on request rate |
 | postgres | 1 primary + replica | Vertical, plus partition management job |
 | kafka | 3 brokers | Partition count is the scale unit |
-| elasticsearch | 3 nodes | ILM policy rolls indices daily |
+| elasticsearch | deferred (D-034) | Not deployed. If it returns, its ILM policy ships with its writer |
 
 Ingress terminates TLS. Secrets come from the cluster secret store, never from images or manifests.
 

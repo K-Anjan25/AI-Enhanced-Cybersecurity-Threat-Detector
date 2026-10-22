@@ -180,9 +180,19 @@ def test_the_preview_shows_the_policy_and_the_boundary_rule(client: TestClient) 
     # Every unevictable table is named with a reason, and both stores are among them
     # (T-419, T-418): FR-05's raw-record window reaches each through a sweep that is
     # not built, and a plan that omitted either would invite the opposite assumption.
-    assert {item["table"] for item in body["unevictable"]} == {"audit_log"}
+    assert {item["table"] for item in body["unevictable"]} == {
+        "audit_log",
+        "users",
+        "api_keys",
+        "thresholds",
+    }
     assert all(item["reason"] for item in body["unevictable"])
-    assert set(body["row_swept"]) == {"log_events", "flow_events", "entities"}
+    assert set(body["row_swept"]) == {
+        "log_events",
+        "flow_events",
+        "entities",
+        "model_versions_history",
+    }
     assert set(body["external"]) == {"kafka", "elasticsearch"}
 
 
