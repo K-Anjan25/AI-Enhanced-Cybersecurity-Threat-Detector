@@ -45,6 +45,7 @@ from app.api.v1.endpoints import (
     webhooks,
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
+from app.auth.oidc import OidcConfig, OidcSignIn
 from app.auth.tokens import TokenService
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
@@ -263,6 +264,23 @@ def _ensure_flow_topic(bus: KafkaBus) -> None:
         logger.info("kafka_topic_ready", topic=bus.topic, partitions=bus.partitions)
 
 
+def build_oidc_sign_in(settings: Settings) -> OidcSignIn | None:
+    """The OIDC client for this deployment, or None when OIDC is not enabled."""
+    if not settings.oidc_enabled:
+        return None
+    secret = settings.oidc_client_secret
+    if secret is None:  # the settings validator makes this unreachable; keep it explicit
+        raise ConfigurationError("AEGIS_OIDC_CLIENT_SECRET is required when OIDC is enabled")
+    return OidcSignIn(
+        OidcConfig(
+            issuer=settings.oidc_issuer,
+            client_id=settings.oidc_client_id,
+            client_secret=secret.get_secret_value(),
+            redirect_uri=settings.oidc_redirect_uri,
+        )
+    )
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the FastAPI application.
 
@@ -304,6 +322,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # its token verifier, turning every authenticated request into a 500. Make the
     # same signed-token service available to REST, WebSocket and auth endpoints.
     app.state.token_service = TokenService(resolved.secret_key)
+    # FR-43. None unless the deployment enabled OIDC; the routes then answer 404.
+    app.state.oidc = build_oidc_sign_in(resolved)
     app.state.service_name = resolved.service_name
     app.state.version = __version__
     app.state.environment = resolved.env.value

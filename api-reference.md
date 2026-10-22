@@ -32,6 +32,8 @@ or body do not match the schema below.
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
 | `POST` | `/api/v1/auth/login` | Sign in with an account password | unauthenticated | `200` `TokenPairOut` | `CredentialsIn` |
 | `POST` | `/api/v1/auth/logout` | Revoke the refresh-token family | unauthenticated | `204` | `RefreshIn` |
+| `GET` | `/api/v1/auth/oidc/callback` | Complete an OpenID Connect sign-in (FR-43) | unauthenticated | `200` `TokenPairOut` | — |
+| `GET` | `/api/v1/auth/oidc/start` | Start an OpenID Connect sign-in (FR-43) | unauthenticated | `302` `text/plain` | — |
 | `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
 | `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |

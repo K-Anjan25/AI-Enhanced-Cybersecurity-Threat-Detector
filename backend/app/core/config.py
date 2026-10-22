@@ -182,6 +182,16 @@ class Settings(BaseSettings):
     # prefixed '*.', comma-separated.
     webhook_allowlist: str = Field(default="")
 
+    # FR-43. OIDC sign-in for enterprise deployments. Off by default: the local
+    # password path is the v1.0 baseline. When enabled, every field below is
+    # required and the validator refuses a non-HTTPS issuer or redirect outside
+    # development (see app.auth.oidc for what the flow checks).
+    oidc_enabled: bool = Field(default=False)
+    oidc_issuer: str = Field(default="")
+    oidc_client_id: str = Field(default="")
+    oidc_client_secret: SecretStr | None = Field(default=None)
+    oidc_redirect_uri: str = Field(default="")
+
     # Retention (FR-05, NFR-05). Raw records default to 30 days; alerts live
     # longer because they are the analyst-facing record, and the validator in
     # app.services.retention refuses a deployment that inverts the two. Same
@@ -267,6 +277,28 @@ class Settings(BaseSettings):
             raise ValueError("AEGIS_BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
         if self.dev_auth_setup_enabled and self.env is not Environment.DEVELOPMENT:
             raise ValueError("AEGIS_DEV_AUTH_SETUP_ENABLED is permitted only in development")
+        if self.oidc_enabled:
+            missing = [
+                name
+                for name, value in (
+                    ("AEGIS_OIDC_ISSUER", self.oidc_issuer),
+                    ("AEGIS_OIDC_CLIENT_ID", self.oidc_client_id),
+                    ("AEGIS_OIDC_REDIRECT_URI", self.oidc_redirect_uri),
+                )
+                if not value
+            ]
+            if missing or self.oidc_client_secret is None:
+                raise ValueError(
+                    "AEGIS_OIDC_ENABLED requires AEGIS_OIDC_ISSUER, AEGIS_OIDC_CLIENT_ID, "
+                    "AEGIS_OIDC_CLIENT_SECRET and AEGIS_OIDC_REDIRECT_URI"
+                )
+            if self.env is not Environment.DEVELOPMENT:
+                for name, value in (
+                    ("AEGIS_OIDC_ISSUER", self.oidc_issuer),
+                    ("AEGIS_OIDC_REDIRECT_URI", self.oidc_redirect_uri),
+                ):
+                    if not value.startswith("https://"):
+                        raise ValueError(f"{name} must be an https URL outside development")
         if self.env is Environment.PRODUCTION and email is None:
             raise ValueError(
                 "production requires AEGIS_BOOTSTRAP_ADMIN_EMAIL and AEGIS_BOOTSTRAP_ADMIN_PASSWORD"

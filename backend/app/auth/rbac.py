@@ -143,6 +143,8 @@ UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
+        "/api/v1/auth/oidc/start",
+        "/api/v1/auth/oidc/callback",
     }
 )
 
