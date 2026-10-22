@@ -142,7 +142,7 @@ def test_the_migration_chain_has_exactly_one_head() -> None:
     # The head is also named, because a chain that quietly lost its newest revision
     # would still have exactly one head -- and ``alembic upgrade head`` would stop one
     # migration short of the schema the models describe.
-    assert heads == {"0005_alert_entity_index"}
+    assert heads == {"0006_erasure_set_null"}
     # And no revision may revise something that does not exist: a broken link is how a
     # chain turns into two heads without anybody editing a ``revision`` line.
     known = set(revisions)

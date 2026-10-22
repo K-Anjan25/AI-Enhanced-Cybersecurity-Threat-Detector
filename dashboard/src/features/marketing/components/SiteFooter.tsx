@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowUp, Mail, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowUp, Mail, MapPin } from 'lucide-react';
 import { FOOTER_COLUMNS, OFFICES, SALES_EMAIL, SOCIAL_LINKS, type Office } from '../content';
 import { prefersReducedMotion } from '../hooks';
 import { NewsletterForm } from './NewsletterForm';
@@ -68,7 +68,10 @@ export function DotMap() {
 export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer className="mt-auto border-t border-line bg-surface" aria-labelledby="footer-heading">
+    <footer
+      className="marketing-tone-dark mt-auto border-t border-line bg-base"
+      aria-labelledby="footer-heading"
+    >
       <h2 id="footer-heading" className="sr-only">
         Site footer
       </h2>
@@ -76,7 +79,13 @@ export function SiteFooter() {
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="flex flex-col gap-4">
             <p className="m-0 flex items-center gap-2 text-h2 font-semibold tracking-widest text-ink">
-              <ShieldCheck aria-hidden="true" className="size-icon-md text-accent" />
+              <img
+                src="/aegis-logo.png"
+                alt=""
+                width="32"
+                height="32"
+                className="size-8 rounded-input"
+              />
               AEGIS
             </p>
             <p className="m-0 max-w-[36ch] text-body text-muted">

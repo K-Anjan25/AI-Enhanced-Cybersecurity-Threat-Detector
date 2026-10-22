@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
 import { NAV_ITEMS } from '../content';
 
 /**
@@ -49,12 +48,13 @@ export function SiteHeader() {
             className="flex items-center gap-2 text-h2 font-semibold tracking-widest text-ink no-underline"
             aria-label="AEGIS home"
           >
-            <span
-              className="grid size-12 place-items-center rounded-card border border-accent text-accent"
-              aria-hidden="true"
-            >
-              <ShieldCheck className="size-icon-md" />
-            </span>
+            <img
+              src="/aegis-logo.png"
+              alt=""
+              width="48"
+              height="48"
+              className="size-12 rounded-card"
+            />
             AEGIS
           </Link>
           <div className="flex items-center gap-6">

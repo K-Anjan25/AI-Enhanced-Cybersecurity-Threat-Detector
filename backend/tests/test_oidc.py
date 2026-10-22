@@ -177,16 +177,26 @@ def _pending(oidc: OidcSignIn, issuer: MockIssuer) -> PendingLogin:
 
 
 def test_pkce_challenge_matches_the_rfc_7636_vector() -> None:
-    verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+    # RFC 7636, appendix B: a published test vector, not a credential.
+    verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"  # pragma: allowlist secret
     pending = PendingLogin(state="s", nonce="n", verifier=verifier)
-    oidc = OidcSignIn(_config(), transport=httpx.MockTransport(lambda r: httpx.Response(500)))
-    oidc._discovery = {
+    # Serve a real discovery document. Setting ``_discovery`` directly relied on the
+    # cache's timestamp being fresh, which depends on the wall clock; the transport
+    # answers the request whatever the clock says.
+    discovery = {
+        "issuer": ISSUER,
         "authorization_endpoint": ISSUER + "/authorize",
         "token_endpoint": ISSUER + "/token",
         "jwks_uri": ISSUER + "/jwks",
     }
+    oidc = OidcSignIn(
+        _config(),
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, json=discovery)),
+    )
     query = parse_qs(urlsplit(oidc.authorization_url(pending)).query)
-    assert query["code_challenge"] == ["E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"]
+    assert query["code_challenge"] == [
+        "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"  # pragma: allowlist secret
+    ]
     assert query["code_challenge_method"] == ["S256"]
 
 

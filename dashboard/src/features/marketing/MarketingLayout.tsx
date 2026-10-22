@@ -18,7 +18,7 @@ interface MarketingLayoutProps {
 export function MarketingLayout({ title, description, children }: MarketingLayoutProps) {
   useDocumentMeta(title, description);
   return (
-    <div className="marketing-site landing-backdrop flex min-h-screen flex-col overflow-x-hidden text-ink">
+    <div className="marketing-site flex min-h-screen flex-col overflow-x-hidden text-ink">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-40 focus:rounded-pill focus:bg-accent focus:px-6 focus:py-3 focus:text-onAccent"

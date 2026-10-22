@@ -1,21 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, BadgeCheck, Lock, Server, UserCheck } from 'lucide-react';
-import { MarketingLayout } from '../marketing/MarketingLayout';
-import { Accordion } from '../marketing/components/Accordion';
-import { CountUp } from '../marketing/components/CountUp';
-import { NewsletterForm } from '../marketing/components/NewsletterForm';
-import { Reveal } from '../marketing/components/Reveal';
-import { SplitFeature } from '../marketing/components/Shared';
-import {
-  ARCHITECTURE_STEPS,
-  HOME_FAQ,
-  HOME_SECTIONS,
-  PIPELINE_STEPS,
-  STATS,
-} from '../marketing/content';
-import { useScrollDepth } from '../marketing/hooks';
-import { ThreeField } from './ThreeField';
+import { MarketingLayout } from '../MarketingLayout';
+import { Accordion } from '../components/Accordion';
+import { CountUp } from '../components/CountUp';
+import { NewsletterForm } from '../components/NewsletterForm';
+import { Reveal } from '../components/Reveal';
+import { SplitFeature } from '../components/Shared';
+import { ARCHITECTURE_STEPS, HOME_FAQ, HOME_SECTIONS, PIPELINE_STEPS, STATS } from '../content';
+import { useScrollDepth } from '../hooks';
 
 const TRUST: ReadonlyArray<{ label: string; icon: typeof Server }> = [
   { label: 'Deploy inside your network', icon: Server },
@@ -51,17 +44,19 @@ const SAMPLE_ALERTS: ReadonlyArray<{
   },
 ];
 
+/* Palette-only badges: a solid fill for the top two levels, an outline for the lowest. */
 const SEVERITY_FILL: Record<'high' | 'medium' | 'low', string> = {
-  high: 'bg-severity-high',
-  medium: 'bg-severity-medium',
-  low: 'bg-severity-low',
+  high: 'bg-accent text-onAccent',
+  medium: 'bg-line text-base',
+  low: 'border border-line text-ink',
 };
 
 /**
  * The public home page, shown at `/` to anyone without a session.
  *
- * The hero sits on three depth layers: the 3D field, a grid and the copy. The scroll
- * position is written to `--scroll` on the hero, so each layer moves at its own speed.
+ * The hero is a flat Signal Blue ground with two depth layers: the copy and the alert
+ * card. The scroll position is written to `--scroll` on the hero, so each layer moves
+ * at its own speed. There is no 3D scene here; that is deliberately deferred.
  */
 export function LandingPage() {
   const heroRef = useRef<HTMLElement>(null);
@@ -78,30 +73,12 @@ export function LandingPage() {
       title="AEGIS | AI-Enhanced Threat Detection for Security Teams"
       description="AEGIS scores network flows and system logs with machine-learning models, then turns anomalies into prioritised alerts your analysts can triage in minutes."
     >
-      {/* Hero: the 3D field fills the section; text and cards sit on depth layers above it. */}
+      {/* Hero: copy and alert card sit on two depth layers over the Signal Blue ground. */}
       <section
         ref={heroRef}
         aria-labelledby="hero-title"
-        className="landing-stage relative isolate flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden"
+        className="marketing-tone-brand landing-stage relative isolate flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden bg-base"
       >
-        <ThreeField />
-        <div
-          aria-hidden="true"
-          className="marketing-grid pointer-events-none absolute inset-0 -z-10"
-        />
-        {/*
-          Scrim between the animated field and the copy, so every glyph sits on a surface
-          that passes AA (D-091). It is decorative and uses the scoped base token.
-        */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 62% 58% at 50% 50%, color-mix(in srgb, var(--color-bg-base) 90%, transparent) 0%, color-mix(in srgb, var(--color-bg-base) 74%, transparent) 62%, transparent 100%)',
-          }}
-        />
-
         <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 py-16 md:grid-cols-12 md:px-12">
           <div
             className="landing-layer z-10 flex flex-col gap-6 md:col-span-7"

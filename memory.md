@@ -3912,6 +3912,44 @@ the manual screen-reader pass (T-413, handed to T-510) is still **not run** — 
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-096 — Palette restricted to four brand colours, 3D hero removed, logo added, account erasure reaches PostgreSQL, CI green (2026-10-22)
+
+**Palette: exactly four colours on the public site.** The user supplied the brand sheet and asked that the site use only those colours. Every marketing token now resolves to one of them: Pure White `#FFFFFF` (base), Cloud Mist `#D7E1EC` (surfaces), Signal Blue `#0030CF` (accent, buttons, links) and Deep Charcoal `#13171B` (text and structure). No tints, translucent overlays or shadow colours are used, and the shadow is a solid offset in charcoal. Two inverted tones redefine the same four colours for sections that need a dark ground: `.marketing-tone-brand` (hero, Signal Blue ground) and `.marketing-tone-dark` (footer, Charcoal ground). Text pairs, measured with WCAG luminance:
+
+| Pair | Ratio |
+|---|---|
+| Charcoal on White | 18.01 |
+| Charcoal on Cloud Mist | 13.61 |
+| Signal Blue on White | 9.04 |
+| Signal Blue on Cloud Mist | 6.83 |
+| White on Signal Blue | 9.04 |
+| Cloud Mist on Signal Blue | 6.83 |
+| Cloud Mist on Charcoal | 13.61 |
+
+Signal Blue text on Charcoal is 1.98:1 and is never used. The control borders (3:1) are Charcoal on light and Cloud Mist on dark. The only other colour-bearing values are the placeholder images, which take `signal` or `cloud` tones (the palette pair, not a literal).
+
+**The 3D hero is removed.** The user asked to remove it and decide later. `ThreeField.tsx` is deleted, and `three` and `@types/three` are uninstalled from the dashboard. `three` remains in the lock file only as a transitive dependency of `react-globe.gl`, which nothing in `src/` imports. The hero is a flat Signal Blue ground with two depth layers (copy and alert card) driven by the existing `--scroll` parallax, so the brief's parallax requirement still holds without the scene. The grid overlay and the scrim are removed, so the open "headline contrast" item (D-091, prd-coverage NFR-09) is resolved: white on Signal Blue is 9.04:1.
+
+**Logo.** The supplied square icon is copied to `dashboard/public/aegis-logo.png` and used in the header and footer. The header's shield placeholder is gone. The app's own favicon is unchanged.
+
+**Account erasure reaches PostgreSQL (NFR-05, R-37).** The production cascade used `InMemoryUserStore`, so no `users` row was ever deleted. Three foreign keys to `users.id` had no `ON DELETE` rule, so a database-backed delete would have failed for any user who had triaged an alert or promoted a model. **The decision the user had left open:** those three references (`alerts.assigned_to`, `alerts.verdict_by`, `model_versions_history.promoted_by`) become `ON DELETE SET NULL` (migration `0006_erasure_set_null`). The alert, its verdict and the promotion all stay, and only the pointer to the person is cleared. This matches the entity rule (redact the identifier, keep the record). `audit_log.actor_id` has no foreign key by design (R-31), so it still holds the numeric id; the report lists it as preserved. The store is `PostgresUserStore` (`app/services/user_erasure_store.py`), used when `database_url` is configured. It deletes by `users.email`, relies on the schema for `api_keys` (`ON DELETE CASCADE`), and runs the in-process key cascade as well, once per removed row. Three live tests run the real migration chain: erasing a user who triaged and promoted removes the user and the keys, keeps the alert and the promotion with the pointer cleared, and a second request removes nothing without failing. **Limits, stated plainly:** accounts are still created in the in-memory directory (`UserDirectory`), not in the `users` table, so the table holds only rows written to it directly. The login directory is not reached by erasure, so an erased in-memory account can still sign in until the process restarts. Both belong with the database user adapter, which is still open (D-030).
+
+**Precision (blocked, not solved).** The full official UNSW-NB15 (`UNSW-NB15_1..4.csv`, 2,540,044 rows, `sha256 7d851bbe…` for `_1`) was searched for. GitHub code search finds it committed in several repositories (`jamshaid120/UNSW_NB15-Complete-dataset`, `Kilosigh/Cross-MoE`, others), but the files are Git LFS pointers. `media.githubusercontent.com` is not reachable, and the LFS batch endpoint returns 403 to this sandbox. The publisher, Zenodo, Kaggle and Hugging Face are unreachable, and the PyPI packages found are downloaders, not data. No full dataset was downloaded, and precision stays at 0.5904 against 0.80. The files need to be placed under `data/raw/` from a machine with access to the publisher's share; `scripts/fetch_datasets.py` verifies them by hash.
+
+**Screen-reader pass (D-087) is still open.** It needs a person with NVDA or VoiceOver; the script is in `docs/accessibility-manual-pass.md`.
+
+**Throttle test.** `test_a_throttled_request_never_reaches_the_route` passed in the full backend run (2194 passed, 2 skipped, with the live database) as well as in isolation. Not reproduced.
+
+**CI, run locally as `scripts/check_all.sh`, debugged to green.** Six issues were found and fixed:
+- Three backend tests pinned the head revision to `0005`. They now name `0006`.
+- A PKCE test relied on a clock-dependent cache and failed on its own. It now serves a real discovery document through the mock transport. The RFC 7636 vector carries a `pragma: allowlist secret`, and the baseline is staged.
+- The frontend boundary check failed because `features/landing` imported `features/marketing`. `LandingPage` now lives in `features/marketing/pages`, and `features/landing` is removed.
+- A colour-name test failed on a placeholder key called `blue`. Keys are now `signal` and `cloud`.
+- Prettier flagged touched files, including `contrast_pass.mjs` from `333fdc8` and `docs/prd-coverage.md`.
+- The mypy `yaml` stub error was a local-venv gap. `requirements-dev.txt` already declares `types-PyYAML`, and installing it matches CI.
+
+`check_docs.py` passes (96 decisions). Backend: ruff, black, mypy strict, bandit, import-linter and the full suite pass. The dashboard passes typecheck, lint, css lint, format, tests and build. The hooks pass.
+
 ### D-095 — Public site is the dashboard landing; palette scoped to it; open items worked (2026-10-22)
 
 **The public site lives in the dashboard, not in a standalone file.** The single-file draft (`site/index.html`, `0520ccc`) was superseded and removed. The user asked for the site to use the existing stack and to become the live production landing, and nginx already serves the dashboard build on port 8080. So the landing, `/features`, `/pricing` and `/contact` are React routes in `dashboard/src/features/marketing/` and `features/landing/LandingPage.tsx`. Signed-out visitors get them; signed-in users also reach them.
