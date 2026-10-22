@@ -71,20 +71,11 @@ export function SiteHeader() {
               aria-controls={menuId}
               aria-label={open ? 'Close menu' : 'Open menu'}
               onClick={() => setOpen((value) => !value)}
-              className="flex size-12 flex-col items-center justify-center gap-2 rounded-input border border-line hover:border-accent focus-visible:ring-2"
+              className="flex size-12 flex-col items-center justify-center gap-2 focus-visible:ring-2"
             >
-              <span
-                className={`marketing-bar block h-[2px] w-6 bg-ink ${open ? 'translate-y-2 rotate-45' : ''}`}
-                aria-hidden="true"
-              />
-              <span
-                className={`marketing-bar block h-[2px] w-6 bg-ink ${open ? 'opacity-0' : ''}`}
-                aria-hidden="true"
-              />
-              <span
-                className={`marketing-bar block h-[2px] w-6 bg-ink ${open ? '-translate-y-2 -rotate-45' : ''}`}
-                aria-hidden="true"
-              />
+              <span className="marketing-bar block h-[2px] w-6 bg-accent" aria-hidden="true" />
+              <span className="marketing-bar block h-[2px] w-6 bg-accent" aria-hidden="true" />
+              <span className="marketing-bar block h-[2px] w-6 bg-accent" aria-hidden="true" />
             </button>
           </div>
         </div>
