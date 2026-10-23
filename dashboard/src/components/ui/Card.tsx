@@ -46,7 +46,10 @@ export function Card({
   children,
 }: CardProps) {
   return (
-    <section aria-labelledby={headingId(title)} className="rounded-card border border-line bg-base">
+    <section
+      aria-labelledby={headingId(title)}
+      className="rounded-card border border-line bg-surface"
+    >
       <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-2">
         <h2 id={headingId(title)} className="text-h2">
           {title}

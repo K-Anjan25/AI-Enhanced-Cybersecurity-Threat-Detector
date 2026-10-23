@@ -3936,6 +3936,14 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-102 — Dark-mode depth: cards on the surface token, header on the canvas (2026-10-23)
+
+**Decision.** Feedback from the user: the blue canvas and blue cards blended, the header had an empty blue pill beside search, and the actions were spread across the top right. The cause was that `Card`, the KPI tiles, the pipeline strip and the overview section used `bg-base`, the canvas colour, so they never received the D-100 card inversion. The header used `bg-surface`, so it was cream and its inverted tokens turned the blue search text invisible.
+
+**Changes.** `Card`, `KpiTiles`, `PipelineStrip` and the overview section use `bg-surface`, so in dark mode they are cream cards with blue text. The header uses `bg-base`, and its divider is the cream border. The search field uses `bg-surface`, so it is a cream pill. Inside `.bg-surface` (dark), the card now sets its own `color` and maps `--color-bg-base` to cream, so headings and inputs inside a card take the card colours.
+
+**Checked.** Screenshots of the signed-in shell in dark mode (stub session, no backend, so the panels show their error states). The dashboard suite passes: 1147 tests, with lint and format clean. Light mode is unchanged in colour, because the surface and base are both cream there.
+
 ### D-101 — Shell layout: menu control in the header, grouped actions (2026-10-23)
 
 **Decision.** The user reported that the signed-in header was fragmented, the collapse control was a panel icon rather than the standard menu icon, and the sidebar's top row did not line up with the header. The collapse control is now the three-line menu icon (`Menu` from lucide), in the header at the left, next to search. It keeps the labels "Expand navigation" and "Collapse navigation", and it sets `aria-expanded` and `aria-controls` to the navigation's `id`. The header is one row: menu and search on the left, theme toggle and sign-out grouped on the right. The sidebar's top row holds only the logo and name, at the header's height.
