@@ -384,6 +384,22 @@ describe('below 768 px the console is the triage loop (T-412)', () => {
     expect(screen.queryByRole('link', { name: 'Traffic' })).not.toBeInTheDocument();
   });
 
+  it('opens a drawer from the hamburger at narrow widths, listing only the screen that opens', async () => {
+    stubViewport(500);
+    renderAt('/alerts');
+    const user = userEvent.setup();
+
+    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Open navigation' }));
+
+    const drawer = screen.getByRole('navigation', { name: 'Primary' });
+    expect(within(drawer).getByRole('link', { name: 'Alerts' })).toBeInTheDocument();
+    expect(within(drawer).queryByRole('link', { name: 'Traffic' })).not.toBeInTheDocument();
+
+    await user.click(within(drawer).getByRole('link', { name: 'Alerts' }));
+    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument();
+  });
+
   it('replaces a screen the window cannot show, and fetches nothing for it', () => {
     stubViewport(500);
     const seen = renderAt('/');

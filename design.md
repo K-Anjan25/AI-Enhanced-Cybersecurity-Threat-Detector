@@ -218,7 +218,7 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 The brand palette is two colours: Stream Blue `#1E56CD` and Vanilla Cloud `#FDF8F2` (memory.md D-099). Nothing else is used: no tint, no third colour, no translucent overlay. Dark is the default: a Stream Blue field with Vanilla Cloud type. Light is the same pair inverted: a Vanilla Cloud field with Stream Blue type. Both pairs measure 6.09 : 1 against each other, so either theme reads at WCAG AA. Surfaces match the field and are separated by borders, because the palette has no second tint. Muted text is the same colour as primary text, so hierarchy comes from size and weight, not colour. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
 
-### 5.1 Colour — dark theme (default)
+### 5.1 Colour — dark theme (optional; the light theme is the default, see D-104)
 
 |Token|Value|Contrast|Use|
 |---|---|---|---|
@@ -349,7 +349,7 @@ Chart rules: every axis is labelled with units; every series has a legend entry;
 | ≥ 1440 px    | Full layout, side-by-side panels, entity graph always visible                                                  |
 | 1024–1439 px | Panels stack in pairs, nav rail collapses to icons by default                                                  |
 | 768–1023 px  | Single column, nav becomes a drawer, tables keep the 4 most important columns                                  |
-| < 768 px     | Triage-focused: alert list and alert detail only. A banner states that the full console needs a larger screen. |
+| < 768 px     | Triage-focused: alert list and alert detail only. The hamburger opens a navigation drawer that lists only the Alerts entry. A banner states that the full console needs a larger screen. |
 
 The product is desktop-first. Mobile supports the triage loop and nothing else, and says so.
 
