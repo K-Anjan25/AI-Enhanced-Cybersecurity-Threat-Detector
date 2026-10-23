@@ -27,7 +27,7 @@
  * height the design asks for became the height the bar needed.
  */
 import { useState, type ReactNode } from 'react';
-import { LogOut, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { LogOut, Menu, Search } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { PALETTE_KEY_SHORTCUTS, paletteKeyLabel } from '../../lib/keyboard';
@@ -68,6 +68,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
     <div className="flex min-h-screen bg-base text-ink">
       {narrow ? null : (
         <nav
+          id="primary-navigation"
           aria-label="Primary"
           // The widths are design.md §3's 240 px rail and 56 px icon rail, now
           // tokens (`w-rail`, `w-rail-collapsed`, T-402) instead of a class the
@@ -76,29 +77,11 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
             collapsed ? 'w-rail-collapsed' : 'w-rail'
           }`}
         >
-          <div className="flex h-topbar items-center justify-between px-4">
+          <div className="flex h-topbar items-center px-4">
             <div className="flex items-center gap-2">
               <AegisLogo />
               {!collapsed ? <span className="text-h2">AEGIS</span> : null}
             </div>
-            <button
-              type="button"
-              onClick={() => setCollapsedByHand(!collapsed)}
-              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-              className="rounded-input p-1 text-muted hover:text-ink"
-            >
-              {/* The toggle is drawn, not spelled (§5.6): it used to render a pair
-                  of guillemets — French quotation marks — which a screen reader
-                  reads as punctuation and which say nothing about a rail, and which
-                  `nav.test.ts` now scans the source for. The two panel icons are the
-                  pair every editor uses for the same control, and the button's own
-                  label already names the action. */}
-              {collapsed ? (
-                <PanelLeftOpen aria-hidden="true" className="size-icon-md" />
-              ) : (
-                <PanelLeftClose aria-hidden="true" className="size-icon-md" />
-              )}
-            </button>
           </div>
 
           {sections.map((section) => (
@@ -139,17 +122,41 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-topbar items-center justify-between border-b border-line bg-surface px-6">
-          <div className="flex items-center gap-4">
+        <header className="flex h-topbar items-center gap-4 border-b border-line bg-surface px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {narrow ? null : (
+              <button
+                type="button"
+                onClick={() => setCollapsedByHand(!collapsed)}
+                aria-expanded={!collapsed}
+                aria-controls="primary-navigation"
+                aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-input text-muted hover:text-ink focus-visible:ring-2"
+              >
+                {/* The standard three-line menu icon (≡): it toggles the side drawer,
+                    the same control on every screen size. */}
+                <Menu aria-hidden="true" className="size-icon-md" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenPalette}
               aria-keyshortcuts={PALETTE_KEY_SHORTCUTS}
-              className="flex items-center gap-2 rounded-input border border-line bg-base px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
+              className="flex w-full max-w-md items-center gap-2 rounded-input border border-line bg-base px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
             >
               <Search aria-hidden="true" className="size-icon-sm" />
-              Search
+              <span className="flex-1 text-left">Search</span>
               <kbd className="font-mono">{paletteKeyLabel()}</kbd>
+            </button>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              className="rounded-input border border-line px-3 py-1 font-mono text-caption hover:text-accent"
+            >
+              {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
             </button>
             <button
               type="button"
@@ -159,14 +166,6 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
             >
               <LogOut aria-hidden="true" className="size-icon-sm" />
               <span className="hidden xl:inline">Sign out</span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              className="rounded-input border border-line px-3 py-1 font-mono text-caption hover:text-accent"
-            >
-              {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
             </button>
           </div>
         </header>
