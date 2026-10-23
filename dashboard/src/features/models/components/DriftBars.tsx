@@ -54,7 +54,7 @@ export function DriftBars({ view, at, loading, error }: DriftBarsProps) {
 
   return (
     <div className="flex flex-col">
-      <p className="px-4 pt-3 text-caption text-muted">
+      <p className="px-4 pt-3 text-body-sm font-semibold text-muted">
         {DRIFT_METRIC} for {view.bars.length} features, read{' '}
         {at === null ? 'not yet' : formatStamp(new Date(at).toISOString())} ·{' '}
         {view.drifting === 0
@@ -68,7 +68,7 @@ export function DriftBars({ view, at, loading, error }: DriftBarsProps) {
           {`Population stability index per feature, from the ${DRIFT_METRIC} gauge, with FR-32's ${String(DRIFT_THRESHOLD)} threshold marked.`}
         </caption>
         <thead>
-          <tr className="border-b border-line text-left text-caption text-muted">
+          <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
             <th scope="col" className="px-4 py-2 font-medium">
               Feature
             </th>

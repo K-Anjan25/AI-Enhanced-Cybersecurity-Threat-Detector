@@ -33,7 +33,9 @@ export function ResultsTable({ rows, empty }: ResultsTableProps) {
       sortValue: (row) => row.severityLabel,
       cell: (row) =>
         row.severity === 'unrecognised' ? (
-          <span className="text-caption text-muted">unrecognised: {row.severityLabel}</span>
+          <span className="text-body-sm font-semibold text-muted">
+            unrecognised: {row.severityLabel}
+          </span>
         ) : (
           <SeverityPill severity={row.severity} />
         ),

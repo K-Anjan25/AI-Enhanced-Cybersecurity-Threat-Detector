@@ -92,7 +92,7 @@ export function OverviewPage() {
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-caption text-muted" htmlFor="overview-range">
+            <label className="text-body-sm font-semibold text-muted" htmlFor="overview-range">
               Window
             </label>
             <select

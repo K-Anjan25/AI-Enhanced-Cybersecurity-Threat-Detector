@@ -52,13 +52,13 @@ export function ServingMetrics({
           <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 lg:grid-cols-5">
             {panel.cards.map((card) => (
               <div key={card.name} className="rounded-card border border-line px-3 py-2">
-                <p className="text-caption text-muted">{card.label}</p>
+                <p className="text-body-sm font-semibold text-muted">{card.label}</p>
                 <p className="mt-1 font-mono text-h2 tabular-nums text-ink">{card.valueText}</p>
-                <p className="mt-1 text-caption text-muted">{card.provenance}</p>
+                <p className="mt-1 text-body-sm font-semibold text-muted">{card.provenance}</p>
               </div>
             ))}
           </div>
-          <p className="px-4 pb-4 text-caption text-muted">{panel.caption}</p>
+          <p className="px-4 pb-4 text-body-sm font-semibold text-muted">{panel.caption}</p>
         </>
       )}
     </Card>

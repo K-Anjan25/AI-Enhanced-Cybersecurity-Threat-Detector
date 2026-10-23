@@ -54,7 +54,7 @@ export function SignInPage() {
           type="button"
           onClick={toggleTheme}
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          className="rounded-input border border-line px-3 py-1 text-caption text-muted hover:text-ink"
+          className="rounded-input border border-line px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
         >
           {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
         </button>

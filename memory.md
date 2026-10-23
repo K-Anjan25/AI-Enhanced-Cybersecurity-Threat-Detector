@@ -3936,6 +3936,22 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-100 — Dark-mode cards, readable metadata, chart dash patterns, action-named toggle (2026-10-23)
+
+**Decision.** The user asked for the dark-mode critique to be applied, and confirmed that the two-colour rule still applies in dark mode. The user chose: sidebar and header stay cream, like the cards; metadata is larger and heavier; severity series are distinguished by legend and dash pattern.
+
+**Dark cards.** In dark mode a `.bg-surface` element is a Vanilla Cloud card on the Stream Blue canvas. It redefines the text, border, accent, severity and focus tokens its children use, and the custom properties cascade to them. Every pair is 6.09 : 1. Light is unchanged. The sidebar and header also use `bg-surface`, so they are cream too, which removes the sidebar colour step.
+
+**Toggle.** The visible label names the action: "Switch to light" or "Switch to dark". The accessible name is unchanged.
+
+**Metadata.** The 63 `text-caption text-muted` instances, including the monospace ones, became `text-body-sm font-semibold text-muted`. This is a 13 px step from the existing scale, not a new size, and colour is unchanged.
+
+**Charts.** The stacked severity chart already had a legend. Every series shares one colour, so each severity now has a distinct dash pattern (`SEVERITY_DASH` in `charts.ts`). A test asserts the patterns are unique.
+
+**Not verified.** The browser harness and the `.venv` were removed by an environment reset, so the signed-in pages have not been screenshotted. The dashboard suite (1146 tests), lint, format and build pass.
+
+**Repository incident.** The local clone was rebuilt at `f724bc3`, so the branch checkout no longer held the pushed commits. The working tree differed from the pushed branch in 88 files. Those uncommitted differences were discarded by `git reset --hard` to `origin/arena/dd082240-ai-enhanced-cybersecurity-thre` (`86d1501`) and were not kept. The pushed commits are intact on GitHub, and only the three edits of this turn were reapplied.
+
 ### D-099 — Two-colour palette applied to the whole dashboard; hamburger reduced to three lines (2026-10-22)
 
 **Decision.** The user asked for the Vanilla Cloud and Stream Blue palette on the dashboard too, not only on the public site. The hamburger is three plain horizontal lines with no border, and the lines no longer turn into an X. The user answered two questions. Severity is shown with a filled shape for critical and high and an outlined shape for the other four, and the word always appears. Both themes use the same two colours inverted.

@@ -87,7 +87,7 @@ export function ExportControls() {
           {pending('pdf') ? 'Exporting…' : 'Export PDF'}
         </Button>
       </div>
-      <p aria-live="polite" className="text-caption text-muted">
+      <p aria-live="polite" className="text-body-sm font-semibold text-muted">
         {refusal ?? outcome ?? ''}
       </p>
     </div>

@@ -78,7 +78,7 @@ export function ComparePanel({ rows }: ComparePanelProps) {
     onChange: (id: string) => void,
     id: string,
   ): JSX.Element => (
-    <label htmlFor={id} className="flex flex-col gap-1 text-caption text-muted">
+    <label htmlFor={id} className="flex flex-col gap-1 text-body-sm font-semibold text-muted">
       {label}
       <select
         id={id}

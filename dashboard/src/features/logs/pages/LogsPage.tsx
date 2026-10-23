@@ -127,7 +127,7 @@ export function LogsPage() {
         state="ready"
         loadingLines={5}
         actions={
-          <span className="text-caption text-muted">
+          <span className="text-body-sm font-semibold text-muted">
             {view.state === 'loading'
               ? 'Reading the logs…'
               : `${formatCount(view.clustersSeen)} clusters · ${formatCount(view.linesSeen)} lines`}

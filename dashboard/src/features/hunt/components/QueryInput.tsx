@@ -62,7 +62,7 @@ export function QueryInput({ value, onChange, onRun, errors, disabled = false }:
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-caption text-muted" htmlFor={`${listId}-input`}>
+      <label className="text-body-sm font-semibold text-muted" htmlFor={`${listId}-input`}>
         Query
       </label>
       <div className="relative flex flex-wrap items-center gap-2">
@@ -157,7 +157,7 @@ export function QueryInput({ value, onChange, onRun, errors, disabled = false }:
               }}
             >
               <span className="font-mono">{suggestion.value}</span>
-              <span className="text-caption text-muted">
+              <span className="text-body-sm font-semibold text-muted">
                 {suggestion.kind === 'unsearchable'
                   ? `not searchable — ${suggestion.detail}`
                   : suggestion.detail}

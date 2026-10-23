@@ -171,7 +171,7 @@ export function HuntPage() {
 
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-caption text-muted" htmlFor="hunt-span">
+              <label className="text-body-sm font-semibold text-muted" htmlFor="hunt-span">
                 Window
               </label>
               <select
@@ -249,7 +249,7 @@ export function HuntPage() {
         title="Results"
         actions={
           view.executed === null ? null : (
-            <p className="text-caption text-muted">
+            <p className="text-body-sm font-semibold text-muted">
               {`Searched ${view.executed} · ${view.windowLabel ?? ''}`}
             </p>
           )
@@ -289,7 +289,7 @@ export function HuntPage() {
             />
           }
         />
-        <p className="mt-2 text-caption text-muted">{summary}</p>
+        <p className="mt-2 text-body-sm font-semibold text-muted">{summary}</p>
       </>
     );
   }

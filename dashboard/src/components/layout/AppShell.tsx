@@ -145,7 +145,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
               type="button"
               onClick={onOpenPalette}
               aria-keyshortcuts={PALETTE_KEY_SHORTCUTS}
-              className="flex items-center gap-2 rounded-input border border-line bg-base px-3 py-1 text-caption text-muted hover:text-ink"
+              className="flex items-center gap-2 rounded-input border border-line bg-base px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
             >
               <Search aria-hidden="true" className="size-icon-sm" />
               Search
@@ -155,7 +155,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
               type="button"
               onClick={onSignOut}
               aria-label="Sign out"
-              className="inline-flex items-center gap-2 rounded-input border border-line px-3 py-1 text-caption text-muted hover:text-ink"
+              className="inline-flex items-center gap-2 rounded-input border border-line px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
             >
               <LogOut aria-hidden="true" className="size-icon-sm" />
               <span className="hidden xl:inline">Sign out</span>
@@ -174,7 +174,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
         {narrow ? <NarrowNotice showQueueLink /> : null}
 
         <main className="flex-1 p-6">{children ?? <Outlet />}</main>
-        <footer className="border-t border-line px-6 py-3 text-caption text-muted">
+        <footer className="border-t border-line px-6 py-3 text-body-sm font-semibold text-muted">
           AEGIS · Threat detection
         </footer>
       </div>

@@ -78,7 +78,7 @@ export function SeverityAreaChart({
             },
           })}
     >
-      <p className="mb-2 text-caption text-muted">{windowLabel}</p>
+      <p className="mb-2 text-body-sm font-semibold text-muted">{windowLabel}</p>
       {asTable ? (
         <table id="severity-area-table" className="w-full border-collapse text-body-sm">
           <caption className="sr-only">Alert volume by severity, {windowLabel}, as a table</caption>

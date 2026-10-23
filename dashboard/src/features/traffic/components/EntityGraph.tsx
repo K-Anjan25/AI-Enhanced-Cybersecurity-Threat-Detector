@@ -60,7 +60,7 @@ export function EntityGraph({
 
   return (
     <div>
-      <p className="mb-2 text-caption text-muted">{model.reason}</p>
+      <p className="mb-2 text-body-sm font-semibold text-muted">{model.reason}</p>
 
       {/* `group`, not `img`: the nodes are buttons, and a presentational `img` role
           would hide every one of them from assistive technology. */}
@@ -187,13 +187,13 @@ export function EntityGraph({
       )}
 
       {pinnedId === null ? null : (
-        <p className="mt-2 flex items-center gap-2 text-caption text-muted">
+        <p className="mt-2 flex items-center gap-2 text-body-sm font-semibold text-muted">
           <Badge tone="neutral">Pinned</Badge>
           {pinnedId} and its neighbours are shown; everything else is hidden.
         </p>
       )}
       {model.edges.length === 0 && model.nodes.length > 1 ? (
-        <p className="mt-2 text-caption text-muted" data-testid="graph-no-edges">
+        <p className="mt-2 text-body-sm font-semibold text-muted" data-testid="graph-no-edges">
           No flow relationships between these addresses
           {` (last seen ${formatInstant(model.nodes[0]?.lastSeen ?? new Date().toISOString())}).`}
         </p>

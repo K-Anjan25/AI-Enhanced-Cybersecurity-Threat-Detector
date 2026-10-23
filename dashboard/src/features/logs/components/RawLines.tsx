@@ -50,7 +50,7 @@ export function RawLines({ clusterKey, template, lines, failed, onClose }: RawLi
         <Skeleton lines={4} />
       ) : (
         <div id="log-raw-lines">
-          <p className="mb-2 text-caption text-muted">
+          <p className="mb-2 text-body-sm font-semibold text-muted">
             {lines.lines_truncated
               ? `Newest ${formatCount(lines.lines.length)} of ${formatCount(lines.lines_seen)}`
               : `${formatCount(lines.lines_seen)} lines`}
