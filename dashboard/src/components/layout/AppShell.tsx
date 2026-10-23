@@ -51,6 +51,9 @@ interface AppShellProps {
   children?: ReactNode;
 }
 
+/** Routes that open below 768 px (design.md §8.3: triage only). */
+const NARROW_OFFERED: ReadonlySet<string> = new Set(['/alerts']);
+
 export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) {
   // `null` is "nobody has said", which is what lets the default follow the window:
   // §8.3's icon rail on a laptop, labels on a large monitor. Once the operator
@@ -61,28 +64,38 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
   const viewport = useViewportClass();
   const narrow = viewport === 'narrow';
   const collapsed = collapsedByHand ?? viewport === 'medium';
-
-  const sections = [...new Set(NAV_ITEMS.map((item) => item.section))];
+  // Below 768 px only triage opens (the `Offered` gate in App.tsx), so the drawer
+  // lists only the entries that open. Listing the others would send a phone to
+  // a "Not offered" page.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const navItems = narrow ? NAV_ITEMS.filter((item) => NARROW_OFFERED.has(item.to)) : NAV_ITEMS;
+  const sections = [...new Set(navItems.map((item) => item.section))];
 
   return (
     <div className="flex min-h-screen flex-col bg-base text-ink">
       {/* The header spans the full width, above the sidebar and the content. */}
       <header className="flex h-topbar items-center gap-4 border-b border-line bg-base px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          {narrow ? null : (
-            <button
-              type="button"
-              onClick={() => setCollapsedByHand(!collapsed)}
-              aria-expanded={!collapsed}
-              aria-controls="primary-navigation"
-              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-              className="inline-flex size-10 shrink-0 items-center justify-center rounded-input text-muted hover:text-ink focus-visible:ring-2"
-            >
-              {/* The standard three-line menu icon (≡): it toggles the side drawer,
+          <button
+            type="button"
+            onClick={() => (narrow ? setDrawerOpen(!drawerOpen) : setCollapsedByHand(!collapsed))}
+            aria-expanded={narrow ? drawerOpen : !collapsed}
+            aria-controls="primary-navigation"
+            aria-label={
+              narrow
+                ? drawerOpen
+                  ? 'Close navigation'
+                  : 'Open navigation'
+                : collapsed
+                  ? 'Expand navigation'
+                  : 'Collapse navigation'
+            }
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-input text-muted hover:text-ink focus-visible:ring-2"
+          >
+            {/* The standard three-line menu icon (≡): it toggles the side drawer,
                       the same control on every screen size. */}
-              <Menu aria-hidden="true" className="size-icon-md" />
-            </button>
-          )}
+            <Menu aria-hidden="true" className="size-icon-md" />
+          </button>
           <button
             type="button"
             onClick={onOpenPalette}
@@ -114,17 +127,21 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
           </button>
         </div>
       </header>
-      <div className="flex min-h-0 flex-1">
-        {narrow ? null : (
+      <div className="relative flex min-h-0 flex-1">
+        {narrow && !drawerOpen ? null : (
           <nav
             id="primary-navigation"
             aria-label="Primary"
             // The widths are design.md §3's 240 px rail and 56 px icon rail, now
             // tokens (`w-rail`, `w-rail-collapsed`, T-402) instead of a class the
             // inline style then overrode.
-            className={`flex flex-col border-r border-line bg-base transition-[width] duration-panel ${
-              collapsed ? 'w-rail-collapsed' : 'w-rail'
-            }`}
+            className={
+              narrow
+                ? 'absolute inset-y-0 left-0 z-40 flex w-rail flex-col border-r border-line bg-base shadow-overlay'
+                : `flex flex-col border-r border-line bg-base transition-[width] duration-panel ${
+                    collapsed ? 'w-rail-collapsed' : 'w-rail'
+                  }`
+            }
           >
             <div className="flex h-topbar items-center px-4">
               <div className="flex items-center gap-2">
@@ -139,31 +156,37 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
                   <p className="px-4 text-caption uppercase tracking-wide text-muted">{section}</p>
                 ) : null}
                 <ul>
-                  {NAV_ITEMS.filter((item) => item.section === section).map((item) => (
-                    <li key={item.to}>
-                      <NavLink
-                        to={item.to}
-                        end={item.to === '/'}
-                        title={item.label}
-                        className={({ isActive }) =>
-                          `flex items-center gap-2 px-4 py-2 text-body ${
-                            collapsed ? 'justify-center' : ''
-                          } ${
-                            isActive ? 'border-l-2 border-brand text-ink' : 'text-muted'
-                          } hover:text-ink`
-                        }
-                      >
-                        {/* 20 px in the rail (§5.6: not a dense context — one icon per
+                  {navItems
+                    .filter((item) => item.section === section)
+                    .map((item) => (
+                      <li key={item.to}>
+                        <NavLink
+                          to={item.to}
+                          onClick={() => {
+                            // Choosing an entry closes the drawer, so the screen it opened is visible.
+                            if (narrow) setDrawerOpen(false);
+                          }}
+                          end={item.to === '/'}
+                          title={item.label}
+                          className={({ isActive }) =>
+                            `flex items-center gap-2 px-4 py-2 text-body ${
+                              collapsed ? 'justify-center' : ''
+                            } ${
+                              isActive ? 'border-l-2 border-brand text-ink' : 'text-muted'
+                            } hover:text-ink`
+                          }
+                        >
+                          {/* 20 px in the rail (§5.6: not a dense context — one icon per
                           row, 44 px tall). `aria-hidden`, because the label beside
                           it is the link's name; when the rail is collapsed the same
                           label is still in the link, as `sr-only` text, so the icon
                           is never the only content (§5.6) and the accessible name of
                           an entry does not change with the rail's width. */}
-                        <item.icon aria-hidden="true" className="size-icon-md shrink-0" />
-                        <span className={collapsed ? 'sr-only' : ''}>{item.label}</span>
-                      </NavLink>
-                    </li>
-                  ))}
+                          <item.icon aria-hidden="true" className="size-icon-md shrink-0" />
+                          <span className={collapsed ? 'sr-only' : ''}>{item.label}</span>
+                        </NavLink>
+                      </li>
+                    ))}
                 </ul>
               </div>
             ))}
