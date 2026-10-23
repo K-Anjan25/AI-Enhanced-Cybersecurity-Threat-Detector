@@ -60,7 +60,7 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
   return (
     <section
       aria-labelledby="pipeline-health"
-      className="rounded-card border border-line bg-base p-4"
+      className="rounded-card border border-line bg-surface p-4"
     >
       <h2 id="pipeline-health" className="text-h2">
         Detection pipeline health

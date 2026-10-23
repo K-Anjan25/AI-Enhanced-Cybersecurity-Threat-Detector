@@ -163,7 +163,7 @@ export function OverviewPage() {
         // real strip is the only thing on this page that should answer to
         // "Detection pipeline health" — otherwise a screen reader (or a test)
         // cannot tell the placeholder from the panel.
-        <section className="rounded-card border border-line bg-base p-4">
+        <section className="rounded-card border border-line bg-surface p-4">
           <h2 className="text-h2">Detection pipeline health</h2>
           {metrics.isError ? (
             <div className="mt-2">

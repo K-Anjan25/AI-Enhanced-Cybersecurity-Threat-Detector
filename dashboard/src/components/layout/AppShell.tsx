@@ -122,7 +122,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-topbar items-center gap-4 border-b border-line bg-surface px-6">
+        <header className="flex h-topbar items-center gap-4 border-b border-line bg-base px-6">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {narrow ? null : (
               <button
@@ -142,7 +142,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
               type="button"
               onClick={onOpenPalette}
               aria-keyshortcuts={PALETTE_KEY_SHORTCUTS}
-              className="flex w-full max-w-md items-center gap-2 rounded-input border border-line bg-base px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
+              className="flex w-full max-w-md items-center gap-2 rounded-input border border-line bg-surface px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
             >
               <Search aria-hidden="true" className="size-icon-sm" />
               <span className="flex-1 text-left">Search</span>

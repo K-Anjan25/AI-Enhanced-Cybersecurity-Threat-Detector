@@ -95,7 +95,9 @@
  * Light is unchanged: its surfaces already match its canvas, and cards are bordered.
  */
 [data-theme='dark'] .bg-surface {
+  color: var(--color-text-primary); /* headings with no colour class inherit blue */
   --color-bg-surface: #fdf8f2;
+  --color-bg-base: #fdf8f2; /* inputs inside a card are cream too */
   --color-border: #1e56cd;
   --color-text-primary: #1e56cd; /* 6.09:1 on surface */
   --color-text-muted: #1e56cd; /* 6.09:1 on surface */
