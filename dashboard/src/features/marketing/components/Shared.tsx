@@ -8,7 +8,7 @@ export function PageHero({ crumb, title, lead }: { crumb: string; title: string;
   return (
     <section className="relative isolate overflow-hidden pb-16 pt-[7.5rem]">
       <div className="mx-auto w-full max-w-[1200px] px-6 md:px-12">
-        <p className="mb-4 font-mono text-caption text-muted">
+        <p className="mb-4 font-mono text-body-sm font-semibold text-muted">
           <Link to="/" className="text-muted hover:text-accent">
             Home
           </Link>{' '}

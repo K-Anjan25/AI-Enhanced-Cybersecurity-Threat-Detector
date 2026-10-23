@@ -62,7 +62,7 @@ function ConfusionView({ evaluation }: { evaluation: EvaluationDetails }) {
   return (
     <div className="min-w-0">
       <h4 className="text-body-sm font-semibold text-ink">Confusion matrix</h4>
-      <p className="mt-1 text-caption text-muted">
+      <p className="mt-1 text-body-sm font-semibold text-muted">
         Threshold {matrix.threshold.toFixed(2)} · {matrix.artifact} · field{' '}
         <code className="font-mono">{matrix.field}</code>
       </p>
@@ -72,7 +72,7 @@ function ConfusionView({ evaluation }: { evaluation: EvaluationDetails }) {
           {matrix.field}
         </caption>
         <thead>
-          <tr className="border-b border-line text-left text-caption text-muted">
+          <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
             <th scope="col" className="px-2 py-2 font-medium">
               Actual
             </th>

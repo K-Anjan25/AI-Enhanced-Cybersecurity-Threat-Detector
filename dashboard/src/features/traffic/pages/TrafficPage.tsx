@@ -78,7 +78,7 @@ export function TrafficPage() {
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-caption text-muted" htmlFor="traffic-range">
+            <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-range">
               Window
             </label>
             <select
@@ -121,7 +121,7 @@ export function TrafficPage() {
         state={loading ? 'loading' : 'ready'}
         loadingLines={6}
         actions={
-          <span className="text-caption text-muted">
+          <span className="text-body-sm font-semibold text-muted">
             {range.label} · {String(full?.bucket_minutes ?? 0)}-minute buckets
           </span>
         }
@@ -146,7 +146,7 @@ export function TrafficPage() {
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-protocol">
+          <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-protocol">
             Protocol
           </label>
           <select
@@ -170,7 +170,7 @@ export function TrafficPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-direction">
+          <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-direction">
             Direction
           </label>
           <select
@@ -194,7 +194,7 @@ export function TrafficPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-min-flows">
+          <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-min-flows">
             Min flows
           </label>
           <input
@@ -224,7 +224,7 @@ export function TrafficPage() {
         </label>
 
         {view === null ? null : (
-          <p className="text-caption text-muted">
+          <p className="text-body-sm font-semibold text-muted">
             {String(view.nodes.length)} addresses shown
             {view.hiddenByControls === 0
               ? ''
@@ -274,7 +274,7 @@ export function TrafficPage() {
       {view === null ? null : (
         <section aria-label="What this screen is not showing" className="flex flex-col gap-1">
           {view.notes.map((note) => (
-            <p key={note} className="text-caption text-muted">
+            <p key={note} className="text-body-sm font-semibold text-muted">
               {note}
             </p>
           ))}

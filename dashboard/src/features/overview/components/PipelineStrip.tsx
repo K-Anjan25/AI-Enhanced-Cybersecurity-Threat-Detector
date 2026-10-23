@@ -75,7 +75,7 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
                 <h3 className="text-body font-semibold text-ink">{stage.spec.label}</h3>
                 <Badge tone={badge.tone}>{badge.label}</Badge>
               </div>
-              <p className="mt-1 text-caption text-muted">{stage.spec.covers}</p>
+              <p className="mt-1 text-body-sm font-semibold text-muted">{stage.spec.covers}</p>
               <ul className="mt-1 flex flex-col gap-1">
                 {measures(stage, hasRates).map((measure) => (
                   <li key={measure} className="text-caption tabular-nums text-ink">
@@ -88,7 +88,7 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
         })}
       </ol>
 
-      <p className="mt-3 text-caption text-muted">
+      <p className="mt-3 text-body-sm font-semibold text-muted">
         Dependencies:{' '}
         {probes === undefined || probes.length === 0 ? (
           // The registry is empty in this build: nothing has registered a probe

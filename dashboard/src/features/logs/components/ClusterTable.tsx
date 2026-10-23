@@ -59,7 +59,7 @@ export function ClusterTable({ rows, openKey, onOpen, empty }: ClusterTableProps
             {row.template}
           </Button>
           <span
-            className="truncate font-mono text-caption text-muted"
+            className="truncate font-mono text-body-sm font-semibold text-muted"
             title={row.cluster.sample_message}
           >
             {row.cluster.sample_message}

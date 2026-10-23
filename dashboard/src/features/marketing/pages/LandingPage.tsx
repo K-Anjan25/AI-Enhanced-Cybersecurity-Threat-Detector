@@ -119,7 +119,7 @@ export function LandingPage() {
             style={{ '--depth-y': '-22px', '--depth-z': '-40px' } as React.CSSProperties}
           >
             <div className="rounded-card border border-line bg-surface p-6 shadow-overlay">
-              <div className="mb-3 flex items-center justify-between font-mono text-caption text-muted">
+              <div className="mb-3 flex items-center justify-between font-mono text-body-sm font-semibold text-muted">
                 <span>ALERT QUEUE</span>
                 <span>sample data</span>
               </div>
@@ -136,15 +136,19 @@ export function LandingPage() {
                     </span>
                     <div>
                       <p className="m-0 text-body font-semibold text-ink">{alert.title}</p>
-                      <p className="m-0 font-mono text-caption text-muted">{alert.meta}</p>
+                      <p className="m-0 font-mono text-body-sm font-semibold text-muted">
+                        {alert.meta}
+                      </p>
                     </div>
-                    <span className="font-mono text-caption text-muted">{alert.age}</span>
+                    <span className="font-mono text-body-sm font-semibold text-muted">
+                      {alert.age}
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
             <div className="relative -mt-8 ml-auto mr-4 w-[14rem] rounded-card border border-accent bg-surface p-4 shadow-overlay">
-              <p className="m-0 font-mono text-caption text-muted">ANOMALY SCORE</p>
+              <p className="m-0 font-mono text-body-sm font-semibold text-muted">ANOMALY SCORE</p>
               <p className="m-0 font-mono text-stat text-accent tabular-nums">0.87</p>
               <div className="mt-2 h-1 overflow-hidden rounded-pill bg-base" aria-hidden="true">
                 <div

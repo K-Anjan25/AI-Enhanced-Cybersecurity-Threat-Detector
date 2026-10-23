@@ -54,7 +54,9 @@ export function SeverityPill({ severity, detail }: SeverityPillProps) {
       className={`inline-flex items-baseline gap-2 border-l-rail pl-2 ${RAIL[severity]} ${TEXT[severity]}`}
     >
       <span className="text-caption font-semibold">{SEVERITY_LABELS[severity]}</span>
-      {detail === undefined ? null : <span className="text-caption text-muted">{detail}</span>}
+      {detail === undefined ? null : (
+        <span className="text-body-sm font-semibold text-muted">{detail}</span>
+      )}
     </span>
   );
 }

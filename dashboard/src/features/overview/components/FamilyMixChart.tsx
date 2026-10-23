@@ -79,7 +79,7 @@ export function FamilyMixChart({
             },
           })}
     >
-      <p className="mb-2 text-caption text-muted">{windowLabel}</p>
+      <p className="mb-2 text-body-sm font-semibold text-muted">{windowLabel}</p>
       {asTable ? (
         <table id="family-mix-table" className="w-full border-collapse text-body-sm">
           <caption className="sr-only">Threat family mix, {windowLabel}, as a table</caption>

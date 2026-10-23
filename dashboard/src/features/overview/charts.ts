@@ -63,6 +63,20 @@ export function seriesOrder(
  * is §7's rule for a count axis, and it is set on the *stacked* scale so no series
  * can be drawn against a truncated one.
  */
+/**
+ * Dash pattern per severity (D-100). The palette has two colours, so every severity
+ * series is drawn in the same colour; the dash makes each stacked band's boundary
+ * distinguishable without relying on colour. Critical is solid.
+ */
+export const SEVERITY_DASH: Record<Severity, number[]> = {
+  critical: [],
+  high: [8, 4],
+  medium: [2, 3],
+  low: [10, 3, 2, 3],
+  info: [4, 4],
+  benign: [1, 3],
+};
+
 export function severityAreaConfig(
   points: readonly SeverityPoint[],
   colours: SeverityColours,
@@ -86,6 +100,7 @@ export function severityAreaConfig(
         tension: 0,
         pointRadius: 0,
         borderWidth: 2,
+        borderDash: SEVERITY_DASH[severity],
       })),
     },
     options: {

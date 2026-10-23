@@ -29,7 +29,7 @@ export function ContextPanel({ detail }: { detail: AlertDetail }) {
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
         {contextFacts(detail).map((fact) => (
           <div key={fact.label} className="flex flex-col">
-            <dt className="text-caption text-muted">{fact.label}</dt>
+            <dt className="text-body-sm font-semibold text-muted">{fact.label}</dt>
             <dd className="font-mono text-body-sm text-ink">{fact.value}</dd>
           </div>
         ))}

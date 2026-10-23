@@ -45,7 +45,7 @@ export function KpiTiles({ tiles }: KpiTilesProps) {
               <span className="ml-1 text-body-sm text-muted">{tile.unit}</span>
             )}
           </dd>
-          <dd className="mt-1 text-caption text-muted">{tile.caption}</dd>
+          <dd className="mt-1 text-body-sm font-semibold text-muted">{tile.caption}</dd>
         </div>
       ))}
     </dl>

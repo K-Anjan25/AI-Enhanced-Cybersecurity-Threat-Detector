@@ -70,7 +70,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   return (
     <Modal open={open} title="Commands" onClose={onClose}>
       <div className="flex flex-col gap-1">
-        <label className="text-caption text-muted" htmlFor={`${base}-input`}>
+        <label className="text-body-sm font-semibold text-muted" htmlFor={`${base}-input`}>
           Search
         </label>
         <input
@@ -154,7 +154,9 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
                       >
                         <span className="text-body">{command.label}</span>
                         {command.hint === undefined ? null : (
-                          <span className="truncate text-caption text-muted">{command.hint}</span>
+                          <span className="truncate text-body-sm font-semibold text-muted">
+                            {command.hint}
+                          </span>
                         )}
                       </button>
                     );

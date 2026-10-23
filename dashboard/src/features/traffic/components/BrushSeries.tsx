@@ -353,7 +353,9 @@ export function BrushSeries({
       </svg>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-caption text-muted">Brushed range: {spanLabel(active, range)}</p>
+        <p className="text-body-sm font-semibold text-muted">
+          Brushed range: {spanLabel(active, range)}
+        </p>
         <div className="flex items-center gap-2">
           {range === null ? null : (
             <Button variant="ghost" size="sm" onClick={() => onRange(null)}>

@@ -32,7 +32,7 @@ export function TopEntities({ entities, windowLabel, capped }: TopEntitiesProps)
 
   return (
     <div>
-      <p className="mb-2 text-caption text-muted">{windowLabel}</p>
+      <p className="mb-2 text-body-sm font-semibold text-muted">{windowLabel}</p>
       <ol className="flex flex-col">
         {entities.map((entity, index) => (
           <li
@@ -43,7 +43,7 @@ export function TopEntities({ entities, windowLabel, capped }: TopEntitiesProps)
               <span className="text-caption tabular-nums text-muted">{index + 1}.</span>
               {entity.named ? (
                 <>
-                  <span className="text-caption text-muted">{entity.kind}</span>
+                  <span className="text-body-sm font-semibold text-muted">{entity.kind}</span>
                   <span className="font-mono text-body-sm text-ink">{entity.value}</span>
                 </>
               ) : (
@@ -59,7 +59,7 @@ export function TopEntities({ entities, windowLabel, capped }: TopEntitiesProps)
           </li>
         ))}
       </ol>
-      <p className="mt-2 text-caption text-muted">
+      <p className="mt-2 text-body-sm font-semibold text-muted">
         {capped ? 'The busiest entities; the window held more. ' : ''}
         {unnamed === 0
           ? 'Every id is named by the entity registry.'

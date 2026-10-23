@@ -155,10 +155,10 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
 
   return (
     <div className="mt-3 flex flex-col gap-3">
-      <p className="text-caption text-muted">
+      <p className="text-body-sm font-semibold text-muted">
         Overlaid total scores per bin (benign + threat); exact class counts are tabulated below.
       </p>
-      <p className="text-caption text-muted">
+      <p className="text-body-sm font-semibold text-muted">
         {leftLabel}: {leftHistogram.artifact} · field{' '}
         <code className="font-mono">{leftHistogram.field}</code>
         {' · '}
@@ -309,7 +309,7 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
           </text>
         </svg>
       </div>
-      <div className="flex flex-wrap gap-4 text-caption text-muted">
+      <div className="flex flex-wrap gap-4 text-body-sm font-semibold text-muted">
         <span className="flex items-center gap-2">
           <span aria-hidden="true" className="size-3 rounded-sm bg-accent" />
           {leftLabel}
@@ -333,7 +333,7 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
             Per-bin recorded benign and threat score counts for both model versions
           </caption>
           <thead>
-            <tr className="border-b border-line text-left text-caption text-muted">
+            <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
               <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                 Score interval
               </th>
@@ -344,7 +344,7 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
                 {rightLabel}
               </th>
             </tr>
-            <tr className="border-b border-line text-left text-caption text-muted">
+            <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
               {['Total', 'Benign', 'Threat', 'Total', 'Benign', 'Threat'].map((label, index) => (
                 <th
                   key={`${index}-${label}`}
