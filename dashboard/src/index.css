@@ -88,6 +88,36 @@
 }
 
 /*
+ * Dark cards (D-100). In dark mode a surface is a Vanilla Cloud card on the Stream Blue
+ * canvas, so cards separate from the page. The surface redefines the tokens its own
+ * content uses, and CSS custom properties cascade to children, so text, borders, badges
+ * and buttons inside a card take the card's colours. Every pair is still 6.09 : 1.
+ * Light is unchanged: its surfaces already match its canvas, and cards are bordered.
+ */
+[data-theme='dark'] .bg-surface {
+  --color-bg-surface: #fdf8f2;
+  --color-border: #1e56cd;
+  --color-text-primary: #1e56cd; /* 6.09:1 on surface */
+  --color-text-muted: #1e56cd; /* 6.09:1 on surface */
+  --color-accent: #1e56cd; /* 6.09:1 on surface */
+  --color-on-accent: #fdf8f2;
+  --color-on-severity: #fdf8f2;
+  --severity-critical: #1e56cd;
+  --severity-high: #1e56cd;
+  --severity-medium: #1e56cd;
+  --severity-low: #1e56cd;
+  --severity-info: #1e56cd;
+  --severity-benign: #1e56cd;
+  --severity-text-critical: #1e56cd; /* 6.09:1 on surface */
+  --severity-text-high: #1e56cd; /* 6.09:1 on surface */
+  --severity-text-medium: #1e56cd; /* 6.09:1 on surface */
+  --severity-text-low: #1e56cd; /* 6.09:1 on surface */
+  --severity-text-info: #1e56cd; /* 6.09:1 on surface */
+  --severity-text-benign: #1e56cd; /* 6.09:1 on surface */
+  --focus-ring: #1e56cd; /* 6.09:1 against surface */
+}
+
+/*
  * Motion — design.md §8.2.
  *
  * Theme-independent, so they live outside the two theme blocks. Three durations,

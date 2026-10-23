@@ -166,7 +166,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
               className="rounded-input border border-line px-3 py-1 font-mono text-caption hover:text-accent"
             >
-              {theme === 'dark' ? 'Light' : 'Dark'}
+              {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
             </button>
           </div>
         </header>
