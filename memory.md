@@ -3936,6 +3936,14 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-103 — Full-width header above the sidebar; five-column metrics (2026-10-23)
+
+**Decision.** The user reported that the top bar sat inside the content column, so it did not span the screen, and that the metrics grid was uneven (three columns, then two). The header is now a full-width row above a row that holds the sidebar and the content. The metric tiles use five equal columns from 768 px up, and two columns below that.
+
+**Open.** The sidebar is Stream Blue on the Stream Blue canvas, with only a 1 px cream divider, so it reads as missing. The cream cards on the blue canvas are also a colour question. The sidebar colour and the card direction are pending a user decision (see the question put to the user). Below 768 px the sidebar stays hidden by design (§8.3, triage-only row).
+
+**Checked.** Full dashboard suite: 1147 tests. Lint, format and stylelint clean. Screenshot of the signed-in shell in dark mode at 1280 px (stub session, no backend).
+
 ### D-102 — Dark-mode depth: cards on the surface token, header on the canvas (2026-10-23)
 
 **Decision.** Feedback from the user: the blue canvas and blue cards blended, the header had an empty blue pill beside search, and the actions were spread across the top right. The cause was that `Card`, the KPI tiles, the pipeline strip and the overview section used `bg-base`, the canvas colour, so they never received the D-100 card inversion. The header used `bg-surface`, so it was cream and its inverted tokens turned the blue search text invisible.
