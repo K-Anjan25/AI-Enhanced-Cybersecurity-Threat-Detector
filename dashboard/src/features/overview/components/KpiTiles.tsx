@@ -29,7 +29,7 @@ export interface KpiTilesProps {
 
 export function KpiTiles({ tiles }: KpiTilesProps) {
   return (
-    <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))]">
+    <dl className="grid grid-cols-2 gap-4 md:grid-cols-5">
       {tiles.map((tile) => (
         <div key={tile.label} className="min-w-0 rounded-card border border-line bg-surface p-4">
           <dt className="flex items-center gap-2 text-caption uppercase tracking-wide text-muted">
