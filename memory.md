@@ -3940,7 +3940,7 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Decision.** The user reported that the signed-in header was fragmented, the collapse control was a panel icon rather than the standard menu icon, and the sidebar's top row did not line up with the header. The collapse control is now the three-line menu icon (`Menu` from lucide), in the header at the left, next to search. It keeps the labels "Expand navigation" and "Collapse navigation", and it sets `aria-expanded` and `aria-controls` to the navigation's `id`. The header is one row: menu and search on the left, theme toggle and sign-out grouped on the right. The sidebar's top row holds only the logo and name, at the header's height.
 
-**Not changed.** The palette complaint is open. The sidebar is cream, as the user chose in D-100, and the feedback now says it clashes. The saturated blue canvas is the dark theme set in D-099. Both need a user decision before any change.
+**Sidebar colour (user decision).** The cream sidebar clashed with the blue canvas. The user chose a blue sidebar with a cream divider. The sidebar now uses `bg-base`, and its existing border is the divider. The header stays on `bg-surface`. The saturated blue canvas is the dark theme from D-099, and it was not changed.
 
 **Environment.** The repository was reset again. Its working tree differed from the pushed branch in 85 files. The working tree was stashed as `wt-before-realign-27515f9`, and the branch was moved to `origin/arena/dd082240-ai-enhanced-cybersecurity-thre` (`27515f9`). The layout change was made on that commit.
 
