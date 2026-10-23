@@ -73,7 +73,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
           // The widths are design.md §3's 240 px rail and 56 px icon rail, now
           // tokens (`w-rail`, `w-rail-collapsed`, T-402) instead of a class the
           // inline style then overrode.
-          className={`flex flex-col border-r border-line bg-surface transition-[width] duration-panel ${
+          className={`flex flex-col border-r border-line bg-base transition-[width] duration-panel ${
             collapsed ? 'w-rail-collapsed' : 'w-rail'
           }`}
         >
