@@ -3956,7 +3956,11 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Checks.** Contrast values are computed and written in `index.css` and `design.md` §5. `tokens.test.ts` checks them. Scanned for old-palette colours on the sign-in page, the dashboard, and the public pages, in both themes: zero hits.
 
-**Not changed.** The AEGIS logo asset is a separate image and still has its own blue tile. Historical docs (`docs/accessibility-manual-pass.md`, `docs/prd-coverage.md`) still describe the old palette and are records of the earlier decision.
+**Light theme revised.** Frost canvas, silver `#C9D6E8` cards, navy borders and night/navy ink. The first light version was frost on frost and looked washed out.
+
+**Logo.** `dashboard/public/aegis-logo.png` (favicon, public header and footer) is recoloured: night tile, ice shield. The dashboard mark is a monochrome mask and follows the text colour.
+
+**Docs.** The two historical doc lines now describe the current palette.
 
 ### D-104 — Light default theme; hamburger drawer below 768 px (2026-10-23)
 
