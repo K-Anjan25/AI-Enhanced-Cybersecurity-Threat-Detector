@@ -118,7 +118,8 @@ export default {
     fontFamily: {
       sans: ['Inter', 'system-ui', 'sans-serif'],
       mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-      display: ['Inter', 'system-ui', 'sans-serif'],
+      // Titles and headings (design.md §5.4): the Cybercore demo stack.
+      display: ['"Courier New"', 'ui-monospace', 'monospace'],
     },
     // The documented type scale and nothing else, so the 12px floor cannot be
     // undercut by a Tailwind default step (`text-xs` is exactly 12px, but

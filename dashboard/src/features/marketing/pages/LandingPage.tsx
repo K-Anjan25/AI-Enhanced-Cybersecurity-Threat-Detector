@@ -89,7 +89,7 @@ export function LandingPage() {
             <p className="m-0 font-mono text-caption uppercase tracking-widest text-accent">
               Machine-learning threat detection
             </p>
-            <h1 id="hero-title" className="text-display md:text-hero">
+            <h1 id="hero-title" className="font-sans text-display md:text-hero">
               See the attack <span className="text-accent">before</span> it becomes an incident.
             </h1>
             <p className="m-0 max-w-[60ch] text-body text-muted md:text-h2 md:font-normal">
