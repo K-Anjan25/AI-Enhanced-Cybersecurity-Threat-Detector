@@ -40,7 +40,7 @@ in the table, signed in where the page requires it.
 ## Resolved: landing headline over the animated wireframe
 
 The animated 3D field has been removed from the landing hero, so no moving lines cross the
-text. The hero is now a solid Vanilla Cloud ground with Stream Blue text (6.09:1), and every
+text. The hero is now a solid night navy ground with frost text (15.81:1, Cybercore palette, memory.md D-105), and every
 text and control pair on the public pages uses the two brand colours and passes WCAG AA. The
 pairs are listed in memory.md D-098. A screen-reader pass is still needed (item 4 below).
 

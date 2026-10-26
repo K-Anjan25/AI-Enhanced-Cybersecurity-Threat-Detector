@@ -216,7 +216,7 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-The dashboard palette is Cybercore (memory.md D-106). Its colours are night navy `#0B1A33`, surface navy `#16294D`, ice blue `#7FD8FF`, silver `#C9D6E8`, soft pink `#FFD6EC`, ash `#9FB4CF`, frost `#EAF6FF` and edge `#6B93C4`. Dark uses night ground with frost type and ice accents. Light uses a frost ground with night and navy type. Nothing else is used: no third tint, no translucent overlay on the dashboard. Cards are separated by `border.default` and by the surface colour in dark.
+The dashboard palette is Cybercore (memory.md D-106). Its colours are night navy `#0B1A33`, surface navy `#16294D`, ice blue `#7FD8FF`, silver `#C9D6E8`, soft pink `#FFD6EC`, ash `#9FB4CF`, frost `#EAF6FF` and edge `#6B93C4`. Dark uses night ground with frost type and ice accents. Light uses a frost canvas with silver cards and night and navy type. Nothing else is used: no third tint, no translucent overlay on the dashboard. Cards are separated by `border.default` and by the surface colour in both themes.
 
 The public marketing site uses the same palette, with a hero glow and texture in its `.marketing-site` block (memory.md D-105).
 
@@ -238,11 +238,11 @@ The public marketing site uses the same palette, with a hero glow and texture in
 |Token|Value|Contrast|Use|
 |---|---|---|---|
 |`bg.base`|`#EAF6FF`|—|App background|
-|`bg.surface`|`#EAF6FF`|—|Cards, panels, tables (separated by `border.default`)|
-|`border.default`|`#16294D`|13.11 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
-|`text.primary`|`#0B1A33`|15.81 : 1 on `bg.base` · 15.81 : 1 on `bg.surface`|Body, headings|
-|`text.muted`|`#16294D`|13.11 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
-|`accent`|`#16294D`|13.11 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Links, focus, primary actions|
+|`bg.surface`|`#C9D6E8`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
+|`text.primary`|`#0B1A33`|15.81 : 1 on `bg.base` · 11.79 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
+|`accent`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.3 Severity palette
 

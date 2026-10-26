@@ -49,11 +49,11 @@
 
 [data-theme='light'] {
   --color-bg-base: #eaf6ff;
-  --color-bg-surface: #eaf6ff;
-  --color-border: #16294d; /* 13.11:1 on base, 13.11:1 on surface */
-  --color-text-primary: #0b1a33; /* 15.81:1 on base, 15.81:1 on surface */
-  --color-text-muted: #16294d; /* 13.11:1 on base, 13.11:1 on surface */
-  --color-accent: #16294d; /* 13.11:1 on base, 13.11:1 on surface */
+  --color-bg-surface: #c9d6e8;
+  --color-border: #16294d; /* 13.11:1 on base, 9.78:1 on surface */
+  --color-text-primary: #0b1a33; /* 15.81:1 on base, 11.79:1 on surface */
+  --color-text-muted: #16294d; /* 13.11:1 on base, 9.78:1 on surface */
+  --color-accent: #16294d; /* 13.11:1 on base, 9.78:1 on surface */
   --color-brand-blue: #16294d;
   --color-on-accent: #eaf6ff; /* text on the accent fill; asserted in tokens.test.ts */
 
