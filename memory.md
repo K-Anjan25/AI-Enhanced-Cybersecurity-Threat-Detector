@@ -3942,7 +3942,7 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Interpretation.** The demo's copy and products are for a fictional clothing brand, so they were not used on the security product. The Cybercore look is carried over: palette, a glow and texture on the hero ground, and the surfaces. The copy, sections and hamburger navigation are the existing AEGIS ones.
 
-**Changes.** `.marketing-site` tokens in `src/index.css`; a `.marketing-site .landing-stage` hero ground built with `color-mix()` on tokens, because the compiled-CSS test forbids `rgb()` and `rgba()` literals; the hero comment in `LandingPage.tsx`; the public-site note in `design.md` §5.
+**Changes.** `.marketing-site` tokens in `src/index.css`; a `.marketing-site .landing-stage` hero ground built with `color-mix()` on tokens, because the compiled-CSS test forbids `rgb()` and `rgba()` literals; the hero comment in `LandingPage.tsx`; the public-site note in `design.md` §5. A `.marketing-site .bg-surface` rule keeps marketing cards Cybercore, because the dashboard dark-card rule (D-100) would otherwise repaint them Vanilla Cloud. The marketing placeholder images in `content.ts` use Cybercore tones.
 
 **Checks.** Lint, stylelint, prettier, tsc and the marketing, auth, App and theme tests all pass (98 tests in the focused run). Full suite and build: see the commit.
 
