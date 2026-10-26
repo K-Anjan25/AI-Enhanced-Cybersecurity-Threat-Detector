@@ -216,9 +216,9 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-The brand palette is two colours: Stream Blue `#1E56CD` and Vanilla Cloud `#FDF8F2` (memory.md D-099). Nothing else is used: no tint, no third colour, no translucent overlay. Dark is the default: a Stream Blue field with Vanilla Cloud type. Light is the same pair inverted: a Vanilla Cloud field with Stream Blue type. Both pairs measure 6.09 : 1 against each other, so either theme reads at WCAG AA. Surfaces match the field and are separated by borders, because the palette has no second tint. Muted text is the same colour as primary text, so hierarchy comes from size and weight, not colour. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+The dashboard palette is Cybercore (memory.md D-106). Its colours are night navy `#0B1A33`, surface navy `#16294D`, ice blue `#7FD8FF`, silver `#C9D6E8`, soft pink `#FFD6EC`, ash `#9FB4CF`, frost `#EAF6FF` and edge `#6B93C4`. Dark uses night ground with frost type and ice accents. Light uses a frost ground with night and navy type. Nothing else is used: no third tint, no translucent overlay on the dashboard. Cards are separated by `border.default` and by the surface colour in dark.
 
-The public marketing site is the exception. Since D-105 it uses the Cybercore palette (night navy, ice blue, silver, soft pink), set in its `.marketing-site` block, which replaces the two-colour rule for that site only. The dashboard palette above is unchanged.
+The public marketing site uses the same palette, with a hero glow and texture in its `.marketing-site` block (memory.md D-105).
 
 ### 5.1 Colour — dark theme (default)
 
@@ -226,44 +226,44 @@ The public marketing site is the exception. Since D-105 it uses the Cybercore pa
 
 |Token|Value|Contrast|Use|
 |---|---|---|---|
-|`bg.base`|`#1E56CD`|—|App background|
-|`bg.surface`|`#1E56CD`|—|Cards, panels, tables (separated by `border.default`)|
-|`border.default`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Hairlines and control boundaries; never the sole separator for essential info|
-|`text.primary`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Body, headings|
-|`text.muted`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Secondary labels, metadata (same colour as primary)|
-|`accent`|`#FDF8F2`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Links, focus, primary actions|
+|`bg.base`|`#0B1A33`|—|App background|
+|`bg.surface`|`#16294D`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#6B93C4`|5.45 : 1 on `bg.base` · 4.52 : 1 on `bg.surface`|Hairlines and control boundaries; never the sole separator for essential info|
+|`text.primary`|`#EAF6FF`|15.81 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#9FB4CF`|8.19 : 1 on `bg.base` · 6.79 : 1 on `bg.surface`|Secondary labels, metadata (same colour as primary)|
+|`accent`|`#7FD8FF`|10.89 : 1 on `bg.base` · 9.03 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.2 Colour — light theme
 
 |Token|Value|Contrast|Use|
 |---|---|---|---|
-|`bg.base`|`#FDF8F2`|—|App background|
-|`bg.surface`|`#FDF8F2`|—|Cards, panels, tables (separated by `border.default`)|
-|`border.default`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
-|`text.primary`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Body, headings|
-|`text.muted`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
-|`accent`|`#1E56CD`|6.09 : 1 on `bg.base` · 6.09 : 1 on `bg.surface`|Links, focus, primary actions|
+|`bg.base`|`#EAF6FF`|—|App background|
+|`bg.surface`|`#EAF6FF`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#16294D`|13.11 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
+|`text.primary`|`#0B1A33`|15.81 : 1 on `bg.base` · 15.81 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#16294D`|13.11 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
+|`accent`|`#16294D`|13.11 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.3 Severity palette
 
-Severity has six levels, and the palette has two colours, so **colour does not tell the levels apart**. Each level is written out in words, and the filled and outlined badges differ by shape as well as by the word. The base value is the fill, border, or chart mark, and also the 3 px alert rail; the text value is for any text rendered on a background.
+Severity has six levels, and the palette has few hues, so **colour does not tell the levels apart**. Each level is written out in words, and the filled and outlined badges differ by shape as well as by the word. The base value is the fill, border, or chart mark, and also the 3 px alert rail; the text value is for any text rendered on a background.
 
 |Severity|Base (fill / border / chart)|Text|Label|Badge|
 |---|---|---|---|---|
-|`critical`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Critical`|Filled|
-|`high`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`High`|Filled|
-|`medium`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Medium`|Outlined|
-|`low`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Low`|Outlined|
-|`info`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Info`|Outlined|
-|`benign`|`#FDF8F2` dark · `#1E56CD` light|`#FDF8F2` dark · `#1E56CD` light — 6.09 / 6.09|`Benign`|Outlined|
+|`critical`|`#FFD6EC` dark · `#0B1A33` light|`#FFD6EC` dark · `#0B1A33` light — 13.29 / 15.81|`Critical`|Filled|
+|`high`|`#7FD8FF` dark · `#16294D` light|`#7FD8FF` dark · `#16294D` light — 10.89 / 13.11|`High`|Filled|
+|`medium`|`#C9D6E8` dark · `#16294D` light|`#C9D6E8` dark · `#16294D` light — 11.79 / 13.11|`Medium`|Outlined|
+|`low`|`#9FB4CF` dark · `#16294D` light|`#9FB4CF` dark · `#16294D` light — 8.19 / 13.11|`Low`|Outlined|
+|`info`|`#EAF6FF` dark · `#16294D` light|`#EAF6FF` dark · `#16294D` light — 15.81 / 13.11|`Info`|Outlined|
+|`benign`|`#6B93C4` dark · `#16294D` light|`#6B93C4` dark · `#16294D` light — 5.45 / 13.11|`Benign`|Outlined|
 
 _Ratios are `on bg.base` / `on bg.surface`. Every text value clears WCAG AA (≥ 4.5 : 1) on both surfaces in both themes._
 
-**Badge rule.** A severity badge is one of two shapes. Critical and high are filled with the foreground colour and carry the ground colour as text. Medium, low, info and benign are outlined with the foreground colour and carry the foreground colour as text. The filled badge text is `--color-on-severity`: `#1E56CD` on dark and `#FDF8F2` on light. Measured on the fill: critical 6.09, high 6.09, medium 6.09, low 6.09, info 6.09, benign 6.09, all ≥ 4.5 : 1. White text on these fills fails (1.00 on the dark fill) and is prohibited.
+**Badge rule.** A severity badge is one of two shapes. Critical and high are filled with the foreground colour and carry the ground colour as text. Medium, low, info and benign are outlined with the foreground colour and carry the foreground colour as text. The filled badge text is `--color-on-severity`: `#0B1A33` on dark and `#EAF6FF` on light. Measured on the fill in dark: critical 13.29, high 10.89, medium 11.79, low 8.19, info 15.81, benign 5.45, all ≥ 4.5 : 1. In light: critical 15.81, the other levels 13.11. White text on these fills fails (at most 3.18 : 1 on the dark fills) and is prohibited.
 
 **Charts.** Six severity series cannot be told apart by colour. Any chart that plots more than one severity needs a legend, direct labels, or a pattern in addition to the colour.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 6.09 : 1 (dark) and 6.09 : 1 (light) — above the 3 : 1 non-text requirement.
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 10.89 : 1 (dark) and 13.11 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 

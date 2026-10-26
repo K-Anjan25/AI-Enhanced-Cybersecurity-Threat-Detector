@@ -9,114 +9,73 @@
  * formula against the stated background, and are asserted by
  * src/theme/tokens.test.ts. Do not change a value without re-running that test.
  *
- * Dark theme is the default (SOC context: dim rooms, long shifts).
+ * The dashboard palette is Cybercore (memory.md D-106): night navy and surface
+ * navy in the dark theme, frost and navy in the light theme, with ice blue as the
+ * accent and soft pink as the critical severity and shadow. Dark is the default
+ * in the page shell; the light theme is the shipped default (D-104).
  */
 
-/*
- * The brand palette is two colours: Stream Blue #1E56CD and Vanilla Cloud #FDF8F2
- * (memory.md D-099). Each theme is one colour as the ground and the other as type:
- * dark is Stream Blue ground with Vanilla Cloud type, light is the reverse. Both pairs
- * are 6.09:1, so either theme reads at AA. Surfaces match the ground and are separated
- * by borders, because the palette has no third tint.
- */
-
-/* Dark is the default: Stream Blue ground, Vanilla Cloud type. */
 :root,
 [data-theme='dark'] {
-  --color-bg-base: #1e56cd;
-  --color-bg-surface: #1e56cd;
-  --color-border: #fdf8f2;
-  --color-text-primary: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --color-text-muted: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --color-accent: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
+  --color-bg-base: #0b1a33;
+  --color-bg-surface: #16294d;
+  --color-border: #6b93c4; /* 5.45:1 on base, 4.52:1 on surface */
+  --color-text-primary: #eaf6ff; /* 15.81:1 on base, 13.11:1 on surface */
+  --color-text-muted: #9fb4cf; /* 8.19:1 on base, 6.79:1 on surface */
+  --color-accent: #7fd8ff; /* 10.89:1 on base, 9.03:1 on surface */
+  --color-brand-blue: #7fd8ff;
+  --color-on-accent: #0b1a33; /* text on the accent fill; asserted in tokens.test.ts */
 
-  --color-brand-blue: #1e56cd;
-  --color-on-accent: #1e56cd; /* text on the accent fill; asserted in tokens.test.ts */
+  --severity-critical: #ffd6ec;
+  --severity-high: #7fd8ff;
+  --severity-medium: #c9d6e8;
+  --severity-low: #9fb4cf;
+  --severity-info: #eaf6ff;
+  --severity-benign: #6b93c4;
 
-  /* Severity marks use the foreground colour. Critical and high are filled, the other four are outlined. */
-  --severity-critical: #fdf8f2;
-  --severity-high: #fdf8f2;
-  --severity-medium: #fdf8f2;
-  --severity-low: #fdf8f2;
-  --severity-info: #fdf8f2;
-  --severity-benign: #fdf8f2;
+  --severity-text-critical: #ffd6ec;
+  --severity-text-high: #7fd8ff;
+  --severity-text-medium: #c9d6e8;
+  --severity-text-low: #9fb4cf;
+  --severity-text-info: #eaf6ff;
+  --severity-text-benign: #6b93c4;
 
-  --severity-text-critical: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-high: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-medium: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-low: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-info: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-benign: #fdf8f2; /* 6.09:1 on base, 6.09:1 on surface */
+  /* Filled badge text: the ground colour of each theme. */
+  --color-on-severity: #0b1a33;
 
-  /* Filled badge text: the ground colour on a Vanilla Cloud fill. */
-  --color-on-severity: #1e56cd;
-
-  --focus-ring: #fdf8f2; /* 6.09:1 against base */
-
-  /* Elevation (design.md §5.5). Exactly one shadow token exists. */
-  --shadow-overlay: 6px 6px 0 #fdf8f2;
+  --focus-ring: #7fd8ff; /* 10.89:1 against base */
+  --shadow-overlay: 6px 6px 0 #ffd6ec;
 }
 
 [data-theme='light'] {
-  --color-bg-base: #fdf8f2;
-  --color-bg-surface: #fdf8f2;
-  --color-border: #1e56cd;
-  --color-text-primary: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --color-text-muted: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --color-accent: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --color-brand-blue: #1e56cd;
-  --color-on-accent: #fdf8f2; /* text on the accent fill; asserted in tokens.test.ts */
+  --color-bg-base: #eaf6ff;
+  --color-bg-surface: #eaf6ff;
+  --color-border: #16294d; /* 13.11:1 on base, 13.11:1 on surface */
+  --color-text-primary: #0b1a33; /* 15.81:1 on base, 15.81:1 on surface */
+  --color-text-muted: #16294d; /* 13.11:1 on base, 13.11:1 on surface */
+  --color-accent: #16294d; /* 13.11:1 on base, 13.11:1 on surface */
+  --color-brand-blue: #16294d;
+  --color-on-accent: #eaf6ff; /* text on the accent fill; asserted in tokens.test.ts */
 
-  --severity-critical: #1e56cd;
-  --severity-high: #1e56cd;
-  --severity-medium: #1e56cd;
-  --severity-low: #1e56cd;
-  --severity-info: #1e56cd;
-  --severity-benign: #1e56cd;
+  --severity-critical: #0b1a33;
+  --severity-high: #16294d;
+  --severity-medium: #16294d;
+  --severity-low: #16294d;
+  --severity-info: #16294d;
+  --severity-benign: #16294d;
 
-  --severity-text-critical: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-high: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-medium: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-low: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-info: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
-  --severity-text-benign: #1e56cd; /* 6.09:1 on base, 6.09:1 on surface */
+  --severity-text-critical: #0b1a33;
+  --severity-text-high: #16294d;
+  --severity-text-medium: #16294d;
+  --severity-text-low: #16294d;
+  --severity-text-info: #16294d;
+  --severity-text-benign: #16294d;
 
-  --color-on-severity: #fdf8f2;
+  /* Filled badge text: the ground colour of each theme. */
+  --color-on-severity: #eaf6ff;
 
-  --focus-ring: #1e56cd; /* 6.09:1 against base */
-  --shadow-overlay: 6px 6px 0 #1e56cd;
-}
-
-/*
- * Dark cards (D-100). In dark mode a surface is a Vanilla Cloud card on the Stream Blue
- * canvas, so cards separate from the page. The surface redefines the tokens its own
- * content uses, and CSS custom properties cascade to children, so text, borders, badges
- * and buttons inside a card take the card's colours. Every pair is still 6.09 : 1.
- * Light is unchanged: its surfaces already match its canvas, and cards are bordered.
- */
-[data-theme='dark'] .bg-surface {
-  color: var(--color-text-primary); /* headings with no colour class inherit blue */
-  --color-bg-surface: #fdf8f2;
-  --color-bg-base: #fdf8f2; /* inputs inside a card are cream too */
-  --color-border: #1e56cd;
-  --color-text-primary: #1e56cd; /* 6.09:1 on surface */
-  --color-text-muted: #1e56cd; /* 6.09:1 on surface */
-  --color-accent: #1e56cd; /* 6.09:1 on surface */
-  --color-on-accent: #fdf8f2;
-  --color-on-severity: #fdf8f2;
-  --severity-critical: #1e56cd;
-  --severity-high: #1e56cd;
-  --severity-medium: #1e56cd;
-  --severity-low: #1e56cd;
-  --severity-info: #1e56cd;
-  --severity-benign: #1e56cd;
-  --severity-text-critical: #1e56cd; /* 6.09:1 on surface */
-  --severity-text-high: #1e56cd; /* 6.09:1 on surface */
-  --severity-text-medium: #1e56cd; /* 6.09:1 on surface */
-  --severity-text-low: #1e56cd; /* 6.09:1 on surface */
-  --severity-text-info: #1e56cd; /* 6.09:1 on surface */
-  --severity-text-benign: #1e56cd; /* 6.09:1 on surface */
-  --focus-ring: #1e56cd; /* 6.09:1 against surface */
+  --focus-ring: #16294d; /* 13.11:1 against base */
+  --shadow-overlay: 6px 6px 0 #16294d;
 }
 
 /*
@@ -282,38 +241,6 @@
 
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
-}
-
-/*
- * Cards inside the marketing site (D-105). The dashboard's dark card rule (D-100)
- * repaints every .bg-surface Vanilla Cloud with Stream Blue type. This rule has the
- * same specificity and comes later, so marketing cards keep the Cybercore tokens
- * while dashboard cards are untouched.
- */
-.marketing-site .bg-surface {
-  --color-bg-base: #0b1a33;
-  --color-bg-surface: #16294d;
-  --color-border: #6b93c4;
-  --color-text-primary: #eaf6ff;
-  --color-text-muted: #9fb4cf;
-  --color-accent: #7fd8ff;
-  --color-brand-blue: #7fd8ff;
-  --color-on-accent: #0b1a33;
-  --color-on-severity: #0b1a33;
-  --severity-critical: #ffd6ec;
-  --severity-high: #7fd8ff;
-  --severity-medium: #16294d;
-  --severity-low: #16294d;
-  --severity-info: #16294d;
-  --severity-benign: #16294d;
-  --severity-text-critical: #0b1a33;
-  --severity-text-high: #0b1a33;
-  --severity-text-medium: #7fd8ff;
-  --severity-text-low: #eaf6ff;
-  --severity-text-info: #eaf6ff;
-  --severity-text-benign: #eaf6ff;
-  --focus-ring: #7fd8ff;
-  --shadow-overlay: 6px 6px 0 #ffd6ec;
 }
 
 /* Cybercore hero ground: an icy glow and a fine diagonal texture, from the demo landing. */

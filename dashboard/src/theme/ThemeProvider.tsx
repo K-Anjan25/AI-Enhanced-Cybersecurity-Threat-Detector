@@ -38,7 +38,7 @@ function readStoredTheme(): Theme | null {
 }
 
 /**
- * The default is the light theme (Vanilla Cloud canvas, Stream Blue accents), chosen
+ * The default is the light theme (frost canvas, navy accents, Cybercore), chosen
  * by the user over the dark SOC default. A stored choice still wins, so the toggle
  * remains available.
  */
