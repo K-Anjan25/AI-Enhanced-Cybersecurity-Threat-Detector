@@ -243,40 +243,65 @@
 }
 
 /*
- * Marketing site palette: two colours, and nothing else (memory.md D-098).
- *   Vanilla Cloud  #FDF8F2  ground for every section and card surface
- *   Stream Blue    #1E56CD  text, borders, rules, buttons, focus
- * Stream Blue on Vanilla Cloud is 6.09:1, so either colour carries text.
+ * Marketing site palette: the Cybercore demo palette (memory.md D-105). It replaces the
+ * earlier two-colour rule for the public site, on the user's instruction.
+ *   Night navy     #0b1a33  ground for every section
+ *   Surface navy   #16294d  cards and panels
+ *   Ice blue       #7fd8ff  accent, focus ring, primary buttons
+ *   Silver         #c9d6e8  secondary accent
+ *   Soft pink      #ffd6ec  hard shadow and tertiary accent
+ *   Ash            #9fb4cf  muted text
+ *   Frost          #eaf6ff  body text
+ *   Edge           #6b93c4  borders and rules (4.5:1 on the ground, 3:1 on surfaces)
+ * Contrast: frost on night 15.8:1, ash on night 8.2:1, ice on night 10.9:1.
  */
 .marketing-site {
-  /* The brand palette, two colours only: Vanilla Cloud #FDF8F2 and Stream Blue #1E56CD.
-   * Stream Blue on Vanilla Cloud is 6.09:1, so both colours carry text in both directions. */
-  --color-bg-base: #fdf8f2;
-  --color-bg-surface: #fdf8f2;
-  --color-border: #1e56cd;
-  --color-text-primary: #1e56cd;
-  --color-text-muted: #1e56cd;
-  --color-accent: #1e56cd;
-  --color-brand-blue: #1e56cd;
-  --color-on-accent: #fdf8f2;
-  --color-on-severity: #fdf8f2;
-  --severity-critical: #1e56cd;
-  --severity-high: #1e56cd;
-  --severity-medium: #fdf8f2;
-  --severity-low: #fdf8f2;
-  --severity-info: #fdf8f2;
-  --severity-benign: #fdf8f2;
-  --severity-text-critical: #1e56cd;
-  --severity-text-high: #1e56cd;
-  --severity-text-medium: #1e56cd;
-  --severity-text-low: #1e56cd;
-  --severity-text-info: #1e56cd;
-  --severity-text-benign: #1e56cd;
-  --focus-ring: #1e56cd;
-  --shadow-overlay: 6px 6px 0 #1e56cd;
+  --color-bg-base: #0b1a33;
+  --color-bg-surface: #16294d;
+  --color-border: #6b93c4;
+  --color-text-primary: #eaf6ff;
+  --color-text-muted: #9fb4cf;
+  --color-accent: #7fd8ff;
+  --color-brand-blue: #7fd8ff;
+  --color-on-accent: #0b1a33;
+  --color-on-severity: #0b1a33;
+  --severity-critical: #ffd6ec;
+  --severity-high: #7fd8ff;
+  --severity-medium: #16294d;
+  --severity-low: #16294d;
+  --severity-info: #16294d;
+  --severity-benign: #16294d;
+  --severity-text-critical: #0b1a33;
+  --severity-text-high: #0b1a33;
+  --severity-text-medium: #7fd8ff;
+  --severity-text-low: #eaf6ff;
+  --severity-text-info: #eaf6ff;
+  --severity-text-benign: #eaf6ff;
+  --focus-ring: #7fd8ff;
+  --shadow-overlay: 6px 6px 0 #ffd6ec;
 
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
+}
+
+/* Cybercore hero ground: an icy glow and a fine diagonal texture, from the demo landing. */
+.marketing-site .landing-stage {
+  background-image:
+    radial-gradient(
+      ellipse at 72% 38%,
+      color-mix(in srgb, var(--color-accent) 28%, transparent) 0%,
+      transparent 46%
+    ),
+    radial-gradient(
+      ellipse at 88% 85%,
+      color-mix(in srgb, var(--severity-critical) 14%, transparent) 0%,
+      transparent 40%
+    ),
+    repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-text-primary) 4%, transparent) 0 1px,
+      transparent 1px 14px
+    );
 }
 
 /*

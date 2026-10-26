@@ -3936,6 +3936,16 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Gaps, named rather than hidden:** (1) the account is not bound to the `sub` claim, so an IdP that reassigns an email address can reach the old person's account; the fix needs persistent storage. (2) The pending-login store is in process, so a multi-replica deployment needs sticky sessions or a shared store. (3) The callback returns the token pair as JSON; the dashboard does not yet use the OIDC flow (no button and no redirect handling). (4) `/start` and `/callback` are in the rate-limited public list, but the throttle is per process.
 
+### D-105 — Public site takes the Cybercore palette (2026-10-26)
+
+**Decision (user, asked directly).** The public marketing site now uses the Cybercore demo palette: night navy `#0b1a33` ground, surface navy `#16294d`, ice blue `#7fd8ff` accent and focus, silver `#c9d6e8`, soft pink `#ffd6ec` hard shadow, ash `#9fb4cf` muted text, frost `#eaf6ff` body text, and edge `#6b93c4` borders. This replaces the two-colour rule (D-098/D-099) for the public site only. The dashboard palette (D-100 to D-104) is unchanged.
+
+**Interpretation.** The demo's copy and products are for a fictional clothing brand, so they were not used on the security product. The Cybercore look is carried over: palette, a glow and texture on the hero ground, and the surfaces. The copy, sections and hamburger navigation are the existing AEGIS ones.
+
+**Changes.** `.marketing-site` tokens in `src/index.css`; a `.marketing-site .landing-stage` hero ground built with `color-mix()` on tokens, because the compiled-CSS test forbids `rgb()` and `rgba()` literals; the hero comment in `LandingPage.tsx`; the public-site note in `design.md` §5.
+
+**Checks.** Lint, stylelint, prettier, tsc and the marketing, auth, App and theme tests all pass (98 tests in the focused run). Full suite and build: see the commit.
+
 ### D-104 — Light default theme; hamburger drawer below 768 px (2026-10-23)
 
 **Decision (user, asked directly).** The dark theme is no longer the default. The Stream Blue canvas and the cream cards made the sidebar read as missing, and the flood of blue made the hierarchy flat. The default is now the light theme (cream canvas, blue accents), and the toggle still lets users switch. A stored choice still wins. §5.1 is marked optional to match.
