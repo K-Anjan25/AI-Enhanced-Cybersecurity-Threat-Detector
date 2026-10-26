@@ -105,10 +105,10 @@ export interface SplitSection {
 }
 
 /** Placeholder imagery from placehold.co. Swap for product screenshots before launch. */
-/** Brand-palette placeholders: Stream Blue on Vanilla Cloud, or Vanilla Cloud on Stream Blue. */
+/** Cybercore placeholders (D-105): ice on surface navy, or frost on night navy. */
 const PLACEHOLDER_TONES = {
-  brand: '1e56cd/fdf8f2',
-  ground: 'fdf8f2/1e56cd',
+  brand: '16294d/7fd8ff',
+  ground: '0b1a33/eaf6ff',
 } as const;
 
 const placeholder = (

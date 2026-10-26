@@ -284,6 +284,38 @@
   color: var(--color-text-primary);
 }
 
+/*
+ * Cards inside the marketing site (D-105). The dashboard's dark card rule (D-100)
+ * repaints every .bg-surface Vanilla Cloud with Stream Blue type. This rule has the
+ * same specificity and comes later, so marketing cards keep the Cybercore tokens
+ * while dashboard cards are untouched.
+ */
+.marketing-site .bg-surface {
+  --color-bg-base: #0b1a33;
+  --color-bg-surface: #16294d;
+  --color-border: #6b93c4;
+  --color-text-primary: #eaf6ff;
+  --color-text-muted: #9fb4cf;
+  --color-accent: #7fd8ff;
+  --color-brand-blue: #7fd8ff;
+  --color-on-accent: #0b1a33;
+  --color-on-severity: #0b1a33;
+  --severity-critical: #ffd6ec;
+  --severity-high: #7fd8ff;
+  --severity-medium: #16294d;
+  --severity-low: #16294d;
+  --severity-info: #16294d;
+  --severity-benign: #16294d;
+  --severity-text-critical: #0b1a33;
+  --severity-text-high: #0b1a33;
+  --severity-text-medium: #7fd8ff;
+  --severity-text-low: #eaf6ff;
+  --severity-text-info: #eaf6ff;
+  --severity-text-benign: #eaf6ff;
+  --focus-ring: #7fd8ff;
+  --shadow-overlay: 6px 6px 0 #ffd6ec;
+}
+
 /* Cybercore hero ground: an icy glow and a fine diagonal texture, from the demo landing. */
 .marketing-site .landing-stage {
   background-image:
