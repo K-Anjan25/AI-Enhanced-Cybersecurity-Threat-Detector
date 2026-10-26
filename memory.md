@@ -3938,13 +3938,25 @@ _drawn_ claim checkable, not the _announced_ one.
 
 ### D-105 — Public site takes the Cybercore palette (2026-10-26)
 
-**Decision (user, asked directly).** The public marketing site now uses the Cybercore demo palette: night navy `#0b1a33` ground, surface navy `#16294d`, ice blue `#7fd8ff` accent and focus, silver `#c9d6e8`, soft pink `#ffd6ec` hard shadow, ash `#9fb4cf` muted text, frost `#eaf6ff` body text, and edge `#6b93c4` borders. This replaces the two-colour rule (D-098/D-099) for the public site only. The dashboard palette (D-100 to D-104) is unchanged.
+**Decision (user, asked directly).** The public marketing site now uses the Cybercore demo palette: night navy `#0b1a33` ground, surface navy `#16294d`, ice blue `#7fd8ff` accent and focus, silver `#c9d6e8`, soft pink `#ffd6ec` hard shadow, ash `#9fb4cf` muted text, frost `#eaf6ff` body text, and edge `#6b93c4` borders. This replaces the two-colour rule (D-098/D-099) for the public site only. The dashboard palette was unchanged here; D-106 later extended Cybercore to the dashboard.
 
 **Interpretation.** The demo's copy and products are for a fictional clothing brand, so they were not used on the security product. The Cybercore look is carried over: palette, a glow and texture on the hero ground, and the surfaces. The copy, sections and hamburger navigation are the existing AEGIS ones.
 
 **Changes.** `.marketing-site` tokens in `src/index.css`; a `.marketing-site .landing-stage` hero ground built with `color-mix()` on tokens, because the compiled-CSS test forbids `rgb()` and `rgba()` literals; the hero comment in `LandingPage.tsx`; the public-site note in `design.md` §5. A `.marketing-site .bg-surface` rule keeps marketing cards Cybercore, because the dashboard dark-card rule (D-100) would otherwise repaint them Vanilla Cloud. The marketing placeholder images in `content.ts` use Cybercore tones.
 
 **Checks.** Lint, stylelint, prettier, tsc and the marketing, auth, App and theme tests all pass (98 tests in the focused run). Full suite and build: see the commit.
+
+### D-106 — Cybercore applies to the whole dashboard, sign-in included (2026-10-26)
+
+**Decision (user).** The Cybercore palette (D-105) applies to the signed-in dashboard and to the sign-in page, not only the public site. The dashboard's two-colour tokens (D-099) are replaced.
+
+**Tokens.** Dark: night `#0B1A33` ground, surface navy `#16294D` cards, frost `#EAF6FF` text, ash `#9FB4CF` muted, ice `#7FD8FF` accent, edge `#6B93C4` border. Light: frost `#EAF6FF` ground and surface (separated by navy borders), night `#0B1A33` text, navy `#16294D` accent and borders. Severity: dark critical pink, high ice, medium silver, low ash, info frost, benign edge; light critical night, the rest navy. Badge text is the ground colour in each theme.
+
+**Removed.** The dark-card inversion rule (D-100) and the `.marketing-site .bg-surface` rule added in D-105. Cards no longer need inverting, because the surface is already distinct from the ground.
+
+**Checks.** Contrast values are computed and written in `index.css` and `design.md` §5. `tokens.test.ts` checks them. Scanned for old-palette colours on the sign-in page, the dashboard, and the public pages, in both themes: zero hits.
+
+**Not changed.** The AEGIS logo asset is a separate image and still has its own blue tile. Historical docs (`docs/accessibility-manual-pass.md`, `docs/prd-coverage.md`) still describe the old palette and are records of the earlier decision.
 
 ### D-104 — Light default theme; hamburger drawer below 768 px (2026-10-23)
 
