@@ -3954,7 +3954,7 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Heading font.** Titles and headings h1–h3 use the Cybercore demo stack, `'Courier New', ui-monospace, monospace`. This was tested beside Inter in a rendered sample. It works at title and section size and reads like a console. The 48 px hero headline wraps badly, so the hero keeps Inter (`font-sans`). Body and UI text stay on Inter. Courier New is not bundled, so rendering depends on the platform. `design.md` §5.4 records the row.
 
-**Open.** The hamburger menu (placement, open behaviour) is waiting on the user's choice.
+**Hamburger menu (decided with the user).** Placement: top-left, before the logo. Opens as a dropdown panel directly under the header, not a full-screen overlay. Closes after a link is picked, on Escape (focus returns to the button), or on a click outside. The page does not lock scroll, because the panel is small and does not cover the page. Sign in stays on the right from `md` up.
 
 ### D-106 — Cybercore applies to the whole dashboard, sign-in included (2026-10-26)
 
