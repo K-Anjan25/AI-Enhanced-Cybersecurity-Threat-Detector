@@ -111,6 +111,14 @@
     color-scheme: dark;
   }
 
+  /* Titles and headings use the Cybercore demo stack (design.md §5.4). Elements that
+   * need Inter at display size, such as the landing hero, set font-sans. */
+  h1,
+  h2,
+  h3 {
+    font-family: 'Courier New', ui-monospace, monospace;
+  }
+
   [data-theme='light'] {
     color-scheme: light;
   }
@@ -230,8 +238,8 @@
   --severity-low: #16294d;
   --severity-info: #16294d;
   --severity-benign: #16294d;
-  --severity-text-critical: #0b1a33;
-  --severity-text-high: #0b1a33;
+  --severity-text-critical: #ffd6ec;
+  --severity-text-high: #7fd8ff;
   --severity-text-medium: #7fd8ff;
   --severity-text-low: #eaf6ff;
   --severity-text-info: #eaf6ff;
@@ -243,7 +251,7 @@
   color: var(--color-text-primary);
 }
 
-/* Cybercore hero ground: an icy glow and a fine diagonal texture, from the demo landing. */
+/* Cybercore hero ground: two soft glows, from the demo landing. */
 .marketing-site .landing-stage {
   background-image:
     radial-gradient(
@@ -255,11 +263,6 @@
       ellipse at 88% 85%,
       color-mix(in srgb, var(--severity-critical) 14%, transparent) 0%,
       transparent 40%
-    ),
-    repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--color-text-primary) 4%, transparent) 0 1px,
-      transparent 1px 14px
     );
 }
 

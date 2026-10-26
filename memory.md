@@ -3946,6 +3946,16 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Checks.** Lint, stylelint, prettier, tsc and the marketing, auth, App and theme tests all pass (98 tests in the focused run). Full suite and build: see the commit.
 
+### D-107 — Error text, hero texture, heading font (2026-10-26)
+
+**Error text.** Field errors on the public contact and newsletter forms were night navy on the night ground, so they were invisible. In the marketing block, `--severity-text-critical` is now soft pink `#FFD6EC` (13.29:1 on night), and `--severity-text-high` is ice `#7FD8FF`.
+
+**Hero texture.** The 45° slant-line layer is removed from the hero's `.landing-stage`. Two soft glows remain.
+
+**Heading font.** Titles and headings h1–h3 use the Cybercore demo stack, `'Courier New', ui-monospace, monospace`. This was tested beside Inter in a rendered sample. It works at title and section size and reads like a console. The 48 px hero headline wraps badly, so the hero keeps Inter (`font-sans`). Body and UI text stay on Inter. Courier New is not bundled, so rendering depends on the platform. `design.md` §5.4 records the row.
+
+**Open.** The hamburger menu (placement, open behaviour) is waiting on the user's choice.
+
 ### D-106 — Cybercore applies to the whole dashboard, sign-in included (2026-10-26)
 
 **Decision (user).** The Cybercore palette (D-105) applies to the signed-in dashboard and to the sign-in page, not only the public site. The dashboard's two-colour tokens (D-099) are replaced.

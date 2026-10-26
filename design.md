@@ -271,7 +271,7 @@ The UI uses Inter throughout, in sentence case, with uppercase reserved for shor
 
 | Token          | Size / line-height                    | Weight | Use                                       |
 |---|---|---|---|
-| `font.display` | Inter, system-ui fallback             | —      | Display headings and KPI titles           |
+| `font.display` | 'Courier New', ui-monospace fallback | —      | Page titles and headings h1–h3 (Cybercore demo stack); the landing hero headline stays on `font.sans` |
 | `font.sans`    | Inter, system-ui fallback             | —      | All UI text                               |
 | `font.mono`    | JetBrains Mono, ui-monospace fallback | —      | IPs, ports, hashes, log lines, scores     |
 | `type.hero`    | 64 / 68                               | 600    | Landing page headline                     |
