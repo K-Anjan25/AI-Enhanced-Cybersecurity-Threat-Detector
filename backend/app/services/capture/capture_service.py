@@ -9,35 +9,120 @@ and sends them to the AEGIS backend ingest API.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import signal
 import sys
 import threading
 import time
-from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
 try:
-    from scapy.all import IP, TCP, UDP, DNS, sniff, conf
+    from scapy.all import DNS, IP, TCP, UDP, sniff
+
     HAS_SCAPY = True
 except ImportError:
     HAS_SCAPY = False
 
-import urllib.request
 import urllib.error
+import urllib.request
 
 __all__ = ["FlowAggregator", "CaptureService"]
 
 API_BASE = os.environ.get("AEGIS_API_URL", "http://backend:8000")
 API_EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
-API_PASSWORD = os.environ.get("AEGIS_PASSWORD", "admin123456789")
+API_PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
+DEV_DEFAULT_PASSWORD = (
+    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+)
 INTERFACE = os.environ.get("AEGIS_CAPTURE_INTERFACE", "eth0")
 FLUSH_INTERVAL = int(os.environ.get("AEGIS_FLUSH_INTERVAL", "10"))
 BATCH_SIZE = int(os.environ.get("AEGIS_BATCH_SIZE", "200"))
 FILTER_EXPR = os.environ.get("AEGIS_CAPTURE_FILTER", "")
+
+
+# ── flow@1 contract ─────────────────────────────────────────────────────────────
+#
+# The aggregator keeps flows in its own shape (ts, proto, orig_bytes, orig_pkts...).
+# The ingest endpoint accepts only flow@1 and forbids any other field. Each container
+# runs this file on its own, so the mapping is kept here rather than imported.
+
+_FLOW_V1_PROTOCOLS = frozenset({"tcp", "udp", "icmp"})
+
+
+def _is_ipv4(ip: str) -> bool:
+    """True for a dotted-quad IPv4 address (the only form flow@1 accepts)."""
+    import ipaddress
+
+    try:
+        return isinstance(ipaddress.ip_address(ip), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _is_internal(ip: str) -> bool:
+    """Private, loopback or link-local: the monitored side of the boundary."""
+    import ipaddress
+
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return address.is_private or address.is_loopback or address.is_link_local
+
+
+def direction_of(src_ip: str, dst_ip: str) -> str:
+    """Direction relative to the monitored boundary (flow@1 ``direction``).
+
+    Transit traffic between two external hosts is reported as ``inbound``: it crosses
+    the boundary from outside, which is the only side a sensor here can see.
+    """
+    src_internal, dst_internal = _is_internal(src_ip), _is_internal(dst_ip)
+    if src_internal and dst_internal:
+        return "internal"
+    if src_internal:
+        return "outbound"
+    return "inbound"
+
+
+def to_flow_v1(flow: dict[str, Any]) -> dict[str, Any] | None:
+    """Map one aggregated flow to a ``flow@1`` record, or None when it cannot be one.
+
+    A flow with a protocol outside tcp/udp/icmp is dropped rather than sent with the
+    protocol rewritten, because a rewritten protocol would be a claim the sensor did not
+    observe.
+    """
+    proto = str(flow.get("proto", "")).lower()
+    if proto not in _FLOW_V1_PROTOCOLS:
+        return None
+    src_ip = str(flow.get("src_ip", ""))
+    dst_ip = str(flow.get("dst_ip", ""))
+    if not (_is_ipv4(src_ip) and _is_ipv4(dst_ip)):
+        # flow@1 carries IPv4 addresses only; IPv6 flows are not sent.
+        return None
+    orig_pkts = int(flow.get("orig_pkts", 0))
+    resp_pkts = int(flow.get("resp_pkts", 0))
+    orig_bytes = int(flow.get("orig_bytes", 0))
+    resp_bytes = int(flow.get("resp_bytes", 0))
+    return {
+        "schema_version": "flow@1",
+        "timestamp": datetime.fromtimestamp(float(flow["ts"]), tz=UTC).isoformat(),
+        "src_ip": src_ip,
+        "dst_ip": dst_ip,
+        "src_port": int(flow.get("src_port", 0)),
+        "dst_port": int(flow.get("dst_port", 0)),
+        "protocol": proto,
+        "direction": direction_of(src_ip, dst_ip),
+        "service": flow.get("service"),
+        "state": flow.get("conn_state"),
+        "packets": orig_pkts + resp_pkts,
+        "src_packets": orig_pkts,
+        "dst_packets": resp_pkts,
+        "src_bytes": orig_bytes,
+        "dst_bytes": resp_bytes,
+        "duration": max(0.0, float(flow.get("duration") or 0.0)),
+    }
 
 
 class FlowAggregator:
@@ -48,7 +133,8 @@ class FlowAggregator:
     """
 
     def __init__(self, max_flows: int = 50_000, timeout: int = 120) -> None:
-        self._flows: dict[tuple, dict[str, Any]] = {}
+        """Create an empty flow table bounded by max_flows and idle timeout (seconds)."""
+        self._flows: dict[tuple[Any, ...], dict[str, Any]] = {}
         self._max_flows = max_flows
         self._timeout = timeout
         self._lock = threading.Lock()
@@ -57,6 +143,7 @@ class FlowAggregator:
 
     @property
     def stats(self) -> dict[str, int]:
+        """Return packet and flow counters."""
         with self._lock:
             return {
                 "packets": self._packet_count,
@@ -134,11 +221,22 @@ class FlowAggregator:
         if dns_query:
             return "dns"
         services = {
-            80: "http", 443: "https", 22: "ssh", 21: "ftp",
-            25: "smtp", 53: "dns", 3306: "mysql", 5432: "postgresql",
-            6379: "redis", 27017: "mongodb", 3389: "rdp",
-            445: "smb", 139: "netbios", 8080: "http-proxy",
-            8443: "https-alt", 9090: "webcache",
+            80: "http",
+            443: "https",
+            22: "ssh",
+            21: "ftp",
+            25: "smtp",
+            53: "dns",
+            3306: "mysql",
+            5432: "postgresql",
+            6379: "redis",
+            27017: "mongodb",
+            3389: "rdp",
+            445: "smb",
+            139: "netbios",
+            8080: "http-proxy",
+            8443: "https-alt",
+            9090: "webcache",
         }
         return services.get(port, "")
 
@@ -147,6 +245,7 @@ class CaptureService:
     """Main capture service — sniffs packets and sends flows to AEGIS."""
 
     def __init__(self) -> None:
+        """Create the aggregator and reset the auth token and counters."""
         self._aggregator = FlowAggregator()
         self._token: str | None = None
         self._running = False
@@ -169,18 +268,18 @@ class CaptureService:
         if self._token:
             return self._token
         data = json.dumps({"email": API_EMAIL, "password": API_PASSWORD}).encode()
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310 - API_BASE is operator-configured
             f"{API_BASE}/api/v1/auth/login",
             data=data,
             headers={"Content-Type": "application/json"},
         )
         try:
-            resp = urllib.request.urlopen(req, timeout=10)
+            resp = urllib.request.urlopen(req, timeout=10)  # noqa: S310  # nosec B310
             result = json.loads(resp.read())
             self._token = result["access_token"]
             print(f"[AUTH] Authenticated as {API_EMAIL}")
             return self._token
-        except Exception as e:
+        except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
             print(f"[AUTH] Failed: {e}", file=sys.stderr)
             return None
 
@@ -190,8 +289,13 @@ class CaptureService:
         if not token:
             return False
 
-        body = "\n".join(json.dumps(f) for f in flows)
-        req = urllib.request.Request(
+        # Ingest validates flow@1 and rejects unknown fields, so every flow is converted
+        # first. Before this, every capture batch was refused in full.
+        contract = [c for c in (to_flow_v1(f) for f in flows) if c is not None]
+        if not contract:
+            return False
+        body = "\n".join(json.dumps(f) for f in contract)
+        req = urllib.request.Request(  # noqa: S310 - API_BASE is operator-configured
             f"{API_BASE}/api/v1/ingest/flows",
             data=body.encode(),
             headers={
@@ -200,9 +304,9 @@ class CaptureService:
             },
         )
         try:
-            resp = urllib.request.urlopen(req, timeout=15)
+            resp = urllib.request.urlopen(req, timeout=15)  # noqa: S310  # nosec B310
             result = json.loads(resp.read())
-            accepted = result.get("accepted", 0)
+            accepted = int(result.get("accepted", 0))
             self._flownet_stats["flows_sent"] += accepted
             return True
         except urllib.error.HTTPError as e:
@@ -211,7 +315,7 @@ class CaptureService:
             self._flownet_stats["send_errors"] += 1
             print(f"[SEND] Error {e.code}: {e.read().decode()[:200]}", file=sys.stderr)
             return False
-        except Exception as e:
+        except (urllib.error.URLError, OSError, ValueError) as e:
             self._flownet_stats["send_errors"] += 1
             print(f"[SEND] Error: {e}", file=sys.stderr)
             return False
@@ -241,10 +345,7 @@ class CaptureService:
 
         # DNS query extraction
         if pkt.haslayer(DNS) and pkt[DNS].qd:
-            try:
-                dns_query = pkt[DNS].qd.qname.decode("utf-8", errors="replace")
-            except Exception:
-                pass
+            dns_query = pkt[DNS].qd.qname.decode("utf-8", errors="replace")
 
         ts = float(pkt.time)
         self._aggregator.add_packet(
@@ -266,7 +367,6 @@ class CaptureService:
             flows = self._aggregator.flush()
             if flows:
                 self._send_flows(flows)
-                stats = self._aggregator.stats
                 print(
                     f"[FLOW] Sent {len(flows)} flows | "
                     f"Total: {self._flownet_stats['flows_sent']} | "
@@ -277,7 +377,9 @@ class CaptureService:
     def run(self) -> None:
         """Start the capture service."""
         if not HAS_SCAPY:
-            print("[FATAL] scapy is not installed. Install with: pip install scapy", file=sys.stderr)
+            print(
+                "[FATAL] scapy is not installed. Install with: pip install scapy", file=sys.stderr
+            )
             sys.exit(1)
 
         print("=" * 60)
@@ -311,9 +413,12 @@ class CaptureService:
                 stop_filter=lambda _: not self._running,
             )
         except PermissionError:
-            print("[FATAL] Permission denied. Run with --cap-add NET_ADMIN or --privileged", file=sys.stderr)
+            print(
+                "[FATAL] Permission denied. Run with --cap-add NET_ADMIN or --privileged",
+                file=sys.stderr,
+            )
             sys.exit(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - any sniff failure is fatal; report and exit
             print(f"[FATAL] Capture error: {e}", file=sys.stderr)
             sys.exit(1)
         finally:
@@ -321,11 +426,20 @@ class CaptureService:
             flows = self._aggregator.flush()
             if flows:
                 self._send_flows(flows)
-            print(f"\n[DONE] Captured {self._flownet_stats['packets_captured']} packets, "
-                  f"sent {self._flownet_stats['flows_sent']} flows")
+            print(
+                f"\n[DONE] Captured {self._flownet_stats['packets_captured']} packets, "
+                f"sent {self._flownet_stats['flows_sent']} flows"
+            )
 
 
 def main() -> None:
+    if not API_PASSWORD or API_PASSWORD == DEV_DEFAULT_PASSWORD:
+        print(
+            "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in "
+            "docker/.env) to a value other than the development default",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     service = CaptureService()
     service.run()
 

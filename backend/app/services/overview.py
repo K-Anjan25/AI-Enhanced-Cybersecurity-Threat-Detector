@@ -30,6 +30,7 @@ I/O is also what lets its tests pass rows in directly.
 
 from __future__ import annotations
 
+import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -160,6 +161,7 @@ class Aggregate:
     unrecorded: int
     verdicts_measured: int
     mean_time_to_verdict_seconds: float | None
+    median_time_to_verdict_seconds: float | None
     points: Sequence[SeriesPoint]
     entities: Sequence[EntityTally]
     entities_capped: bool
@@ -228,6 +230,14 @@ def _mean_time_to_verdict(rows: Sequence[Alert]) -> tuple[float | None, int]:
     stamped before its own alert is left out rather than dragging the mean
     negative: a clock that disagrees with itself is not a triage speed.
     """
+    durations = _verdict_durations(rows)
+    if not durations:
+        return None, 0
+    return sum(durations) / len(durations), len(durations)
+
+
+def _verdict_durations(rows: Sequence[Alert]) -> list[float]:
+    """Seconds from creation to verdict, for alerts that have a verdict."""
     durations: list[float] = []
     for row in rows:
         if row.verdict is None or row.verdict_at is None:
@@ -235,9 +245,17 @@ def _mean_time_to_verdict(rows: Sequence[Alert]) -> tuple[float | None, int]:
         seconds = (row.verdict_at - row.created_at).total_seconds()
         if seconds >= 0:
             durations.append(seconds)
-    if not durations:
-        return None, 0
-    return sum(durations) / len(durations), len(durations)
+    return durations
+
+
+def _median_time_to_verdict(rows: Sequence[Alert]) -> float | None:
+    """Median seconds from creation to verdict: the statistic PRD section 8 targets.
+
+    A median, not the mean: a few alerts left open for hours would pull a mean
+    past the 60 s target while most verdicts are fast.
+    """
+    durations = _verdict_durations(rows)
+    return statistics.median(durations) if durations else None
 
 
 def _entity_tallies(rows: Sequence[Alert], limit: int) -> tuple[list[EntityTally], bool]:
@@ -366,6 +384,7 @@ def aggregate(
 
     verdicts, unrecorded = verdict_counts(rows)
     mean_seconds, measured = _mean_time_to_verdict(rows)
+    median_seconds = _median_time_to_verdict(rows)
     entities, capped = _entity_tallies(rows, entity_limit)
     families, families_capped = _family_tallies(rows, family_limit)
     return Aggregate(
@@ -377,6 +396,9 @@ def aggregate(
         unrecorded=unrecorded,
         verdicts_measured=measured,
         mean_time_to_verdict_seconds=(None if mean_seconds is None else round(mean_seconds, 3)),
+        median_time_to_verdict_seconds=(
+            None if median_seconds is None else round(median_seconds, 3)
+        ),
         points=points,
         entities=entities,
         entities_capped=capped,

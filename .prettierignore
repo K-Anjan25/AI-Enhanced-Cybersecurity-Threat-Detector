@@ -21,3 +21,10 @@ rules.md
 design.md
 task.md
 memory.md
+
+# Helm templates are Go-templated, not YAML or JSON; `helm lint` checks them.
+helm/**/templates/
+
+# design.md is parsed by dashboard/src/theme/tokens.test.ts; prettier pads its
+# table separator rows, which the test's header-rule matcher rejects.
+design.md

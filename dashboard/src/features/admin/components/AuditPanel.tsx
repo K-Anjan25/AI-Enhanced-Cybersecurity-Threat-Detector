@@ -217,9 +217,6 @@ export function AuditPanel() {
         {audit.isError ? (
           <ErrorState
             message="The audit trail could not be read"
-            detail={
-              'Nothing is shown rather than an empty table: an audit screen that rendered a failed read as "no actions" would be reporting the opposite of what it knows.'
-            }
             action={
               <Button
                 onClick={() => {
@@ -257,20 +254,12 @@ export function AuditPanel() {
             rowKey={(row) => String(row.id)}
             rowLabel={(row) => `${row.action} at ${row.at}`}
             height={420}
-            empty={
-              <p className="text-body">
-                No recorded action falls in this window with these filters. That is an answer about
-                the filters as much as about the system: widen the window before concluding nothing
-                happened.
-              </p>
-            }
+            empty={<p className="text-body">No recorded action in this window.</p>}
           />
         )}
-        <p className="text-body-sm text-muted">
-          <Badge tone="neutral">read-only</Badge> There is no edit or delete affordance on this
-          screen, in any role: the trail is append-only at the store and the API has no route that
-          would change a row of it.
-        </p>
+        <div>
+          <Badge tone="neutral">read-only</Badge>
+        </div>
       </div>
     </Card>
   );

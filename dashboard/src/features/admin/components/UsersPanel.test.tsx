@@ -212,7 +212,7 @@ describe('UsersPanel', () => {
       { match: USERS, respond: () => jsonResponse({ items: [], count: 0, active_admins: 0 }) },
     ]);
     renderWithProviders(<UsersPanel />);
-    expect(await screen.findByText(/no bootstrap account/)).toBeInTheDocument();
+    expect(await screen.findByText('No users.')).toBeInTheDocument();
   });
 
   it('refuses to render a roster it could not read', async () => {

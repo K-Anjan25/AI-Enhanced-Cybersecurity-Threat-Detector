@@ -11,7 +11,18 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 COPY aegis_ml ./aegis_ml
-RUN pip install --no-cache-dir .
+# The training extra carries torch, which the trained FlowNet needs to score. Without it the
+# service still starts and serves /models, but /score/windows answers 503 with the reason.
+# Install torch's CPU-only build first. The default PyPI wheel pulls in about 2 GB of CUDA
+# libraries, which a slow or unstable link cannot download reliably (one attempt failed a
+# hash check on a corrupted transfer). The CPU build is the same torch API without CUDA.
+# The extra index is preferred because +cpu is a newer local version than the PyPI build.
+# If the PyTorch index is unreachable, the PyPI wheel is used instead.
+# The second step then finds torch already satisfied and installs the rest of the extra.
+RUN pip install --timeout 900 --retries 10 \
+        --extra-index-url https://download.pytorch.org/whl/cpu torch \
+    || pip install --timeout 900 --retries 10 torch
+RUN pip install --timeout 900 --retries 10 ".[training]"
 
 RUN useradd --create-home --uid 10001 aegis \
     && mkdir -p /app/artifacts \

@@ -16,6 +16,7 @@ name: aegis
 
 services:
   postgres:
+    mem_limit: 512m
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: aegis
@@ -29,13 +30,30 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - '5432:5432'
+      # Host port 5433: a PostgreSQL installed on Windows often holds 5432.
+      - '5433:5432'
 
+  # Shared, memory-capped state for the backend (login throttle across replicas).
+  # Redis is not a telemetry bus (memory.md, Kafka decision): it holds only expiring
+  # counters, so eviction under pressure is harmless. The backend starts without it
+  # and falls back to a per-process limit, so this is a soft dependency.
   redis:
+    mem_limit: 96m
     image: redis:7-alpine
-    command: ['redis-server', '--appendonly', 'yes']
-    volumes:
-      - redis-data:/data
+    # No persistence: every key is a time-limited counter. volatile-ttl evicts only
+    # keys that have an expiry, which every AEGIS key has, so nothing else is lost.
+    command:
+      [
+        'redis-server',
+        '--maxmemory',
+        '64mb',
+        '--maxmemory-policy',
+        'volatile-ttl',
+        '--save',
+        '',
+        '--appendonly',
+        'no',
+      ]
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -43,63 +61,63 @@ services:
       retries: 10
 
   kafka:
-    # `bitnami/kafka` no longer exists: Broadcom deleted the public
-    # docker.io/bitnami catalog on 2025-09-29, and the Docker Hub API now returns
-    # zero tags for the repository. `bitnamilegacy` is the archive the versioned
-    # tags were moved to, and it is a drop-in - same KAFKA_CFG_* variables, same
-    # /bitnami/kafka data directory - so nothing else in this block changes.
+    mem_limit: 1g
+    # Official Apache Kafka image (Q-08). The earlier bitnamilegacy/kafka:3.9 was
+    # frozen and unpatched. This image is configured with KAFKA_* variables and
+    # runs as a single-node KRaft cluster (no ZooKeeper). Its data lives in
+    # /var/lib/kafka/data, on a new volume, because the Bitnami data directory
+    # and its cluster id are not compatible with this image.
     #
-    # It is frozen and receives no CVE patches, which is a poor fit for a
-    # security product; migrating to the official apache/kafka is Q-08. That needs
-    # KAFKA_* variables, a different data directory and a KRaft cluster id, and it
-    # cannot be verified without a Docker daemon.
+    # Not verified against a running broker in this repository (no Docker daemon
+    # was available when this was written). Run `docker compose up kafka` and
+    # check the healthcheck before relying on it.
     #
     # This service is NOT behind a profile. `backend` depends_on it with
     # condition: service_healthy, and compose rejects a dependency on a service
     # whose profile is not enabled - an earlier attempt to profile this took the
     # whole project down with "depends on undefined service kafka".
-    image: bitnamilegacy/kafka:3.9
+    image: apache/kafka:3.9.0
     environment:
-      # Single-node KRaft; no ZooKeeper needed for local development.
-      KAFKA_CFG_NODE_ID: '0'
-      KAFKA_CFG_PROCESS_ROLES: 'controller,broker'
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: '0@kafka:9093'
-      KAFKA_CFG_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093'
-      KAFKA_CFG_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NODE_ID: '1'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+      KAFKA_HEAP_OPTS: '-Xms256m -Xmx512m'
+      # Topics are created explicitly by the backend at startup (ensure_topic), with the
+      # partition count the producer assumes. Auto-create would give flows.raw the broker
+      # default (one partition), and src_ip partitioning would silently do nothing.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_NUM_PARTITIONS: '6'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
+      # Fixed cluster id for this single local node. The volume below stores it.
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     volumes:
-      - kafka-data:/bitnami/kafka
+      - kafka-kraft-data:/var/lib/kafka/data
     healthcheck:
-      test: ['CMD-SHELL', 'kafka-topics.sh --bootstrap-server localhost:9092 --list']
+      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list']
       interval: 10s
       timeout: 10s
       retries: 12
       start_period: 30s
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
-    environment:
-      discovery.type: single-node
-      # Development only. Production must enable security (architecture.md §12).
-      xpack.security.enabled: 'false'
-      ES_JAVA_OPTS: '-Xms512m -Xmx512m'
-    volumes:
-      - es-data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -fs http://localhost:9200/_cluster/health || exit 1']
-      interval: 10s
-      timeout: 10s
-      retries: 12
-      start_period: 40s
-
   ml-service:
+    mem_limit: 1536m
     build:
       context: ../ml-service
     environment:
       AEGIS_ENV: development
       AEGIS_LOG_LEVEL: INFO
+    # The trained FlowNet checkpoint (data/checkpoints/flownet, not in Git). Without it the
+    # service runs, reports no flow model, and the backend scores with rules only.
+    volumes:
+      - ../data/checkpoints/flownet:/models/flownet:ro
     ports:
       - '8001:8001'
     healthcheck:
@@ -112,8 +130,11 @@ services:
       start_period: 10s
 
   backend:
+    mem_limit: 768m
     build:
       context: ../backend
+      additional_contexts:
+        aegis_ml: ../ml-service
     environment:
       AEGIS_ENV: development
       AEGIS_SERVICE_NAME: aegis-backend
@@ -121,23 +142,35 @@ services:
       AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
       AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
+      # Shared login throttle (see app/services/login_throttle.py). Empty = per process.
+      AEGIS_REDIS_URL: redis://redis:6379/0
+      # The flow path runs over the broker (D-085): ingest publishes to flows.raw and
+      # the live consumer scores it. Empty would keep scoring in-process.
+      AEGIS_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # The eval@2 report sits beside the checkpoint; the registrar attaches it to the model.
+      AEGIS_ML_EVAL_REPORTS_DIR: /models/flownet
       AEGIS_HOST: 0.0.0.0
       AEGIS_PORT: '8000'
       AEGIS_LOG_LEVEL: INFO
-      AEGIS_DEMO_THRESHOLD_DIVISOR: '5'
+      # Seeds the first admin the capture services log in as. The default is a
+      # local-development credential; override both with a .env file or the shell.
+      AEGIS_BOOTSTRAP_ADMIN_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      AEGIS_BOOTSTRAP_ADMIN_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
+    volumes:
+      # Read-only view of the checkpoint folder, for the eval@2 report only.
+      - ../data/checkpoints/flownet:/models/flownet:ro
     ports:
       - '8000:8000'
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       kafka:
-        condition: service_healthy
-      elasticsearch:
         condition: service_healthy
       ml-service:
         condition: service_healthy
+      # Soft: the backend runs without Redis, with a per-process login limit.
+      redis:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL
@@ -148,6 +181,7 @@ services:
       start_period: 10s
 
   dashboard:
+    mem_limit: 128m
     build:
       context: ../dashboard
     ports:
@@ -163,73 +197,38 @@ services:
 
   # Network capture service — captures REAL traffic from the host network.
   # Requires: --cap-add=NET_ADMIN or --privileged
-  # Override interface with: AEGIS_CAPTURE_INTERFACE=Wi-Fi docker compose up
+  # Override interface with a Linux interface name, e.g.:
+  #   AEGIS_CAPTURE_INTERFACE=wlan0 docker compose up
+  # Windows/macOS adapter names (Wi-Fi, Ethernet) do not exist in the container.
+  # On Docker Desktop, network_mode: host is the Linux VM's network, not the host
+  # adapter, so little real traffic is seen. See
+  # backend/app/services/capture/bridges/README.md ("Docker Desktop").
+  # Default interface per service differs; see the same README for the table.
+  # Network capture: one container, one image (replaces capture, zeek, suricata and
+  # tshark). Engines run side by side, chosen by AEGIS_CAPTURE_ENGINES. zeek supplies
+  # flows and suricata supplies alerts and protocol logs. tshark is opt-in: it
+  # aggregates the same connections as zeek, so enabling it counts flows twice.
   capture:
+    mem_limit: 1g
     build:
       context: ../backend
-      dockerfile: app/services/capture/Dockerfile
+      dockerfile: app/services/capture/Dockerfile.capture
     environment:
       AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
-      AEGIS_FLUSH_INTERVAL: "10"
-    network_mode: host
-    depends_on:
-      backend:
-        condition: service_healthy
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
-  # Zeek network analyzer — deep protocol analysis + flow logging
-  # Produces conn.log with detailed connection metadata
-  zeek:
-    build:
-      context: ../backend
-      dockerfile: app/services/capture/Dockerfile.zeek
-    environment:
-      AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
-    network_mode: host
-    depends_on:
-      backend:
-        condition: service_healthy
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
-  # Suricata IDS — signature-based threat detection
-  # Produces eve.json with alerts, flows, DNS events
-  suricata:
-    build:
-      context: ../backend
-      dockerfile: app/services/capture/Dockerfile.suricata
-    environment:
-      AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-eth0}
-    network_mode: host
-    depends_on:
-      backend:
-        condition: service_healthy
-    cap_add:
-      - NET_ADMIN
-    restart: unless-stopped
-
-  # tshark packet capture — lightweight packet-level flow extraction
-  tshark:
-    build:
-      context: ../backend
-      dockerfile: app/services/capture/Dockerfile.tshark
-    environment:
-      AEGIS_API_URL: http://localhost:8000
-      AEGIS_EMAIL: admin@aegis.local
-      AEGIS_PASSWORD: admin123456789
-      AEGIS_CAPTURE_INTERFACE: ${AEGIS_CAPTURE_INTERFACE:-any}
+      AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      # No default: the capture service refuses to start without a non-default password.
+      AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
+      AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-zeek,suricata}
+      # AEGIS_CAPTURE_INTERFACE is still honoured as the fallback for every engine.
+      AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
+      AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
+      AEGIS_TSHARK_INTERFACE: ${AEGIS_TSHARK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-any}}
+      # Records the API refused to take during an outage wait here, on a named volume, so a
+      # container restart does not lose them. Capped by AEGIS_SPOOL_MAX_MB in the shipper.
+      AEGIS_SPOOL_DIR: /var/lib/aegis-spool
+      AEGIS_SPOOL_MAX_MB: ${AEGIS_SPOOL_MAX_MB:-64}
+    volumes:
+      - capture-spool:/var/lib/aegis-spool
     network_mode: host
     depends_on:
       backend:
@@ -240,6 +239,5 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
-  kafka-data:
-  es-data:
+  kafka-kraft-data:
+  capture-spool:

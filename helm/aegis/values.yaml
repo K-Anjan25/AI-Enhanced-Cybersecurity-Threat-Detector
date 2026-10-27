@@ -1,8 +1,27 @@
 # AEGIS Helm values — defaults (development/staging).
 
 global:
-  imageRegistry: ""
+  imageRegistry: ''
   imagePullSecrets: []
+
+# ──────────────────────────────────────────────
+# Redis: login-throttle counters shared by every backend replica (see templates/redis.yaml).
+# ──────────────────────────────────────────────
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: '7-alpine'
+    pullPolicy: IfNotPresent
+  # Memory ceiling for the counters. Keys carry a TTL, and volatile-ttl evicts those first.
+  maxmemoryMb: 64
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
 
 # ──────────────────────────────────────────────
 # Backend
@@ -11,7 +30,7 @@ backend:
   replicaCount: 1
   image:
     repository: aegis-backend
-    tag: "0.1.0"
+    tag: '0.1.0'
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -21,16 +40,24 @@ backend:
       cpu: 250m
       memory: 512Mi
     limits:
-      cpu: "1"
+      cpu: '1'
       memory: 1Gi
   env:
     AEGIS_ENV: production
-    AEGIS_PORT: "8000"
-    AEGIS_HOST: "0.0.0.0"
+    AEGIS_PORT: '8000'
+    AEGIS_HOST: '0.0.0.0'
     AEGIS_LOG_LEVEL: INFO
+    # Shared login-throttle counters across replicas. Left empty, the chart points this at
+    # the Redis it deploys (redis.enabled). Empty with redis disabled means per-process
+    # counters, which a multi-replica deployment must not rely on.
+    AEGIS_REDIS_URL: ''
   secretEnv:
     - AEGIS_SECRET_KEY
     - AEGIS_DATABASE_URL
+    # Production refuses to start without the bootstrap admin (config.py), so these
+    # must reach the pod, not only sit in the secret.
+    - AEGIS_BOOTSTRAP_ADMIN_EMAIL
+    - AEGIS_BOOTSTRAP_ADMIN_PASSWORD
   probes:
     liveness:
       path: /healthz
@@ -48,7 +75,7 @@ mlService:
   replicaCount: 1
   image:
     repository: aegis-ml-service
-    tag: "0.1.0"
+    tag: '0.1.0'
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -58,7 +85,7 @@ mlService:
       cpu: 500m
       memory: 1Gi
     limits:
-      cpu: "2"
+      cpu: '2'
       memory: 2Gi
   env:
     AEGIS_ENV: production
@@ -78,11 +105,11 @@ scoringWorker:
     enabled: true
     minReplicas: 2
     maxReplicas: 10
-    targetConsumerLag: 1000  # Scale up when Kafka lag exceeds this
+    targetConsumerLag: 1000 # Scale up when Kafka lag exceeds this
   image:
     repository: aegis-backend
-    tag: "0.1.0"
-    command: ["python", "-m", "app.workers.scoring"]
+    tag: '0.1.0'
+    command: ['python', '-m', 'app.workers.scoring']
   resources:
     requests:
       cpu: 250m
@@ -95,7 +122,7 @@ dashboard:
   replicaCount: 1
   image:
     repository: aegis-dashboard
-    tag: "0.1.0"
+    tag: '0.1.0'
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -109,35 +136,32 @@ dashboard:
       memory: 256Mi
 
 # ──────────────────────────────────────────────
-# PostgreSQL (optional — use external managed DB in production)
+# PostgreSQL: external. The chart deploys no database; aegis-secrets supplies
+# AEGIS_DATABASE_URL (see secrets below). The Bitnami subchart was
+# removed because its images are no longer published.
 # ──────────────────────────────────────────────
-postgresql:
-  enabled: false
-  auth:
-    database: aegis
-    username: aegis
-  primary:
-    persistence:
-      size: 20Gi
 
 # ──────────────────────────────────────────────
-# Kafka (optional — use external managed Kafka in production)
+# Kafka: not deployed by this chart. Provision Apache Kafka (apache/kafka, KRaft)
+# outside the release, as k8s/README.md describes.
 # ──────────────────────────────────────────────
-kafka:
-  enabled: false
-  persistence:
-    size: 20Gi
 
 # ──────────────────────────────────────────────
 # Secrets (created externally from cluster secret store)
 # ──────────────────────────────────────────────
+# Database migrations (alembic upgrade head). Runs as a Helm hook before every
+# install and upgrade. Without it the flow store and other tables never exist, and
+# the dashboard's Traffic page answers 503.
+migrations:
+  enabled: true
+
 secrets:
   # aegis-secrets must contain:
   #   AEGIS_SECRET_KEY (32+ random chars)
   #   AEGIS_DATABASE_URL (postgresql+psycopg://...)
   #   AEGIS_BOOTSTRAP_ADMIN_EMAIL
   #   AEGIS_BOOTSTRAP_ADMIN_PASSWORD
-  existingSecret: aegis-secrets
+  existingSecret: aegis-secrets # pragma: allowlist secret  (a Secret object's name, not a value)
 
 # ──────────────────────────────────────────────
 # Ingress

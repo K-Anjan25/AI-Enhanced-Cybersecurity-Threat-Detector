@@ -52,10 +52,7 @@ export function SavedHunts({
       </Button>
       {open ? (
         <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-2">
-          <p className="text-caption text-muted">
-            Saved and recent hunts live in this browser only. They are not shared with anyone else,
-            and clearing site data removes them.
-          </p>
+          <p className="text-body-sm font-semibold text-muted">Stored in this browser only.</p>
           {saved.length === 0 ? (
             <p className="text-body-sm text-muted">No saved hunts yet.</p>
           ) : (
@@ -81,13 +78,13 @@ export function SavedHunts({
           )}
           {recent.length === 0 ? null : (
             <>
-              <p className="text-caption text-muted">Recent</p>
+              <p className="text-body-sm font-semibold text-muted">Recent</p>
               <ul className="flex flex-col gap-1">
                 {recent.map((record) => (
                   <li key={record.text}>
                     <button
                       type="button"
-                      className="font-mono text-caption text-muted underline-offset-2 hover:underline"
+                      className="font-mono text-body-sm font-semibold text-muted underline-offset-2 hover:underline"
                       onClick={() => {
                         onLoad(record.text);
                         setOpen(false);
@@ -111,7 +108,7 @@ export function SavedHunts({
           setName('');
         }}
       >
-        <label className="text-caption text-muted" htmlFor="hunt-save-name">
+        <label className="text-body-sm font-semibold text-muted" htmlFor="hunt-save-name">
           Save as
         </label>
         <input

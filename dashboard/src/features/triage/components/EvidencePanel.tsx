@@ -184,7 +184,7 @@ export function EvidencePanel({ detail }: { detail: AlertDetail }) {
         ) : occurrences.length === 0 ? (
           <EmptyState
             title={`No ${active.label.toLowerCase()} windows`}
-            description="The alert's trail carries no window for this modality."
+            description="No windows."
           />
         ) : (
           <DataTable

@@ -72,6 +72,7 @@ export interface OverviewTotals {
   unrecorded: number;
   verdicts_measured: number;
   mean_time_to_verdict_seconds: number | null;
+  median_time_to_verdict_seconds?: number | null;
 }
 
 /** Everything the overview's panels read, from one request (FR-50). */

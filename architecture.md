@@ -14,7 +14,7 @@
 ## 1. Architectural principles
 
 1. **Telemetry never blocks.** Ingestion writes to the bus first. Scoring failure degrades detection latency, never data loss.
-2. **Stateless compute, stateful stores.** API workers and scorers are disposable. All state lives in PostgreSQL, Elasticsearch, or Kafka.
+2. **Stateless compute, stateful stores.** API workers and scorers are disposable. All state lives in PostgreSQL or Kafka. Hunt search runs on PostgreSQL full-text search (D-034); Elasticsearch is not deployed.
 3. **Deterministic inference.** Same input + same pinned model ID ⇒ identical output. No clocks, no randomness, no ambient config in the scoring path (NFR-10).
 4. **Every alert is reproducible.** We keep the raw window that produced an alert, so a verdict can be re-explained months later.
 5. **Two models, one score.** Flow and log models are trained, versioned, deployed, and rolled back independently, then fused late.
@@ -35,8 +35,8 @@
                               │ raw records                         │ scores   │
                               ▼                                     ▼          │
                       ┌───────────────┐                     ┌──────────────┐   │
-                      │ Elasticsearch │                     │  Correlator  │   │
-                      │ (raw search)  │                     │ dedupe+group │   │
+                      │ PostgreSQL    │                     │  Correlator  │   │
+                      │(search, D-034)│                     │ dedupe+group │   │
                       └───────┬───────┘                     └──────┬───────┘   │
                               │                                    │ alerts    │
                               │        ┌──────────────┐            ▼          │
@@ -132,7 +132,7 @@ AI-Enhanced-Cybersecurity-Threat-Detector/
 
 1. **Arrival.** `POST /api/v1/ingest/flows` with an NDJSON batch. The API authenticates (JWT or API key), rate-limits, and validates each record against `flow@1`.
 2. **Redaction.** Configured PII fields (usernames, hostnames matching a redaction pattern) are replaced with salted hashes. The original is not stored.
-3. **Fan-out.** Valid records are produced to Kafka `flows.raw` (partitioned by `src_ip` so one entity's flows stay ordered) and indexed into Elasticsearch for search.
+3. **Fan-out.** Valid records are produced to Kafka `flows.raw` (partitioned by `src_ip` so one entity's flows stay ordered) and made searchable through PostgreSQL full-text search (D-034).
 4. **Windowing.** The scoring worker consumes `flows.raw`, maintaining a per-entity deque of the last 50 flows (FR-10). When a window closes — by count or by a 10 s inactivity timer — it is emitted for inference.
 5. **Inference.** Feature extraction → flow transformer → per-flow reconstruction error and a sequence-level anomaly probability.
 6. **Fusion.** If a log window for the same entity closed within the fusion window (±60 s), the composite score is computed. Otherwise the flow score alone is used with a documented confidence penalty.
@@ -316,7 +316,7 @@ Non-negotiable training rules (enforced in CI where possible, see [rules.md](rul
 
 ### 11.1 Local development (primary target)
 
-`docker compose up` starts: postgres, redis, kafka + zookeeper, elasticsearch, backend, ml-service, dashboard. Everything binds inside the compose network; only the dashboard and backend publish ports. Datasets are fetched on demand into `data/raw/` — never baked into images.
+`docker compose up` starts: postgres, redis, kafka + zookeeper, backend, ml-service, dashboard. Elasticsearch is not in the compose file: hunt search uses partitioned PostgreSQL (D-034), so there is no search cluster to run locally. Everything binds inside the compose network; only the dashboard and backend publish ports. Datasets are fetched on demand into `data/raw/` — never baked into images.
 
 ### 11.2 Production (Kubernetes)
 
@@ -328,7 +328,7 @@ Non-negotiable training rules (enforced in CI where possible, see [rules.md](rul
 | dashboard (nginx static) | 2+ | HPA on request rate |
 | postgres | 1 primary + replica | Vertical, plus partition management job |
 | kafka | 3 brokers | Partition count is the scale unit |
-| elasticsearch | 3 nodes | ILM policy rolls indices daily |
+| elasticsearch | deferred (D-034) | Not deployed. If it returns, its ILM policy ships with its writer |
 
 Ingress terminates TLS. Secrets come from the cluster secret store, never from images or manifests.
 
@@ -377,7 +377,7 @@ Every AEGIS alert row is itself a business event and is queryable for MTTR repor
 |---|---|---|
 | Scoring worker down | Kafka buffers; consumer lag rises; alerts delayed | Worker restart resumes from committed offset; no data loss |
 | Model service OOM | Scores fail; ingest continues | Worker falls back to last-known-good model version, then to rule-based safety net; alert marked `degraded_scoring` |
-| Elasticsearch down | Ingest continues to Kafka; hunt search unavailable | Reindex from Kafka on recovery; UI shows a search-unavailable state, not a blank page |
+| Hunt search index down | Ingest continues to Kafka; hunt search unavailable | Reindex from Kafka on recovery; UI shows a search-unavailable state, not a blank page |
 | PostgreSQL down | Reads fail; API returns 503 with `Retry-After` | Scoring continues writing to Kafka; catch-up job replays |
 | Kafka down | Ingest API returns 503 and clients retry | Bounded in-memory buffer for a short outage; explicit back-pressure, never silent drops |
 | Dashboard WebSocket drops | UI falls back to REST polling at 15 s; banner shown | Auto-reconnect with backoff |

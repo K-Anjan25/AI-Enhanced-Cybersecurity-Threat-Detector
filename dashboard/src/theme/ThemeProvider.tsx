@@ -37,9 +37,13 @@ function readStoredTheme(): Theme | null {
   }
 }
 
+/**
+ * The default is the light theme (frost canvas, navy accents, Cybercore), chosen
+ * by the user over the dark SOC default. A stored choice still wins, so the toggle
+ * remains available.
+ */
 function preferredTheme(): Theme {
-  if (typeof window.matchMedia !== 'function') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  return 'light';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

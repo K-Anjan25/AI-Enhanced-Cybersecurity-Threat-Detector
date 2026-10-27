@@ -50,7 +50,7 @@ describe('AlertQueue', () => {
     renderQueue();
 
     const first = screen.getAllByRole('link')[0] as HTMLElement;
-    // The pill renders its glyph as a sibling of the label, so read the row's text.
+    // The pill renders its label as a sibling of the detail, so read the row's text.
     expect(first.textContent).toContain('Critical');
     expect(first.textContent).toContain('Reconnaissance');
     expect(first.textContent).toContain('0.96');

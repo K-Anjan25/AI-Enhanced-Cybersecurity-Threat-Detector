@@ -40,12 +40,39 @@ afterEach(() => {
 });
 
 describe('the dashboard authentication gate', () => {
+  it('shows the landing page at the root and sign-in on other paths, when signed out', async () => {
+    stubFetch(authenticatedRoutes(false));
+    const landing = renderWithProviders(<App />, undefined, ['/']);
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: /see the attack before it becomes an incident/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Start free' })).toHaveAttribute('href', '/pricing');
+    landing.unmount();
+
+    renderWithProviders(<App />, undefined, ['/sign-in']);
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('serves the public marketing pages when signed out, without the console', async () => {
+    stubFetch(authenticatedRoutes(false));
+    renderWithProviders(<App />, undefined, ['/pricing']);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /pricing that scales/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
+  });
+
   it('signs in, sends the bearer token to protected endpoints, and signs out', async () => {
     const user = userEvent.setup();
     const requests = stubFetch(authenticatedRoutes(false));
     const { container } = renderWithProviders(<App />, undefined, ['/models']);
 
-    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     await expectAccessible(container as HTMLElement);
     await user.type(screen.getByLabelText('Email address'), 'operator@example.test');
     await user.type(screen.getByLabelText('Password'), 'correct-horse-battery-42');
@@ -59,7 +86,7 @@ describe('the dashboard authentication gate', () => {
     expect(sessionToken()).toBe('signed-access-token');
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByRole('heading', { name: 'Sign in to AEGIS' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     await waitFor(() => expect(sessionToken()).toBeNull());
     expect(
       requests.some((request) => new URL(request.url).pathname === '/api/v1/auth/logout'),
@@ -72,7 +99,7 @@ describe('the dashboard authentication gate', () => {
     renderWithProviders(<App />, undefined, ['/models']);
 
     expect(
-      await screen.findByRole('heading', { name: 'Create your administrator account' }),
+      await screen.findByRole('heading', { name: 'Create administrator' }),
     ).toBeInTheDocument();
     await user.type(screen.getByLabelText('Email address'), 'operator@example.test');
     await user.type(screen.getByLabelText('Password'), 'a-strong-local-password-42');

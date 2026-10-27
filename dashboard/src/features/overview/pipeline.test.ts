@@ -49,6 +49,13 @@ aegis_score_latency_seconds_bucket{le="0.05"} 50.0
 aegis_score_latency_seconds_bucket{le="0.1"} 100.0
 aegis_score_latency_seconds_bucket{le="+Inf"} 100.0
 aegis_score_latency_seconds_count 100.0
+aegis_correlate_latency_seconds_bucket{le="0.01"} 90.0
+aegis_correlate_latency_seconds_bucket{le="0.025"} 100.0
+aegis_correlate_latency_seconds_bucket{le="+Inf"} 100.0
+aegis_correlate_latency_seconds_count 100.0
+aegis_notify_latency_seconds_bucket{le="0.005"} 100.0
+aegis_notify_latency_seconds_bucket{le="+Inf"} 100.0
+aegis_notify_latency_seconds_count 100.0
 aegis_alerts_created_total{severity="high"} 7.0
 aegis_kafka_consumer_lag{group="scoring",topic="flows.raw",partition="0"} 3.0
 aegis_kafka_consumer_lag{group="scoring",topic="flows.raw",partition="1"} 1500.0
@@ -159,13 +166,32 @@ aegis_http_request_duration_seconds_bucket{method="POST",route="${INGEST_ROUTE}"
     expect(stages.find((stage) => stage.spec.id === 'score')?.reading.lag).toBe(1_500);
   });
 
-  it('says not measured for a stage nothing instruments', () => {
+  it('says not measured for a stage whose histogram has no samples yet', () => {
+    // A scrape from a process that has not correlated or notified anything: the
+    // histograms are registered but empty, and an empty histogram has no p95.
+    const idle = parseExposition('aegis_flows_ingested_total{modality="flow"} 1000.0\n');
+    const stages = readPipeline({ at: 0, samples: idle }, null);
+
+    for (const id of ['correlate', 'notify'] as const) {
+      const stage = stages.find((item) => item.spec.id === id);
+      expect(stage?.reading.p95Ms, id).toBeNull();
+      expect(stage?.status, id).toBe('unmeasured');
+      expect(stage?.shareOfBudget, id).toBeNull();
+    }
+  });
+
+  it('reads correlate and notify latency from their own histograms, within budget', () => {
     const stages = readPipeline(scrape(0, 1_000), null);
+    const correlate = stages.find((stage) => stage.spec.id === 'correlate');
     const notify = stages.find((stage) => stage.spec.id === 'notify');
 
-    expect(notify?.reading.p95Ms).toBeNull();
-    expect(notify?.status).toBe('unmeasured');
-    expect(notify?.shareOfBudget).toBeNull();
+    // 90 of 100 correlations at or under 10 ms, the rest by 25 ms: p95 interpolates
+    // to 10 + 15 × (95 − 90) / (100 − 90) = 17.5 ms, inside the 30 ms budget.
+    expect(correlate?.reading.p95Ms).toBeCloseTo(17.5, 3);
+    expect(correlate?.status).toBe('ok');
+    // Every notify is under 5 ms, so the p95 sits inside the first bucket.
+    expect(notify?.reading.p95Ms).toBeCloseTo(4.75, 3);
+    expect(notify?.status).toBe('ok');
   });
 
   it('leaves throughput unmeasured without a previous scrape, rather than zero', () => {
@@ -186,15 +212,13 @@ aegis_http_request_duration_seconds_bucket{method="POST",route="${INGEST_ROUTE}"
     ).toBeCloseTo(30, 6);
   });
 
-  it('takes the correlate throughput from the alerts counter, and still calls its latency unmeasured', () => {
+  it('takes the correlate throughput from its histogram count, not from the alert counter', () => {
     const stages = readPipeline(scrape(10_000, 1_300), scrape(0, 1_000));
     const correlate = stages.find((stage) => stage.spec.id === 'correlate');
 
-    // The counter did not move between the two scrapes, and a rate of zero is a
-    // measurement — unlike the latency, which nothing times.
+    // The fixture's correlate count did not move between the two scrapes, so the rate
+    // is zero. That is a measurement: the histogram was read, and nothing was correlated.
     expect(correlate?.reading.throughputPerSecond).toBe(0);
-    expect(correlate?.reading.p95Ms).toBeNull();
-    expect(correlate?.status).toBe('unmeasured');
   });
 
   it('survives an empty scrape by calling every stage unmeasured', () => {

@@ -7,12 +7,14 @@ reported as a single actionable line rather than a traceback (rule R-06).
 from __future__ import annotations
 
 import sys
+import threading
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, Request
+from sqlalchemy import create_engine
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -43,20 +45,20 @@ from app.api.v1.endpoints import (
     webhooks,
 )
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
+from app.auth.oidc import OidcConfig, OidcSignIn
 from app.auth.tokens import TokenService
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
-from app.db.models import PARTITIONED_TABLES
+from app.messaging.kafka_bus import KafkaBus, KafkaBusError
 from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
-from app.services.detection_engine import DetectionEngine
-from app.services.drift_monitor import DriftMonitor
-from app.services.model_registrar import ModelRegistrar
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.auth_accounts import AuthAccountStore
+from app.services.detection_engine import DetectionEngine
+from app.services.drift_monitor import DriftMonitor
 from app.services.entity_registry import EntityRegistry
 from app.services.erasure import (
     EntityRedactionTarget,
@@ -71,12 +73,16 @@ from app.services.flow_read_model import InProcessFlowRollup
 from app.services.flow_source import RollupFlowSource, flow_rollup_reason
 from app.services.flow_store import PostgresFlowStore
 from app.services.health_service import ReadinessRegistry
+from app.services.kafka_pipeline import build_kafka_pipeline
 from app.services.limits import AdmissionController, RateLimitPolicy
 from app.services.log_source import TailLogSource, store_requested, tail_reason
 from app.services.log_store import PostgresLogStore
 from app.services.log_tail import LogTail
+from app.services.login_throttle import ThrottleSettings, build_login_throttle
 from app.services.ml_calibration import MlCalibrator
+from app.services.ml_window_scorer import MlWindowScorer
 from app.services.model_ops import ModelOpsService
+from app.services.model_registrar import ModelRegistrar
 from app.services.recalibration import (
     DEFAULT_TENANT_ID,
     AlertVerdictFeedback,
@@ -84,8 +90,12 @@ from app.services.recalibration import (
     RecalibrationService,
 )
 from app.services.retention import RetentionPolicy
+from app.services.retention_catalog import CatalogRunner, list_partitions, sweep_retained
+from app.services.retention_run import SCHEDULER_ACTOR, execute_retention, record_retention_run
+from app.services.retention_scheduler import RetentionScheduler
 from app.services.threshold_admin import ThresholdAdminService, ThresholdImpactReader
 from app.services.user_directory import InMemoryUserDirectory, UserAdminService
+from app.services.user_erasure_store import PostgresUserStore
 from app.services.verdict_service import (
     InMemoryVerdictLedger,
 )
@@ -164,17 +174,36 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if detection_engine is not None:
         detection_engine.start()
         logger.info("detection_engine_started", interval=15)
+    # Retention on a timer (NFR-05). Runs once at start, so a restart after downtime
+    # catches up, then every interval.
+    retention_scheduler = getattr(app.state, "retention_scheduler", None)
+    if retention_scheduler is not None:
+        retention_scheduler.start()
+        logger.info("retention_scheduler_started")
+    # Create the flow topic in the background (replaces the kafka-init container). The
+    # API starts without waiting for the broker; ingest reports 503 until it is ready.
+    kafka_bus = getattr(app.state, "kafka_bus", None)
+    if kafka_bus is not None:
+        threading.Thread(
+            target=_ensure_flow_topic, args=(kafka_bus,), name="kafka-topic-setup", daemon=True
+        ).start()
+    # Start the live Kafka consumer, when the Kafka path is configured (D-085).
+    live_scoring = getattr(app.state, "live_scoring", None)
+    if live_scoring is not None:
+        live_scoring.start()
+        logger.info("kafka_live_scoring_started")
     # Start the drift monitor (T-421)
     drift_monitor = getattr(app.state, "drift_monitor", None)
     if drift_monitor is not None:
         drift_monitor.start()
         logger.info("drift_monitor_started")
     # Start the model registrar (model_ops exists now, created in create_app)
-    ml_url = getattr(app.state.settings, 'ml_service_url', None) or "http://ml-service:8001"
+    ml_url = getattr(app.state.settings, "ml_service_url", None) or "http://ml-service:8001"
     model_registrar = ModelRegistrar(
         ml_service_url=ml_url,
         model_ops=app.state.model_ops,
         interval=30.0,
+        eval_reports_dir=getattr(app.state.settings, "ml_eval_reports_dir", "") or None,
     )
     app.state.model_registrar = model_registrar
     model_registrar.start()
@@ -185,6 +214,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Stop the detection engine
         if detection_engine is not None:
             detection_engine.stop()
+        if retention_scheduler is not None:
+            retention_scheduler.stop()
+        # Stop the live consumer first, so it scores what it has read and stops
+        # reading, then close the broker clients.
+        if live_scoring is not None:
+            live_scoring.stop()
+        kafka_bus = getattr(app.state, "kafka_bus", None)
+        if kafka_bus is not None:
+            kafka_bus.close()
         # Stop the drift monitor
         if drift_monitor is not None:
             drift_monitor.stop()
@@ -203,30 +241,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("shutdown", service=settings.service_name)
 
 
-def _known_partitions_stand_in() -> set[tuple[str, int, int]]:
-    """The monthly partitions a deployment that has run for a while would have.
+def _no_catalog() -> set[tuple[str, int, int]]:
+    """The catalog of a deployment with no database configured: there are no partitions.
 
-    A stand-in for the catalog query, and named as one. The real implementation
-    reads ``pg_class`` for partitions of the tables in ``PARTITIONED_TABLES``; it
-    is not written here because no session is wired into the request path (D-030),
-    and a query that cannot be executed is better named than faked. What this
-    returns is enough for the preview to show the boundary rule honestly: the last
-    36 months for each partitioned table.
+    Retention plans over what exists. With no database nothing exists, so the plan is
+    empty and says so; it must not show months that were never stored.
     """
-    today = datetime.now(UTC).date()
-    year, month = today.year, today.month - 35
-    while month < 1:
-        month += 12
-        year -= 1
-    present: set[tuple[str, int, int]] = set()
-    cursor_year, cursor_month = year, month
-    while (cursor_year, cursor_month) <= (today.year, today.month):
-        for table in PARTITIONED_TABLES:
-            present.add((table, cursor_year, cursor_month))
-        cursor_month += 1
-        if cursor_month == 13:
-            cursor_year, cursor_month = cursor_year + 1, 1
-    return present
+    return set()
 
 
 def _no_runner(statement: str) -> bool:
@@ -241,6 +262,57 @@ def _no_runner(statement: str) -> bool:
         "wire app.state.partition_runner to a session-backed runner"
     )
     raise RuntimeError(msg)
+
+
+def _ensure_flow_topic(bus: KafkaBus) -> None:
+    """Create the flow topic, logging instead of raising: the API must keep serving."""
+    logger = get_logger("aegis.backend")
+    try:
+        bus.ensure_topic()
+    except KafkaBusError as exc:
+        logger.error("kafka_topic_unavailable", error=str(exc))
+    else:
+        logger.info("kafka_topic_ready", topic=bus.topic, partitions=bus.partitions)
+
+
+def _scheduled_retention(app: FastAPI) -> None:
+    """One scheduled run: the same steps as the operator's route, recorded as the system."""
+    at = datetime.now(UTC)
+    run = execute_retention(
+        policy=app.state.retention_policy,
+        partitions=app.state.known_partitions,
+        runner=app.state.partition_runner,
+        sweeper=app.state.retention_sweeper,
+        at=at,
+    )
+    # The trail records changes, not requests (D-041): a scheduled run that dropped and
+    # swept nothing, which is most runs, appends nothing. Every run is logged instead.
+    _logger = get_logger("aegis.retention")
+    _logger.info(
+        "retention_run",
+        dropped=len(run.dropped),
+        already_absent=len(run.already_absent),
+        swept=run.swept,
+    )
+    if not run.is_noop:
+        record_retention_run(app.state.audit_trail, run, actor=SCHEDULER_ACTOR, ip=None)
+
+
+def build_oidc_sign_in(settings: Settings) -> OidcSignIn | None:
+    """The OIDC client for this deployment, or None when OIDC is not enabled."""
+    if not settings.oidc_enabled:
+        return None
+    secret = settings.oidc_client_secret
+    if secret is None:  # the settings validator makes this unreachable; keep it explicit
+        raise ConfigurationError("AEGIS_OIDC_CLIENT_SECRET is required when OIDC is enabled")
+    return OidcSignIn(
+        OidcConfig(
+            issuer=settings.oidc_issuer,
+            client_id=settings.oidc_client_id,
+            client_secret=secret.get_secret_value(),
+            redirect_uri=settings.oidc_redirect_uri,
+        )
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -284,6 +356,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # its token verifier, turning every authenticated request into a 500. Make the
     # same signed-token service available to REST, WebSocket and auth endpoints.
     app.state.token_service = TokenService(resolved.secret_key)
+    # FR-43. None unless the deployment enabled OIDC; the routes then answer 404.
+    app.state.oidc = build_oidc_sign_in(resolved)
     app.state.service_name = resolved.service_name
     app.state.version = __version__
     app.state.environment = resolved.env.value
@@ -299,14 +373,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.alert_store = InMemoryAlertStore()
     # Rule-based detection engine: runs in background, reads buffered flows,
     # applies heuristic rules, and writes alerts to the alert store.
+    ml_scorer = None
+    if getattr(app.state.settings, "ml_detection_enabled", False):
+        ml_scorer = MlWindowScorer(app.state.settings.ml_service_url)
     app.state.detection_engine = DetectionEngine(
         app.state.alert_store,
         interval=15.0,
         max_buffer=10_000,
+        ml_scorer=ml_scorer,
     )
     # Drift monitor (T-421): computes PSI from recent flows and publishes
     # aegis_drift_psi{feature} gauges to /metrics so the DriftPage draws bars.
-    ml_service_url = getattr(resolved, 'ml_service_url', None) or "http://ml-service:8001"
+    ml_service_url = getattr(resolved, "ml_service_url", None) or "http://ml-service:8001"
     app.state.drift_monitor = DriftMonitor(
         interval=15.0,
         ml_service_url=ml_service_url,
@@ -316,6 +394,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # overview resolves `entity_id` through it. D-053 records the persistent
     # writer (`entities`) as unwired, like the store above.
     app.state.entity_registry = EntityRegistry()
+    # The Kafka path (D-085). When a broker is configured, ingest publishes to
+    # flows.raw and the live loop scores it, so the in-process engine is not fed
+    # (see ingest). Built after the registry and the alert store it writes into.
+    app.state.flow_publisher = None
+    app.state.live_scoring = None
+    app.state.kafka_bus = None
+    kafka_servers = getattr(resolved, "kafka_bootstrap_servers", "") or ""
+    if kafka_servers.strip():
+        publisher, live, kafka_bus = build_kafka_pipeline(
+            bootstrap_servers=kafka_servers,
+            ml_client=MlWindowScorer(resolved.ml_service_url),
+            alerts=app.state.alert_store,
+            hub=app.state.alert_hub,
+            registry=app.state.entity_registry,
+            retention_ms=resolved.kafka_retention_hours * 3_600_000,
+            max_window_wait_seconds=resolved.live_max_window_wait_seconds,
+            cool_down=timedelta(minutes=resolved.alert_cool_down_minutes),
+        )
+        app.state.flow_publisher = publisher
+        app.state.live_scoring = live
+        app.state.kafka_bus = kafka_bus
     # The log tail (T-407). A bounded in-process copy of the accepted lines, for the
     # deployment that has no log store -- and the thing the store's own wiring below
     # replaces when the deployment configures one.
@@ -407,13 +506,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # the app is wired with a catalog of the months a deployment that has run for
     # a while would have, and a runner that refuses. The retention route fails
     # loudly rather than reporting a clean run it did not perform.
-    app.state.known_partitions = _known_partitions_stand_in
-    app.state.partition_runner = _no_runner
+    if "database_url" in resolved.model_fields_set:
+        retention_engine = create_engine(resolved.database_url, pool_pre_ping=True)
+        app.state.known_partitions = lambda: list_partitions(retention_engine)
+        app.state.partition_runner = CatalogRunner(retention_engine)
+        app.state.retention_sweeper = lambda cutoffs: sweep_retained(retention_engine, cutoffs)
+        if resolved.retention_interval_seconds > 0:
+            app.state.retention_scheduler = RetentionScheduler(
+                lambda: _scheduled_retention(app),
+                interval_seconds=float(resolved.retention_interval_seconds),
+            )
+    else:
+        app.state.known_partitions = _no_catalog
+        app.state.partition_runner = _no_runner
+        app.state.retention_sweeper = None
+        app.state.retention_scheduler = None
     # Erasure (NFR-05). Entity redaction and account deletion, over the in-memory
     # models of both stores, because neither table has an adapter here yet. The
     # ledger holds tombstones; the redactor derives them from AEGIS_SECRET_KEY.
     app.state.entity_store = InMemoryEntityStore()
-    app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
+    # Account deletion reaches PostgreSQL when a database is configured. Accounts are
+    # still created in the in-memory directory (see the note at the user directory
+    # below), so the table holds only the rows written to it directly.
+    if "database_url" in resolved.model_fields_set:
+        app.state.user_store = PostgresUserStore(
+            create_engine(resolved.database_url, pool_pre_ping=True),
+            keys=app.state.api_key_store,
+        )
+    else:
+        app.state.user_store = InMemoryUserStore(keys=app.state.api_key_store)
     app.state.erasure_ledger = InMemoryErasureLedger()
     # Verdicts (T-309) live on app.state rather than being created on first use by
     # the route, so the recalibration job (T-322) reads the same ledger the verdict
@@ -453,6 +574,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # directory, and both remain process-local until the database adapter lands.
     user_directory = InMemoryUserDirectory()
     app.state.auth_accounts = AuthAccountStore(user_directory)
+    app.state.login_throttle = build_login_throttle(
+        ThrottleSettings(
+            account_max_failures=resolved.login_account_max_failures,
+            address_max_failures=resolved.login_address_max_failures,
+            window_seconds=resolved.login_window_seconds,
+        ),
+        redis_url=resolved.redis_url,
+    )
     if resolved.bootstrap_admin_email is not None and resolved.bootstrap_admin_password is not None:
         app.state.auth_accounts.create_initial_admin(
             resolved.bootstrap_admin_email,

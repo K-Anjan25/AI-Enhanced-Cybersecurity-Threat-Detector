@@ -152,9 +152,7 @@ def main(argv: list[str] | None = None) -> int:
         choices=[s.file_name for s in DATASETS],
         help="Fetch one specific file. Repeatable.",
     )
-    parser.add_argument(
-        "--list", action="store_true", help="Print the manifest and exit."
-    )
+    parser.add_argument("--list", action="store_true", help="Print the manifest and exit.")
     parser.add_argument(
         "--dest",
         default=os.path.join(ROOT, RAW_DIR),
@@ -190,9 +188,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"{spec.dataset_id}  {spec.file_name}")
             digest = spec.sha256[:16]
-            print(
-                f"    {spec.row_count:>9,} rows x {spec.columns} cols   sha256={digest}…"
-            )
+            print(f"    {spec.row_count:>9,} rows x {spec.columns} cols   sha256={digest}…")
             print(f"    {fit}")
             for caveat in spec.caveats:
                 print(f"    note: {caveat}")

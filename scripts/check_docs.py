@@ -98,20 +98,14 @@ def check_links(problems: list[str], headings: dict[str, set[str]]) -> None:
             if not os.path.exists(target_file):
                 problems.append(f"{doc}: link to missing file '{target}'")
                 continue
-            if (
-                anchor
-                and target_file in headings
-                and anchor not in headings[target_file]
-            ):
+            if anchor and target_file in headings and anchor not in headings[target_file]:
                 problems.append(f"{doc}: broken anchor '{target}' (text: {label})")
 
 
 def check_fences(problems: list[str]) -> None:
     """A stray fence silently swallows the rest of a document."""
     for doc in DOCS:
-        markers = sum(
-            1 for line in read(doc).split("\n") if line.lstrip().startswith("```")
-        )
+        markers = sum(1 for line in read(doc).split("\n") if line.lstrip().startswith("```"))
         if markers % 2:
             problems.append(f"{doc}: unbalanced code fences ({markers} markers)")
 
@@ -129,9 +123,7 @@ def check_ids(problems: list[str], texts: dict[str, str]) -> dict[str, set[str]]
     return defined
 
 
-def check_one_table(
-    doc: str, block: list[tuple[int, str]], problems: list[str]
-) -> None:
+def check_one_table(doc: str, block: list[tuple[int, str]], problems: list[str]) -> None:
     """Verify one table block has a uniform column count."""
     if len(block) < 2:
         return

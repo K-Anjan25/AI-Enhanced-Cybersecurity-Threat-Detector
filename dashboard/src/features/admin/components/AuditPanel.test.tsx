@@ -199,7 +199,7 @@ describe('AuditPanel', () => {
   it('offers no export when there is nothing to export', async () => {
     stubFetch([{ match: AUDIT, respond: () => jsonResponse({ items: [], next_before: null }) }]);
     renderWithProviders(<AuditPanel />);
-    expect(await screen.findByText(/No recorded action falls in this window/)).toBeInTheDocument();
+    expect(await screen.findByText(/No recorded action in this window/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled();
   });
 
@@ -207,6 +207,6 @@ describe('AuditPanel', () => {
     stubFetch([{ match: AUDIT, respond: () => jsonResponse({ detail: 'no' }, 500) }]);
     renderWithProviders(<AuditPanel />);
     expect(await screen.findByText('The audit trail could not be read')).toBeInTheDocument();
-    expect(screen.queryByText(/No recorded action falls in this window/)).toBeNull();
+    expect(screen.queryByText(/No recorded action in this window/)).toBeNull();
   });
 });

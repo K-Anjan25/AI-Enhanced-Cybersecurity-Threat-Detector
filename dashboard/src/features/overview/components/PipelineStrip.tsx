@@ -6,7 +6,7 @@
  * The presentation rule is the acceptance criterion: **a stage over its budget is
  * red, and it says which budget it exceeded** — "p95 412 ms vs budget 150 ms
  * (NFR-01)". Colour alone would fail NFR-09 anyway, so the status is written out in
- * words beside the mark, and the mark is a glyph as well as a hue.
+ * words beside the mark, and the word is the second encoding besides the hue.
  *
  * A stage nothing measures renders as *not measured*, with its budget still shown:
  * the absence of an instrument is information an operator needs, and the
@@ -16,13 +16,10 @@ import { Badge, type Severity } from '../../../components/ui';
 import { formatMilliseconds, formatRate } from '../../../lib/format';
 import type { StageHealth, StageStatus } from '../pipeline';
 
-const STATUS_BADGE: Record<
-  StageStatus,
-  { tone: Severity | 'neutral'; label: string; glyph: string }
-> = {
-  ok: { tone: 'benign', label: 'within budget', glyph: '\u25CF' },
-  degraded: { tone: 'critical', label: 'over budget', glyph: '\u25CF' },
-  unmeasured: { tone: 'neutral', label: 'latency not measured', glyph: '\u25CB' },
+const STATUS_BADGE: Record<StageStatus, { tone: Severity | 'neutral'; label: string }> = {
+  ok: { tone: 'benign', label: 'within budget' },
+  degraded: { tone: 'critical', label: 'over budget' },
+  unmeasured: { tone: 'neutral', label: 'latency not measured' },
 };
 
 export interface PipelineStripProps {
@@ -63,15 +60,11 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
   return (
     <section
       aria-labelledby="pipeline-health"
-      className="rounded-card border border-line bg-base p-4"
+      className="rounded-card border border-line bg-surface p-4"
     >
       <h2 id="pipeline-health" className="text-h2">
         Detection pipeline health
       </h2>
-      <p className="mt-1 text-caption text-muted">
-        What each stage is doing right now. A quiet alert list with a red stage below means AEGIS is
-        degraded, not that the estate is calm.
-      </p>
 
       <ol className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stages.map((stage) => {
@@ -80,12 +73,9 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
             <li key={stage.spec.id} className="rounded-input border border-line p-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-body font-semibold text-ink">{stage.spec.label}</h3>
-                <Badge tone={badge.tone}>
-                  <span aria-hidden="true">{badge.glyph} </span>
-                  {badge.label}
-                </Badge>
+                <Badge tone={badge.tone}>{badge.label}</Badge>
               </div>
-              <p className="mt-1 text-caption text-muted">{stage.spec.covers}</p>
+              <p className="mt-1 text-body-sm font-semibold text-muted">{stage.spec.covers}</p>
               <ul className="mt-1 flex flex-col gap-1">
                 {measures(stage, hasRates).map((measure) => (
                   <li key={measure} className="text-caption tabular-nums text-ink">
@@ -98,7 +88,7 @@ export function PipelineStrip({ stages, hasRates, probes }: PipelineStripProps) 
         })}
       </ol>
 
-      <p className="mt-3 text-caption text-muted">
+      <p className="mt-3 text-body-sm font-semibold text-muted">
         Dependencies:{' '}
         {probes === undefined || probes.length === 0 ? (
           // The registry is empty in this build: nothing has registered a probe

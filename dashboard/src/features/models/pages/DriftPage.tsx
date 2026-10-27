@@ -21,7 +21,7 @@ import { Link } from 'react-router-dom';
 
 import { Card } from '../../../components/ui';
 import { DriftBars } from '../components/DriftBars';
-import { DRIFT_METRIC, DRIFT_THRESHOLD, driftView } from '../drift';
+import { DRIFT_THRESHOLD, driftView } from '../drift';
 import { useDriftScrape } from '../hooks';
 
 export function DriftPage() {
@@ -52,15 +52,6 @@ export function DriftPage() {
           error={scrape.error ?? null}
         />
       </Card>
-
-      <p className="text-caption text-muted">
-        Read from the <code className="font-mono">/metrics</code> scrape, series{' '}
-        <code className="font-mono">{DRIFT_METRIC}</code>, refreshed every 15 s while this tab is
-        visible. The threshold and the comparison rule are the drift computation&apos;s own: a
-        feature is over when its PSI is strictly greater than {String(DRIFT_THRESHOLD)} (T-211).
-        Drift does not stop the pipeline and does not promote anything by itself — a retrain is a
-        human decision, which is why the badge recommends rather than acts.
-      </p>
     </div>
   );
 }
