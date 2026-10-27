@@ -44,12 +44,23 @@ check_prerequisites() {
     need docker "Install Docker Desktop and start it."
     need kubectl "It ships with Docker Desktop; enable it in Settings > Kubernetes."
     need helm "Install Helm 3.12 or newer."
-    need python3 "Needed once, to generate the secret key."
     docker compose version >/dev/null 2>&1 || die "docker compose is not available."
     if ! kubectl config get-contexts -o name | grep -qx "$CONTEXT"; then
         die "kube context '$CONTEXT' not found. Enable Kubernetes in Docker Desktop, or set AEGIS_K8S_CONTEXT."
     fi
     kc get nodes >/dev/null 2>&1 || die "cannot reach context '$CONTEXT'. Is Kubernetes running in Docker Desktop?"
+}
+
+# Random URL-safe token from N bytes. Uses openssl (ships with Git for Windows
+# and Linux/macOS) or /dev/urandom, so no Python install is needed.
+random_token() {
+    local raw
+    if command -v openssl >/dev/null 2>&1; then
+        raw="$(openssl rand -base64 "$1")"
+    else
+        raw="$(head -c "$1" /dev/urandom | base64)"
+    fi
+    printf '%s' "$raw" | tr -d '\n+/=' 
 }
 
 # Create the secrets file once. Values are written without quotes, because
@@ -61,8 +72,8 @@ ensure_secrets() {
         return
     fi
     local key pass
-    key="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-    pass="$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')"
+    key="$(random_token 48)"
+    pass="$(random_token 18)"
     (
         umask 077
         {
