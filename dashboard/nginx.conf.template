@@ -11,9 +11,9 @@ server {
     index index.html;
 
     # Resolve the backend per request, not at startup. A static proxy_pass to
-    # `backend` makes nginx exit if that name is not resolvable yet. The `resolver`
-    # directive comes from /docker-entrypoint.d/05-dashboard-resolver.sh.
-    set $backend_upstream http://backend:8000;
+    # the backend makes nginx exit if that name is not resolvable yet. The
+    # `resolver` directive and $backend_upstream come from
+    # /docker-entrypoint.d/05-dashboard-resolver.sh.
 
     # WebSocket endpoint — must come before the generic /api/ location
     # so nginx applies upgrade headers to the actual WS path.
