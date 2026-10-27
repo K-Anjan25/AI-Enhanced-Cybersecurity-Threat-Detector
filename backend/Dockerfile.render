@@ -1,0 +1,40 @@
+# AEGIS backend image for Render (see render.yaml).
+#
+# Same image as backend/Dockerfile, but built from the repository root. Render
+# builds each service from one directory and cannot pass the named build context
+# `aegis_ml` that backend/Dockerfile uses in Docker Compose and CI. So the ML
+# package is copied from ml-service/ here, and the backend files from backend/.
+# Keep the two files in step when either changes.
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# Dependencies first, so the layer caches independently of source edits.
+COPY backend/pyproject.toml ./
+COPY backend/app ./app
+# Migrations, run by the Blueprint's preDeployCommand (alembic upgrade head).
+COPY backend/alembic.ini ./
+COPY backend/alembic ./alembic
+# The shared ML contract (windowing and fusion), base install only, not torch.
+COPY ml-service /tmp/aegis-ml
+RUN pip install --no-cache-dir /tmp/aegis-ml ".[redis,ws]" \
+    && rm -rf /tmp/aegis-ml
+
+# Fail the build, not the container, when the shared ML contract is missing.
+RUN python -c "import aegis_ml.data.records, aegis_ml.data.windowing, aegis_ml.scoring.fusion" \
+    && python -c "import app.main, app.workers.scoring_worker"
+
+# Run as an unprivileged user (architecture.md §12).
+RUN useradd --create-home --uid 10001 aegis
+USER aegis
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=6 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz', timeout=3).status==200 else 1)"
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
