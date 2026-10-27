@@ -33,5 +33,12 @@ case "$search_domain" in
 esac
 
 # Defined here, in the http context, so the template's proxy_pass can use it.
-printf 'map $host $backend_upstream {\n    default http://%s:8000;\n}\n' "$backend_host" > "$CONF_DIR/01-dashboard-backend.conf"
-echo "dashboard backend: $backend_host"
+# AEGIS_BACKEND_URL, when set, is the full backend URL (for example
+# https://aegis-backend.onrender.com). Used where the backend is a public service.
+if [ -n "${AEGIS_BACKEND_URL:-}" ]; then
+    backend_url="$AEGIS_BACKEND_URL"
+else
+    backend_url="http://$backend_host:8000"
+fi
+printf 'map $host $backend_upstream {\n    default %s;\n}\n' "$backend_url" > "$CONF_DIR/01-dashboard-backend.conf"
+echo "dashboard backend: $backend_url"
