@@ -17,7 +17,7 @@ COPY app ./app
 # needed (pydantic, fastapi, uvicorn), not torch. The build passes it as the named
 # context `aegis_ml` (docker/docker-compose.yml, .github/workflows/release.yml).
 COPY --from=aegis_ml . /tmp/aegis-ml
-RUN pip install --no-cache-dir /tmp/aegis-ml ".[redis]" \
+RUN pip install --no-cache-dir /tmp/aegis-ml ".[redis,ws]" \
     && rm -rf /tmp/aegis-ml
 
 # Fail the build, not the container, when the shared ML contract is missing. The live
