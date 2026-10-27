@@ -112,6 +112,14 @@ apply_namespace_and_secret() {
 install_chart() {
     helm --kube-context "$CONTEXT" upgrade --install "$RELEASE" "$ROOT/helm/aegis" \
         -n "$NS" -f "$ROOT/helm/aegis/values-local.yaml" --wait --timeout 10m
+    # The image tags do not change between runs, so Helm sees nothing new and
+    # keeps the old pods. Restart them so they run the images just built.
+    for component in backend ml-service dashboard; do
+        kc -n "$NS" rollout restart "deploy/$RELEASE-$component" >/dev/null
+    done
+    for component in backend ml-service dashboard; do
+        kc -n "$NS" rollout status "deploy/$RELEASE-$component" --timeout=5m
+    done
 }
 
 cmd_up() {
