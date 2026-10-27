@@ -98,9 +98,9 @@ start_postgres() {
 }
 
 build_images() {
-    docker build -t aegis-backend:0.1.0 --build-context aegis_ml="$ROOT/ml-service" "$ROOT/backend"
-    docker build -t aegis-ml-service:0.1.0 "$ROOT/ml-service"
-    docker build -t aegis-dashboard:0.1.0 "$ROOT/dashboard"
+    docker build -t "aegis-backend:$IMAGE_TAG" --build-context aegis_ml="$ROOT/ml-service" "$ROOT/backend"
+    docker build -t "aegis-ml-service:$IMAGE_TAG" "$ROOT/ml-service"
+    docker build -t "aegis-dashboard:$IMAGE_TAG" "$ROOT/dashboard"
 }
 
 apply_namespace_and_secret() {
@@ -111,18 +111,18 @@ apply_namespace_and_secret() {
 
 install_chart() {
     helm --kube-context "$CONTEXT" upgrade --install "$RELEASE" "$ROOT/helm/aegis" \
-        -n "$NS" -f "$ROOT/helm/aegis/values-local.yaml" --wait --timeout 10m
-    # The image tags do not change between runs, so Helm sees nothing new and
-    # keeps the old pods. Restart them so they run the images just built.
-    for component in backend ml-service dashboard; do
-        kc -n "$NS" rollout restart "deploy/$RELEASE-$component" >/dev/null
-    done
-    for component in backend ml-service dashboard; do
-        kc -n "$NS" rollout status "deploy/$RELEASE-$component" --timeout=5m
-    done
+        -n "$NS" -f "$ROOT/helm/aegis/values-local.yaml" \
+        --set "backend.image.tag=$IMAGE_TAG" \
+        --set "mlService.image.tag=$IMAGE_TAG" \
+        --set "scoringWorker.image.tag=$IMAGE_TAG" \
+        --set "dashboard.image.tag=$IMAGE_TAG" \
+        --wait --timeout 10m
 }
 
 cmd_up() {
+    # A new tag for every build. Re-using one tag (0.1.0) let Kubernetes keep
+    # running the old image after a rebuild.
+    IMAGE_TAG="local-$(date +%Y%m%d%H%M%S)"
     check_prerequisites
     ensure_secrets
     start_postgres
