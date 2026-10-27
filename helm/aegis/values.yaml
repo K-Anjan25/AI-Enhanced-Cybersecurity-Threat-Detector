@@ -54,6 +54,10 @@ backend:
   secretEnv:
     - AEGIS_SECRET_KEY
     - AEGIS_DATABASE_URL
+    # Production refuses to start without the bootstrap admin (config.py), so these
+    # must reach the pod, not only sit in the secret.
+    - AEGIS_BOOTSTRAP_ADMIN_EMAIL
+    - AEGIS_BOOTSTRAP_ADMIN_PASSWORD
   probes:
     liveness:
       path: /healthz
