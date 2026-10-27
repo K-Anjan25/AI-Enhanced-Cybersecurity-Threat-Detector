@@ -16,9 +16,10 @@ WORKDIR /app
 # Dependencies first, so the layer caches independently of source edits.
 COPY backend/pyproject.toml ./
 COPY backend/app ./app
-# Migrations, run by the Blueprint's preDeployCommand (alembic upgrade head).
+# Migrations, run at container start by render-start.sh (alembic upgrade head).
 COPY backend/alembic.ini ./
 COPY backend/alembic ./alembic
+COPY backend/render-start.sh ./render-start.sh
 # The shared ML contract (windowing and fusion), base install only, not torch.
 COPY ml-service /tmp/aegis-ml
 RUN pip install --no-cache-dir /tmp/aegis-ml ".[redis,ws]" \
