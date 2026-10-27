@@ -32,6 +32,9 @@ repos:
       # Service live in one file so the pair cannot drift apart.
       - id: check-yaml
         args: ['--allow-multiple-documents']
+        # Helm templates are Go-templated, not YAML: `{{ ... }}` is not valid YAML
+        # until helm renders it. They are checked by `helm lint` in the release job.
+        exclude: ^helm/.*/templates/
       - id: check-json
       - id: check-merge-conflict
       - id: check-added-large-files

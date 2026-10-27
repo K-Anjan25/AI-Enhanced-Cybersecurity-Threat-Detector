@@ -32,13 +32,16 @@ rather than the path a diagram describes.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from app.db.models import Alert
 from app.messaging.partitioner import FLOW_TOPIC
 from app.messaging.producer import FlowProducer, OffsetTracker, SentRecord
+from app.observability.metrics import observe_correlate_latency, observe_notify_latency
 from app.observability.tracing import TRACEPARENT_HEADER
 from app.schemas.ingest import FlowRecordIn
 from app.services.alert_store import AlertStore
@@ -46,6 +49,7 @@ from app.services.alert_stream import AlertHub
 from app.services.correlator import (
     Action,
     Correlator,
+    CorrelatorConfig,
     Detection,
     FusionRule,
     InMemoryCaseStore,
@@ -239,7 +243,11 @@ class DetectionSink:
             model_id=self._model_id,
             traceparent=traceparent,
         )
+        # Timed around correlate *and* persist: the architecture budget covers both, and
+        # the store write is the part that can be slow under load.
+        started = time.perf_counter()
         self._publish(self._correlator.ingest(detection))
+        observe_correlate_latency(time.perf_counter() - started)
 
 
 class AlertWriter:
@@ -272,7 +280,9 @@ class AlertWriter:
             return None
         row = self._alerts.save(outcome.case.id, alert_row(outcome.case), created_at=self._clock())
         if self._hub is not None:
+            started = time.perf_counter()
             self._hub.publish(alert_row_of(row))
+            observe_notify_latency(time.perf_counter() - started)
         return row
 
 
@@ -285,7 +295,7 @@ def _utcnow() -> datetime:
 class Pipeline:
     """The composed path, with every external system injected (T-319)."""
 
-    bus: InProcessBus
+    bus: Any  # InProcessBus in tests, KafkaBus in production
     producer: FlowProducer
     consumer: FlowConsumer
     worker: ScoringWorker
@@ -329,15 +339,23 @@ def build_pipeline(
     partitions: int = 6,
     window_size: int = 50,
     clock: Callable[[], datetime] | None = None,
+    bus: Any = None,
+    correlator_config: CorrelatorConfig | None = None,
 ) -> Pipeline:
-    """Assemble the in-process pipeline over the injected dependencies.
+    """Assemble the pipeline over the injected dependencies.
 
-    The parameters are the systems this environment does not have; the wiring
-    between them is the production wiring, and it is what the golden test drives.
+    ``bus`` is the broker: the in-memory bus when omitted (tests), or a
+    ``KafkaBus`` in production. Either must offer ``send``, ``read``,
+    ``end_offset`` and ``partitions``. The parameters are the systems this
+    environment does not have; the wiring between them is the production wiring,
+    and it is what the golden test drives.
     """
-    bus = InProcessBus(partitions=partitions)
+    if bus is None:
+        bus = InProcessBus(partitions=partitions)
+    else:
+        partitions = bus.partitions
     entities = registry or EntityRegistry()
-    correlator = Correlator(InMemoryCaseStore(), fuse)
+    correlator = Correlator(InMemoryCaseStore(), fuse, config=correlator_config)
     writer = AlertWriter(alerts, hub=hub, clock=clock)
     sink = DetectionSink(
         correlator,

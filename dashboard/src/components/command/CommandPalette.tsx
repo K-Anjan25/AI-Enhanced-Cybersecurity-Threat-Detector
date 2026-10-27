@@ -70,7 +70,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
   return (
     <Modal open={open} title="Commands" onClose={onClose}>
       <div className="flex flex-col gap-1">
-        <label className="text-caption text-muted" htmlFor={`${base}-input`}>
+        <label className="text-body-sm font-semibold text-muted" htmlFor={`${base}-input`}>
           Search
         </label>
         <input
@@ -113,10 +113,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       </div>
 
       {matches.length === 0 ? (
-        <p className="mt-4 text-body-sm text-muted">
-          Nothing matches “{query.trim()}”. The list filters as you type — clear it to see every
-          screen, saved hunt and action.
-        </p>
+        <p className="mt-4 text-body-sm text-muted">No match for “{query.trim()}”.</p>
       ) : (
         <div
           id={listId}
@@ -151,13 +148,15 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
                         onMouseMove={() => setActive(index)}
                         className={`flex w-full flex-col rounded-control border-l-2 px-2 py-1 text-left ${
                           isActive
-                            ? 'border-accent bg-surface text-ink'
+                            ? 'border-brand bg-surface text-ink'
                             : 'border-transparent text-muted'
                         }`}
                       >
                         <span className="text-body">{command.label}</span>
                         {command.hint === undefined ? null : (
-                          <span className="truncate text-caption text-muted">{command.hint}</span>
+                          <span className="truncate text-body-sm font-semibold text-muted">
+                            {command.hint}
+                          </span>
                         )}
                       </button>
                     );

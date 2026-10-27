@@ -1,13 +1,24 @@
 # Kubernetes manifests
 
 Application workloads only: `backend`, `ml-service`, `dashboard`. Everything
-here is static YAML, applied with `kubectl apply -k .` or `kubectl apply -f .`.
+here is static YAML. There is no `kustomization.yaml`, so `kubectl apply -k` does not
+work here. Apply the folder with `kubectl apply -f k8s/`, and the numeric prefixes set
+the order. The `aegis-secrets` secret must exist first, or the pods will not start.
+
+For a Docker Desktop cluster, use the one-command path instead:
+`scripts/k8s-local.sh up` (see `helm/aegis/values-local.yaml`). It creates the secret,
+builds the images and installs the Helm chart.
 
 ## What is deliberately not here
 
-- **Datastores.** Postgres, Kafka and Elasticsearch are provisioned outside
+- **Datastores.** Postgres and Kafka are provisioned outside
   these manifests — managed services or a dedicated operator. `AEGIS_DATABASE_HOST`
   in `10-configmap.yaml` points at whatever provides them.
+- **Redis.** The Helm chart (`helm/aegis`) can run Redis in the cluster
+  (`redis.enabled`, with the backend's `AEGIS_REDIS_URL` derived from it). These
+  raw manifests do not include Redis. Without `AEGIS_REDIS_URL`, login throttling
+  counts failures per process, so a multi-replica deployment must set the variable
+  to a Redis it can reach, or the per-account limit is multiplied by the replica count.
 - **Scoring workers.** `architecture.md` §11.2 lists them, but no worker code
   exists yet; the workload lands with T-2xx rather than as a manifest that
   cannot run.

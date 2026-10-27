@@ -30,7 +30,7 @@ hidden: the HTTP call is the untested part.
 from __future__ import annotations
 
 import time
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
@@ -211,10 +211,12 @@ class ScoringWorker:
 
     __slots__ = (
         "_batch",
+        "_clock",
         "_committer",
         "_next_index",
         "_pending",
         "_scorer",
+        "_since",
         "_sink",
         "_window_size",
     )
@@ -227,6 +229,7 @@ class ScoringWorker:
         *,
         window_size: int = 50,
         batch_size: int = 500,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         """Wire the three injected dependencies."""
         self._scorer = scorer
@@ -237,6 +240,9 @@ class ScoringWorker:
         # Per-entity state carried across batches, so window indices stay
         # continuous with what has already been emitted.
         self._pending: dict[str, list[tuple[int, FlowRecord, str | None]]] = {}
+        # When each entity's oldest buffered flow arrived, for :meth:`flush_stale`.
+        self._since: dict[str, float] = {}
+        self._clock = clock
 
     def _to_flow_record(self, wire: FlowRecordIn) -> FlowRecord:
         """Convert a wire record to the record the windower expects.
@@ -247,12 +253,25 @@ class ScoringWorker:
         """
         return FlowRecord(**wire.model_dump())
 
-    def run(self, consumer: Consumer, partition: int, *, max_batches: int | None = None) -> int:
+    def run(
+        self,
+        consumer: Consumer,
+        partition: int,
+        *,
+        max_batches: int | None = None,
+        flush: bool = True,
+    ) -> int:
         """Process one partition until it is drained.
 
         Returns the number of records processed. Commits after each batch is
         emitted, so a crash replays at most one batch -- and replay is safe
         because emission is idempotent.
+
+        ``flush=True`` (the default, used by batch replays and tests) also scores
+        the partial windows left at the end. A live consumer passes ``flush=False``
+        and calls :meth:`flush` only once the stream has gone quiet; otherwise every
+        poll would cut windows at whatever size happened to be waiting, and the
+        scores would not be the 50-flow windows the model was trained on.
         """
         total = 0
         batches = 0
@@ -271,15 +290,45 @@ class ScoringWorker:
             position = records[-1].offset + 1
 
         # The partition is drained: score whatever is left rather than dropping
-        # the newest flows, which a live stream always has.
-        self._emit((), flush=True)
+        # the newest flows, which a live stream always has. A live caller defers
+        # this to flush() so partial windows are not scored early.
+        if flush:
+            self._emit((), flush=True)
         return total
+
+    def flush(self) -> None:
+        """Score every buffered partial window, for a stream that has gone quiet."""
+        self._emit((), flush=True)
+
+    def flush_stale(self, max_age: float) -> int:
+        """Score the buffered flows of every entity that has waited ``max_age`` seconds.
+
+        This is the live path's latency bound. A window only fills at 50 flows from
+        one source address, so on a trickle of traffic a window can wait for a long
+        time; this releases it once its oldest flow is ``max_age`` old, even though it
+        is partial. The scorer pads a partial window with zeros, so such a score is
+        valid but is not the same input as a full window: the trade-off is latency for
+        window completeness, and ``max_age`` is the dial.
+
+        Returns:
+            The number of entities whose buffer was released.
+        """
+        now = self._clock()
+        stale = frozenset(
+            key
+            for key, since in self._since.items()
+            if now - since >= max_age and self._pending.get(key)
+        )
+        if stale:
+            self._emit((), stale=stale)
+        return len(stale)
 
     def _emit(
         self,
         batch: Iterable[tuple[int, FlowRecord, str | None]],
         *,
         flush: bool = False,
+        stale: frozenset[str] = frozenset(),
     ) -> None:
         """Window a batch and score each complete window.
 
@@ -290,17 +339,25 @@ class ScoringWorker:
         becomes the thing that hides the loss. Carrying the remainder keeps the
         windows continuous with what was already emitted.
         """
+        now = self._clock()
         for offset, flow, traceparent in batch:
-            self._pending.setdefault(str(flow.src_ip), []).append((offset, flow, traceparent))
+            key = str(flow.src_ip)
+            self._pending.setdefault(key, []).append((offset, flow, traceparent))
+            self._since.setdefault(key, now)
 
         for key, buffered in self._pending.items():
-            count = (
-                len(buffered) if flush else (len(buffered) // self._window_size) * self._window_size
-            )
+            # A stale entity's whole buffer is scored, even a partial window: the
+            # latency bound is the reason it is partial (see flush_stale).
+            if flush or key in stale:
+                count = len(buffered)
+            else:
+                count = (len(buffered) // self._window_size) * self._window_size
             if count == 0:
                 continue
             chunk = buffered[:count]
             self._pending[key] = buffered[count:]
+            if not self._pending[key]:
+                self._since.pop(key, None)
             flows = tuple(flow for _, flow, _traceparent in chunk)
             for window in window_flows(flows, size=self._window_size):
                 position = window.index * self._window_size

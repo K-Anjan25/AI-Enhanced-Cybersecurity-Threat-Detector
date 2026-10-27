@@ -78,7 +78,7 @@ export function ComparePanel({ rows }: ComparePanelProps) {
     onChange: (id: string) => void,
     id: string,
   ): JSX.Element => (
-    <label htmlFor={id} className="flex flex-col gap-1 text-caption text-muted">
+    <label htmlFor={id} className="flex flex-col gap-1 text-body-sm font-semibold text-muted">
       {label}
       <select
         id={id}
@@ -152,11 +152,6 @@ export function ComparePanel({ rows }: ComparePanelProps) {
               error: rightFetch.error ?? null,
             }}
           />
-          {left !== null && right !== null && left.id === right.id ? (
-            <p className="px-4 pb-3 text-caption text-muted">
-              Both sides name the same version, so every delta is zero by construction.
-            </p>
-          ) : null}
         </>
       )}
     </Card>

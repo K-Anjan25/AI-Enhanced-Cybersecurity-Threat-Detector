@@ -78,12 +78,6 @@ const EXEMPTIONS: readonly Exemption[] = [
       'the same shimmer, plus the assertion that the bars are hidden from assistive technology — which is a claim about `aria-hidden` itself',
   },
   {
-    file: 'components/ui/ConnectionStatus.test.tsx',
-    pattern: /\[aria-hidden="true"\]/,
-    reason:
-      'the glyph is hidden on purpose (the status region beside it carries the words), so the test has to look at the hidden element',
-  },
-  {
     file: 'components/ui/ScoreMeter.test.tsx',
     pattern: /\[aria-hidden="true"\]/,
     reason:

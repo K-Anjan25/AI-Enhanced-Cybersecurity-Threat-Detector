@@ -32,9 +32,12 @@ or body do not match the schema below.
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
 | `POST` | `/api/v1/auth/login` | Sign in with an account password | unauthenticated | `200` `TokenPairOut` | `CredentialsIn` |
 | `POST` | `/api/v1/auth/logout` | Revoke the refresh-token family | unauthenticated | `204` | `RefreshIn` |
+| `GET` | `/api/v1/auth/oidc/callback` | Complete an OpenID Connect sign-in (FR-43) | unauthenticated | `200` `TokenPairOut` | — |
+| `GET` | `/api/v1/auth/oidc/start` | Start an OpenID Connect sign-in (FR-43) | unauthenticated | `302` `text/plain` | — |
 | `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
 | `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |
+| `GET` | `/api/v1/detection/status` | Detection + ML + Drift + Model status | admin, analyst, responder, viewer | `200` `application/json` | — |
 | `GET` | `/api/v1/flows` | Count one window of traffic: volume, addresses and relationships (FR-52) | admin, analyst, responder, viewer | `200` `FlowAggregateOut` | — |
 | `POST` | `/api/v1/hunt/export` | Export the alerts matching a hunt as CSV (FR-23) | admin, responder | `200` `text/csv` | `HuntExportRequest` |
 | `POST` | `/api/v1/ingest/flows` | Ingest flow records (flow@1) | admin, analyst, responder | `200` `IngestResponse` | `FlowRecordIn` |
@@ -848,6 +851,7 @@ The KPI tiles: the window's counts, complete rather than capped.
 | `unrecorded` | `integer` | yes | — |
 | `verdicts_measured` | `integer` | yes | — |
 | `mean_time_to_verdict_seconds` | `number` or `null` | yes | — |
+| `median_time_to_verdict_seconds` | `number` or `null` | no | — |
 
 ### `OverviewWindow`
 
@@ -970,6 +974,7 @@ What a retention run would do, now.
 | `missing` | list of `string` | yes | — |
 | `unevictable` | `UnevictableOut` | yes | — |
 | `external` | map of string to `string` | yes | — |
+| `row_swept` | map of string to `string` | no | — |
 | `statements` | list of `string` | yes | — |
 
 ### `RetentionPolicyOut`
@@ -992,6 +997,7 @@ What a retention run did, including how much of it was already done.
 | `planned` | list of `string` | yes | — |
 | `dropped` | list of `string` | yes | — |
 | `already_absent` | list of `string` | yes | — |
+| `swept` | map of string to `integer` | no | — |
 | `changed_anything` | `boolean` | yes | — |
 
 ### `RoleChangeOut`

@@ -92,8 +92,6 @@ export function RetentionPanel() {
       loadingLines={6}
       error={{
         message: 'The retention plan could not be read',
-        detail:
-          'A run is offered only from a plan this screen has read: dropping partitions on the strength of a failed read is the one way this screen could destroy data it never showed you.',
       }}
     >
       <div className="flex flex-col gap-3">
@@ -121,12 +119,7 @@ export function RetentionPanel() {
           rowKey={(row) => row.name}
           rowLabel={(row) => row.name}
           height={200}
-          empty={
-            <p className="text-body">
-              Nothing is past its window. A run now would drop no partition and would still be
-              recorded in the trail.
-            </p>
-          }
+          empty={<p className="text-body">Nothing to drop.</p>}
         />
         {unevictable.length === 0 ? null : (
           <div className="flex flex-col gap-1">
@@ -144,10 +137,6 @@ export function RetentionPanel() {
 
         <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-3">
           <h3 className="text-h2">Erasure</h3>
-          <p className="text-body-sm text-muted">
-            Erases one subject across every store and records a tombstone in the ledger. The
-            identifier is sent, never echoed: the report says the hash, not the person.
-          </p>
           <div className="grid gap-2 md:grid-cols-4">
             <label className="flex flex-col gap-1 text-body-sm">
               Kind
@@ -195,8 +184,7 @@ export function RetentionPanel() {
           </div>
           {erase.isError ? (
             <p className="text-body-sm text-severityText-critical" role="alert">
-              The erasure could not be completed. The stores are not partial: the route reports what
-              each one did, so check the trail before retrying.
+              Erasure failed. Check the trail.
             </p>
           ) : null}
           {erase.isSuccess ? (
@@ -221,7 +209,7 @@ export function RetentionPanel() {
       <ConfirmDialog
         open={confirming}
         title="Run retention now?"
-        message={`${String(drops.length)} partition${drops.length === 1 ? '' : 's'} would be dropped, and the rows they hold are gone: ${drops.map((row) => row.name).join(', ')}. The run is recorded in the audit trail.`}
+        message={`${drops.map((row) => row.name).join(', ')} will be dropped.`}
         confirmLabel="Drop the partitions"
         onConfirm={() => {
           run.mutate(undefined, {

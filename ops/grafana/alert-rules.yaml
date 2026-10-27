@@ -21,8 +21,8 @@ spec:
         severity: warning
         service: aegis
       annotations:
-        summary: "Kafka consumer lag exceeds 10,000"
-        description: "Consumer lag for {{ $labels.topic }} is {{ $value }}. Scoring is delayed."
+        summary: 'Kafka consumer lag exceeds 10,000'
+        description: 'Consumer lag for {{ $labels.topic }} is {{ $value }}. Scoring is delayed.'
 
     # ── Scoring latency alert ───────────────────
     - alert: AEGISScoringLatencyHigh
@@ -32,8 +32,8 @@ spec:
         severity: warning
         service: aegis
       annotations:
-        summary: "Scoring p95 latency exceeds 1 second"
-        description: "p95 latency is {{ $value }}s (budget: 1s). Check ML service health."
+        summary: 'Scoring p95 latency exceeds 1 second'
+        description: 'p95 latency is {{ $value }}s (budget: 1s). Check ML service health.'
 
     # ── Drift PSI alert ─────────────────────────
     - alert: AEGISDriftPSIHigh
@@ -43,8 +43,8 @@ spec:
         severity: warning
         service: aegis
       annotations:
-        summary: "Feature drift PSI exceeds threshold (FR-32)"
-        description: "{{ $labels.feature }} PSI is {{ $value }} (threshold: 0.25). Retraining may be needed."
+        summary: 'Feature drift PSI exceeds threshold (FR-32)'
+        description: '{{ $labels.feature }} PSI is {{ $value }} (threshold: 0.25). Retraining may be needed.'
 
     # ── Error rate alert ────────────────────────
     - alert: AEGISErrorRateHigh
@@ -54,8 +54,8 @@ spec:
         severity: critical
         service: aegis
       annotations:
-        summary: "AEGIS error rate exceeds 1%"
-        description: "Error rate is {{ $value | humanizePercentage }}. Investigation required."
+        summary: 'AEGIS error rate exceeds 1%'
+        description: 'Error rate is {{ $value | humanizePercentage }}. Investigation required.'
 
     # ── Model score distribution shift ──────────
     - alert: AEGISModelScoreShift
@@ -65,5 +65,5 @@ spec:
         severity: info
         service: aegis
       annotations:
-        summary: "Model score distribution may be shifting"
-        description: "1h mean differs from 24h mean by {{ $value }}. Check drift page."
+        summary: 'Model score distribution may be shifting'
+        description: '1h mean differs from 24h mean by {{ $value }}. Check drift page.'

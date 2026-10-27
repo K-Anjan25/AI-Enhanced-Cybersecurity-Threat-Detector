@@ -171,7 +171,10 @@ def audit_entries(client: TestClient) -> list[dict[str, object]]:
         }
         for entry in trail.entries(
             start=START - timedelta(days=1),
-            end=START + timedelta(days=1),
+            # The route stamps the row with the wall clock, not the fixture's date, so the
+            # window must reach now. A fixed end would pass on the day the fixture was
+            # written and fail on every later day.
+            end=datetime.now(UTC) + timedelta(days=1),
             limit=100,
         )
     ]

@@ -46,15 +46,20 @@ POSTGRES_URL_RE = re.compile(r"\bpostgresql(?:\+([a-z0-9_]+))?://")
 #: Which distribution provides each SQLAlchemy driver name.
 DRIVER_PACKAGES = {"psycopg": "psycopg", "psycopg2": "psycopg2", "asyncpg": "asyncpg"}
 
+#: Network capture containers. Their AEGIS_* variables configure the standalone
+#: bridge scripts (read from the environment by the entrypoints), not Settings.
+CAPTURE_SERVICES = {"capture"}
+
+# redis holds only expiring shared counters (the login throttle). It is a soft
+# dependency: the backend starts and degrades to a per-process limit without it.
 EXPECTED_SERVICES = {
     "postgres",
     "redis",
     "kafka",
-    "elasticsearch",
     "backend",
     "ml-service",
     "dashboard",
-}
+} | CAPTURE_SERVICES
 
 # service -> (build context relative to the compose file, published port)
 EXPECTED_BUILD = {
@@ -131,9 +136,12 @@ def check_services(compose: dict[str, Any], problems: list[str]) -> dict[str, An
 
 
 def check_env_vars(services: dict[str, Any], problems: list[str]) -> None:
-    """Every AEGIS_* variable must be a real Settings field."""
+    """Every AEGIS_* variable on a Settings-backed service must be a real Settings field."""
     known = settings_fields()
-    text = yaml.safe_dump(services)
+    settings_services = {
+        name: svc for name, svc in services.items() if name not in CAPTURE_SERVICES
+    }
+    text = yaml.safe_dump(settings_services)
     used = set(ENV_VAR_RE.findall(text))
     for var in sorted(used):
         if var not in known:
@@ -157,9 +165,7 @@ def declared_driver_packages() -> set[str]:
 
 def database_urls(services: dict[str, Any]) -> list[str]:
     """Every configured URL: the compose file's, and the application's own default."""
-    environment = cast(
-        dict[str, Any], services.get("backend", {}).get("environment", {})
-    )
+    environment = cast(dict[str, Any], services.get("backend", {}).get("environment", {}))
     urls = [
         str(value)
         for value in environment.values()
@@ -334,9 +340,7 @@ def check_dashboard_healthcheck(services: dict[str, Any], problems: list[str]) -
     container that serves nothing.
     """
     service = services.get("dashboard", {})
-    published = {
-        str(entry).split(":")[-1].split("/")[0] for entry in service.get("ports", [])
-    }
+    published = {str(entry).split(":")[-1].split("/")[0] for entry in service.get("ports", [])}
     test = " ".join(service.get("healthcheck", {}).get("test", []))
     found = re.search(r"localhost:(\d+)", test)
     if not found:
@@ -401,9 +405,7 @@ def main() -> int:
         return 1
 
     print("compose static consistency: all checks passed")
-    print(
-        "note: this does not build images or start the stack — that needs a Docker daemon"
-    )
+    print("note: this does not build images or start the stack — that needs a Docker daemon")
     return 0
 
 

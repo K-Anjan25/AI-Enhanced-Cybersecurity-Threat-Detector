@@ -4,7 +4,7 @@
 |---|---|
 | **Document** | Work breakdown, backlog, and delivery plan |
 | **Version** | 1.0 |
-| **Last updated** | 2026-10-07 (Wednesday) |
+| **Last updated** | 2026-10-21 |
 | **Status** | Live planning document — update as work lands |
 | **Derives from** | [prd.md](prd.md) · [architecture.md](architecture.md) |
 | **Gated by** | [rules.md](rules.md) — Definition of Done §10 |
@@ -21,6 +21,8 @@
 **Every task has acceptance criteria.** A task with no testable criteria is not ready to start. "Investigate X" tasks must state what artifact the investigation produces.
 
 **Status values:** `TODO` · `IN PROGRESS` · `BLOCKED` · `DONE` · `DROPPED`. Status changes are made in this file in the same PR as the code.
+
+**Status update 2026-10-21.** Delivered since 2026-10-07 without a task ID: a login throttle on failed passwords (per account and per address, Redis-shared when `AEGIS_REDIS_URL` is set; relates to T-316, which is already DONE and covers request limits, not credential attempts); a shared capture shipper for the zeek, suricata and tcpdump bridges (1000 records per request, retry, disk spool capped by `AEGIS_SPOOL_MAX_MB`); numpy-vectorised LOAO baselines and a GPU-default FlowNet runner. The dashboard landing page is complete on the branch. Still open: spool durability across container restarts (the default spool is not a mounted volume), a Redis URL in the production Helm values for multi-replica login throttling, and CI confirmation on the latest push.
 
 **Status as of 2026-10-07.** E4's design.md §3 screens are built; T-420's recorded-evidence contract and T-417's authenticated dashboard flow are implemented. T-421 still needs a PSI gauge producer. T-417's account and refresh stores are process-local until the database-backed adapters land; no demo credential or evaluation data is seeded. E5 remains untouched; per-task status is recorded under each epic table.
 

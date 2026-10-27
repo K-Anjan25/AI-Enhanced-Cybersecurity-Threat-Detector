@@ -54,38 +54,23 @@ export function ScoreHistogramComparison({ left, right }: ScoreHistogramComparis
           <Skeleton lines={5} label="Score-distribution comparison is loading" />
         </div>
       ) : missingRun !== undefined ? (
-        <EmptyState
-          title="Two recorded histograms are required"
-          description={`${missingRun.modelId === null ? 'A selected version' : `Version ${missingRun.modelId.slice(0, 12)}`} has no recorded evaluation. No distribution is inferred.`}
-        />
+        <EmptyState title="No evaluation recorded" />
       ) : failedRead !== undefined ? (
-        <ErrorState
-          message="Recorded score histograms could not be read"
-          detail="The comparison is withheld until both source runs can be read. No distribution is inferred."
-        />
+        <ErrorState message="Recorded score histograms could not be read" />
       ) : left.histogram === null || right.histogram === null ? (
         <EmptyState
           title="Score-distribution comparison unavailable"
-          description="At least one recorded run has no eval@2 histogram, as with an older eval@1 artifact. The chart requires both runs and does not infer bins from scalar metrics."
+          description="Histogram not recorded for one run."
         />
       ) : !isCompleteHistogram(left.histogram) || !isCompleteHistogram(right.histogram) ? (
-        <ErrorState
-          message="A recorded score histogram is incomplete"
-          detail="The chart requires ten fixed-width, valid, non-empty probability bins over the full [0, 1] range. No partial distribution is drawn."
-        />
+        <ErrorState message="A recorded score histogram is incomplete" />
       ) : left.threshold === null ||
         right.threshold === null ||
         !isProbability(left.threshold) ||
         !isProbability(right.threshold) ? (
-        <ErrorState
-          message="The operating threshold is missing"
-          detail="Both recorded thresholds are required to mark the overlaid distributions."
-        />
+        <ErrorState message="The operating threshold is missing" />
       ) : !sameBins(left.histogram, right.histogram) ? (
-        <ErrorState
-          message="The score histograms use incompatible bins"
-          detail="The two recorded distributions are not plotted on a shared axis."
-        />
+        <ErrorState message="The score histograms use incompatible bins" />
       ) : (
         <HistogramOverlay left={left} right={right} />
       )}
@@ -170,10 +155,10 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
 
   return (
     <div className="mt-3 flex flex-col gap-3">
-      <p className="text-caption text-muted">
+      <p className="text-body-sm font-semibold text-muted">
         Overlaid total scores per bin (benign + threat); exact class counts are tabulated below.
       </p>
-      <p className="text-caption text-muted">
+      <p className="text-body-sm font-semibold text-muted">
         {leftLabel}: {leftHistogram.artifact} · field{' '}
         <code className="font-mono">{leftHistogram.field}</code>
         {' · '}
@@ -324,7 +309,7 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
           </text>
         </svg>
       </div>
-      <div className="flex flex-wrap gap-4 text-caption text-muted">
+      <div className="flex flex-wrap gap-4 text-body-sm font-semibold text-muted">
         <span className="flex items-center gap-2">
           <span aria-hidden="true" className="size-3 rounded-sm bg-accent" />
           {leftLabel}
@@ -348,7 +333,7 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
             Per-bin recorded benign and threat score counts for both model versions
           </caption>
           <thead>
-            <tr className="border-b border-line text-left text-caption text-muted">
+            <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
               <th scope="col" rowSpan={2} className="px-2 py-2 font-medium">
                 Score interval
               </th>
@@ -359,7 +344,7 @@ function HistogramOverlay({ left, right }: { left: HistogramSide; right: Histogr
                 {rightLabel}
               </th>
             </tr>
-            <tr className="border-b border-line text-left text-caption text-muted">
+            <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
               {['Total', 'Benign', 'Threat', 'Total', 'Benign', 'Threat'].map((label, index) => (
                 <th
                   key={`${index}-${label}`}

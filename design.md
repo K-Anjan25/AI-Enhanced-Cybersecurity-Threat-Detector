@@ -1,13 +1,13 @@
 # UI/UX Design — AI-Enhanced Cybersecurity Threat Detector (AEGIS)
 
-| | |
+|                  |                                                                                                         |
 |---|---|
-| **Document** | Interface and experience design specification |
-| **Version** | 0.1 |
-| **Last updated** | 2026-10-02 |
-| **Status** | Approved for build |
-| **Implements** | [prd.md](prd.md) FR-50…FR-54, NFR-09 |
-| **Related** | [architecture.md](architecture.md) · [rules.md](rules.md) · [task.md](task.md) · [memory.md](memory.md) |
+| **Document**     | Interface and experience design specification                                                           |
+| **Version**      | 0.1                                                                                                     |
+| **Last updated** | 2026-10-02                                                                                              |
+| **Status**       | Approved for build                                                                                      |
+| **Implements**   | [prd.md](prd.md) FR-50…FR-54, NFR-09                                                                    |
+| **Related**      | [architecture.md](architecture.md) · [rules.md](rules.md) · [task.md](task.md) · [memory.md](memory.md) |
 
 ---
 
@@ -18,7 +18,7 @@
 3. **Calm by default, loud when it matters.** A SOC dashboard is stared at for eight hours. Reserve saturated colour and motion for severity — a screen that shouts constantly trains the analyst to ignore it.
 4. **Density is a feature.** Analysts are expert users. Prefer information density with clear hierarchy over generous whitespace that pushes evidence below the fold. Offer a comfortable mode; do not force one.
 5. **Honest states.** Loading, empty, partial, degraded, and error are distinct, labelled states. The UI never renders a blank panel where data failed to arrive, and never invents a number.
-6. **Colour is never the only channel.** Severity is encoded by colour **and** label **and** icon, so the product is usable by colour-blind analysts and in greyscale printing (NFR-09).
+6. **Colour is never the only channel.** Severity is encoded by colour **and** label, so the product is usable by colour-blind analysts and in greyscale printing (NFR-09).
 
 ## 2. Personas and key flows
 
@@ -125,7 +125,7 @@ Purpose: "is anything happening, and is AEGIS itself healthy?"
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Left severity rail: 3 px colour bar **plus** a glyph (`●` filled for high/critical, `○` hollow below).
+- Left severity rail: 3 px colour bar **plus** the severity word.
 - Row content hierarchy: severity label → one-line summary in plain language → family · entity · age · occurrences.
 - Bulk selection with checkbox column; bulk actions limited to what the role may do (R-53).
 - Virtualised list; the queue is expected to hold thousands of rows.
@@ -216,63 +216,74 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 ## 5. Design tokens
 
-Dark theme is the default (SOC context: dim rooms, long shifts, wall displays). Light theme is a full peer, not an afterthought. All ratios below were computed with the WCAG relative-luminance formula against the stated background.
+The dashboard palette is Cybercore (memory.md D-106). Its colours are night navy `#0B1A33`, surface navy `#16294D`, ice blue `#7FD8FF`, silver `#C9D6E8`, soft pink `#FFD6EC`, ash `#9FB4CF`, frost `#EAF6FF` and edge `#6B93C4`. Dark uses night ground with frost type and ice accents. Light uses a frost canvas with silver cards and night and navy type. Nothing else is used: no third tint, no translucent overlay on the dashboard. Cards are separated by `border.default` and by the surface colour in both themes.
+
+The public marketing site uses the same palette, with a hero glow and texture in its `.marketing-site` block (memory.md D-105).
 
 ### 5.1 Colour — dark theme (default)
 
-| Token | Value | Contrast | Use |
+*Note (D-104): the light theme is the default in the shipped dashboard. This dark theme is available through the toggle.*
+
+|Token|Value|Contrast|Use|
 |---|---|---|---|
-| `bg.base` | `#0B0E14` | — | App background |
-| `bg.surface` | `#141A23` | — | Cards, panels, tables |
-| `border.default` | `#232A35` | decorative | Hairlines; never the sole separator for essential info |
-| `text.primary` | `#E6E9EF` | 15.88 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#98A2B3` | 7.50 : 1 on `bg.base` · 6.79 : 1 on `bg.surface` | Secondary labels, metadata |
-| `accent` | `#8B72FF` | 5.47 : 1 on `bg.base` · 4.95 : 1 on `bg.surface` | Links, focus, primary actions |
+|`bg.base`|`#0B1A33`|—|App background|
+|`bg.surface`|`#16294D`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#6B93C4`|5.45 : 1 on `bg.base` · 4.52 : 1 on `bg.surface`|Hairlines and control boundaries; never the sole separator for essential info|
+|`text.primary`|`#EAF6FF`|15.81 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#9FB4CF`|8.19 : 1 on `bg.base` · 6.79 : 1 on `bg.surface`|Secondary labels, metadata (same colour as primary)|
+|`accent`|`#7FD8FF`|10.89 : 1 on `bg.base` · 9.03 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.2 Colour — light theme
 
-| Token | Value | Contrast | Use |
+|Token|Value|Contrast|Use|
 |---|---|---|---|
-| `bg.base` | `#FFFFFF` | — | App background |
-| `bg.surface` | `#F6F7F9` | — | Cards, panels, tables |
-| `border.default` | `#E2E5EA` | decorative | Hairlines |
-| `text.primary` | `#0B0E14` | 19.32 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#5A6473` | 5.99 : 1 on `bg.base` · 5.59 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#6C4FE0` | 5.48 : 1 on `bg.base` · 5.11 : 1 on `bg.surface` | Links, focus, primary actions |
+|`bg.base`|`#EAF6FF`|—|App background|
+|`bg.surface`|`#C9D6E8`|—|Cards, panels, tables (separated by `border.default`)|
+|`border.default`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
+|`text.primary`|`#0B1A33`|15.81 : 1 on `bg.base` · 11.79 : 1 on `bg.surface`|Body, headings|
+|`text.muted`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
+|`accent`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Links, focus, primary actions|
 
 ### 5.3 Severity palette
 
-Severity has **two** tokens per level. The base hue is for fills, borders, chart marks, and the 3 px alert rail. The `text` variant is for any text rendered directly on a background — because the base hues fail AA as text in the light theme (critical `#E5484D` on white is only 3.91 : 1).
+Severity has six levels, and the palette has few hues, so **colour does not tell the levels apart**. Each level is written out in words, and the filled and outlined badges differ by shape as well as by the word. The base value is the fill, border, or chart mark, and also the 3 px alert rail; the text value is for any text rendered on a background.
 
-| Severity | Base (fill / chart) | Text on dark | Text on light | Glyph |
+|Severity|Base (fill / border / chart)|Text|Label|Badge|
 |---|---|---|---|---|
-| `critical` | `#E5484D` | `#FF6369` — 6.66 / 6.03 | `#C62A2F` — 5.57 / 5.19 | `●` filled + solid ring |
-| `high` | `#F76808` | `#FFA057` — 9.58 / 8.67 | `#B34700` — 5.50 / 5.13 | `●` filled |
-| `medium` | `#FFC53D` | `#FFC53D` — 12.24 / 11.07 | `#7A5B00` — 6.32 / 5.89 | `◐` half |
-| `low` | `#3E8EF7` | `#70B0FF` — 8.59 / 7.77 | `#0B62C4` — 5.90 / 5.51 | `○` hollow |
-| `info` | `#8B8D98` | `#98A2B3` — 7.50 / 6.79 | `#5A6473` — 5.99 / 5.59 | `○` hollow |
-| `benign` | `#30A46C` | `#4CC38A` — 8.72 / 7.89 | `#1E7A4C` — 5.33 / 4.97 | `✓` |
+|`critical`|`#FFD6EC` dark · `#0B1A33` light|`#FFD6EC` dark · `#0B1A33` light — 13.29 / 15.81|`Critical`|Filled|
+|`high`|`#7FD8FF` dark · `#16294D` light|`#7FD8FF` dark · `#16294D` light — 10.89 / 13.11|`High`|Filled|
+|`medium`|`#C9D6E8` dark · `#16294D` light|`#C9D6E8` dark · `#16294D` light — 11.79 / 13.11|`Medium`|Outlined|
+|`low`|`#9FB4CF` dark · `#16294D` light|`#9FB4CF` dark · `#16294D` light — 8.19 / 13.11|`Low`|Outlined|
+|`info`|`#EAF6FF` dark · `#16294D` light|`#EAF6FF` dark · `#16294D` light — 15.81 / 13.11|`Info`|Outlined|
+|`benign`|`#6B93C4` dark · `#16294D` light|`#6B93C4` dark · `#16294D` light — 5.45 / 13.11|`Benign`|Outlined|
 
-*Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes.*
+_Ratios are `on bg.base` / `on bg.surface`. Every text value clears WCAG AA (≥ 4.5 : 1) on both surfaces in both themes._
 
-**Badge rule.** A severity badge is a base-hue fill with `#0B0E14` text. Measured: critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 6.12 — all ≥ 4.5 : 1. White text on these fills fails (3.91 on critical, 1.58 on medium) and is prohibited.
+**Badge rule.** A severity badge is one of two shapes. Critical and high are filled with the foreground colour and carry the ground colour as text. Medium, low, info and benign are outlined with the foreground colour and carry the foreground colour as text. The filled badge text is `--color-on-severity`: `#0B1A33` on dark and `#EAF6FF` on light. Measured on the fill in dark: critical 13.29, high 10.89, medium 11.79, low 8.19, info 15.81, benign 5.45, all ≥ 4.5 : 1. In light: critical 15.81, the other levels 13.11. White text on these fills fails (at most 3.18 : 1 on the dark fills) and is prohibited.
 
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 5.47 : 1 (dark) and 5.48 : 1 (light) — above the 3 : 1 non-text requirement.
+**Charts.** Six severity series cannot be told apart by colour. Any chart that plots more than one severity needs a legend, direct labels, or a pattern in addition to the colour.
+
+**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 10.89 : 1 (dark) and 13.11 : 1 (light) — above the 3 : 1 non-text requirement.
 
 ### 5.4 Typography
 
-| Token | Size / line-height | Weight | Use |
-|---|---|---|---|
-| `font.sans` | Inter, system-ui fallback | — | All UI text |
-| `font.mono` | JetBrains Mono, ui-monospace fallback | — | IPs, ports, hashes, log lines, scores |
-| `type.display` | 32 / 36 | 600 | KPI values |
-| `type.h1` | 24 / 32 | 600 | Page titles |
-| `type.h2` | 18 / 26 | 600 | Section headings |
-| `type.body` | 14 / 20 | 400 | Default text |
-| `type.body-sm` | 13 / 18 | 400 | Table cells, dense lists |
-| `type.caption` | 12 / 16 | 400 | Metadata, axis labels — never below 12 px |
+The UI uses Inter throughout, in sentence case, with uppercase reserved for short labels and the top navigation. Data (IPs, hashes, log lines, scores) uses JetBrains Mono.
 
-Minimum text size is 12 px. Numeric columns use `font.mono` with tabular figures so values align vertically.
+| Token          | Size / line-height                    | Weight | Use                                       |
+|---|---|---|---|
+| `font.display` | 'Courier New', ui-monospace fallback | —      | Page titles and headings h1–h3 (Cybercore demo stack); the landing hero headline stays on `font.sans` |
+| `font.sans`    | Inter, system-ui fallback             | —      | All UI text                               |
+| `font.mono`    | JetBrains Mono, ui-monospace fallback | —      | IPs, ports, hashes, log lines, scores     |
+| `type.hero`    | 64 / 68                               | 600    | Landing page headline                     |
+| `type.stat`    | 48 / 52                               | 600    | Landing page figures                      |
+| `type.display` | 32 / 36                               | 600    | KPI values                                |
+| `type.h1`      | 24 / 32                               | 600    | Page titles                               |
+| `type.h2`      | 18 / 26                               | 600    | Section headings                          |
+| `type.body`    | 14 / 20                               | 400    | Default text                              |
+| `type.body-sm` | 13 / 18                               | 400    | Table cells, dense lists                  |
+| `type.caption` | 12 / 16                               | 400    | Metadata, axis labels — never below 12 px |
+
+Minimum text size is 12 px. Numeric columns use tabular figures so values align vertically.
 
 ### 5.5 Spacing, radius, elevation
 
@@ -283,36 +294,35 @@ Minimum text size is 12 px. Numeric columns use `font.mono` with tabular figures
 
 ### 5.6 Iconography
 
-Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content. Severity additionally uses the glyph column from §5.3.
+Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content. Severity additionally uses the word label from §5.3.
 
 ## 6. Component library
 
 All primitives live in `dashboard/src/components/ui` and are the only approved building blocks (R-22, R-27).
 
-| Component | Contract |
+| Component                                    | Contract                                                                                                                                                         |
 |---|---|
-| `Button` | variants: `primary` `secondary` `ghost` `danger`; sizes: `sm` `md`; always renders a real `<button>`; `loading` state swaps the label for a spinner and disables |
-| `Badge` | severity or neutral; enforces the badge rule in §5.3 |
-| `Card` / `Panel` | titled container with optional actions slot and a built-in loading/empty/error state |
-| `DataTable` | virtualised, sortable, column picker, row selection, sticky header, empty state |
-| `Modal` / `ConfirmDialog` | focus trap, `Esc` to close, returns focus to the trigger; destructive confirms require typing the target name |
-| `SeverityPill`, `ScoreMeter` | score meter is a 0–1 bar with the band threshold marked |
-| `Timeline`, `TimeSeriesChart`, `EntityGraph` | D3-based, all accept a `reducedMotion` flag |
-| `Toast` | success / warning / error; auto-dismiss except errors |
-| `CommandPalette` | `⌘K`; navigates, filters, and runs saved hunts |
-| `ConnectionStatus` | live / degraded / disconnected; drives the global banner |
-| `EmptyState`, `ErrorState`, `Skeleton` | required by R-29 |
+| `Button`                                     | variants: `primary` `secondary` `ghost` `danger`; sizes: `sm` `md`; always renders a real `<button>`; `loading` state swaps the label for a spinner and disables |
+| `Badge`                                      | severity or neutral; enforces the badge rule in §5.3                                                                                                             |
+| `Card` / `Panel`                             | titled container with optional actions slot and a built-in loading/empty/error state                                                                             |
+| `DataTable`                                  | virtualised, sortable, column picker, row selection, sticky header, empty state                                                                                  |
+| `Modal` / `ConfirmDialog`                    | focus trap, `Esc` to close, returns focus to the trigger; destructive confirms require typing the target name                                                    |
+| `SeverityPill`, `ScoreMeter`                 | score meter is a 0–1 bar with the band threshold marked                                                                                                          |
+| `Timeline`, `TimeSeriesChart`, `EntityGraph` | D3-based, all accept a `reducedMotion` flag                                                                                                                      |
+| `Toast`                                      | success / warning / error; auto-dismiss except errors                                                                                                            |
+| `CommandPalette`                             | `⌘K`; navigates, filters, and runs saved hunts                                                                                                                   |
+| `EmptyState`, `ErrorState`, `Skeleton`       | required by R-29                                                                                                                                                 |
 
 ## 7. Data visualisation
 
-| Chart | Library | Spec |
+| Chart                         | Library  | Spec                                                                                                               |
 |---|---|---|
-| Alert volume by severity | Chart.js | Stacked area, severity palette, brushable x-axis, y-axis starts at 0 — never truncate a count axis |
-| Flow volume + anomaly score | D3 | Dual axis, explicit axis labels and units, score axis 0–1 fixed |
-| Entity relationship graph | D3 force | Node size = flow volume, fill = peak severity, edge width = flow count; ≥ 2,000 nodes switches to adjacency matrix |
-| Threat family mix | Chart.js | Horizontal bars, sorted descending, counts labelled at bar end |
-| Drift PSI | Chart.js | Horizontal bars with a 0.25 threshold marker line |
-| Score distribution comparison | D3 | Two overlaid histograms with a legend and the threshold marked |
+| Alert volume by severity      | Chart.js | Stacked area, severity palette, brushable x-axis, y-axis starts at 0 — never truncate a count axis                 |
+| Flow volume + anomaly score   | D3       | Dual axis, explicit axis labels and units, score axis 0–1 fixed                                                    |
+| Entity relationship graph     | D3 force | Node size = flow volume, fill = peak severity, edge width = flow count; ≥ 2,000 nodes switches to adjacency matrix |
+| Threat family mix             | Chart.js | Horizontal bars, sorted descending, counts labelled at bar end                                                     |
+| Drift PSI                     | Chart.js | Horizontal bars with a 0.25 threshold marker line                                                                  |
+| Score distribution comparison | D3       | Two overlaid histograms with a legend and the threshold marked                                                     |
 
 Chart rules: every axis is labelled with units; every series has a legend entry; colours come only from the severity palette or the categorical chart ramp; no 3D, no pie charts with more than four slices, no dual axes without labelled units on both.
 
@@ -320,14 +330,14 @@ Chart rules: every axis is labelled with units; every series has a legend entry;
 
 ### 8.1 Required states
 
-| State | Treatment |
+| State                  | Treatment                                                                                                                        |
 |---|---|
-| **Loading** | Skeletons matching the final layout. Spinners only for actions under 1 s. |
-| **Empty** | Say what is empty and what to do: "No open critical alerts in the last 24 h." + a link to widen the filter. Never a blank panel. |
-| **Error** | What failed, whether it is retrying, and a Retry action. Never a raw stack trace in the UI. |
-| **Partial / degraded** | Explicit badge: `partial evidence — log model unavailable`. Partial results are labelled, never presented as complete. |
-| **Stale** | If live data stops arriving, show `last update 2 m ago` in the header rather than silently showing old numbers. |
-| **Forbidden** | 403 state explaining the required role and how to request it. |
+| **Loading**            | Skeletons matching the final layout. Spinners only for actions under 1 s.                                                        |
+| **Empty**              | Say what is empty and what to do: "No open critical alerts in the last 24 h." + a link to widen the filter. Never a blank panel. |
+| **Error**              | What failed, whether it is retrying, and a Retry action. Never a raw stack trace in the UI.                                      |
+| **Partial / degraded** | Explicit badge: `partial evidence — log model unavailable`. Partial results are labelled, never presented as complete.           |
+| **Stale**              | If live data stops arriving, show `last update 2 m ago` in the header rather than silently showing old numbers.                  |
+| **Forbidden**          | 403 state explaining the required role and how to request it.                                                                    |
 
 ### 8.2 Motion
 
@@ -338,12 +348,12 @@ Chart rules: every axis is labelled with units; every series has a legend entry;
 
 ### 8.3 Responsive breakpoints
 
-| Breakpoint | Behaviour |
+| Breakpoint   | Behaviour                                                                                                      |
 |---|---|
-| ≥ 1440 px | Full layout, side-by-side panels, entity graph always visible |
-| 1024–1439 px | Panels stack in pairs, nav rail collapses to icons by default |
-| 768–1023 px | Single column, nav becomes a drawer, tables keep the 4 most important columns |
-| < 768 px | Triage-focused: alert list and alert detail only. A banner states that the full console needs a larger screen. |
+| ≥ 1440 px    | Full layout, side-by-side panels, entity graph always visible                                                  |
+| 1024–1439 px | Panels stack in pairs, nav rail collapses to icons by default                                                  |
+| 768–1023 px  | Single column, nav becomes a drawer, tables keep the 4 most important columns                                  |
+| < 768 px     | Triage-focused: alert list and alert detail only. The hamburger opens a navigation drawer that lists only the Alerts entry. A banner states that the full console needs a larger screen. |
 
 The product is desktop-first. Mobile supports the triage loop and nothing else, and says so.
 
@@ -354,7 +364,7 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 - **Contrast:** all text pairs in §5.1–§5.3 meet 4.5 : 1; large text and UI components meet 3 : 1. Numbers above are computed, not estimated.
 - **Keyboard:** every action reachable and operable by keyboard. Visible focus ring per §5.3. A documented shortcut set (`⌘K`, `j`/`k`, `Enter`, `1`/`2`/`3`, `Esc`, `/`) with an in-app shortcut reference.
 - **Screen readers:** semantic landmarks, one `h1` per page, table headers wired via `scope`, live regions (`aria-live="polite"`) for new alerts and toasts, `aria-live="assertive"` for critical alerts only.
-- **Not colour alone:** severity = colour + text label + glyph (§5.3). Charts have a data-table alternative toggled by a "view as table" control.
+- **Not colour alone:** severity = colour + text label (§5.3). Charts have a data-table alternative toggled by a "view as table" control.
 - **Motion:** `prefers-reduced-motion` fully honoured (§8.2).
 - **Forms:** every field has a persistent visible label (placeholder is not a label), inline validation with `aria-describedby`, errors announced.
 - **Testing:** `eslint-plugin-jsx-a11y` in CI, `@axe-core/react` assertions in component tests, and one manual screen-reader pass per release with the result recorded in the release note.
@@ -371,22 +381,26 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 
 ## 11. Design deliverables and next steps
 
-| Deliverable | Owner | Status |
+| Deliverable                                      | Owner       | Status                                                                                                                                                         |
 |---|---|---|
-| Design tokens as Tailwind config + CSS variables | Design/FE | Built — T-401 DONE |
-| UI primitive components (§6) | FE | Built — T-402 DONE |
-| Alert triage screen (highest value) | FE | Built — T-404 DONE |
-| Overview dashboard | FE | Built — T-403 DONE |
-| D3 entity graph + time-series | FE | Built — T-406 DONE |
-| Accessibility audit of the first three screens | Design | Automated axe and keyboard checks complete (T-413); manual screen-reader pass remains unrun, see [release-note.md](release-note.md#accessibility-t-413-nfr-09) |
-| Authentication gate and first-admin setup (§4.9) | FE/platform | Sign-in/session flow built (T-417); human visual sign-off pending. Durable account and refresh state are follow-up infrastructure (D-081). |
+| Design tokens as Tailwind config + CSS variables | Design/FE   | Built — T-401 DONE                                                                                                                                             |
+| UI primitive components (§6)                     | FE          | Built — T-402 DONE                                                                                                                                             |
+| Alert triage screen (highest value)              | FE          | Built — T-404 DONE                                                                                                                                             |
+| Overview dashboard                               | FE          | Built — T-403 DONE                                                                                                                                             |
+| D3 entity graph + time-series                    | FE          | Built — T-406 DONE                                                                                                                                             |
+| Accessibility audit of the first three screens   | Design      | Automated axe and keyboard checks complete (T-413); manual screen-reader pass remains unrun, see [release-note.md](release-note.md#accessibility-t-413-nfr-09) |
+| Authentication gate and first-admin setup (§4.9) | FE/platform | Sign-in/session flow built (T-417); human visual sign-off pending. Durable account and refresh state are follow-up infrastructure (D-081).                     |
 
 Implementation status is tracked in [task.md](task.md); this document remains the source of truth for intended behaviour. A component that disagrees with §5 or §6 is wrong, not the document.
 
 ## 12. Change log
 
-| Date | Version | Change |
+| Date       | Version | Change                                                                                                                                                                                                                                                                                                                                                         |
 |---|---|---|
-| 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
-| 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
-| 2026-10-07 | 0.3 | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081). |
+| 2026-10-02 | 0.1     | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios.                                                                                                                                                                                                                                                       |
+| 2026-10-07 | 0.2     | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
+| 2026-10-07 | 0.3     | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081).                                                                                                                               |
+| 2026-10-17 | 0.4     | Restyled to the blue reference: blue-only palette (§5), Inter for UI text, plain cards in place of the decorative overview. Removed the connection indicator, reconnect banner, staleness stamps, and explanatory text from every screen (§6, §8.1). Added an unauthenticated landing page at `/`; other paths show sign-in.                                   |
+| 2026-10-17 | 0.5     | Rebuilt the landing page to the reference layout: hero headline, halftone art field (artwork supplied as `dashboard/public/landing-hero.jpg`), three feature cards, primary and secondary CTAs. Added `type.hero` (64/68) and `type.stat` (48/52) to §5.4.                                                                                                     |
+| 2026-10-17 | 0.6 | Re-based the palette on the brand sheet: Mariana Blue field and Grey type in dark, Dawning Mist field and Deep Blue accent in light. Replaced the cobalt values in §5.1 and §5.2; updated the severity text and badge ratios and the focus ring to match. |
+| 2026-10-17 | 0.7 | Toned the severity hues down to sit with the brand palette and kept each text variant at 4.5:1 or better. Replaced the symbol glyphs with the severity word, so every severity is written out in words; the §5.3 Glyph column is now Label. |

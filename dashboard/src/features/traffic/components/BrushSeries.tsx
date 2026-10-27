@@ -353,7 +353,9 @@ export function BrushSeries({
       </svg>
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-caption text-muted">Brushed range: {spanLabel(active, range)}</p>
+        <p className="text-body-sm font-semibold text-muted">
+          Brushed range: {spanLabel(active, range)}
+        </p>
         <div className="flex items-center gap-2">
           {range === null ? null : (
             <Button variant="ghost" size="sm" onClick={() => onRange(null)}>
@@ -396,7 +398,7 @@ export function BrushSeries({
           </thead>
           <tbody>
             {buckets.map((bucket) => (
-              <tr key={bucket.start.getTime()} className="border-b border-line/50">
+              <tr key={bucket.start.getTime()} className="border-b border-line">
                 <th scope="row" className="py-1 pr-4 text-left font-normal text-ink">
                   {formatStamp(bucket.start.toISOString())}
                 </th>

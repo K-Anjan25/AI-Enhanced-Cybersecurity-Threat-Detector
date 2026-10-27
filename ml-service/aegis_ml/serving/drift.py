@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import APIRouter
@@ -23,21 +22,36 @@ PSI_DRIFT_THRESHOLD = 0.25
 
 # Feature baselines (from typical network traffic)
 FEATURE_BASELINES: dict[str, dict[str, float]] = {
+    # Measured, not typed: benign rows of CIC-IDS2017 Friday (DDoS) and Thursday (web
+    # attacks), 265,904 flows, Destination Port and Protocol. A bucket with no benign rows
+    # takes a 0.1% floor and the rest renormalise, so a port absent from the reference
+    # does not produce an unbounded PSI. This is 2017 lab traffic: a deployment must
+    # re-baseline from its own benign traffic before the PSI means anything there.
     "dst_port": {
-        "80": 0.25, "443": 0.35, "53": 0.15, "22": 0.05,
-        "3389": 0.02, "25": 0.03, "993": 0.03, "587": 0.02,
-        "other": 0.10,
+        "53": 0.4064,
+        "other": 0.2963,
+        "443": 0.1848,
+        "80": 0.1034,
+        "22": 0.0052,
+        "3389": 0.001,
+        "25": 0.001,
+        "993": 0.001,
+        "587": 0.001,
     },
-    "proto": {"tcp": 0.70, "udp": 0.25, "icmp": 0.05},
+    "proto": {"tcp": 0.5674, "udp": 0.4306, "icmp": 0.001, "other": 0.001},
     "duration_bucket": {
-        "0-1s": 0.40, "1-10s": 0.25, "10-60s": 0.15,
-        "1-5m": 0.10, "5m+": 0.10,
+        "0-1s": 0.40,
+        "1-10s": 0.25,
+        "10-60s": 0.15,
+        "1-5m": 0.10,
+        "5m+": 0.10,
     },
 }
 
 
 class FlowRecord(BaseModel):
     """A flow record for drift analysis."""
+
     ts: float = 0
     src_ip: str = ""
     dst_ip: str = ""
@@ -53,12 +67,14 @@ class FlowRecord(BaseModel):
 
 class DriftRequest(BaseModel):
     """Flows to check for drift."""
+
     flows: list[FlowRecord] = Field(..., min_length=1)
     window_id: str | None = None
 
 
 class DriftResult(BaseModel):
     """PSI score for one feature."""
+
     feature: str
     psi: float
     status: str  # "stable", "moderate", "drifted"
@@ -67,6 +83,7 @@ class DriftResult(BaseModel):
 
 class DriftResponse(BaseModel):
     """Drift detection results."""
+
     overall_status: str
     features: list[DriftResult]
     window_id: str | None = None
@@ -99,8 +116,16 @@ def compute_psi(expected: dict[str, float], observed: dict[str, float]) -> float
 
 def bucket_port(port: int) -> str:
     """Bucket a port number into common categories."""
-    common = {80: "80", 443: "443", 53: "53", 22: "22", 3389: "3389",
-              25: "25", 993: "993", 587: "587"}
+    common = {
+        80: "80",
+        443: "443",
+        53: "53",
+        22: "22",
+        3389: "3389",
+        25: "25",
+        993: "993",
+        587: "587",
+    }
     return common.get(port, "other")
 
 
@@ -168,15 +193,17 @@ def detect_drift(request: DriftRequest) -> DriftResponse:
         else:
             status = "drifted"
 
-        results.append(DriftResult(
-            feature=feature,
-            psi=round(psi, 4),
-            status=status,
-            details={
-                "baseline": baseline,
-                "observed": observed,
-            },
-        ))
+        results.append(
+            DriftResult(
+                feature=feature,
+                psi=round(psi, 4),
+                status=status,
+                details={
+                    "baseline": baseline,
+                    "observed": observed,
+                },
+            )
+        )
 
     # Overall status is the worst individual status
     if any(r.status == "drifted" for r in results):

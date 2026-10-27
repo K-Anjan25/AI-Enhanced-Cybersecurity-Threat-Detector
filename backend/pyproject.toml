@@ -8,6 +8,9 @@ dependencies = [
     "uvicorn>=0.40",
     "pydantic>=2.13",
     "pydantic-settings>=2.13",
+    # oidc.py talks to the identity provider at runtime (discovery, token, JWKS), so the
+    # HTTP client is a runtime dependency, not a test tool.
+    "httpx>=0.28",
     "structlog>=26.1",
     # T-301. The repository layer and the migrations both need the ORM, and
     # alembic is a runtime dependency rather than a dev one because migrations
@@ -51,6 +54,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Shared login throttle (app/services/login_throttle.py). Optional: without it the
+# throttle counts per process and says so through backend_errors.
+redis = ["redis>=5"]
 # T-310. uvicorn needs a WebSocket protocol implementation to serve /alerts/ws
 # in production; it is not needed for the tests, which drive the ASGI contract
 # directly, and it is not installed in the sandbox -- recorded, not implied.
@@ -64,11 +70,13 @@ otlp = ["opentelemetry-exporter-otlp-proto-http>=1.45"]
 
 dev = [
     "pytest>=9.1",
+    # Redis-backed throttle tests run against an in-process fake, not a server.
+    "fakeredis>=2.26",
+    "redis>=5",
     # check_all.sh and CI run `pytest --cov=app` and `lint-imports` for this
     # service, so both must be declared here rather than hand-installed.
     "pytest-cov>=7.0",
     "import-linter>=2.0",
-    "httpx>=0.28",
     "ruff>=0.16",
     "black>=26.5",
     "mypy>=2.4",
@@ -116,6 +124,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Tests hold deliberately fake credentials and invoke the interpreter directly.
 "tests/**" = ["D100", "D101", "D102", "D103", "D104", "S101", "S105", "S106", "S603"]
+# The capture bridges run in Ubuntu 22.04 images on Python 3.10, where datetime.UTC
+# does not exist. timezone.utc is the 3.10-compatible spelling, so UP017 is wrong here.
+"app/services/capture/bridges/*.py" = ["UP017"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -135,6 +146,18 @@ files = ["app"]
 
 [[tool.mypy.overrides]]
 module = ["uvicorn.*"]
+ignore_missing_imports = true
+
+# scapy is an optional capture-container dependency (not installed in the
+# backend dev environment); its absence is handled at runtime by HAS_SCAPY.
+[[tool.mypy.overrides]]
+module = ["scapy.*"]
+ignore_missing_imports = true
+
+# The capture bridges are standalone scripts that import their sibling shipper.py
+# at runtime (it sits beside them in the capture image). mypy cannot see that path.
+[[tool.mypy.overrides]]
+module = ["shipper"]
 ignore_missing_imports = true
 
 # --- pytest (R-80..R-89) ---------------------------------------------------

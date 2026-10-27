@@ -17,9 +17,11 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
+from functools import partial
 from typing import Annotated, TypeVar
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from app.api.openapi_docs import ndjson_batch_body
@@ -134,8 +136,9 @@ async def _ingest(
             return result
         if publisher is not None:
             # Before the audit row, deliberately: a record is not audited as taken
-            # in unless it was handed on.
-            publisher.publish(accepted, traceparent=traceparent)
+            # in unless it was handed on. The publish waits for broker acks, so it
+            # runs off the event loop.
+            await run_in_threadpool(partial(publisher.publish, accepted, traceparent=traceparent))
         if keep is not None:
             # Fed where the trail is fed, and after the hand-off for the same
             # reason: a request that failed before publishing kept nothing, so the
@@ -146,8 +149,10 @@ async def _ingest(
             # rather than loses, which is T-307's rule for the worker applied here.
             await keep(accepted)
         # Feed accepted flows to the rule-based detection engine.
+        # With a publisher the flows are scored by the live Kafka consumer, so the
+        # in-process engine is not fed: both paths would raise every alert twice.
         detection_engine = getattr(request.app.state, "detection_engine", None)
-        if detection_engine is not None and modality == "flow" and accepted:
+        if detection_engine is not None and publisher is None and modality == "flow" and accepted:
             detection_engine.feed([r.model_dump() for r in accepted])
         # Feed accepted flows to drift monitor for PSI computation.
         drift_monitor = getattr(request.app.state, "drift_monitor", None)

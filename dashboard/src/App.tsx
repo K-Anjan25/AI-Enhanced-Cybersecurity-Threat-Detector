@@ -28,7 +28,7 @@
  * `/alerts` and `/alerts/:alertId` are the loop §8.3 keeps, so they are not wrapped.
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import { sessionToken, onSessionTokenChange } from './api/session';
 import { signOut } from './api/auth';
@@ -43,10 +43,14 @@ import { HuntPage } from './features/hunt/pages/HuntPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
 import { DriftPage } from './features/models/pages/DriftPage';
 import { ModelsPage } from './features/models/pages/ModelsPage';
-import { CyberpunkOverviewPage } from './features/overview/pages/CyberpunkOverviewPage';
+import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
+import { LandingPage } from './features/marketing/pages/LandingPage';
+import { ContactPage } from './features/marketing/pages/ContactPage';
+import { FeaturesPage } from './features/marketing/pages/FeaturesPage';
+import { PricingPage } from './features/marketing/pages/PricingPage';
 
 /**
  * A screen, when the window is wide enough for it to be offered (§8.3).
@@ -63,7 +67,7 @@ function Offered({ children }: { children: ReactNode }) {
       <h1 className="text-h1">Not offered at this window size</h1>
       <EmptyState
         title="This screen needs a wider window"
-        description="Below 768 px the console is the triage loop: the alert list and the alert detail. Widen the window, or rotate the device, to bring the rest back."
+        description="Widen the window to view this screen."
       />
     </div>
   );
@@ -77,12 +81,16 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
   const { openPalette } = useCommands();
   return (
     <Routes>
+      {/* Public marketing pages are reachable signed in or out. */}
+      <Route path="/features" element={<FeaturesPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route element={<AppShell onOpenPalette={openPalette} onSignOut={onSignOut} />}>
         <Route
           index
           element={
             <Offered>
-              <CyberpunkOverviewPage />
+              <OverviewPage />
             </Offered>
           }
         />
@@ -138,15 +146,15 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
             </Offered>
           }
         />
+        {/* Signing in leaves the URL on /sign-in; send the user to Overview instead of 404. */}
+        <Route path="/sign-in" element={<Navigate to="/" replace />} />
         <Route
           path="*"
           element={
             <Offered>
               <div>
                 <h1 className="text-h1">Page not found</h1>
-                <p className="mt-2 text-body text-muted">
-                  No route matches this address. Check the navigation for available screens.
-                </p>
+                <p className="mt-2 text-body text-muted">Not found.</p>
               </div>
             </Offered>
           }
@@ -156,6 +164,16 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
+/** Signed out: `/` is the landing page, the public marketing pages are open, and every other path is the sign-in form. */
+function Unauthenticated() {
+  const { pathname } = useLocation();
+  if (pathname === '/') return <LandingPage />;
+  if (pathname === '/features') return <FeaturesPage />;
+  if (pathname === '/pricing') return <PricingPage />;
+  if (pathname === '/contact') return <ContactPage />;
+  return <SignInPage />;
+}
+
 export function App() {
   const [token, setToken] = useState(() => sessionToken());
   useEffect(() => onSessionTokenChange(setToken), []);
@@ -163,13 +181,11 @@ export function App() {
     void signOut().catch(() => undefined);
   }, []);
 
-  if (token === null) return <SignInPage />;
+  if (token === null) return <Unauthenticated />;
 
   return (
     <ToastProvider>
-      <CommandProvider
-        listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}
-      >
+      <CommandProvider listSavedHunts={() => savedHunts(huntStoreSubject(sessionToken()))}>
         <Shell onSignOut={handleSignOut} />
       </CommandProvider>
     </ToastProvider>

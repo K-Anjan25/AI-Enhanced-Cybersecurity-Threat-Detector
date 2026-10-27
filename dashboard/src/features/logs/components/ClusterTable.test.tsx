@@ -91,13 +91,6 @@ function levelCell(table: ReturnType<typeof within>, index: number): HTMLElement
 }
 
 describe('ClusterTable', () => {
-  it('says a row holds an error or worse, not only with a colour', () => {
-    const table = renderTable();
-
-    expect(within(levelCell(table, 0)).getByText(/\(error or worse\)/)).toBeInTheDocument();
-    expect(within(levelCell(table, 1)).queryByText(/\(error or worse\)/)).toBeNull();
-  });
-
   it('labels the chip with the level’s own word', () => {
     const table = renderTable();
 

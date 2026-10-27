@@ -17,6 +17,7 @@ from aegis_ml.data.splits import (
     Split,
     family_split,
     group_split,
+    leave_one_entity_out,
     split_windows,
     window_families,
 )
@@ -514,3 +515,98 @@ def test_family_split_input_and_fractions_are_validated() -> None:
         family_split(windows, holdout={"Fuzzers"}, test_fraction=0.0)
     with pytest.raises(ValueError, match="leave room for training"):
         family_split(windows, holdout={"Fuzzers"}, test_fraction=0.6, valid_fraction=0.5)
+
+
+# --- leave-one-attacker-out ---------------------------------------------
+
+LOAO_ATTACKERS = ("10.4.41.1", "10.4.41.2", "10.4.41.3")
+
+
+def test_leave_one_attacker_out_scores_only_the_held_out_attacker() -> None:
+    """The test fold must hold one attacker, so the rate measures that attacker."""
+    split = leave_one_entity_out(family_fixture(), holdout="10.4.41.2")
+
+    attacks_in_test = {w.key for w in split.test if window_families(w)}
+    assert attacks_in_test == {"10.4.41.2"}
+
+
+def test_leave_one_attacker_out_scores_every_window_of_the_held_out_attacker() -> None:
+    windows = family_fixture()
+    held = [w for w in windows if w.key == "10.4.41.2"]
+    split = leave_one_entity_out(windows, holdout="10.4.41.2")
+
+    scored = [w for w in split.test if w.key == "10.4.41.2"]
+    assert held and len(scored) == len(held)
+
+
+def test_leave_one_attacker_out_never_trains_on_the_held_out_attacker() -> None:
+    split = leave_one_entity_out(family_fixture(), holdout="10.4.41.2")
+
+    assert "10.4.41.2" not in split.train_entities
+    assert "10.4.41.2" not in split.valid_entities
+
+
+def test_leave_one_attacker_out_is_exactly_entity_disjoint() -> None:
+    split = leave_one_entity_out(family_fixture(), holdout="10.4.41.2")
+    audit = split.audit()
+
+    assert audit["entities_disjoint"] is True
+    assert audit["shared_train_test_entities"] == 0
+    assert audit["shared_train_valid_entities"] == 0
+    assert audit["shared_valid_test_entities"] == 0
+    assert split.dropped == 0
+    assert split.entity_disjoint_enforced is True
+    assert split.temporal_enforced is False
+
+
+def test_leave_one_attacker_out_test_fold_has_both_classes() -> None:
+    split = leave_one_entity_out(family_fixture(), holdout="10.4.41.2")
+
+    assert any(window_families(w) for w in split.test)
+    assert any(not window_families(w) for w in split.test)
+
+
+def test_leave_one_attacker_out_negatives_come_from_unseen_hosts() -> None:
+    split = leave_one_entity_out(family_fixture(), holdout="10.4.41.2")
+
+    benign_test = {w.key for w in split.test if not window_families(w)}
+    benign_train = {w.key for w in split.train if not window_families(w)}
+    assert benign_test and benign_test.isdisjoint(benign_train)
+
+
+def test_leave_one_attacker_out_is_deterministic() -> None:
+    first = leave_one_entity_out(family_fixture(), holdout="10.4.41.1")
+    second = leave_one_entity_out(family_fixture(), holdout="10.4.41.1")
+
+    assert [w.key for w in first.test] == [w.key for w in second.test]
+    assert [w.key for w in first.train] == [w.key for w in second.train]
+
+
+def test_leave_one_attacker_out_refuses_an_unknown_or_benign_holdout() -> None:
+    windows = family_fixture()
+
+    with pytest.raises(ValueError, match="is not an entity in the data"):
+        leave_one_entity_out(windows, holdout="10.9.9.9")
+    with pytest.raises(ValueError, match="carries no attack traffic"):
+        leave_one_entity_out(windows, holdout="10.4.40.1")
+
+
+def test_leave_one_attacker_out_input_and_fractions_are_validated() -> None:
+    windows = family_fixture()
+
+    with pytest.raises(ValueError, match="empty sequence"):
+        leave_one_entity_out((), holdout="10.4.41.2")
+    with pytest.raises(ValueError, match="must name one entity"):
+        leave_one_entity_out(windows, holdout="")
+    with pytest.raises(ValueError, match="test_fraction must be in"):
+        leave_one_entity_out(windows, holdout="10.4.41.2", test_fraction=0.0)
+    with pytest.raises(ValueError, match="leave room for training"):
+        leave_one_entity_out(windows, holdout="10.4.41.2", test_fraction=0.6, valid_fraction=0.5)
+
+
+def test_leave_one_attacker_out_trains_on_every_other_attacker() -> None:
+    """Training must never be attack-free, whatever the hash does to the others."""
+    split = leave_one_entity_out(family_fixture(), holdout="10.4.41.2")
+
+    others = {a for a in LOAO_ATTACKERS if a != "10.4.41.2"}
+    assert others <= split.train_entities

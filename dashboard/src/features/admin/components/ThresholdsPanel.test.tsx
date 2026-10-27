@@ -142,16 +142,13 @@ describe('ThresholdsPanel', () => {
     expect(screen.getByText(/floored counts rather than totals/)).toBeInTheDocument();
   });
 
-  it('lists the four bands that have a bound, and says where info begins', async () => {
+  it('lists the four bands that have a bound', async () => {
     stubFetch(routes());
     panel();
     const table = await screen.findByRole('table', { name: /Bands, the value in force/ });
     // `info` is not a row with a settable value: it is the bucket everything below
     // the lowest band falls into, and the sentence under the table says so.
     expect(table).not.toHaveTextContent('info');
-    expect(
-      await screen.findByText(/Everything below the 0\.20 info bound is info/),
-    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Preview a new info value/ })).toBeNull();
   });
 
@@ -240,6 +237,6 @@ describe('ThresholdsPanel', () => {
     panel();
     const table = await screen.findByRole('table', { name: /Bands, the value in force/ });
     expect(table).toHaveTextContent('0.70');
-    expect(screen.getByText(/no band has been moved on this deployment/)).toBeInTheDocument();
+    expect(screen.getByText(/FR-13 default/)).toBeInTheDocument();
   });
 });

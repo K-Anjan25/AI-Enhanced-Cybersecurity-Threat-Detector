@@ -70,13 +70,13 @@ export function ChartCanvas({ config, label, height = 240 }: ChartCanvasProps) {
     };
   }, [config]);
 
+  // Chart.js with `maintainAspectRatio: false` fills its parent's height. If the parent
+  // has no height of its own, the canvas's height feeds back into the parent on each
+  // resize pass and the card grows without end. So the box has the height, and the
+  // canvas fills the box; the canvas never sets its own height.
   return (
-    <canvas
-      ref={canvas}
-      role="img"
-      aria-label={label}
-      className="w-full"
-      style={{ height: `${String(height)}px` }}
-    />
+    <div className="relative w-full" style={{ height: `${String(height)}px` }}>
+      <canvas ref={canvas} role="img" aria-label={label} className="block h-full w-full" />
+    </div>
   );
 }

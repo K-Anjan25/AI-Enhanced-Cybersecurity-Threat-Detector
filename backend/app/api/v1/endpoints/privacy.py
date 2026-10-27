@@ -73,10 +73,10 @@ from app.services.retention import (
     RetentionPlan,
     RetentionPolicy,
     RetentionRun,
-    apply_retention,
     existing_partitions,
     plan_retention,
 )
+from app.services.retention_run import execute_retention, record_retention_run
 
 router = APIRouter(tags=["privacy"])
 
@@ -110,6 +110,7 @@ def _plan_out(plan: RetentionPlan) -> RetentionPlanOut:
             UnevictableOut(table=item.table, reason=item.reason) for item in plan.unevictable
         ],
         external=plan.external,
+        row_swept=plan.row_swept,
         statements=list(plan.statements),
     )
 
@@ -121,6 +122,7 @@ def _run_out(run: RetentionRun) -> RetentionRunOut:
         planned=[partition.name for partition in run.planned],
         dropped=[partition.name for partition in run.dropped],
         already_absent=[partition.name for partition in run.already_absent],
+        swept=run.swept,
         changed_anything=not run.is_noop,
     )
 
@@ -203,23 +205,16 @@ def run_retention(
         HTTPException: 500 when a drop fails, with the partition named -- the
             run's exception carries which statement failed.
     """
-    plan = _plan_for(request, retention_policy(request))
-    run = apply_retention(plan, partition_runner(request), at=datetime.now(UTC))
-    record_action(
-        audit_trail(request),
-        action=AuditAction.retention_apply,
-        actor=caller.subject,
-        target_type="retention",
-        target_id=str(run.started_at.date()),
-        at=run.started_at,
-        # Partition names and nothing else. A partition name is a table and a
-        # month, so the trail answers "was March dropped" without a row of content.
-        detail={
-            "dropped": [partition.name for partition in run.dropped],
-            "already_absent": [partition.name for partition in run.already_absent],
-        },
-        ip=client_ip(request),
+    policy = retention_policy(request)
+    runner = partition_runner(request)
+    run = execute_retention(
+        policy=policy,
+        partitions=lambda: known_partitions(request),
+        runner=runner,
+        sweeper=getattr(request.app.state, "retention_sweeper", None),
+        at=datetime.now(UTC),
     )
+    record_retention_run(audit_trail(request), run, actor=caller.subject, ip=client_ip(request))
     return _run_out(run)
 
 

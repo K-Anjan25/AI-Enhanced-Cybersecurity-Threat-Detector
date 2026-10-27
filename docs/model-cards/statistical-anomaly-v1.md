@@ -2,15 +2,15 @@
 
 ## Model Details
 
-| Field | Value |
-|-------|-------|
-| **Model ID** | statistical-anomaly-v1 |
-| **Kind** | flow |
-| **Framework** | Scikit-learn (IsolationForest) |
-| **Version** | 1.0.0 |
-| **Status** | active |
+| Field            | Value                               |
+| ---------------- | ----------------------------------- |
+| **Model ID**     | statistical-anomaly-v1              |
+| **Kind**         | flow                                |
+| **Framework**    | Scikit-learn (IsolationForest)      |
+| **Version**      | 1.0.0                               |
+| **Status**       | active                              |
 | **Artifact URI** | ml-service://statistical-anomaly-v1 |
-| **SHA256** | (recorded in model registry) |
+| **SHA256**       | (recorded in model registry)        |
 
 ## Intended Use
 
@@ -27,13 +27,13 @@
 
 ## Metrics (on test split)
 
-| Metric | Value | Source |
-|--------|-------|--------|
-| Precision | 0.92 | runs/flownet/eval@2.json |
-| Recall | 0.87 | runs/flownet/eval@2.json |
-| F1 | 0.89 | runs/flownet/eval@2.json |
-| ROC AUC | 0.95 | runs/flownet/eval@2.json |
-| PR AUC | 0.91 | runs/flownet/eval@2.json |
+| Metric    | Value | Source                   |
+| --------- | ----- | ------------------------ |
+| Precision | 0.92  | runs/flownet/eval@2.json |
+| Recall    | 0.87  | runs/flownet/eval@2.json |
+| F1        | 0.89  | runs/flownet/eval@2.json |
+| ROC AUC   | 0.95  | runs/flownet/eval@2.json |
+| PR AUC    | 0.91  | runs/flownet/eval@2.json |
 
 ## Limitations
 

@@ -136,15 +136,13 @@ def test_the_migration_chain_has_exactly_one_head() -> None:
     """``head`` has to mean what every reader assumes it means."""
     revisions: dict[str, str | None] = {}
     for path in sorted(VERSIONS.glob("*.py")):
-        revisions[str(_module_literal(path, "revision"))] = _module_literal(
-            path, "down_revision"
-        )  # type: ignore[assignment]
+        revisions[str(_module_literal(path, "revision"))] = _module_literal(path, "down_revision")  # type: ignore[assignment]
     heads = set(revisions) - {down for down in revisions.values() if down}
     assert len(heads) == 1, f"the chain has {len(heads)} heads: {sorted(heads)}"
     # The head is also named, because a chain that quietly lost its newest revision
     # would still have exactly one head -- and ``alembic upgrade head`` would stop one
     # migration short of the schema the models describe.
-    assert heads == {"0004_flow_events"}
+    assert heads == {"0006_erasure_set_null"}
     # And no revision may revise something that does not exist: a broken link is how a
     # chain turns into two heads without anybody editing a ``revision`` line.
     known = set(revisions)

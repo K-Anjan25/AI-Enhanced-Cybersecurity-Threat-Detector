@@ -47,15 +47,11 @@ def _percentile(sorted_values: list[float], q: float) -> float:
     """Nearest-rank percentile of an already-sorted list."""
     if not sorted_values:
         raise ValueError("cannot take a percentile of an empty list")
-    index = min(
-        len(sorted_values) - 1, max(0, int(round(q * (len(sorted_values) - 1))))
-    )
+    index = min(len(sorted_values) - 1, max(0, int(round(q * (len(sorted_values) - 1)))))
     return sorted_values[index]
 
 
-def _bench(
-    score_fn: object, batch: object, iterations: int, warmup: int
-) -> dict[str, float]:
+def _bench(score_fn: object, batch: object, iterations: int, warmup: int) -> dict[str, float]:
     """Time repeated scoring, discarding warmup."""
     for _ in range(warmup):
         score_fn(batch)
@@ -123,9 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     out = args.out if os.path.isabs(args.out) else os.path.join(ROOT, args.out)
-    artifact = export_flow_net(
-        model, out, window_size=FLOW_WINDOW_SIZE, input_dim=args.input_dim
-    )
+    artifact = export_flow_net(model, out, window_size=FLOW_WINDOW_SIZE, input_dim=args.input_dim)
     print(f"exported {artifact} ({artifact.stat().st_size:,} bytes)")
 
     torch_scorer = TorchScorer(model)
@@ -151,9 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     for _ in range(args.rounds):
         rounds.append(
             {
-                "torch": _bench(
-                    torch_scorer.score, batch, args.iterations, args.warmup
-                ),
+                "torch": _bench(torch_scorer.score, batch, args.iterations, args.warmup),
                 "onnx": _bench(onnx_scorer.score, batch, args.iterations, args.warmup),
             }
         )
@@ -218,9 +210,7 @@ def main(argv: list[str] | None = None) -> int:
 
     fallback_works = chosen == "onnx" and fallback == "torch"
 
-    report_path = (
-        args.report if os.path.isabs(args.report) else os.path.join(ROOT, args.report)
-    )
+    report_path = args.report if os.path.isabs(args.report) else os.path.join(ROOT, args.report)
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as handle:
         json.dump(

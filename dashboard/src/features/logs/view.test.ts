@@ -62,7 +62,6 @@ describe('buildLogView', () => {
     expect(view.state).toBe('error');
     // "The logs", not "the tail": a deployment may be reading a store, and the screen
     // must not name a source it has no answer from.
-    expect(view.retention).toBe('The logs could not be read.');
     expect(view.source).toBeNull();
   });
 
@@ -126,55 +125,6 @@ describe('buildLogView', () => {
     // Verbatim, in order: a screen that reworded "not a store" would eventually word
     // it wrong, and the claim is about the deployment rather than the data.
     expect(view.caveats).toEqual(caveats);
-  });
-
-  it('says how much the tail holds, and whether anything aged out', () => {
-    const view = buildLogView({
-      tail: tail({ retained_lines: 12_000, dropped_lines: 3, retained_to: '2026-10-06T10:04:59Z' }),
-      window: WINDOW,
-      failed: false,
-    });
-
-    expect(view.retention).toBe(
-      'Holding 12,000 lines · 3 aged out · newest 06 Oct 2026, 10:04:59Z.',
-    );
-  });
-
-  it('says nothing has aged out rather than leaving the number out', () => {
-    const view = buildLogView({ tail: tail({ dropped_lines: 0 }), window: WINDOW, failed: false });
-
-    expect(view.retention).toContain('nothing aged out yet');
-  });
-
-  it('omits the aged-out clause when the source cannot report evictions', () => {
-    // A store reports `null`, not `0`: nothing evicts yet, and "0 aged out" would be a
-    // claim about a retention job that does not exist (T-419).
-    const view = buildLogView({
-      tail: tail({ source: 'store', dropped_lines: null, retained_lines: 42 }),
-      window: WINDOW,
-      failed: false,
-    });
-
-    expect(view.retention).toBe('Holding 42 lines · newest 06 Oct 2026, 10:00:09Z.');
-    expect(view.retention).not.toContain('aged out');
-  });
-
-  it('names which read model answered', () => {
-    const fromStore = buildLogView({
-      tail: tail({ source: 'store', dropped_lines: null }),
-      window: WINDOW,
-      failed: false,
-    });
-    const fromTail = buildLogView({
-      tail: tail({ source: 'tail' }),
-      window: WINDOW,
-      failed: false,
-    });
-
-    expect(fromStore.source).toBe('store');
-    expect(fromStore.sourceLabel).toBe('Read from the log store.');
-    expect(fromTail.source).toBe('tail');
-    expect(fromTail.sourceLabel).toBe('Read from this process’s own tail.');
   });
 
   it('describes an empty window with the API’s own reason', () => {

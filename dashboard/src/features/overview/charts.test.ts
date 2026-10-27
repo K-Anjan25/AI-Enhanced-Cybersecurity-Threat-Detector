@@ -200,3 +200,13 @@ describe('the colours come from the token layer', () => {
     expect(css).toContain(`--duration-panel: ${String(CHART_ANIMATION_MS)}ms;`);
   });
 });
+
+describe('severityAreaConfig dash patterns (D-100)', () => {
+  it('gives every shown severity series a dash pattern that no other series shares', () => {
+    const config = severityAreaConfig(POINTS, COLOURS, { reducedMotion: false });
+    const datasets = config.data.datasets as { borderDash?: number[] }[];
+    expect(datasets.length).toBeGreaterThan(1);
+    const patterns = datasets.map((dataset) => JSON.stringify(dataset.borderDash ?? []));
+    expect(new Set(patterns).size).toBe(patterns.length);
+  });
+});

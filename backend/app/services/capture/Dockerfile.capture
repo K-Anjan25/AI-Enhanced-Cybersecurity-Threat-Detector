@@ -1,0 +1,45 @@
+# One capture image for every engine (Zeek, Suricata, tshark). It replaces the four
+# containers capture, zeek, suricata and tshark, which all ran with host networking
+# and NET_ADMIN and posted to the same API. Engines are selected at runtime with
+# AEGIS_CAPTURE_ENGINES (see capture_entrypoint.sh).
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl gnupg2 ca-certificates \
+        python3 python3-pip libpcap-dev dos2unix \
+        suricata suricata-update tshark && \
+    echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_22.04/ /' | \
+        tee /etc/apt/sources.list.d/security:zeek.list && \
+    curl -fsSL https://download.opensuse.org/repositories/security:zeek/xUbuntu_22.04/Release.key | \
+        gpg --dearmor | tee /etc/apt/trusted.gpg.d/security_zeek.gpg > /dev/null && \
+    apt-get update && \
+    apt-get install -y zeek && \
+    rm -rf /var/lib/apt/lists/*
+
+# Let the non-root wireshark group capture (tshark is opt-in; this keeps it usable).
+RUN echo 'wireshark-common wireshark-common/install-setuid boolean true' | debconf-set-selections && \
+    dpkg-reconfigure -f noninteractive wireshark-common 2>/dev/null || true
+
+# Suricata rules; a failure here only leaves the stock ruleset empty.
+RUN suricata-update 2>/dev/null || true
+
+ENV PATH="/opt/zeek/bin:${PATH}"
+
+WORKDIR /app
+# The spool directory exists in the image so a named volume mounted over it inherits
+# writable ownership. The engines run as root because packet capture needs raw sockets;
+# the privilege is granted explicitly by compose (cap_add: NET_ADMIN), not by --privileged.
+RUN mkdir -p /var/lib/aegis-spool
+
+COPY app/services/capture/bridges/zeek_bridge.py \
+     app/services/capture/bridges/suricata_bridge.py \
+     app/services/capture/bridges/tcpdump_bridge.py \
+     app/services/capture/bridges/shipper.py ./
+COPY app/services/capture/capture_entrypoint.sh .
+
+RUN dos2unix capture_entrypoint.sh && chmod +x capture_entrypoint.sh
+
+CMD ["./capture_entrypoint.sh"]

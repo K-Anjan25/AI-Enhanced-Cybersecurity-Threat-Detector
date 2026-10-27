@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import math
 import threading
-import time
 from collections import Counter
 from typing import Any
 
@@ -16,18 +15,37 @@ logger = logging.getLogger(__name__)
 __all__ = ["DriftMonitor"]
 
 FEATURE_BASELINES: dict[str, dict[str, float]] = {
+    # Measured, not typed: benign rows of CIC-IDS2017 Friday (DDoS) and Thursday (web
+    # attacks), 265,904 flows, Destination Port and Protocol. A bucket with no benign rows
+    # takes a 0.1% floor and the rest renormalise, so a port absent from the reference
+    # does not produce an unbounded PSI. This is 2017 lab traffic: a deployment must
+    # re-baseline from its own benign traffic before the PSI means anything there.
     "dst_port": {
-        "80": 0.25, "443": 0.35, "53": 0.15, "22": 0.05,
-        "3389": 0.02, "25": 0.03, "993": 0.03, "587": 0.02,
-        "other": 0.10,
+        "53": 0.4064,
+        "other": 0.2963,
+        "443": 0.1848,
+        "80": 0.1034,
+        "22": 0.0052,
+        "3389": 0.001,
+        "25": 0.001,
+        "993": 0.001,
+        "587": 0.001,
     },
-    "proto": {"tcp": 0.70, "udp": 0.25, "icmp": 0.05},
+    "proto": {"tcp": 0.5674, "udp": 0.4306, "icmp": 0.001, "other": 0.001},
 }
 
 
 def _bucket_port(port: int) -> str:
-    common = {80: "80", 443: "443", 53: "53", 22: "22", 3389: "3389",
-              25: "25", 993: "993", 587: "587"}
+    common = {
+        80: "80",
+        443: "443",
+        53: "53",
+        22: "22",
+        3389: "3389",
+        25: "25",
+        993: "993",
+        587: "587",
+    }
     return common.get(port, "other")
 
 
@@ -40,7 +58,9 @@ def _compute_distribution(flows: list[dict[str, Any]], feature: str) -> dict[str
         if feature == "dst_port":
             counter[_bucket_port(int(f.get("dst_port", 0)))] += 1
         elif feature == "proto":
-            counter[str(f.get("proto", "tcp"))] += 1
+            # flow@1 (what ingest stores) names it `protocol`; `proto` is the legacy name.
+            # Reading only `proto` counted every ingested flow as TCP.
+            counter[str(f.get("protocol", f.get("proto", "tcp")))] += 1
     return {k: v / total for k, v in counter.items()}
 
 
@@ -65,9 +85,13 @@ class DriftMonitor:
         interval: float = 60.0,
         ml_service_url: str | None = None,
     ) -> None:
+        """Configure the publish cadence; no thread starts until ``start()``."""
         self._interval = interval
         self._ml_url = ml_service_url
         self._running = False
+        # An event, not a bare sleep, so stop() wakes the loop immediately
+        # instead of holding shutdown for the whole join timeout.
+        self._wake = threading.Event()
         self._thread: threading.Thread | None = None
         self._flow_buffer: list[dict[str, Any]] = []
         self._lock = threading.Lock()
@@ -76,6 +100,7 @@ class DriftMonitor:
 
     @property
     def stats(self) -> dict[str, Any]:
+        """Current running state, last PSI values and cycle counters."""
         with self._lock:
             return {
                 "running": self._running,
@@ -86,31 +111,35 @@ class DriftMonitor:
             }
 
     def add_flows(self, flows: list[dict[str, Any]]) -> None:
+        """Buffer recent flows, keeping only the newest 5000."""
         with self._lock:
             self._flow_buffer.extend(flows)
             if len(self._flow_buffer) > 5000:
                 self._flow_buffer = self._flow_buffer[-5000:]
 
     def start(self) -> None:
+        """Start the daemon thread that publishes PSI on each interval."""
         if self._running:
             return
         self._running = True
-        self._thread = threading.Thread(
-            target=self._loop, daemon=True, name="drift-monitor"
-        )
+        self._thread = threading.Thread(target=self._loop, daemon=True, name="drift-monitor")
         self._thread.start()
         logger.info("drift_monitor_started interval=%s", self._interval)
 
     def stop(self) -> None:
+        """Stop the loop and wait briefly for the thread to exit."""
         self._running = False
+        self._wake.set()
         if self._thread:
             self._thread.join(timeout=5)
 
     def _loop(self) -> None:
-        time.sleep(3)
+        if self._wake.wait(3):
+            return
         self._compute_and_publish()
         while self._running:
-            time.sleep(self._interval)
+            if self._wake.wait(self._interval):
+                break
             self._compute_and_publish()
 
     def _compute_and_publish(self) -> None:

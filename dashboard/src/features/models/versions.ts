@@ -30,6 +30,17 @@
  */
 import type { BadgeTone } from '../../components/ui';
 import { formatStamp } from '../../lib/format';
+
+function formatDay(iso: string): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return 'unknown date';
+  return new Date(at).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
 import type { ModelMetrics, ModelVersion } from '../../api/models';
 
 /** The metric names FR-31 defines, in the order a reader expects them. */
@@ -106,9 +117,12 @@ function label(value: string): string {
   return first === '' ? value : first.toUpperCase() + value.slice(1);
 }
 
-/** The first 12 hex characters, the length a reviewer can compare at a glance. */
+/**
+ * A content address (a hex digest) is cut to its first 12 characters, the length a
+ * reviewer can compare at a glance. A readable model name is shown whole.
+ */
 export function shortId(modelId: string): string {
-  return modelId.length <= 12 ? modelId : modelId.slice(0, 12);
+  return /^[0-9a-f]{13,}$/i.test(modelId) ? modelId.slice(0, 12) : modelId;
 }
 
 /**
@@ -119,7 +133,7 @@ export function shortId(modelId: string): string {
  */
 export function promotionRefusal(version: ModelVersion): string | null {
   if (version.status === 'active') {
-    return 'This version is already serving. Promoting it again would change nothing.';
+    return 'Already serving.';
   }
   if (version.status === 'retired') {
     return 'Retired is terminal (R-68), so this version cannot serve again.';
@@ -152,7 +166,13 @@ export function versionRows(versions: readonly ModelVersion[]): VersionRow[] {
       statusTone: STATUS_TONES[version.status] ?? 'neutral',
       promotedBy: version.promoted_by ?? 'not recorded',
       promotedAt:
-        version.promoted_at === null ? 'never promoted' : formatStamp(version.promoted_at),
+        version.promoted_at !== null
+          ? formatStamp(version.promoted_at)
+          : // Serving without a promotion record means it was loaded at startup, which
+            // is not the same as never having been promoted.
+            version.status === 'active'
+            ? 'not recorded'
+            : 'never promoted',
       manifestLabel: version.manifest_present ? 'present' : 'missing',
       promotable: refusal === null,
       promotableReason: refusal,
@@ -221,13 +241,11 @@ export function metricPanel(
   if (metrics === null) {
     return {
       cards: [],
-      caption:
-        'No recorded evaluation is attached to this version, so FR-31 has no numbers to show. ' +
-        'A value without a run would be a claim, not a measurement (R-74).',
+      caption: 'No evaluation recorded.',
       absent: true,
     };
   }
-  const stamp = options.evaluatedAt ?? formatStamp;
+  const stamp = options.evaluatedAt ?? formatDay;
   const cards: MetricCard[] = [];
   for (const name of metricNames(metrics)) {
     const point = metrics.metrics[name];
@@ -242,7 +260,7 @@ export function metricPanel(
   }
   return {
     cards,
-    caption: `Measured on ${metrics.split}, evaluated ${stamp(metrics.evaluated_at)}.`,
+    caption: `${metrics.split} · ${stamp(metrics.evaluated_at)}`,
     absent: false,
   };
 }
@@ -358,7 +376,7 @@ export function transitionSentence(transition: {
   changed: boolean;
 }): string {
   if (!transition.changed) {
-    return `${shortId(transition.model_id)} was already serving, so nothing changed and the audit trail recorded nothing (FR-42).`;
+    return `${shortId(transition.model_id)} already serving. No change.`;
   }
   const retired =
     transition.retired === null

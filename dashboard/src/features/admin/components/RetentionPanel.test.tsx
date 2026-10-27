@@ -78,7 +78,7 @@ describe('RetentionPanel', () => {
     await user.click(await screen.findByRole('button', { name: 'Run retention' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/raw_records_2025_03/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/rows they hold are gone/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/will be dropped/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Drop the partitions' }));
 
     await waitFor(() => {
@@ -121,7 +121,7 @@ describe('RetentionPanel', () => {
     renderWithProviders(<RetentionPanel />);
     // The action bar renders with the card, so the assertion waits for the plan
     // itself rather than for the button.
-    expect(await screen.findByText(/would still be\s+recorded in the trail/)).toBeInTheDocument();
+    expect(await screen.findByText('Nothing to drop.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Run retention' })).toBeDisabled();
   });
 

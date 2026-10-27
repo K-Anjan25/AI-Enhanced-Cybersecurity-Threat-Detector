@@ -107,9 +107,7 @@ def main(argv: list[str]) -> int:
         print(f"wrote {written:6d} records -> {os.path.relpath(path, ROOT)}")
 
     print(f"total {total} records, seed={args.seed}")
-    print(
-        "reminder: data/ is gitignored; never commit generated or real telemetry (R-40)"
-    )
+    print("reminder: data/ is gitignored; never commit generated or real telemetry (R-40)")
     return 0
 
 

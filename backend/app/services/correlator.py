@@ -54,7 +54,7 @@ from __future__ import annotations
 import enum
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from app.db.models import AlertStatus, Severity
@@ -257,8 +257,15 @@ class FusedScoreLike(Protocol):
     root injects the rule and the backend image stays free of it.
     """
 
-    score: float
-    partial_evidence: bool
+    @property
+    def score(self) -> float:
+        """Fused score in [0, 1]."""
+        ...
+
+    @property
+    def partial_evidence(self) -> bool:
+        """True when a modality was missing."""
+        ...
 
 
 class FusionRule(Protocol):
@@ -609,6 +616,9 @@ class Correlator:
             # Created, not absorbed: FR-15's repeat increments a count, and
             # "alerts created" must not be read as "detections seen".
             metrics.observe_alert_created(outcome.case.severity.value)
+            metrics.observe_detection_to_alert(
+                max(0.0, (datetime.now(UTC) - detection.at).total_seconds())
+            )
         return outcome
 
     def _correlate(self, detection: Detection) -> Outcome:

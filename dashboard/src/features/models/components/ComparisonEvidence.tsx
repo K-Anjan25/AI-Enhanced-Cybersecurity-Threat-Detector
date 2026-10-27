@@ -35,28 +35,19 @@ export function ComparisonEvidence({
     >
       <h3 className="text-body font-semibold text-ink">{title}</h3>
       {modelId === null ? (
-        <EmptyState
-          title="Choose a model version"
-          description="No evaluation artifact was requested."
-        />
+        <EmptyState title="Choose a model version" />
       ) : loading ? (
         <Skeleton lines={4} label={`${title} evaluation evidence is loading`} />
       ) : error !== null ? (
         error instanceof ApiError && error.status === 404 ? (
-          <EmptyState
-            title="No recorded evaluation for this version"
-            description="The registry has no evaluation run attached to this model version, so its confusion matrix is unavailable."
-          />
+          <EmptyState title="No evaluation recorded" />
         ) : (
-          <ErrorState
-            message="Recorded evaluation evidence could not be read"
-            detail="No confusion matrix is shown until its source run can be read."
-          />
+          <ErrorState message="Recorded evaluation evidence could not be read" />
         )
       ) : evaluation === null ? (
         <EmptyState
           title="Confusion matrix unavailable"
-          description="This recorded run has no eval@2 confusion matrix. Existing scalar metrics are shown separately; no matrix values are inferred."
+          description="No confusion matrix recorded."
         />
       ) : (
         <ConfusionView evaluation={evaluation} />
@@ -71,7 +62,7 @@ function ConfusionView({ evaluation }: { evaluation: EvaluationDetails }) {
   return (
     <div className="min-w-0">
       <h4 className="text-body-sm font-semibold text-ink">Confusion matrix</h4>
-      <p className="mt-1 text-caption text-muted">
+      <p className="mt-1 text-body-sm font-semibold text-muted">
         Threshold {matrix.threshold.toFixed(2)} · {matrix.artifact} · field{' '}
         <code className="font-mono">{matrix.field}</code>
       </p>
@@ -81,7 +72,7 @@ function ConfusionView({ evaluation }: { evaluation: EvaluationDetails }) {
           {matrix.field}
         </caption>
         <thead>
-          <tr className="border-b border-line text-left text-caption text-muted">
+          <tr className="border-b border-line text-left text-body-sm font-semibold text-muted">
             <th scope="col" className="px-2 py-2 font-medium">
               Actual
             </th>

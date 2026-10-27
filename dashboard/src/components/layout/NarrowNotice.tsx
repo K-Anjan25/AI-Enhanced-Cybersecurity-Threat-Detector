@@ -37,7 +37,7 @@ export function NarrowNotice({ showQueueLink = false }: NarrowNoticeProps) {
       role="status"
       aria-live="polite"
       // Named, so the region is identifiable when a screen reader lists the page's
-      // live regions: the shell already has two more (`ConnectionStatus` in the top bar
+      // live regions: the shell already has two more (the top bar
       // and the empty states below), and three unnamed status regions are
       // indistinguishable in a rotor menu.
       aria-label="Screen size"

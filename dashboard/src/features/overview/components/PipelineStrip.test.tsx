@@ -111,14 +111,6 @@ describe('PipelineStrip', () => {
     expect(screen.getByText(/postgres ok/)).toBeInTheDocument();
   });
 
-  it('explains why a quiet alert list is not the same as a calm estate', () => {
-    render(<PipelineStrip stages={readPipeline(current, previous)} hasRates />);
-
-    expect(
-      screen.getByText(/means AEGIS is degraded, not that the estate is calm/),
-    ).toBeInTheDocument();
-  });
-
   it('has no serious accessibility violations', async () => {
     const { container } = render(
       <PipelineStrip stages={readPipeline(current, previous)} hasRates probes={[]} />,

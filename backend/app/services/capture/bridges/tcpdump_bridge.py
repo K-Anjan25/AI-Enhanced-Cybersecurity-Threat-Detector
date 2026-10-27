@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-tshark / tcpdump → AEGIS Flow Ingestion Bridge
+"""tshark / tcpdump → AEGIS Flow Ingestion Bridge.
 
 UNIQUE ROLE (production):
   tshark (Wireshark CLI) is the protocol dissection layer. It provides the
@@ -45,27 +44,39 @@ Environment:
   AEGIS_API_URL   - Backend URL (default: http://localhost:8000)
   AEGIS_API_TOKEN - Bearer token (auto-obtained if not set)
 """
-import os
-import sys
-import re
-import json
-import time
+
 import argparse
-import urllib.request
+import json
+import os
+import re
+import sys
+import time
 import urllib.error
+import urllib.request
 from datetime import datetime, timezone
-from collections import defaultdict
+from typing import Any
 
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")
 EMAIL = os.environ.get("AEGIS_EMAIL", "admin@aegis.local")
-PASSWORD = os.environ.get("AEGIS_PASSWORD", "admin123456789")
-BATCH_SIZE = 100
-FLUSH_INTERVAL = 5
+PASSWORD = os.environ.get("AEGIS_PASSWORD", "")
+DEV_DEFAULT_PASSWORD = (
+    "admin123456789"  # noqa: S105  # nosec B105 - the development default, refused at startup
+)
+BATCH_SIZE = 1000  # the ingest API cap
+FLUSH_INTERVAL = 1  # seconds: the longest a captured record waits before it is sent
 
 
-def authenticate():
+def authenticate(force: bool = False) -> bool:
+    """Obtain a bearer token by logging in (or bootstrapping the admin account).
+
+    ``force`` discards the cached token first. A 401 means that token has expired
+    (access tokens last 900 s), so the retry must log in again; returning early on
+    the stale token is what left the bridge posting 401s until it was restarted.
+    """
     global TOKEN
+    if force:
+        TOKEN = ""  # nosec B105 - clears the cached token; this is not a credential
     if TOKEN:
         return True
     for endpoint, body in [
@@ -74,61 +85,179 @@ def authenticate():
     ]:
         try:
             data = json.dumps(body).encode()
-            req = urllib.request.Request(
-                f"{API_URL}{endpoint}", data=data,
-                headers={"Content-Type": "application/json"}, method="POST"
+            req = urllib.request.Request(  # noqa: S310 - API_URL is operator-configured
+                f"{API_URL}{endpoint}",
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310  # nosec B310
                 result = json.loads(resp.read())
                 TOKEN = result["access_token"]
                 print(f"[AUTH] ✓ {result['subject']}", file=sys.stderr)
                 return True
-        except Exception:
+        except (urllib.error.URLError, OSError, ValueError, KeyError):
             continue
     print("[AUTH] ✗ Failed", file=sys.stderr)
     return False
 
 
-def send_batch(records, modality="flows"):
-    """Send records to the appropriate ingest endpoint."""
-    if not records or not TOKEN:
-        return 0
-    endpoint = f"/api/v1/ingest/{modality}"
-    ndjson = "\n".join(json.dumps(r) for r in records)
-    req = urllib.request.Request(
-        f"{API_URL}{endpoint}",
-        data=ndjson.encode(),
-        headers={
-            "Content-Type": "application/x-ndjson",
-            "Authorization": f"Bearer {TOKEN}",
-        },
-        method="POST"
-    )
+# ── flow@1 contract ─────────────────────────────────────────────────────────────
+#
+# The ingest endpoint accepts only flow@1 and rejects any field outside it. This file is
+# copied into its container on its own, so the mapping lives here.
+
+_FLOW_V1_FIELDS = (
+    "timestamp",
+    "src_ip",
+    "dst_ip",
+    "src_port",
+    "dst_port",
+    "protocol",
+    "direction",
+    "service",
+    "state",
+    "packets",
+    "src_packets",
+    "dst_packets",
+    "src_bytes",
+    "dst_bytes",
+    "duration",
+    "syn",
+    "ack",
+    "rst",
+    "fin",
+    "psh",
+    "urg",
+    "label",
+)
+_FLOW_V1_PROTOCOLS = {
+    "tcp": "tcp",
+    "udp": "udp",
+    "icmp": "icmp",
+    "6": "tcp",
+    "17": "udp",
+    "1": "icmp",
+}
+_FLOW_V1_COUNTS = (
+    "src_port",
+    "dst_port",
+    "packets",
+    "src_packets",
+    "dst_packets",
+    "src_bytes",
+    "dst_bytes",
+    "syn",
+    "ack",
+    "rst",
+    "fin",
+    "psh",
+    "urg",
+)
+
+
+def _ipv4(ip: object) -> bool:
+    import ipaddress
+
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            body = json.loads(resp.read())
-            return body.get("accepted", 0)
-    except urllib.error.HTTPError as e:
-        if e.code == 401:
-            authenticate()
+        return isinstance(ipaddress.ip_address(str(ip)), ipaddress.IPv4Address)
+    except ValueError:
+        return False
+
+
+def _direction(src_ip: str, dst_ip: str) -> str:
+    import ipaddress
+
+    def internal(ip: str) -> bool:
+        a = ipaddress.ip_address(ip)
+        return a.is_private or a.is_loopback or a.is_link_local
+
+    src_in, dst_in = internal(src_ip), internal(dst_ip)
+    if src_in and dst_in:
+        return "internal"
+    return "outbound" if src_in else "inbound"
+
+
+def to_flow_v1(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Map a bridge flow record to flow@1, or None when it cannot be one.
+
+    Records with a protocol outside tcp/udp/icmp or a non-IPv4 address are dropped, not
+    rewritten: a rewritten value would be a claim the sensor did not observe.
+    """
+    proto = _FLOW_V1_PROTOCOLS.get(str(record.get("protocol", "")).lower())
+    src_ip, dst_ip = str(record.get("src_ip", "")), str(record.get("dst_ip", ""))
+    if proto is None or not (_ipv4(src_ip) and _ipv4(dst_ip)):
+        return None
+    out: dict[str, Any] = {k: record[k] for k in _FLOW_V1_FIELDS if record.get(k) is not None}
+    for key in _FLOW_V1_COUNTS:
+        out[key] = int(out.get(key) or 0)
+    out.update(
+        schema_version="flow@1",
+        protocol=proto,
+        direction=_direction(src_ip, dst_ip),
+        duration=max(0.0, float(record.get("duration") or 0.0)),
+    )
+    out.setdefault("packets", out["src_packets"] + out["dst_packets"])
+    return out
+
+
+_SHIPPER: Any = None
+# Store-and-forward for records that cannot be delivered (see shipper.py). Capped so a
+# long backend outage cannot fill the host disk.
+SPOOL_DIR = os.environ.get("AEGIS_SPOOL_DIR", "/tmp/aegis-spool")  # noqa: S108  # nosec B108
+SPOOL_MAX_MB = int(os.environ.get("AEGIS_SPOOL_MAX_MB", "64"))
+
+
+def _ship() -> Any:
+    """Build the shared shipper on first use. Policy is documented in shipper.py."""
+    global _SHIPPER
+    if _SHIPPER is None:
+        from pathlib import Path
+
+        # shipper.py sits beside this script in the container and in the repository.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import shipper as shipper_module
+
+        _SHIPPER = shipper_module.Shipper(
+            API_URL,
+            token=lambda: TOKEN,
+            reauthenticate=lambda: authenticate(force=True),
+            spool=shipper_module.Spool(Path(SPOOL_DIR), SPOOL_MAX_MB * 1024 * 1024),
+        )
+    return _SHIPPER
+
+
+def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
+    """Deliver records through the shared shipper and return how many the API accepted.
+
+    Batching, retries and the disk spool live in shipper.py. A 401 re-logs in once and
+    retries the batch, so a token that expired between two batches loses nothing.
+    """
+    if modality == "flows":
+        records = [c for c in (to_flow_v1(r) for r in records) if c is not None]
+    if not records:
         return 0
-    except Exception as e:
-        print(f"[SEND] Error: {e}", file=sys.stderr)
-        return 0
+    return int(_ship().send(records, modality))
+
+
+def _split_addr(token: str) -> tuple[str, int]:
+    """Split tcpdump's "a.b.c.d.port" into ("a.b.c.d", port). No port -> (token, 0)."""
+    host, sep, port = token.rpartition(".")
+    if sep and port.isdigit() and host.count(".") == 3:
+        return host, int(port)
+    return token, 0
 
 
 # ── tcpdump format ──────────────────────────────────────────────
 
-TCPDUMP_RE = re.compile(
-    r"(\d+\.\d+)\s+IP\s+(\S+)\s+>\s+(\S+):\s+(.*)"
-)
+TCPDUMP_RE = re.compile(r"(\d+\.\d+)\s+IP\s+(\S+)\s+>\s+(\S+):\s+(.*)")
 
 TCPDUMP_DNS_RE = re.compile(
     r"(\d+\.\d+)\s+IP\s+(\S+)\.(\d+)\s+>\s+(\S+)\.53:\s+(\d+)\+ (A|AAAA|PTR|MX|TXT)\??\s+(\S+)"
 )
 
 
-def parse_tcpdump_line(line):
+def parse_tcpdump_line(line: str) -> dict[str, Any] | None:
     """Parse tcpdump -n -tt output into a basic flow record."""
     # DNS query pattern
     m = TCPDUMP_DNS_RE.match(line)
@@ -154,35 +283,34 @@ def parse_tcpdump_line(line):
     # Generic IP pattern
     m = TCPDUMP_RE.match(line)
     if m:
-        ts, src_dst, flags_rest = m.groups()[0], m.groups()[1], m.groups()[2:]
+        ts = m.group(1)
         # Basic: just record src > dst
-        parts = line.split()
-        if len(parts) >= 4:
-            src = parts[2].rstrip(":").rstrip(">")
-            dst = parts[3].rstrip(":")
-            return {
-                "type": "flow",
-                "record": {
-                    "src_ip": src.split(".")[0] if "." in src else src,
-                    "dst_ip": dst.split(".")[0] if "." in dst else dst,
-                    "src_port": 0,
-                    "dst_port": 0,
-                    "protocol": "tcp",
-                    "src_bytes": 0,
-                    "dst_bytes": 0,
-                    "packets": 1,
-                    "duration": 0,
-                    "timestamp": datetime.fromtimestamp(float(m.group(1)), tz=timezone.utc).isoformat(),
-                    "label": None,
-                },
-            }
+        # Groups: 1 = timestamp, 2 = "src.port", 3 = "dst.port" (the regex drops the ">").
+        src, dst = m.group(2).rstrip(":"), m.group(3).rstrip(":")
+        return {
+            "type": "flow",
+            "record": {
+                "src_ip": _split_addr(src)[0],
+                "dst_ip": _split_addr(dst)[0],
+                "src_port": _split_addr(src)[1],
+                "dst_port": _split_addr(dst)[1],
+                "protocol": "tcp",
+                "src_bytes": 0,
+                "dst_bytes": 0,
+                "packets": 1,
+                "duration": 0,
+                "timestamp": datetime.fromtimestamp(float(m.group(1)), tz=timezone.utc).isoformat(),
+                "label": None,
+            },
+        }
 
     return None
 
 
 # ── tshark fields format ────────────────────────────────────────
 
-def parse_tshark_line(line):
+
+def parse_tshark_line(line: str) -> dict[str, Any] | None:
     """Parse tshark -T fields output.
 
     Default fields: frame.time_epoch, ip.src, ip.dst, tcp.srcport,
@@ -209,7 +337,11 @@ def parse_tshark_line(line):
         fin = int(parts[10]) if len(parts) > 10 and parts[10] else 0
         psh = int(parts[11]) if len(parts) > 11 and parts[11] else 0
 
-        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat() if ts else datetime.now(timezone.utc).isoformat()
+        timestamp = (
+            datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+            if ts
+            else datetime.now(timezone.utc).isoformat()
+        )
 
         return {
             "type": "flow",
@@ -236,7 +368,7 @@ def parse_tshark_line(line):
         return None
 
 
-def parse_tshark_dns_line(line):
+def parse_tshark_dns_line(line: str) -> dict[str, Any] | None:
     """Parse tshark DNS query fields output.
 
     Fields: frame.time_epoch, ip.src, ip.dst, dns.qry.name, dns.qry.type
@@ -252,7 +384,11 @@ def parse_tshark_dns_line(line):
         qname = parts[3]
         qtype = parts[4] if parts[4] else "A"
 
-        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat() if ts else datetime.now(timezone.utc).isoformat()
+        timestamp = (
+            datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+            if ts
+            else datetime.now(timezone.utc).isoformat()
+        )
 
         return {
             "type": "log",
@@ -274,12 +410,19 @@ def parse_tshark_dns_line(line):
         return None
 
 
-def main():
+def main() -> None:
+    """Parse arguments, authenticate, and stream tcpdump/tshark output to AEGIS."""
     global API_URL, EMAIL, PASSWORD
 
-    parser = argparse.ArgumentParser(description="tshark/tcpdump → AEGIS bridge")
-    parser.add_argument("--format", choices=["tcpdump", "tshark", "tshark-dns"],
-                        default="tcpdump", help="Input format")
+    parser = argparse.ArgumentParser(
+        description="tshark/tcpdump → AEGIS bridge", allow_abbrev=False
+    )
+    parser.add_argument(
+        "--format",
+        choices=["tcpdump", "tshark", "tshark-dns"],
+        default="tcpdump",
+        help="Input format",
+    )
     parser.add_argument("--api", help="AEGIS API URL", default=API_URL)
     parser.add_argument("--email", help="Login email", default=EMAIL)
     parser.add_argument("--password", help="Login password", default=PASSWORD)
@@ -289,6 +432,14 @@ def main():
     API_URL = args.api
     EMAIL = args.email
     PASSWORD = args.password
+
+    if not PASSWORD or PASSWORD == DEV_DEFAULT_PASSWORD:
+        print(
+            "refusing to start: set AEGIS_PASSWORD (AEGIS_BOOTSTRAP_ADMIN_PASSWORD in "
+            "docker/.env) to a value other than the development default",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     if not authenticate():
         sys.exit(1)
@@ -303,8 +454,8 @@ def main():
     else:
         parse_fn = parse_tcpdump_line
 
-    flow_batch = []
-    log_batch = []
+    flow_batch: list[dict[str, Any]] = []
+    log_batch: list[dict[str, Any]] = []
     last_flush = time.time()
     total_flows = 0
     total_logs = 0

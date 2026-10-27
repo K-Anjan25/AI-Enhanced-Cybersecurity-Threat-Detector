@@ -4,15 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { emptyTally } from './aggregate';
-import { CHART_REFRESH_MS } from './hooks';
-import {
-  bucketLabel,
-  connectionState,
-  kpiTiles,
-  panelState,
-  STALE_AFTER_MS,
-  staleness,
-} from './view';
+import { bucketLabel, kpiTiles, panelState } from './view';
 
 describe('panelState', () => {
   it('is loading until the query resolves', () => {
@@ -26,58 +18,6 @@ describe('panelState', () => {
   it('calls a window with no rows empty, which is an answer', () => {
     expect(panelState('success', 0)).toBe('empty');
     expect(panelState('success', 3)).toBe('ready');
-  });
-});
-
-describe('staleness', () => {
-  it('is not stale before the threshold', () => {
-    const age = staleness(1_000, 1_000 + STALE_AFTER_MS - 1);
-
-    expect(age.stale).toBe(false);
-    expect(age.label).toBe('last update 29 s ago');
-  });
-
-  it('is stale past the threshold, which is two missed chart polls', () => {
-    const age = staleness(0, STALE_AFTER_MS + 1);
-
-    expect(age.stale).toBe(true);
-    expect(age.ageSeconds).toBeGreaterThan(30);
-  });
-
-  it('says there is no data rather than reporting a zero age', () => {
-    // "0 s ago" for a screen that has never loaded is the lie §8.1 is about.
-    const age = staleness(null, 5_000);
-
-    expect(age.ageSeconds).toBeNull();
-    expect(age.label).toBe('no data yet');
-    expect(age.stale).toBe(false);
-  });
-
-  it('thresholds at two refreshes', () => {
-    expect(STALE_AFTER_MS).toBe(2 * CHART_REFRESH_MS);
-  });
-});
-
-describe('connectionState', () => {
-  it('is live when the alerts and metrics both answered recently', () => {
-    expect(connectionState({ alertsFailed: false, metricsFailed: false, stale: false })).toBe(
-      'live',
-    );
-  });
-
-  it('is disconnected when a request failed — the console stopped hearing from the server', () => {
-    expect(connectionState({ alertsFailed: true, metricsFailed: false, stale: false })).toBe(
-      'disconnected',
-    );
-    expect(connectionState({ alertsFailed: false, metricsFailed: true, stale: false })).toBe(
-      'disconnected',
-    );
-  });
-
-  it('is degraded when the last answer was real but old', () => {
-    expect(connectionState({ alertsFailed: false, metricsFailed: false, stale: true })).toBe(
-      'degraded',
-    );
   });
 });
 
@@ -110,8 +50,7 @@ describe('kpiTiles', () => {
     const verdict = tiles.at(-1);
 
     expect(verdict?.value).toBeNull();
-    expect(verdict?.caption).toContain('no verdict recorded in this window');
-    expect(verdict?.caption).toContain('≤ 60 s');
+    expect(verdict?.caption).toBe('No verdicts recorded in this window · target ≤ 60 s');
   });
 
   it('shows the mean with the number of verdicts it covers', () => {

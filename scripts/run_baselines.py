@@ -48,7 +48,13 @@ from aegis_ml.data.preprocess import (  # noqa: E402
     Vocabulary,
 )
 from aegis_ml.data.records import FlowRecord  # noqa: E402
-from aegis_ml.data.splits import Split, group_split, split_windows  # noqa: E402
+from aegis_ml.data.splits import (  # noqa: E402
+    Split,
+    group_split,
+    leave_one_entity_out,
+    split_windows,
+    window_families,
+)
 from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
 from aegis_ml.training.baselines import (  # noqa: E402
     DEFAULT_LR_EPOCHS,
@@ -56,8 +62,10 @@ from aegis_ml.training.baselines import (  # noqa: E402
     GradientBoostedStumps,
     LogisticRegression,
     design_matrix,
+    encode_row,
 )
 from aegis_ml.training.evaluation import EvalReport, evaluate  # noqa: E402
+from aegis_ml.training.loao_eval import loao_report, window_scores  # noqa: E402
 
 PARSERS = {
     "cic-ids2017": parse_cic_ids2017,
@@ -83,9 +91,44 @@ def _sha256(path: str) -> str:
     return digest.hexdigest()
 
 
-def _features(
-    windows: Sequence[Window[FlowRecord]], key: WindowKey
-) -> list[FlowFeatures]:
+def _encode_windows(
+    windows: Sequence[Window[FlowRecord]], key: WindowKey, preprocessor: Preprocessor
+) -> list[list[list[float]]]:
+    """Encode every flow of every window: one list of design rows per window."""
+    return [
+        [encode_row(row, preprocessor) for row in extract_flow_window(window.records, key=key)]
+        for window in windows
+    ]
+
+
+def _window_report(
+    model: LogisticRegression | GradientBoostedStumps,
+    encoded_test: list[list[list[float]]],
+    test_labels: list[bool],
+    encoded_valid: list[list[list[float]]],
+    valid_labels: list[bool],
+) -> dict[str, object] | None:
+    """The window-level report, or ``None`` when the fold cannot support one."""
+    try:
+        return _loao_for(model, encoded_test, test_labels, encoded_valid, valid_labels)
+    except ValueError:
+        return None
+
+
+def _loao_for(
+    model: LogisticRegression | GradientBoostedStumps,
+    encoded_test: list[list[list[float]]],
+    test_labels: list[bool],
+    encoded_valid: list[list[list[float]]],
+    valid_labels: list[bool],
+) -> dict[str, object]:
+    """Score a model per window and report on the held-out attacker."""
+    test_scores = window_scores([[model.score(r) for r in win] for win in encoded_test])
+    valid_scores = window_scores([[model.score(r) for r in win] for win in encoded_valid])
+    return loao_report(test_scores, test_labels, valid_scores, valid_labels)
+
+
+def _features(windows: Sequence[Window[FlowRecord]], key: WindowKey) -> list[FlowFeatures]:
     """Extract ``features@1`` rows for every flow in every window.
 
     ``extract_flow_window`` yields one row per flow — per-flow measurements
@@ -148,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--key", choices=["source", "destination"], default="source")
     parser.add_argument(
         "--split-policy",
-        choices=["entity-disjoint", "temporal-only", "entity-only"],
+        choices=["entity-disjoint", "temporal-only", "entity-only", "leave-one-attacker-out"],
         default="entity-disjoint",
         help=(
             "entity-disjoint (default) enforces R-61 and is the only policy a "
@@ -163,14 +206,20 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
-        "--limit", type=int, default=0, help="Parse only the first N rows."
+        "--holdout-entity",
+        default=None,
+        help="Attacker source IP to hold out, for --split-policy leave-one-attacker-out.",
     )
+    parser.add_argument("--limit", type=int, default=0, help="Parse only the first N rows.")
     parser.add_argument("--epochs", type=int, default=DEFAULT_LR_EPOCHS)
     parser.add_argument(
         "--max-train-rows",
         type=int,
-        default=15000,
-        help="Deterministically thin the training rows to this many.",
+        default=0,
+        help=(
+            "Deterministically thin the training rows to this many. 0 (default) fits on "
+            "every training row, so the baselines are not handicapped by a compute cap."
+        ),
     )
     parser.add_argument("--stumps", type=int, default=DEFAULT_STUMP_COUNT)
     parser.add_argument("--out", default="data/runs/baselines.json")
@@ -226,19 +275,27 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  {len(windows):,} windows keyed by {key.value}")
 
     entity_only = args.split_policy == "entity-only"
+    loao = args.split_policy == "leave-one-attacker-out"
     entity_disjoint = args.split_policy != "temporal-only"
-    split: Split[FlowRecord] = (
-        group_split(windows)
-        if entity_only
-        else split_windows(windows, entity_disjoint=entity_disjoint)
-    )
+    if loao:
+        if key != WindowKey.SOURCE:
+            print("leave-one-attacker-out holds out a source: use --key source", file=sys.stderr)
+            return 1
+        if not args.holdout_entity:
+            print("leave-one-attacker-out needs --holdout-entity", file=sys.stderr)
+            return 1
+        split: Split[FlowRecord] = leave_one_entity_out(windows, holdout=args.holdout_entity)
+    elif entity_only:
+        split = group_split(windows)
+    else:
+        split = split_windows(windows, entity_disjoint=entity_disjoint)
     audit = split.audit()
     print(f"  split policy: {args.split_policy}")
     print(f"  split: {audit}")
 
     # R-60 is unconditional for every policy that claims it. entity-only drops it
     # by design and says so, rather than being allowed to fail it silently.
-    if not entity_only and not audit["test_after_train"]:
+    if not (entity_only or loao) and not audit["test_after_train"]:
         print(
             "refusing to train: the split violates the temporal invariant (R-60)",
             file=sys.stderr,
@@ -251,6 +308,12 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+    if loao:
+        print(
+            f"  leave-one-attacker-out: held out {args.holdout_entity}. R-61 holds exactly; "
+            "R-60 is dropped. Measures detection of an unseen attacker, not temporal drift.",
+            file=sys.stderr,
+        )
     if entity_only:
         print(
             "  entity-only split: R-61 holds exactly (0 shared entities by "
@@ -274,9 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     train = _features(split.train, key)
     valid = _features(split.valid, key)
     test = _features(split.test, key)
-    print(
-        f"  feature rows: train={len(train):,} valid={len(valid):,} test={len(test):,}"
-    )
+    print(f"  feature rows: train={len(train):,} valid={len(valid):,} test={len(test):,}")
     if not train or not test:
         print("refusing to train: a fold produced no feature rows", file=sys.stderr)
         return 1
@@ -286,12 +347,16 @@ def main(argv: list[str] | None = None) -> int:
     # using all of them costs nothing and is strictly better.
     preprocessor = _fit_preprocessor(train)
     all_train_rows, all_train_targets = design_matrix(train, preprocessor)
-    test_rows, test_targets = design_matrix(test, preprocessor)
+    loao = args.split_policy == "leave-one-attacker-out"
+    # Under leave-one-attacker-out the test fold is scored per window with the
+    # any-attack rule (loao_eval), so row-level test labels are not used there.
+    test_rows, test_targets = ([], []) if loao else design_matrix(test, preprocessor)
 
     # A fold holding only one class cannot produce a ranking metric, and the
     # failure is a property of the data rather than of the model. Report it as
     # such instead of letting it surface as a crash from inside the harness.
-    for fold, targets in (("train", all_train_targets), ("test", test_targets)):
+    folds = [("train", all_train_targets)] + ([] if loao else [("test", test_targets)])
+    for fold, targets in folds:
         positives = sum(targets)
         if positives in (0, len(targets)):
             print(
@@ -302,34 +367,74 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-    train_rows, train_targets = _subsample(
-        all_train_rows, all_train_targets, args.max_train_rows
-    )
+    train_rows, train_targets = _subsample(all_train_rows, all_train_targets, args.max_train_rows)
     print(
         f"  design matrix: {len(train_rows[0])} columns; "
         f"fitting on {len(train_rows):,} of {len(all_train_rows):,} train rows"
     )
 
     results: dict[str, object] = {}
+    loao_results: dict[str, object] = {}
+    # Window-level scoring runs for every policy, so the baselines are compared
+    # with FlowNet on the same windows. Row-level results stay for non-LOAO runs.
+    window_results: dict[str, object] = {}
+    encoded_test = _encode_windows(split.test, key, preprocessor)
+    encoded_valid = _encode_windows(split.valid, key, preprocessor)
+    test_window_labels = [bool(window_families(w)) for w in split.test]
+    valid_window_labels = [bool(window_families(w)) for w in split.valid]
+
     print(f"fitting logistic regression ({args.epochs} epochs)")
     logistic = LogisticRegression.fit(train_rows, train_targets, epochs=args.epochs)
-    results["logistic_regression"] = _metrics(
-        evaluate(
-            [logistic.score(r) for r in test_rows],
-            [bool(t) for t in test_targets],
-            model_id="baseline-logreg",
+    if loao:
+        try:
+            loao_results["logistic_regression"] = _loao_for(
+                logistic, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+            )
+        except ValueError as exc:
+            print(f"refusing to report: {exc}", file=sys.stderr)
+            return 1
+    else:
+        results["logistic_regression"] = _metrics(
+            evaluate(
+                [logistic.score(r) for r in test_rows],
+                [bool(t) for t in test_targets],
+                model_id="baseline-logreg",
+            )
         )
-    )
+        window = _window_report(
+            logistic, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+        )
+        if window is not None:
+            window_results["logistic_regression"] = window
 
     print(f"fitting gradient boosting ({args.stumps} stumps)")
     boosted = GradientBoostedStumps.fit(train_rows, train_targets, n_stumps=args.stumps)
-    results["gradient_boosting"] = _metrics(
-        evaluate(
-            [boosted.score(r) for r in test_rows],
-            [bool(t) for t in test_targets],
-            model_id="baseline-gbdt",
+    if loao:
+        try:
+            loao_results["gradient_boosting"] = _loao_for(
+                boosted, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+            )
+        except ValueError as exc:
+            print(f"refusing to report: {exc}", file=sys.stderr)
+            return 1
+    else:
+        results["gradient_boosting"] = _metrics(
+            evaluate(
+                [boosted.score(r) for r in test_rows],
+                [bool(t) for t in test_targets],
+                model_id="baseline-gbdt",
+            )
         )
-    )
+        window = _window_report(
+            boosted, encoded_test, test_window_labels, encoded_valid, valid_window_labels
+        )
+        if window is not None:
+            window_results["gradient_boosting"] = window
+
+    if loao:
+        test_positive_rate = sum(test_window_labels) / len(test_window_labels)
+    else:
+        test_positive_rate = sum(test_targets) / len(test_targets)
 
     log = {
         "dataset": args.dataset,
@@ -337,6 +442,8 @@ def main(argv: list[str] | None = None) -> int:
         "source_sha256": source_sha,
         "window_key": key.value,
         "split_policy": args.split_policy,
+        "holdout_entity": args.holdout_entity,
+        "max_train_rows": args.max_train_rows,
         "split_audit": audit,
         "rows_read": sum(r.rows_read for r in reports) if reports else len(records),
         "rows_parsed": len(records),
@@ -353,8 +460,13 @@ def main(argv: list[str] | None = None) -> int:
         },
         "train_rows_fitted": len(train_rows),
         "positive_rate_train": sum(train_targets) / len(train_targets),
-        "positive_rate_test": sum(test_targets) / len(test_targets),
+        "positive_rate_test": test_positive_rate,
         "models": results,
+        "loao": loao_results,
+        "window_eval": window_results,
+        "loao_scoring": (
+            "window-level, any-attack labels, max flow score per window" if loao else None
+        ),
         "elapsed_seconds": round(time.time() - started, 2),
     }
 
@@ -368,6 +480,19 @@ def main(argv: list[str] | None = None) -> int:
         f"(train {log['positive_rate_train']:.4f})"
     )
 
+    for name, payload in {**loao_results, **window_results}.items():
+        loao_entry = cast("dict[str, float]", payload)
+        print(
+            f"  {name:<22} roc_auc={float(loao_entry['roc_auc']):.4f} "
+            f"pr_auc={float(loao_entry['pr_auc']):.4f} (window level, "
+            f"{args.holdout_entity or args.split_policy})"
+        )
+        print(
+            f"    threshold {float(loao_entry['threshold']):.6f} set on validation benign "
+            f"(FPR<={float(loao_entry['max_benign_fpr']):.3f}): "
+            f"precision={float(loao_entry['precision']):.4f} "
+            f"recall={float(loao_entry['recall']):.4f} fpr={float(loao_entry['fpr']):.4f}"
+        )
     for name, payload in results.items():
         # precision/recall/f1 sit at the top of the EvalReport; the rank metrics
         # are nested under its `metrics` member. Reading all five from one level

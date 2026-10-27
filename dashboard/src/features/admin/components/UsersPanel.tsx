@@ -168,12 +168,9 @@ export function UsersPanel() {
       loadingLines={4}
       error={{
         message: 'The user directory could not be read',
-        detail:
-          'Nothing is listed rather than a stale roster: a role change offered against an account list this screen cannot vouch for would be a privilege change made blind.',
       }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted">{summary.note}</p>
         {summary.stranded ? (
           <p className="text-body-sm text-severityText-critical" role="status">
             No active admin: every action on this screen will be refused until one exists.
@@ -203,12 +200,7 @@ export function UsersPanel() {
           rowKey={(row) => String(row.id)}
           rowLabel={(row) => row.email}
           height={280}
-          empty={
-            <p className="text-body">
-              The directory is empty. This build starts with no bootstrap account (D-047): the
-              directory is populated by the deployment, not by the dashboard.
-            </p>
-          }
+          empty={<p className="text-body">No users.</p>}
         />
       </div>
 
@@ -218,7 +210,7 @@ export function UsersPanel() {
         message={
           confirming === null
             ? ''
-            : `${confirming.row.email} goes from ${confirming.row.role} to ${confirming.role}. The change is recorded in the audit trail against your account, and the account's access changes on its next request.`
+            : `${confirming.row.email} goes from ${confirming.row.role} to ${confirming.role}.`
         }
         confirmLabel="Change the role"
         onClose={() => {

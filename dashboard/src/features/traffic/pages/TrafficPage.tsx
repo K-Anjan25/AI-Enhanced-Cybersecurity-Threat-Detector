@@ -25,8 +25,7 @@
 import { useMemo, useState } from 'react';
 
 import { useChartPalette } from '../../../components/charts/palette';
-import { Button, ConnectionStatus, ErrorState, Panel, Skeleton } from '../../../components/ui';
-import { useConnectionView } from '../../../components/realtime/useConnectionView';
+import { Button, ErrorState, Panel, Skeleton } from '../../../components/ui';
 import { FLOW_DIRECTIONS, FLOW_PROTOCOLS } from '../../../api/flows';
 import { BrushSeries } from '../components/BrushSeries';
 import { EntityGraph } from '../components/EntityGraph';
@@ -54,7 +53,6 @@ export function TrafficPage() {
   // the view below — so a committed selection never blanks the screen it was drawn on.
   const brushed = useTrafficBrush(range, filters, brush, true);
   const palette = useChartPalette();
-  const connection = useConnectionView();
 
   const full = window.data;
   const panels = brushed.data ?? full;
@@ -77,15 +75,10 @@ export function TrafficPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1">Traffic</h1>
-          <p className="mt-1 text-body-sm text-muted">
-            Flow volume and composite score over the window, with the addresses those flows belong
-            to. Brushing the series re-reads the selected window for the table and the graph.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <ConnectionStatus state={connection.state} detail={connection.detail} />
           <div className="flex items-center gap-2">
-            <label className="text-caption text-muted" htmlFor="traffic-range">
+            <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-range">
               Window
             </label>
             <select
@@ -112,7 +105,6 @@ export function TrafficPage() {
       {window.isError && full === undefined ? (
         <ErrorState
           message="The traffic window could not be loaded"
-          detail="It reads the flow API over the selected window, which composes the alert overlay."
           action={<Button onClick={() => void window.refetch()}>Retry</Button>}
         />
       ) : null}
@@ -120,7 +112,6 @@ export function TrafficPage() {
       {brushed.isError && brush !== null ? (
         <ErrorState
           message="The brushed window could not be loaded"
-          detail="The table and the graph still describe the whole window; widen the brush to see everything again."
           action={<Button onClick={() => setBrush(null)}>Clear the brush</Button>}
         />
       ) : null}
@@ -130,7 +121,7 @@ export function TrafficPage() {
         state={loading ? 'loading' : 'ready'}
         loadingLines={6}
         actions={
-          <span className="text-caption text-muted">
+          <span className="text-body-sm font-semibold text-muted">
             {range.label} · {String(full?.bucket_minutes ?? 0)}-minute buckets
           </span>
         }
@@ -155,7 +146,7 @@ export function TrafficPage() {
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-protocol">
+          <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-protocol">
             Protocol
           </label>
           <select
@@ -179,7 +170,7 @@ export function TrafficPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-direction">
+          <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-direction">
             Direction
           </label>
           <select
@@ -203,7 +194,7 @@ export function TrafficPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-caption text-muted" htmlFor="traffic-min-flows">
+          <label className="text-body-sm font-semibold text-muted" htmlFor="traffic-min-flows">
             Min flows
           </label>
           <input
@@ -233,7 +224,7 @@ export function TrafficPage() {
         </label>
 
         {view === null ? null : (
-          <p className="text-caption text-muted">
+          <p className="text-body-sm font-semibold text-muted">
             {String(view.nodes.length)} addresses shown
             {view.hiddenByControls === 0
               ? ''
@@ -283,7 +274,7 @@ export function TrafficPage() {
       {view === null ? null : (
         <section aria-label="What this screen is not showing" className="flex flex-col gap-1">
           {view.notes.map((note) => (
-            <p key={note} className="text-caption text-muted">
+            <p key={note} className="text-body-sm font-semibold text-muted">
               {note}
             </p>
           ))}

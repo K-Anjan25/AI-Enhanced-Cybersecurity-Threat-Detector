@@ -140,16 +140,12 @@ export function TriagePage() {
         <div className="flex flex-col gap-4">
           {selectedId === null ? (
             <Card title="No alert open">
-              <EmptyState
-                title="Select an alert from the queue"
-                description="Every row in the queue opens here: the reasons behind the alert, its timeline, the evidence trail and the context. The whole screen works from the keyboard."
-              />
+              <EmptyState title="Select an alert from the queue" />
             </Card>
           ) : createdAt === null ? (
             <Card title="This alert cannot be opened from this link">
               <ErrorState
                 message="The link is missing the alert's created_at"
-                detail="An alert is addressed by its id and its created_at (D-030); without the second half the same id in another month is a different alert."
                 action={
                   <Link className="underline" to={ALERTS_PATH}>
                     Back to the queue
@@ -165,7 +161,6 @@ export function TriagePage() {
             <Card title="The alert could not be loaded">
               <ErrorState
                 message="No alert was returned for this address"
-                detail="It may have been erased under the retention policy (FR-05), or the link may carry a created_at from a different partition."
                 action={
                   <Link className="underline" to={ALERTS_PATH}>
                     Back to the queue

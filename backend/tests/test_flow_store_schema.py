@@ -136,10 +136,15 @@ class TestTheMigration:
         assert "def upgrade() -> None:" in source
         assert "def downgrade() -> None:" in source
 
-    def test_it_is_the_head_of_the_chain(self) -> None:
+    def test_it_is_in_the_chain_under_the_current_head(self) -> None:
+        # Once later revisions exist, 0004 is no longer the head; the property that
+        # must hold is that the chain descends from it, so the flow store is never
+        # orphaned.
         heads = _alembic("heads")
+        history = _alembic("history")
 
-        assert "0004_flow_events" in heads
+        assert "0006_erasure_set_null (head)" in heads
+        assert "0004_flow_events" in history
 
     def test_the_offline_upgrade_creates_the_table_and_its_indexes(self) -> None:
         emitted = _alembic("upgrade", "0003_log_events:head", "--sql")

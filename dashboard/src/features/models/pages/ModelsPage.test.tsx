@@ -337,7 +337,7 @@ describe('promotion requires typing the model id', () => {
 
     // A version that is already serving has no Promote control; the refusal is stated
     // in its row, so a no-op cannot be attempted from here.
-    expect(await screen.findByText(/already serving/)).toBeInTheDocument();
+    expect(await screen.findByText(/Already serving/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: `Promote ${FLOW_ACTIVE}` })).toBeNull();
   });
 });

@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 SECRET = "auth-test-signing-key-with-enough-entropy-2026"  # pragma: allowlist secret
 PASSWORD = "a-strong-test-password-for-auth"  # pragma: allowlist secret
+WRONG_LOGIN = {"email": "ops@aegis.test", "password": "x" * 14}
 
 
 def _settings(**overrides: object) -> Settings:
@@ -188,3 +189,49 @@ def test_development_setup_is_closed_by_default_and_routes_are_explicitly_public
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
     } <= UNAUTHENTICATED_ROUTES
+
+
+def test_repeated_wrong_passwords_are_throttled_with_429_and_retry_after() -> None:
+    """The login route refuses after the account limit, even with the right password."""
+    app = create_app(
+        _settings(
+            env=Environment.DEVELOPMENT,
+            dev_auth_setup_enabled=True,
+            login_account_max_failures=3,
+            login_window_seconds=600,
+        )
+    )
+    with TestClient(app) as client:
+        client.post("/api/v1/auth/setup", json={"email": "ops@aegis.test", "password": PASSWORD})
+        for _ in range(3):
+            wrong = client.post("/api/v1/auth/login", json=WRONG_LOGIN)
+            assert wrong.status_code == 401
+        blocked = client.post(
+            "/api/v1/auth/login", json={"email": "OPS@aegis.test", "password": PASSWORD}
+        )
+    assert blocked.status_code == 429
+    assert 1 <= int(blocked.headers["retry-after"]) <= 600
+
+
+def test_a_successful_login_before_the_limit_resets_the_account_count() -> None:
+    app = create_app(
+        _settings(
+            env=Environment.DEVELOPMENT,
+            dev_auth_setup_enabled=True,
+            login_account_max_failures=3,
+        )
+    )
+    with TestClient(app) as client:
+        client.post("/api/v1/auth/setup", json={"email": "ops@aegis.test", "password": PASSWORD})
+        for _ in range(2):
+            client.post("/api/v1/auth/login", json=WRONG_LOGIN)
+        ok = client.post(
+            "/api/v1/auth/login", json={"email": "ops@aegis.test", "password": PASSWORD}
+        )
+        assert ok.status_code == 200
+        for _ in range(2):
+            client.post("/api/v1/auth/login", json=WRONG_LOGIN)
+        again = client.post(
+            "/api/v1/auth/login", json={"email": "ops@aegis.test", "password": PASSWORD}
+        )
+    assert again.status_code == 200
