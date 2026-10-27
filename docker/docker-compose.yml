@@ -30,7 +30,8 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - '5432:5432'
+      # Host port 5433: a PostgreSQL installed on Windows often holds 5432.
+      - '5433:5432'
 
   # Shared, memory-capped state for the backend (login throttle across replicas).
   # Redis is not a telemetry bus (memory.md, Kafka decision): it holds only expiring

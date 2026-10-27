@@ -25,7 +25,8 @@ STATE_DIR="${AEGIS_K8S_LOCAL_STATE:-$HOME/.config/aegis-k8s-local}"
 ENV_FILE="$STATE_DIR/secrets.env"
 COMPOSE_FILE="$ROOT/docker/docker-compose.yml"
 ADMIN_EMAIL="admin@aegis.local"
-DB_URL="postgresql+psycopg://aegis:aegis@host.docker.internal:5432/aegis" # pragma: allowlist secret
+# Host port 5433 (see docker/docker-compose.yml). Port 5432 is often taken by a PostgreSQL installed on Windows.
+DB_URL="postgresql+psycopg://aegis:aegis@host.docker.internal:5433/aegis" # pragma: allowlist secret
 
 die() {
     echo "error: $*" >&2
@@ -69,6 +70,17 @@ ensure_secrets() {
     mkdir -p "$STATE_DIR"
     chmod 700 "$STATE_DIR"
     if [ -f "$ENV_FILE" ]; then
+        # Keep the generated secrets, but always refresh the database URL, so a
+        # change of port here reaches the cluster on the next run.
+        if ! grep -qxF "AEGIS_DATABASE_URL=$DB_URL" "$ENV_FILE"; then
+            (
+                umask 077
+                grep -v '^AEGIS_DATABASE_URL=' "$ENV_FILE" > "$ENV_FILE.tmp"
+                echo "AEGIS_DATABASE_URL=$DB_URL" >> "$ENV_FILE.tmp"
+                mv "$ENV_FILE.tmp" "$ENV_FILE"
+            )
+            echo "Updated AEGIS_DATABASE_URL in $ENV_FILE"
+        fi
         return
     fi
     local key pass
