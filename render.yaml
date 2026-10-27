@@ -25,8 +25,8 @@ services:
     plan: free
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile.render
-    # Migrations first, then the API. `exec` makes uvicorn the process Render supervises.
-    dockerCommand: sh -c "cd /app && alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Migrations first, then the API (script: backend/render-start.sh).
+    dockerCommand: sh /app/render-start.sh
     healthCheckPath: /healthz
     envVars:
       - key: PORT
