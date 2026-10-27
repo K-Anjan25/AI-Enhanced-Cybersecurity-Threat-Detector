@@ -1,7 +1,13 @@
 # Kubernetes manifests
 
 Application workloads only: `backend`, `ml-service`, `dashboard`. Everything
-here is static YAML, applied with `kubectl apply -k .` or `kubectl apply -f .`.
+here is static YAML. There is no `kustomization.yaml`, so `kubectl apply -k` does not
+work here. Apply the folder with `kubectl apply -f k8s/`, and the numeric prefixes set
+the order. The `aegis-secrets` secret must exist first, or the pods will not start.
+
+For a Docker Desktop cluster, use the one-command path instead:
+`scripts/k8s-local.sh up` (see `helm/aegis/values-local.yaml`). It creates the secret,
+builds the images and installs the Helm chart.
 
 ## What is deliberately not here
 

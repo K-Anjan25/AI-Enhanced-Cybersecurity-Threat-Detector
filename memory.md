@@ -3946,6 +3946,18 @@ _drawn_ claim checkable, not the _announced_ one.
 
 **Checks.** Lint, stylelint, prettier, tsc and the marketing, auth, App and theme tests all pass (98 tests in the focused run). Full suite and build: see the commit.
 
+### D-108 — One-command Kubernetes on Docker Desktop (2026-10-27)
+
+**Decision.** The user chose Kubernetes. The repo had no single entry point, and `k8s/README.md` told readers to run `kubectl apply -k .` with no `kustomization.yaml`.
+
+**What changed.** `scripts/k8s-local.sh up|down` starts Postgres with Compose, builds the three `0.1.0` images, creates the namespace and secret, runs `helm upgrade --install` with `helm/aegis/values-local.yaml`, then forwards the dashboard to localhost:8080. Secrets are generated once into `~/.config/aegis-k8s-local/secrets.env` (mode 600), outside the repository, and kept on re-run. `values-local.yaml` uses development mode, small limits and no ingress.
+
+**Chart fix.** `values.yaml` `backend.secretEnv` now includes `AEGIS_BOOTSTRAP_ADMIN_EMAIL` and `AEGIS_BOOTSTRAP_ADMIN_PASSWORD`. Production refuses to start without them (`config.py`), and before this change the chart never passed them to the pod.
+
+**README.** `k8s/README.md` now says to use `kubectl apply -f k8s/`, notes that the secret must exist first, and points to the script.
+
+**Not verified.** No Docker or cluster is available here, and Helm's Linux binary could not be downloaded, so `helm template` was not run. The script was tested with stub `docker`, `kubectl` and `helm` commands: `up` and `down` run in order, re-running keeps the secrets, and a missing context fails cleanly. `scripts/check_k8s.py` passes.
+
 ### D-107 — Error text, hero texture, heading font (2026-10-26)
 
 **Error text.** Field errors on the public contact and newsletter forms were night navy on the night ground, so they were invisible. In the marketing block, `--severity-text-critical` is now soft pink `#FFD6EC` (13.29:1 on night), and `--severity-text-high` is ice `#7FD8FF`.
