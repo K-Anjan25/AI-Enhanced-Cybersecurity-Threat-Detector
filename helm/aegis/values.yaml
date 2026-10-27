@@ -149,6 +149,12 @@ dashboard:
 # ──────────────────────────────────────────────
 # Secrets (created externally from cluster secret store)
 # ──────────────────────────────────────────────
+# Database migrations (alembic upgrade head). Runs as a Helm hook before every
+# install and upgrade. Without it the flow store and other tables never exist, and
+# the dashboard's Traffic page answers 503.
+migrations:
+  enabled: true
+
 secrets:
   # aegis-secrets must contain:
   #   AEGIS_SECRET_KEY (32+ random chars)

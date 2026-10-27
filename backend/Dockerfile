@@ -12,6 +12,9 @@ WORKDIR /app
 # Install dependencies first so the layer caches independently of source edits.
 COPY pyproject.toml ./
 COPY app ./app
+# Migrations, run once per deploy by the chart's migrate Job (alembic upgrade head).
+COPY alembic.ini ./
+COPY alembic ./alembic
 # aegis_ml is the ML package the backend shares with training: the windowing and
 # fusion contracts the live Kafka consumer uses (D-085). Only its base install is
 # needed (pydantic, fastapi, uvicorn), not torch. The build passes it as the named
