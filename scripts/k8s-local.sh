@@ -25,7 +25,7 @@ STATE_DIR="${AEGIS_K8S_LOCAL_STATE:-$HOME/.config/aegis-k8s-local}"
 ENV_FILE="$STATE_DIR/secrets.env"
 COMPOSE_FILE="$ROOT/docker/docker-compose.yml"
 ADMIN_EMAIL="admin@aegis.local"
-DB_URL="postgresql+psycopg://aegis:aegis@host.docker.internal:5432/aegis"
+DB_URL="postgresql+psycopg://aegis:aegis@host.docker.internal:5432/aegis" # pragma: allowlist secret
 
 die() {
     echo "error: $*" >&2
@@ -60,7 +60,7 @@ random_token() {
     else
         raw="$(head -c "$1" /dev/urandom | base64)"
     fi
-    printf '%s' "$raw" | tr -d '\n+/=' 
+    printf '%s' "$raw" | tr -d '\n+/='
 }
 
 # Create the secrets file once. Values are written without quotes, because
