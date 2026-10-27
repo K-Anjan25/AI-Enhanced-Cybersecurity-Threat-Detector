@@ -1,0 +1,62 @@
+# Render Blueprint for AEGIS.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> this repository, branch
+# arena/29c5422e-ai-enhanced-cybersecurity-thre, Blueprint Path render.yaml.
+# Render asks for the values marked `sync: false` below. Nothing secret is stored here.
+#
+# Layout: the dashboard is the only public service. It proxies /api to the backend
+# over Render's private network. The backend is a private service named `backend`,
+# because the dashboard's nginx looks for that name (dashboard/nginx.conf.template).
+# The ML service is private. Redis is not configured: the backend runs without it,
+# with a per-process login limit (see docker/docker-compose.yml).
+
+services:
+  # Backend API. Private: only the dashboard reaches it.
+  - type: pserv
+    name: backend
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile.render
+    # Migrations, before each deploy goes live. The image keeps alembic.ini in /app.
+    preDeployCommand: sh -c "cd /app && alembic upgrade head"
+    envVars:
+      - key: AEGIS_ENV
+        value: production
+      - key: AEGIS_PORT
+        value: '8000'
+      - key: AEGIS_HOST
+        value: '0.0.0.0'
+      - key: AEGIS_LOG_LEVEL
+        value: INFO
+      - key: AEGIS_ML_SERVICE_URL
+        value: http://ml-service:8001
+      - key: AEGIS_SECRET_KEY
+        generateValue: true
+      # Enter manually: a PostgreSQL URL with the prefix postgresql+psycopg://, using the
+      # connection details of aegis-db (Render dashboard -> aegis-db -> Connect). AEGIS
+      # refuses a bare postgresql:// URL.
+      - key: AEGIS_DATABASE_URL
+        sync: false
+      # Production refuses to start without the bootstrap admin. Enter both values.
+      - key: AEGIS_BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: AEGIS_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+
+  # ML scoring service. Private: only the backend calls it.
+  - type: pserv
+    name: ml-service
+    runtime: docker
+    dockerContext: ./ml-service
+    dockerfilePath: ./ml-service/Dockerfile
+
+  # Dashboard and API entry point. Public.
+  - type: web
+    name: dashboard
+    runtime: docker
+    dockerContext: ./dashboard
+    dockerfilePath: ./dashboard/Dockerfile
+    healthCheckPath: /
+
+databases:
+  - name: aegis-db
