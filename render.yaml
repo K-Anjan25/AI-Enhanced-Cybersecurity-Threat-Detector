@@ -1,25 +1,36 @@
-# Render Blueprint for AEGIS.
+# Render Blueprint for AEGIS, free plans.
 #
 # Deploy: Render dashboard -> New -> Blueprint -> this repository, branch
-# arena/29c5422e-ai-enhanced-cybersecurity-thre, Blueprint Path render.yaml.
-# Render asks for the values marked `sync: false` below. Nothing secret is stored here.
+# arena/771821ad-ai-enhanced-cybersecurity-thre, Blueprint Path render.yaml.
+# Render asks for the values marked `sync: false`. Nothing secret is stored here.
 #
-# Layout: the dashboard is the only public service. It proxies /api to the backend
-# over Render's private network. The backend is a private service named `backend`,
-# because the dashboard's nginx looks for that name (dashboard/nginx.conf.template).
-# The ML service is private. Redis is not configured: the backend runs without it,
-# with a per-process login limit (see docker/docker-compose.yml).
+# Free plans: every service is a free web service, because private services and
+# pre-deploy commands need a paid plan. Consequences:
+#   - Free services sleep after a period without traffic. The first request after
+#     a sleep is slow.
+#   - The ML service is public. Its scoring and model endpoints have no
+#     authentication (ml-service/aegis_ml/serving). Treat that as a known gap.
+#   - Migrations run at container start, before uvicorn, instead of a pre-deploy step.
+#   - Redis is not configured. The backend runs without it, with a per-process login limit.
+#
+# Order matters for the values you enter: create the services, then copy each public
+# URL (https://<name>.onrender.com, shown on each service's page) into the variables
+# marked `sync: false`. Redeploy the backend and dashboard after you set them.
 
 services:
-  # Backend API. Private: only the dashboard reaches it.
-  - type: pserv
+  # Backend API. Public: the dashboard calls it server-side at AEGIS_BACKEND_URL.
+  - type: web
     name: backend
     runtime: docker
+    plan: free
     dockerContext: .
     dockerfilePath: ./backend/Dockerfile.render
-    # Migrations, before each deploy goes live. The image keeps alembic.ini in /app.
-    preDeployCommand: sh -c "cd /app && alembic upgrade head"
+    # Migrations first, then the API. `exec` makes uvicorn the process Render supervises.
+    dockerCommand: sh -c "cd /app && alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthCheckPath: /healthz
     envVars:
+      - key: PORT
+        value: '8000'
       - key: AEGIS_ENV
         value: production
       - key: AEGIS_PORT
@@ -28,13 +39,13 @@ services:
         value: '0.0.0.0'
       - key: AEGIS_LOG_LEVEL
         value: INFO
+      # The public URL of the ml-service, for example https://aegis-ml-service.onrender.com
       - key: AEGIS_ML_SERVICE_URL
-        value: http://ml-service:8001
+        sync: false
       - key: AEGIS_SECRET_KEY
         generateValue: true
-      # Enter manually: a PostgreSQL URL with the prefix postgresql+psycopg://, using the
-      # connection details of aegis-db (Render dashboard -> aegis-db -> Connect). AEGIS
-      # refuses a bare postgresql:// URL.
+      # Enter manually: postgresql+psycopg://USER:PASSWORD@HOST:5432/DBNAME, from the
+      # aegis-db connection details. AEGIS refuses a bare postgresql:// URL.
       - key: AEGIS_DATABASE_URL
         sync: false
       # Production refuses to start without the bootstrap admin. Enter both values.
@@ -43,20 +54,33 @@ services:
       - key: AEGIS_BOOTSTRAP_ADMIN_PASSWORD
         sync: false
 
-  # ML scoring service. Private: only the backend calls it.
-  - type: pserv
+  # ML scoring service. Public on the free plan (see the note at the top).
+  - type: web
     name: ml-service
     runtime: docker
+    plan: free
     dockerContext: ./ml-service
     dockerfilePath: ./ml-service/Dockerfile
+    healthCheckPath: /internal/healthz
+    envVars:
+      - key: PORT
+        value: '8001'
 
   # Dashboard and API entry point. Public.
   - type: web
     name: dashboard
     runtime: docker
+    plan: free
     dockerContext: ./dashboard
     dockerfilePath: ./dashboard/Dockerfile
     healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: '8080'
+      # The public URL of the backend, for example https://aegis-backend.onrender.com
+      - key: AEGIS_BACKEND_URL
+        sync: false
 
 databases:
   - name: aegis-db
+    plan: free
