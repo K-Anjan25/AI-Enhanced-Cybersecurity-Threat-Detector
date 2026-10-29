@@ -25,10 +25,15 @@ bash scripts/k8s-local.sh up     # Docker Desktop Kubernetes; use Git Bash on Wi
 bash scripts/k8s-local.sh down
 ```
 
-**Render (free plan)**
+**Single container (any Docker host, or Render)**
 
-Create a Blueprint from this repository and select `render.yaml`. See the free-plan
-limits in that file's header.
+```bash
+docker build -f deploy/aegis/Dockerfile -t aegis .
+docker run -p 8080:8080 -e AEGIS_SECRET_KEY=... -e AEGIS_DATABASE_URL=... aegis
+```
+
+Runs the dashboard, backend and ML service together. For Render, create a Blueprint from
+this repository and select `render.yaml`; it deploys one service named `aegis`.
 
 Full deployment steps, configuration and upgrades: [docs/deploy.md](docs/deploy.md).
 
