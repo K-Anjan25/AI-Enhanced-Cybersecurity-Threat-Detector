@@ -85,10 +85,13 @@ COPY backend/alembic ./alembic
 COPY --from=dashboard /app/dist /opt/aegis/dashboard
 COPY deploy/aegis/nginx.conf /opt/aegis/nginx.conf
 COPY deploy/aegis/start.sh /opt/aegis/start.sh
+# nginx creates its cache directories under /var/lib/nginx when it starts, even when the
+# config does not use them, so the unprivileged user needs those paths.
 RUN chmod 0755 /opt/aegis/start.sh \
     && useradd --create-home --uid 10001 aegis \
     && mkdir -p /app/artifacts \
-    && chown -R aegis /app
+    && mkdir -p /var/lib/nginx /var/log/nginx \
+    && chown -R aegis /app /var/lib/nginx /var/log/nginx
 
 USER aegis
 
