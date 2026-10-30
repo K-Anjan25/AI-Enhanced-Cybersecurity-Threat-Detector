@@ -145,6 +145,8 @@ SHAPES: tuple[tuple[str, str], ...] = (
     # Capture control (step 4): the state the panel reads, and the change it sends.
     ("CaptureState", "CaptureStateOut"),
     ("CaptureStateChange", "CaptureStateIn"),
+    # The embedded assistant: the answer the page shows.
+    ("AssistantAnswer", "AskOut"),
 )
 
 #: Interfaces that are not a server shape, and what each one is instead.

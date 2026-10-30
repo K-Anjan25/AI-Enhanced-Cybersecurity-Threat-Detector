@@ -47,6 +47,19 @@ def _ask(base: str, token: str, question: str) -> dict[str, object]:
         return parsed
 
 
+def _explain_http_error(error: urllib.error.HTTPError, base: str) -> str:
+    if error.code == 404:
+        return (
+            f"{base}/api/v1/assistant/ask returned 404. The server is running an older build "
+            "that has no assistant. Rebuild it: docker compose up -d --build backend"
+        )
+    if error.code == 401:
+        return "sign-in was refused (401). Check --email and --password."
+    if error.code == 422:
+        return "the sign-in request was rejected as invalid (422). Check --email and --password (the password must be at least 12 characters)."
+    return f"the server answered HTTP {error.code}."
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run every case, print each result, and return the exit status."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -57,11 +70,24 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     base = args.base_url.rstrip("/")
-    token = _sign_in(base, args.email, args.password)
+    try:
+        token = _sign_in(base, args.email, args.password)
+        probe = _ask(base, token, "help")
+    except urllib.error.HTTPError as error:
+        print(f"FAILED: {_explain_http_error(error, base)}", file=sys.stderr)
+        return 2
+    except urllib.error.URLError as error:
+        print(f"FAILED: cannot reach {base} ({error.reason}).", file=sys.stderr)
+        return 2
+    del probe
     passed = 0
     for case in EVAL_CASES:
         started = time.perf_counter()
-        reply = _ask(base, token, case.question)
+        try:
+            reply = _ask(base, token, case.question)
+        except urllib.error.HTTPError as error:
+            print(f"FAIL [http {error.code}] {case.question}")
+            continue
         elapsed = time.perf_counter() - started
         sources = list(reply.get("sources", []))  # type: ignore[call-overload]
         backend = str(reply.get("backend", ""))

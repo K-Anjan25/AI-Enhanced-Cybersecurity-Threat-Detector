@@ -40,6 +40,7 @@ import { CommandProvider, useCommands } from './features/command/provider';
 import { huntStoreSubject, savedHunts } from './features/hunt/saved';
 import { AdminPage } from './features/admin/pages/AdminPage';
 import { HuntPage } from './features/hunt/pages/HuntPage';
+import { AssistantPage } from './features/assistant/AssistantPage';
 import { LogsPage } from './features/logs/pages/LogsPage';
 import { DriftPage } from './features/models/pages/DriftPage';
 import { ModelsPage } from './features/models/pages/ModelsPage';
@@ -113,6 +114,7 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
             </Offered>
           }
         />
+        <Route path="/assistant" element={<AssistantPage />} />
         <Route
           path="/hunt"
           element={

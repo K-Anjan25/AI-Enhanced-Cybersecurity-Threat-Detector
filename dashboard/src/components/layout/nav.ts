@@ -35,6 +35,7 @@ import {
   Settings,
   ShieldAlert,
   SlidersHorizontal,
+  MessageSquare,
   Radio,
   TrendingDown,
   Users,
@@ -189,6 +190,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: ScrollText,
     section: 'Explore',
     keywords: ['tail', 'clusters', 'events'],
+  },
+  {
+    to: '/assistant',
+    label: 'Assistant',
+    icon: MessageSquare,
+    section: 'Explore',
+    keywords: ['ask', 'chat', 'question', 'help'],
   },
   {
     to: '/hunt',
