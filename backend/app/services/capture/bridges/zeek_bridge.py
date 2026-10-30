@@ -44,20 +44,17 @@ Environment:
 
 import argparse
 import glob
-import json
-
-from login import LoginFailed, sign_in
 import os
 import queue
 import signal
 import sys
 import threading
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Iterator
 from datetime import datetime, timezone
 from typing import Any, TextIO
+
+from login import LoginFailed, sign_in
 
 API_URL = os.environ.get("AEGIS_API_URL", "http://localhost:8000")
 TOKEN = os.environ.get("AEGIS_API_TOKEN", "")

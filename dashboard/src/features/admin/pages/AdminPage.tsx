@@ -19,6 +19,7 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 
 import { ADMIN_SECTIONS, type AdminSectionPath } from '../../../components/layout/nav';
 import { AuditPanel } from '../components/AuditPanel';
+import { CapturePanel } from '../components/CapturePanel';
 import { ConnectorsPanel } from '../components/ConnectorsPanel';
 import { KeysPanel } from '../components/KeysPanel';
 import { RetentionPanel } from '../components/RetentionPanel';
@@ -58,6 +59,10 @@ const PANELS: Readonly<Record<AdminSectionPath, Panel>> = {
   thresholds: {
     summary: 'The band edges in force, where each came from, and what a change would have done.',
     element: <ThresholdsPanel />,
+  },
+  capture: {
+    summary: 'What the packet-capture sensor should run, which engines, and when it was last changed.',
+    element: <CapturePanel />,
   },
   retention: {
     summary: 'What a retention run would drop, what it cannot reach, and erasure with its ledger.',

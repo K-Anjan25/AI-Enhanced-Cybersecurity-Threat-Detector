@@ -8,10 +8,11 @@ so every later batch was refused until the bridge was restarted.
 from __future__ import annotations
 
 import importlib.util
-import sys
 import io
 import json
+import sys
 import urllib.error
+import urllib.request
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -62,7 +63,7 @@ def test_a_401_logs_in_again_and_the_next_batch_is_accepted(
             return _Response({"accepted": 1})
         raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, io.BytesIO(b"{}"))
 
-    monkeypatch.setattr(bridge.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
 
     # A valid flow: send_batch drops anything that is not flow@1 before it posts.
     record = [

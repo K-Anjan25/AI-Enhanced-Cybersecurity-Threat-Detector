@@ -48,13 +48,17 @@ def _run(responses: list[object], attempts: int = 3) -> tuple[list[str], list[fl
     original = login._post_login
     login._post_login = fake_post
     try:
-        return logs, sleeps, login.sign_in(
-            "http://api",
-            "admin@aegis.local",
-            "pw",
-            log=logs.append,
-            attempts=attempts,
-            sleep=sleeps.append,
+        return (
+            logs,
+            sleeps,
+            login.sign_in(
+                "http://api",
+                "admin@aegis.local",
+                "pw",
+                log=logs.append,
+                attempts=attempts,
+                sleep=sleeps.append,
+            ),
         )
     finally:
         login._post_login = original
@@ -80,7 +84,6 @@ def test_401_fails_with_password_reason_and_never_logs_password() -> None:
     with pytest.raises(login.LoginFailed) as excinfo:
         _run([_http(401), _http(401), _http(401)], attempts=3)
     assert "AEGIS_BOOTSTRAP_ADMIN_PASSWORD" in str(excinfo.value)
-    logs, _, _ = [], [], None
     assert "pw" not in str(excinfo.value)
 
 

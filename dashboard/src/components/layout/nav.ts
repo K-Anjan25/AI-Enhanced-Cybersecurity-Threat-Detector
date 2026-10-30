@@ -35,6 +35,7 @@ import {
   Settings,
   ShieldAlert,
   SlidersHorizontal,
+  Radio,
   TrendingDown,
   Users,
   type LucideIcon,
@@ -79,7 +80,7 @@ export interface NavItem {
 
 /** The relative path of one admin section, as a union, so the page's map is total. */
 export type AdminSectionPath =
-  'users' | 'keys' | 'connectors' | 'thresholds' | 'retention' | 'audit';
+  'users' | 'keys' | 'connectors' | 'thresholds' | 'retention' | 'capture' | 'audit';
 
 /** An admin section: a nav destination whose `path` is a known relative route. */
 export interface AdminNavLeaf extends NavLeaf {
@@ -126,6 +127,13 @@ export const ADMIN_SECTIONS: readonly AdminNavLeaf[] = [
     label: 'Thresholds',
     icon: SlidersHorizontal,
     keywords: ['bands', 'scores'],
+  },
+  {
+    path: 'capture',
+    to: '/admin/capture',
+    label: 'Packet capture',
+    icon: Radio,
+    keywords: ['sensor', 'zeek', 'suricata', 'start', 'stop'],
   },
   {
     path: 'retention',
