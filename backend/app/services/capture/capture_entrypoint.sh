@@ -82,7 +82,7 @@ start_suricata() {
     echo "[SURICATA] Starting on $SURICATA_IFACE"
     # eve-log is enabled by the stock suricata.yaml. Do not override it with --set:
     # outputs is a YAML list in Suricata 6, so "outputs.eve-log.*" fails.
-    if [ ! -s /var/lib/suricata/rules/suricata.rules ]; then
+    if [ ! -s /etc/suricata/rules/suricata.rules ]; then
         echo "[SURICATA] warning: no rules are loaded, so no alerts will be raised" >&2
     fi
     suricata -i "$SURICATA_IFACE" -l "$SURICATA_LOG_DIR" &
