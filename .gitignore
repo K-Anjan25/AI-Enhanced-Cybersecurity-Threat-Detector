@@ -41,3 +41,8 @@ dist/
 .vscode/
 *.swp
 .DS_Store
+
+# MLflow local tracking (the lifecycle default lives outside the repo; these catch strays)
+mlruns/
+mlartifacts/
+mlflow.db

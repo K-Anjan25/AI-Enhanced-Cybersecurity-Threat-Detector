@@ -52,7 +52,14 @@ def read_labelled_lines(raw: Path, structured: Path) -> list[LogLine]:
                 f"timestamp mismatch at LineId {row['LineId']}: the raw and structured "
                 "files are not the same log"
             )
-        lines.append(LogLine(epoch=epoch, message=record.message, anomalous=row["Label"] != "-"))
+        lines.append(
+            LogLine(
+                epoch=epoch,
+                message=record.message,
+                anomalous=row["Label"] != "-",
+                flagged=record.level.value != "info",
+            )
+        )
     return lines
 
 

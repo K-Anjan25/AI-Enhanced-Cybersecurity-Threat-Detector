@@ -34,6 +34,11 @@ onnx = [
     "onnxruntime>=1.30",
     "onnxscript>=0.5",
 ]
+# MLflow tracking and the model registry for LogNet bundles. An extra: serving
+# never imports it, and the lifecycle CLI reports a clear error without it.
+mlops = [
+    "mlflow>=3.17",
+]
 # transformers and drain3 land with T-204.
 
 [build-system]
@@ -74,7 +79,7 @@ files = ["aegis_ml"]
 # rejects an untyped import outright. Every one of these is an optional extra, so
 # they are frequently absent entirely - which surfaces as import-not-found rather
 # than import-untyped, and has to be silenced the same way.
-module = ["torch.*", "onnx.*", "onnxruntime.*", "onnxscript.*", "numpy.*"]
+module = ["torch.*", "onnx.*", "onnxruntime.*", "onnxscript.*", "numpy.*", "mlflow.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

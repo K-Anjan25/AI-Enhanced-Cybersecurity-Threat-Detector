@@ -87,6 +87,9 @@ class LogLine:
     epoch: float
     message: str
     anomalous: bool
+    #: Whether the line is at a non-info severity. Used only by the severity baseline
+    #: rule that the promotion gate compares against; the model never sees it.
+    flagged: bool = False
 
 
 @dataclass
@@ -273,6 +276,23 @@ def score_distances(model: LogNet, x: np.ndarray, batch_size: int = 256) -> np.n
     return np.concatenate(out) if out else np.zeros(0)
 
 
+def _severity_baseline_auc(
+    lines: Sequence[LogLine], starts: np.ndarray, eval_mask: np.ndarray, window: int
+) -> float | None:
+    """ROC-AUC of "share of flagged lines in the window" on the held-out windows.
+
+    This is the trivial rule the model has to beat. It is recorded with every run so
+    that a candidate is never judged in isolation.
+    """
+    flags = np.array([line.flagged for line in lines], dtype=float)
+    eval_starts = starts[eval_mask]
+    scores = np.array([flags[s : s + window].mean() for s in eval_starts])
+    labels = np.array(
+        [any(line.anomalous for line in lines[s : s + window]) for s in eval_starts], dtype=int
+    )
+    return roc_auc(scores, labels)
+
+
 def train_bundle(lines: Sequence[LogLine], out_dir: Path, cfg: LogNetTrainConfig) -> dict[str, Any]:
     """Run the whole pipeline and write the bundle. Returns the metrics written to it."""
     if len(lines) < cfg.window * 4:
@@ -311,6 +331,7 @@ def train_bundle(lines: Sequence[LogLine], out_dir: Path, cfg: LogNetTrainConfig
         x.shape[0] - x_train.shape[0] - x_eval.shape[0]
     )
     metrics["final_train_loss"] = result.history[-1] if result.history else None
+    metrics["baseline_severity_auc"] = _severity_baseline_auc(lines, starts, eval_mask, cfg.window)
 
     # 6. Bundle.
     out_dir.mkdir(parents=True, exist_ok=True)
