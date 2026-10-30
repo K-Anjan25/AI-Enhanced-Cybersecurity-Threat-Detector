@@ -137,7 +137,7 @@ export function SignUpPage() {
   );
 }
 
-function signUpErrorMessage(error: unknown): string {
+export function signUpErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 404) return 'Sign-up is turned off on this deployment.';
     if (error.status === 429) return 'Too many attempts. Wait a few minutes and try again.';

@@ -142,6 +142,9 @@ SHAPES: tuple[tuple[str, str], ...] = (
     # `WebhookCreate` is `extra="forbid"`, so a field the dashboard sends that the
     # model does not have is a 422 rather than an ignored extra.
     ("WebhookCreate", "WebhookCreate"),
+    # Capture control (step 4): the state the panel reads, and the change it sends.
+    ("CaptureState", "CaptureStateOut"),
+    ("CaptureStateChange", "CaptureStateIn"),
 )
 
 #: Interfaces that are not a server shape, and what each one is instead.

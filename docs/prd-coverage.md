@@ -156,9 +156,12 @@ is listed here instead of being edited above.
   ML service's shared-secret check (`ml-service/aegis_ml/serving/service_auth.py`, with
   the backend sending the token). The ML routes fail closed without the secret. Covered by
   unit tests only.
-- **Self-service signup.** A sign-up page and API exist. The PRD lists "self-serve signup"
-  under out of scope (line 68), so this is a scope decision that needs an owner. It is not
-  counted as a requirement.
+- **Self-service signup (decision: kept as an exception).** `POST /api/v1/auth/signup` and
+  the `/sign-up` page create viewer accounts only, behind `AEGIS_SIGNUP_ENABLED`. It is on
+  in the local compose stack and off in Render and Helm. Evidence: 8 backend signup and
+  capture tests, 5 dashboard sign-up error-message tests, and the full backend suite
+  (2,164 passed, 55 skipped, no live database). The sign-up form has not been used in a
+  browser.
 - **LogNet lifecycle (FR-30, FR-33).** MLflow tracking, registration, a promotion gate, and
   rollback for the LogNet model. The model is trained and served as opt-in, and its
   accuracy is at chance level, so it is not the default scorer and no quality claim is made.

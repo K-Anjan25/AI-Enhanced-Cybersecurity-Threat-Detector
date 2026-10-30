@@ -155,6 +155,9 @@ services:
       # Seeds the first admin the capture services log in as. The default is a
       # local-development credential; override both with a .env file or the shell.
       AEGIS_BOOTSTRAP_ADMIN_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
+      # Self-service viewer signup (/sign-up). On for this local stack; it only ever creates
+      # viewers. Render and Helm leave it off: a public deployment must opt in.
+      AEGIS_SIGNUP_ENABLED: ${AEGIS_SIGNUP_ENABLED:-true}
       AEGIS_BOOTSTRAP_ADMIN_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
     volumes:
       # Read-only view of the checkpoint folder, for the eval@2 report only.

@@ -65,7 +65,7 @@ The product is a detection and triage platform, not a prevention appliance. It i
 - Deep packet inspection of encrypted payloads. We use flow metadata and log semantics, never payload decryption.
 - Endpoint detection (EDR), EDR telemetry ingestion, process-tree analysis.
 - Phishing-email NLP and URL reputation scoring.
-- Multi-tenant SaaS billing, self-serve signup, metering.
+- Multi-tenant SaaS billing, metering. (Self-serve signup is out of scope, with one exception: an opt-in viewer signup, `AEGIS_SIGNUP_ENABLED`, on for the local stack only. See `docs/prd-coverage.md`.)
 - Automated remediation / SOAR playbooks that touch production hosts.
 - Adversarial-evasion hardening research (documented as a known limitation, not a solved problem).
 
