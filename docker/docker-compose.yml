@@ -158,6 +158,11 @@ services:
       # Self-service viewer signup (/sign-up). On for this local stack; it only ever creates
       # viewers. Render and Helm leave it off: a public deployment must opt in.
       AEGIS_SIGNUP_ENABLED: ${AEGIS_SIGNUP_ENABLED:-true}
+      # The assistant: "rules" needs no model. "openai" calls a model server on your machine;
+      # see docs/assistant.md (Docker Desktop resolves host.docker.internal).
+      AEGIS_ASSISTANT_BACKEND: ${AEGIS_ASSISTANT_BACKEND:-rules}
+      AEGIS_ASSISTANT_BASE_URL: ${AEGIS_ASSISTANT_BASE_URL:-http://host.docker.internal:11434/v1}
+      AEGIS_ASSISTANT_MODEL: ${AEGIS_ASSISTANT_MODEL:-qwen2.5:1.5b}
       AEGIS_BOOTSTRAP_ADMIN_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-admin123456789} # pragma: allowlist secret
     volumes:
       # Read-only view of the checkpoint folder, for the eval@2 report only.

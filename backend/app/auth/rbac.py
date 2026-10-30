@@ -164,6 +164,8 @@ DOC_ROUTES: frozenset[str] = frozenset(
 #: absent is refused. Every new endpoint needs an entry here, and
 #: ``test_rbac.py`` fails CI until it has one.
 ROUTE_MATRIX: dict[str, frozenset[Role]] = {
+    # Assistant: a read-only GET. Every signed-in role may ask; nothing it returns is a write.
+    "/api/v1/assistant/ask": frozenset({Role.VIEWER, Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     # Capture control: start/stop/engine selection is an operator action.
     "/api/v1/capture/state": frozenset({Role.RESPONDER, Role.ADMIN}),
     # Ingest is a write path: a viewer is read-only per R-53 and must not reach

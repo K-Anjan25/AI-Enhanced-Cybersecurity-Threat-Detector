@@ -28,8 +28,10 @@ from app.api.openapi_docs import declare_components
 from app.api.v1.endpoints import (
     alerts,
     api_keys,
+    assistant,
     audit,
     auth,
+    capture,
     flows,
     health,
     hunt,
@@ -39,7 +41,6 @@ from app.api.v1.endpoints import (
     models,
     overview,
     privacy,
-    capture,
     stream,
     thresholds,
     users,
@@ -48,7 +49,6 @@ from app.api.v1.endpoints import (
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.auth.oidc import OidcConfig, OidcSignIn
 from app.auth.tokens import TokenService
-from app.services.capture_control import CaptureControl
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
@@ -59,6 +59,7 @@ from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.auth_accounts import AuthAccountStore
+from app.services.capture_control import CaptureControl
 from app.services.detection_engine import DetectionEngine
 from app.services.drift_monitor import DriftMonitor
 from app.services.entity_registry import EntityRegistry
@@ -663,6 +664,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(capture.router)
+    app.include_router(assistant.router)
     app.include_router(metrics.router)
     app.include_router(ingest.router)
     # ``stream`` comes first because its paths are literal where ``alerts`` now has

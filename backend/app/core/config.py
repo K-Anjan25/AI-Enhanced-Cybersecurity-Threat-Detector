@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     #: Self-service viewer accounts. Off by default: an open signup form on a
     #: deployment is a decision the operator makes, and it only ever creates viewers.
     signup_enabled: bool = Field(default=False)
+    #: Assistant backend: "rules" (default, no model) or "openai" (an OpenAI-compatible server).
+    assistant_backend: str = Field(default="rules", pattern="^(rules|openai)$")
+    assistant_base_url: str = Field(default="http://localhost:11434/v1", max_length=300)
+    assistant_model: str = Field(default="qwen2.5:1.5b", max_length=200)
+    assistant_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
 
     # Required: a deployment without an explicit name is a misconfiguration.
     service_name: str = Field(default="aegis-backend")

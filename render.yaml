@@ -25,6 +25,9 @@ services:
         value: production
       - key: AEGIS_LOG_LEVEL
         value: INFO
+      # Self-service viewer signup on the public demo (/sign-up). Creates viewers only.
+      - key: AEGIS_SIGNUP_ENABLED
+        value: "true"
       - key: AEGIS_SECRET_KEY
         generateValue: true
       # postgresql+psycopg://USER:PASSWORD@HOST:5432/DBNAME, from aegis-db's

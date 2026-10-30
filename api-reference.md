@@ -29,6 +29,7 @@ or body do not match the schema below.
 | `GET` | `/api/v1/alerts/{alert_id}` | Read one alert with its explanation, evidence, verdict and context (FR-51) | admin, analyst, responder, viewer | `200` `AlertDetailOut` | — |
 | `POST` | `/api/v1/alerts/{alert_id}/verdict` | Record an analyst verdict on an alert (FR-16) | admin, analyst, responder | `200` `VerdictOutcomeOut` | `VerdictRequest` |
 | `GET` | `/api/v1/alerts/{alert_id}/verdicts` | Read an alert's verdict history, oldest first (FR-16, FR-18) | admin, analyst, responder, viewer | `200` `VerdictHistoryOut` | — |
+| `GET` | `/api/v1/assistant/ask` | Ask the assistant a read-only question about alerts or capture | admin, analyst, responder, viewer | `200` `AskOut` | — |
 | `GET` | `/api/v1/audit` | Read the audit trail, newest first (FR-42) | admin, analyst, responder, viewer | `200` `AuditPageOut` | — |
 | `POST` | `/api/v1/auth/login` | Sign in with an account password | unauthenticated | `200` `TokenPairOut` | `CredentialsIn` |
 | `POST` | `/api/v1/auth/logout` | Revoke the refresh-token family | unauthenticated | `204` | `RefreshIn` |
@@ -225,6 +226,16 @@ An issued key, **without** its secret.
 | `created_at` | `string (date-time)` | yes | — |
 | `last_used_at` | `string (date-time)` or `null` | yes | — |
 | `revoked_at` | `string (date-time)` or `null` | yes | — |
+
+### `AskOut`
+
+The answer, which backend produced it, and which read-only tools supplied facts.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `answer` | `string` | yes | — |
+| `backend` | `string` | yes | — |
+| `sources` | list of `string` | yes | — |
 
 ### `AuditAction`
 
