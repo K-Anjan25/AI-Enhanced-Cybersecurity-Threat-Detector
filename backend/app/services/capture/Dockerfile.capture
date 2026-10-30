@@ -37,7 +37,8 @@ RUN mkdir -p /var/lib/aegis-spool
 COPY app/services/capture/bridges/zeek_bridge.py \
      app/services/capture/bridges/suricata_bridge.py \
      app/services/capture/bridges/tcpdump_bridge.py \
-     app/services/capture/bridges/shipper.py ./
+     app/services/capture/bridges/shipper.py \
+     app/services/capture/bridges/login.py ./
 COPY app/services/capture/capture_entrypoint.sh .
 
 RUN dos2unix capture_entrypoint.sh && chmod +x capture_entrypoint.sh

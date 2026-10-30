@@ -8,6 +8,7 @@ so every later batch was refused until the bridge was restarted.
 from __future__ import annotations
 
 import importlib.util
+import sys
 import io
 import json
 import urllib.error
@@ -21,6 +22,9 @@ BRIDGES = Path(__file__).resolve().parents[1] / "app" / "services" / "capture" /
 
 
 def _load(name: str) -> ModuleType:
+    # The bridges import their sibling helper (login.py) the way they do in the container.
+    if str(BRIDGES) not in sys.path:
+        sys.path.insert(0, str(BRIDGES))
     spec = importlib.util.spec_from_file_location(name, BRIDGES / f"{name}.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

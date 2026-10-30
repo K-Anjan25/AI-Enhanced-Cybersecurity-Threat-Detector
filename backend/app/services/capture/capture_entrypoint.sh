@@ -50,7 +50,9 @@ wait_for_file() {
 start_zeek() {
     mkdir -p "$ZEEK_LOG_DIR"
     echo "[ZEEK] Starting on $ZEEK_IFACE"
-    (cd "$ZEEK_LOG_DIR" && exec zeek -i "$ZEEK_IFACE" local) &
+    # -C: ignore TCP checksums. NIC offload (and Docker Desktop's VM) produces packets
+    # with invalid checksums, which Zeek otherwise discards without recording them.
+    (cd "$ZEEK_LOG_DIR" && exec zeek -C -i "$ZEEK_IFACE" local) &
     PIDS+=("$!")
     wait_for_file "$ZEEK_LOG_DIR/conn.log" ZEEK || exit 1
     tail -n +1 -F "$ZEEK_LOG_DIR/conn.log" | python3 -u /app/zeek_bridge.py \

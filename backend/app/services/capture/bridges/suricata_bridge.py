@@ -34,6 +34,8 @@ Environment:
 
 import argparse
 import json
+
+from login import LoginFailed, sign_in
 import os
 import queue
 import signal
@@ -87,38 +89,26 @@ def iter_lines(source: TextIO) -> Iterator[str | None]:
 
 
 def authenticate(force: bool = False) -> bool:
-    """Obtain a bearer token by logging in (or bootstrapping the admin account).
+    """Obtain a bearer token by signing in. Reasons for a failure are printed.
 
     ``force`` discards the cached token first. A 401 means that token has expired
-    (access tokens last 900 s), so the retry must log in again; returning early on
-    the stale token is what left the bridge posting 401s until it was restarted.
+    (access tokens last 900 s), so the retry must sign in again.
     """
     global TOKEN
     if force:
         TOKEN = ""  # nosec B105 - clears the cached token; this is not a credential
     if TOKEN:
         return True
-    for endpoint, body in [
-        ("/api/v1/auth/login", {"email": EMAIL, "password": PASSWORD}),
-        ("/api/v1/auth/setup", {"email": EMAIL, "password": PASSWORD}),
-    ]:
-        try:
-            data = json.dumps(body).encode()
-            req = urllib.request.Request(  # noqa: S310 - API_URL is operator-configured
-                f"{API_URL}{endpoint}",
-                data=data,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310  # nosec B310
-                result = json.loads(resp.read())
-                TOKEN = result["access_token"]
-                print(f"[AUTH] ✓ {result['subject']}", file=sys.stderr)
-                return True
-        except (urllib.error.URLError, OSError, ValueError, KeyError):
-            continue
-    print("[AUTH] ✗ Failed", file=sys.stderr)
-    return False
+    try:
+        TOKEN = sign_in(API_URL, EMAIL, PASSWORD, log=_auth_log)
+    except LoginFailed as exc:
+        print(f"[AUTH] ✗ Failed: {exc}", file=sys.stderr)
+        return False
+    return True
+
+
+def _auth_log(message: str) -> None:
+    print(message, file=sys.stderr)
 
 
 # ── flow@1 contract ─────────────────────────────────────────────────────────────
