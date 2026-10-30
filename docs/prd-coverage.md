@@ -135,3 +135,30 @@ Browser pass (scratch directory with `puppeteer-core`, `@sparticuz/chromium`, `a
     node scripts/browser/contrast_pass.mjs
 
 Each command was run against a local backend or dashboard preview in this sandbox. Nothing here used a capture rig, Kafka, Docker, or Helm.
+
+## Changes since 2026-10-21 (2026-10-30)
+
+The tables above are the 2026-10-21 baseline. This section records what changed after it.
+No status above was re-measured. Where a change could move a requirement, the requirement
+is listed here instead of being edited above.
+
+- **Capture sensor (not a numbered FR).** The capture container no longer restart-loops.
+  The bridges now report why sign-in fails and back off on 429. Zeek ignores invalid TCP
+  checksums (`-C`). The sensor reconciles to a start/stop request from the dashboard
+  (Admin > Packet capture). Sandbox evidence is an end-to-end run against stub engines
+  and a fake API. Docker and real engines were not run. Affects FR-01 and FR-02 in
+  practice, since the sensor is a source of records. Real capture rate is still open
+  (next steps, item 7).
+- **Suricata rules.** The image build now fails if the ET Open rules cannot be fetched or
+  do not load. Before, a failed download was hidden and the image had no rules. Not built
+  here: the rules host is unreachable from the sandbox.
+- **Access control (FR-40, FR-41, FR-44; NFR-06 surface).** Login throttle state and the
+  ML service's shared-secret check (`ml-service/aegis_ml/serving/service_auth.py`, with
+  the backend sending the token). The ML routes fail closed without the secret. Covered by
+  unit tests only.
+- **Self-service signup.** A sign-up page and API exist. The PRD lists "self-serve signup"
+  under out of scope (line 68), so this is a scope decision that needs an owner. It is not
+  counted as a requirement.
+- **LogNet lifecycle (FR-30, FR-33).** MLflow tracking, registration, a promotion gate, and
+  rollback for the LogNet model. The model is trained and served as opt-in, and its
+  accuracy is at chance level, so it is not the default scorer and no quality claim is made.

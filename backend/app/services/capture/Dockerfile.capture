@@ -23,8 +23,17 @@ RUN apt-get update && \
 RUN echo 'wireshark-common wireshark-common/install-setuid boolean true' | debconf-set-selections && \
     dpkg-reconfigure -f noninteractive wireshark-common 2>/dev/null || true
 
-# Suricata rules; a failure here only leaves the stock ruleset empty.
-RUN suricata-update 2>/dev/null || true
+# Suricata rules (ET Open). The build fails if they cannot be fetched or do not load:
+# before, `|| true` hid a failed download and the image shipped with no rules and no alerts.
+# The download is retried because a single network blip should not break the build.
+RUN for attempt in 1 2 3; do \
+        suricata-update && break; \
+        if [ "$attempt" = 3 ]; then echo "suricata-update failed after 3 attempts" >&2; exit 1; fi; \
+        sleep 15; \
+    done && \
+    test -s /var/lib/suricata/rules/suricata.rules && \
+    suricata -T -c /etc/suricata/suricata.yaml -l /tmp && \
+    echo "Suricata rules: $(grep -c '^alert' /var/lib/suricata/rules/suricata.rules) alert rules loaded"
 
 ENV PATH="/opt/zeek/bin:${PATH}"
 
