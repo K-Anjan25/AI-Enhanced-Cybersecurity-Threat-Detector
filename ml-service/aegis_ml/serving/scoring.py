@@ -33,16 +33,16 @@ router = APIRouter(tags=["scoring"])
 
 # Typed Any: torch is an optional extra, so the model classes are not always importable.
 _flownet_model: Any = None
-_lognet_model: Any = None
+_lognet_bundle: Any = None  # LogNetBundle when a trained bundle is loaded
 _models_loaded = False
 
 FLOWNET_MODEL_PATH = os.environ.get("AEGIS_FLOWNET_MODEL_PATH", "/models/flownet.pt")
-LOGNET_MODEL_PATH = os.environ.get("AEGIS_LOGNET_MODEL_PATH", "/models/lognet.pt")
+LOGNET_BUNDLE_DIR = os.environ.get("AEGIS_LOGNET_BUNDLE_DIR", "/models/lognet")
 
 
 def _try_load_models() -> None:
     """Attempt to load PyTorch models. Non-fatal if torch is absent."""
-    global _flownet_model, _lognet_model, _models_loaded
+    global _flownet_model, _lognet_bundle, _models_loaded
     if _models_loaded:
         return
 
@@ -50,7 +50,7 @@ def _try_load_models() -> None:
         import torch
 
         from aegis_ml.models.flownet import FlowNet, FlowNetConfig
-        from aegis_ml.models.lognet import LogNet, LogNetConfig
+        from aegis_ml.models.lognet import LogNet, LogNetConfig  # noqa: F401
 
         # Load FlowNet if checkpoint exists
         if os.path.exists(FLOWNET_MODEL_PATH):
@@ -68,21 +68,19 @@ def _try_load_models() -> None:
         else:
             logger.info("flownet_not_found path=%s", FLOWNET_MODEL_PATH)
 
-        # Load LogNet if checkpoint exists
-        if os.path.exists(LOGNET_MODEL_PATH):
-            lognet_config = LogNetConfig()
-            lognet = LogNet(lognet_config)
-            state = torch.load(LOGNET_MODEL_PATH, map_location="cpu", weights_only=True)
-            lognet.load_state_dict(state)
-            lognet.eval()
-            _lognet_model = lognet
+        # Load the LogNet bundle (weights, vocabulary and threshold together) if present.
+        from aegis_ml.serving.lognet_bundle import BundleError, LogNetBundle  # noqa: PLC0415
+
+        try:
+            _lognet_bundle = LogNetBundle.load(LOGNET_BUNDLE_DIR)
             logger.info(
-                "lognet_loaded path=%s params=%d",
-                LOGNET_MODEL_PATH,
-                sum(p.numel() for p in lognet.parameters()),
+                "lognet_loaded dir=%s model_id=%s threshold=%.4f",
+                LOGNET_BUNDLE_DIR,
+                _lognet_bundle.model_id,
+                _lognet_bundle.threshold,
             )
-        else:
-            logger.info("lognet_not_found path=%s", LOGNET_MODEL_PATH)
+        except BundleError as e:
+            logger.info("lognet_not_loaded dir=%s reason=%s", LOGNET_BUNDLE_DIR, str(e))
 
     except ImportError:
         logger.info("torch_not_available using_statistical_fallback")
@@ -434,11 +432,24 @@ def score_log_window(request: ScoreRequest) -> ScoreResponse:
         reasons.append(f"Repeated message: {most_common_count}x identical")
 
     score = min(max(score, 0.0), 1.0)
+    method = "statistical"
+    model_id = "statistical-log-v1"
+
+    # When a trained LogNet bundle is loaded, its score decides. The heuristics above
+    # still run and their reasons are kept, because they explain what a human sees.
+    if _lognet_bundle is not None:
+        learned = _lognet_bundle.score([entry.message for entry in logs])
+        if learned is not None:
+            score = learned.score
+            method = "lognet"
+            model_id = learned.model_id
+            reasons.insert(
+                0,
+                f"LogNet distance {learned.distance:.3f} against threshold {learned.threshold:.3f}",
+            )
+
     if not reasons:
         reasons.append("Log patterns appear normal")
-
-    method = "lognet" if _lognet_model is not None else "statistical"
-    model_id = "lognet-v1" if _lognet_model is not None else "statistical-log-v1"
 
     return ScoreResponse(
         score=score,
@@ -489,7 +500,7 @@ def list_active_models() -> dict[str, Any]:
             }
         )
 
-    if _lognet_model is not None:
+    if _lognet_bundle is not None:
         models.append(
             {
                 "model_id": "lognet-v1",
