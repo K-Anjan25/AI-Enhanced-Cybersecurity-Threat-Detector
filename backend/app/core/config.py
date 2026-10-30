@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str | None = Field(default=None, max_length=254)
     bootstrap_admin_password: SecretStr | None = Field(default=None, repr=False)
     dev_auth_setup_enabled: bool = Field(default=False)
+    #: Self-service viewer accounts. Off by default: an open signup form on a
+    #: deployment is a decision the operator makes, and it only ever creates viewers.
+    signup_enabled: bool = Field(default=False)
 
     # Required: a deployment without an explicit name is a misconfiguration.
     service_name: str = Field(default="aegis-backend")

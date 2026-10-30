@@ -39,6 +39,7 @@ from app.api.v1.endpoints import (
     models,
     overview,
     privacy,
+    capture,
     stream,
     thresholds,
     users,
@@ -47,6 +48,7 @@ from app.api.v1.endpoints import (
 from app.auth.api_keys import InMemoryApiKeyStore, KeyDigest
 from app.auth.oidc import OidcConfig, OidcSignIn
 from app.auth.tokens import TokenService
+from app.services.capture_control import CaptureControl
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
@@ -574,6 +576,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # directory, and both remain process-local until the database adapter lands.
     user_directory = InMemoryUserDirectory()
     app.state.auth_accounts = AuthAccountStore(user_directory)
+    app.state.capture_control = CaptureControl()
     app.state.login_throttle = build_login_throttle(
         ThrottleSettings(
             account_max_failures=resolved.login_account_max_failures,
@@ -647,6 +650,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     declare_components(app, (FlowRecordIn, LogRecordIn))
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(capture.router)
     app.include_router(metrics.router)
     app.include_router(ingest.router)
     # ``stream`` comes first because its paths are literal where ``alerts`` now has

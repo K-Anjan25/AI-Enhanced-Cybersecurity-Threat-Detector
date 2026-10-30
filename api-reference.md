@@ -36,7 +36,10 @@ or body do not match the schema below.
 | `GET` | `/api/v1/auth/oidc/start` | Start an OpenID Connect sign-in (FR-43) | unauthenticated | `302` `text/plain` | — |
 | `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
 | `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
+| `POST` | `/api/v1/auth/signup` | Request a viewer account (disabled unless the operator enables signup) | unauthenticated | `202` `application/json` | `CredentialsIn` |
 | `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |
+| `GET` | `/api/v1/capture/state` | Desired packet-capture state | admin, responder | `200` `CaptureStateOut` | — |
+| `PUT` | `/api/v1/capture/state` | Start or stop capture, and choose its engines | admin, responder | `200` `CaptureStateOut` | `CaptureStateIn` |
 | `GET` | `/api/v1/detection/status` | Detection + ML + Drift + Model status | admin, analyst, responder, viewer | `200` `application/json` | — |
 | `GET` | `/api/v1/flows` | Count one window of traffic: volume, addresses and relationships (FR-52) | admin, analyst, responder, viewer | `200` `FlowAggregateOut` | — |
 | `POST` | `/api/v1/hunt/export` | Export the alerts matching a hunt as CSV (FR-23) | admin, responder | `200` `text/csv` | `HuntExportRequest` |
@@ -227,7 +230,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.login` or `auth.refresh` or `auth.logout`.
+Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.signup` or `capture.state` or `auth.login` or `auth.refresh` or `auth.logout`.
 
 ### `AuditEntryOut`
 
@@ -262,6 +265,27 @@ Whether the explicitly enabled local first-admin setup is still available.
 | `setup_available` | `boolean` | yes | True only when development-only setup is enabled and no account exists. The first account is an administrator and is held in memory. |
 | `setup_enabled` | `boolean` | yes | Whether AEGIS_DEV_AUTH_SETUP_ENABLED is enabled for this process. |
 | `account_exists` | `boolean` | yes | Whether an administrator has been provisioned in this process. |
+
+### `CaptureStateIn`
+
+A request to start or stop capture, and which engines to use.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `running` | `boolean` | yes | — |
+| `engines` | list of `string` | no | — |
+
+### `CaptureStateOut`
+
+The desired capture state and when it was last changed.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `running` | `boolean` | yes | — |
+| `engines` | list of `string` | yes | — |
+| `version` | `integer` | yes | — |
+| `changed_by` | `string` or `null` | yes | — |
+| `changed_at` | `string (date-time)` or `null` | yes | — |
 
 ### `ConfusionMatrixOut`
 

@@ -141,6 +141,14 @@ export function SignInPage() {
               <ArrowRight aria-hidden="true" className="size-icon-sm" />
             </Button>
           </form>
+          {setupAvailable ? null : (
+            <p className="mt-6 text-center text-body-sm text-muted">
+              No account?{' '}
+              <Link to="/sign-up" className="font-semibold text-accent">
+                Create one
+              </Link>
+            </p>
+          )}
         </div>
       </section>
     </main>

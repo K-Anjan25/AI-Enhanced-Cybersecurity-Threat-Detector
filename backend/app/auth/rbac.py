@@ -87,6 +87,9 @@ class Capability(StrEnum):
     #: retention. Ingest is a write path that a read-only role must not reach,
     #: so it gets its own capability rather than borrowing READ. See D-033.
     INGEST = "ingest"
+    #: Start and stop packet capture engines. Operators only; viewers and analysts
+    #: cannot change what the sensor collects. See the capture control endpoint.
+    CAPTURE = "capture"
     #: Also not named by R-53: managing machine credentials is not managing
     #: users, and it is not something every route that reads a user should imply.
     #: Held by admin alone. See D-042.
@@ -108,6 +111,7 @@ ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
             Capability.EXPORT,
             Capability.WEBHOOK_CONFIG,
             Capability.INGEST,
+            Capability.CAPTURE,
         }
     ),
     Role.ADMIN: frozenset(
@@ -121,6 +125,7 @@ ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
             Capability.MODELS,
             Capability.RETENTION,
             Capability.INGEST,
+            Capability.CAPTURE,
         }
     ),
 }
@@ -140,6 +145,7 @@ UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
         "/metrics",
         "/api/v1/auth/status",
         "/api/v1/auth/setup",
+        "/api/v1/auth/signup",
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
@@ -158,6 +164,8 @@ DOC_ROUTES: frozenset[str] = frozenset(
 #: absent is refused. Every new endpoint needs an entry here, and
 #: ``test_rbac.py`` fails CI until it has one.
 ROUTE_MATRIX: dict[str, frozenset[Role]] = {
+    # Capture control: start/stop/engine selection is an operator action.
+    "/api/v1/capture/state": frozenset({Role.RESPONDER, Role.ADMIN}),
     # Ingest is a write path: a viewer is read-only per R-53 and must not reach
     # it, so viewer is deliberately absent from both entries.
     "/api/v1/ingest/flows": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),

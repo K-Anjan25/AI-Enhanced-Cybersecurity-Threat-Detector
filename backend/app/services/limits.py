@@ -74,6 +74,7 @@ LIMITED_UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
         "/metrics",
         "/api/v1/auth/status",
         "/api/v1/auth/setup",
+        "/api/v1/auth/signup",
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",

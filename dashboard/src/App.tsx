@@ -47,6 +47,7 @@ import { OverviewPage } from './features/overview/pages/OverviewPage';
 import { TrafficPage } from './features/traffic/pages/TrafficPage';
 import { TriagePage } from './features/triage/pages/TriagePage';
 import { SignInPage } from './features/auth/SignInPage';
+import { SignUpPage } from './features/auth/SignUpPage';
 import { LandingPage } from './features/marketing/pages/LandingPage';
 import { ContactPage } from './features/marketing/pages/ContactPage';
 import { FeaturesPage } from './features/marketing/pages/FeaturesPage';
@@ -171,6 +172,7 @@ function Unauthenticated() {
   if (pathname === '/features') return <FeaturesPage />;
   if (pathname === '/pricing') return <PricingPage />;
   if (pathname === '/contact') return <ContactPage />;
+  if (pathname === '/sign-up') return <SignUpPage />;
   return <SignInPage />;
 }
 

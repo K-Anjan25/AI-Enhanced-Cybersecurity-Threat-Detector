@@ -60,3 +60,15 @@ export async function signOut(): Promise<void> {
     clearSessionToken();
   }
 }
+
+/**
+ * Request a viewer account. Signup does not sign the user in: the reply is the same
+ * whether or not the address already has an account, so it is shown as text only.
+ */
+export function signUp(email: string, password: string): Promise<{ message: string }> {
+  return postJson<{ message: string }>(
+    '/api/v1/auth/signup',
+    { email, password },
+    PUBLIC_AUTH_OPTIONS,
+  );
+}

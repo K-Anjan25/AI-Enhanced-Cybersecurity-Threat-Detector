@@ -135,6 +135,7 @@ def test_capabilities_are_declared_per_role_not_inherited() -> None:
             Capability.EXPORT,
             Capability.WEBHOOK_CONFIG,
             Capability.INGEST,
+            Capability.CAPTURE,
         }
     )
     assert capabilities_of(Role.ADMIN) == frozenset(
@@ -151,6 +152,7 @@ def test_capabilities_are_declared_per_role_not_inherited() -> None:
             # capability is written into this row rather than inherited from
             # USERS -- the two are separate decisions (D-042).
             Capability.API_KEYS,
+            Capability.CAPTURE,
         }
     )
 

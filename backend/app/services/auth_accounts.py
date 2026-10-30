@@ -82,6 +82,31 @@ class AuthAccountStore:
             self._email_to_id[normalised] = record.id
             return record
 
+    def register_viewer(self, email: str, password: str) -> UserRecord | None:
+        """Create a viewer account, or return ``None`` if the address is taken.
+
+        Self-service signup can only ever create a viewer, the least-privileged
+        role. Elevation stays with an administrator through the users API. A taken
+        address returns ``None`` rather than raising, so the caller can answer the
+        same way for new and existing addresses (no account enumeration).
+        """
+        normalised = normalise_email(email)
+        with self._lock:
+            rows = list(self._directory.rows())
+            if normalised in self._email_to_id or any(row.email == normalised for row in rows):
+                return None
+            record = UserRecord(
+                id=max((row.id for row in rows), default=0) + 1,
+                email=normalised,
+                role=UserRole.viewer,
+                created_at=datetime.now(UTC),
+            )
+            password_hash = hash_password(password)
+            self._directory.put(record)
+            self._password_hashes[record.id] = password_hash
+            self._email_to_id[normalised] = record.id
+            return record
+
     def authenticate(self, email: str, password: str) -> UserRecord | None:
         """Return an active account only when its Argon2id password matches."""
         try:

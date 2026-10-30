@@ -133,6 +133,58 @@ def setup_first_admin(
 
 
 @router.post(
+    "/signup",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=dict[str, str],
+    summary="Request a viewer account (disabled unless the operator enables signup)",
+)
+def signup(body: CredentialsIn, request: Request, response: Response) -> dict[str, str]:
+    """Create a viewer account if signup is enabled. Always answers the same way.
+
+    The reply is identical for a new and an existing address, so the form cannot be
+    used to discover which emails have accounts. Each attempt counts against the
+    same throttle as sign-in, so the form cannot be used to guess passwords or to
+    flood the password hashing.
+    """
+    _no_store(response)
+    settings = request.app.state.settings
+    if not settings.signup_enabled:
+        raise HTTPException(status_code=404, detail="not found")
+    throttle: LoginThrottle = request.app.state.login_throttle
+    address = client_ip(request) or "unknown"
+    key = f"signup:{body.email}"
+    decision = throttle.check(key, address)
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many sign-up attempts; try again later",
+            headers={"Retry-After": str(decision.retry_after_seconds)},
+        )
+    throttle.record_failure(key, address)
+    try:
+        account = _accounts(request).register_viewer(
+            body.email, body.password.get_secret_value()
+        )
+    except ValueError:
+        account = None  # an address that cannot be normalised gets the same reply
+    if account is not None:
+        record_action(
+            audit_trail(request),
+            action=AuditAction.auth_signup,
+            actor=account.email,
+            target_type="user",
+            target_id=str(account.id),
+            at=datetime.now(UTC),
+            detail={"role": account.role.value},
+            ip=client_ip(request),
+        )
+    return {
+        "message": "If the address can be registered, an account now exists. "
+        "Sign in with your password."
+    }
+
+
+@router.post(
     "/login",
     response_model=TokenPairOut,
     summary="Sign in with an account password",

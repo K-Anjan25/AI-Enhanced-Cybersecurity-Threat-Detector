@@ -126,6 +126,8 @@ class AuditAction(StrEnum):
     #: the record, for the same reasons they are not in the create record.
     webhook_test = "webhook.test"
     auth_setup = "auth.setup"
+    auth_signup = "auth.signup"
+    capture_state = "capture.state"
     auth_login = "auth.login"
     auth_refresh = "auth.refresh"
     auth_logout = "auth.logout"
@@ -136,6 +138,8 @@ class AuditAction(StrEnum):
 AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
     {
         ("POST", "/api/v1/ingest/flows"): AuditAction.ingest_flows,
+        ("POST", "/api/v1/auth/signup"): AuditAction.auth_signup,
+        ("PUT", "/api/v1/capture/state"): AuditAction.capture_state,
         ("POST", "/api/v1/ingest/logs"): AuditAction.ingest_logs,
         ("POST", "/api/v1/alerts/{alert_id}/verdict"): AuditAction.alert_verdict,
         ("POST", "/api/v1/webhooks"): AuditAction.webhook_create,
