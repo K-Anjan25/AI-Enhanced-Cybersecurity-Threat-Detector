@@ -25,6 +25,9 @@ from aegis_ml.data.windowing import WindowKey, window_flows  # noqa: E402
 from aegis_ml.models.flownet import FlowNet, FlowNetConfig  # noqa: E402
 from aegis_ml.serving import flow_window  # noqa: E402
 from aegis_ml.serving.app import create_app  # noqa: E402
+from aegis_ml.serving.service_auth import SERVICE_TOKEN_HEADER  # noqa: E402
+
+SERVICE_TOKEN = "flownet-test-token-with-enough-entropy-2026"  # pragma: allowlist secret
 from aegis_ml.serving.flownet_scorer import (  # noqa: E402
     CheckpointError,
     FlowNetScorer,
@@ -144,7 +147,7 @@ def test_missing_weights_is_a_named_error(checkpoint, tmp_path):
 
 def test_endpoint_scores_a_window(checkpoint, windows, monkeypatch):
     monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", checkpoint)
-    client = TestClient(create_app())
+    client = TestClient(create_app(service_token=SERVICE_TOKEN), headers={SERVICE_TOKEN_HEADER: SERVICE_TOKEN})
     body = {
         "flows": [r.model_dump(mode="json") for r in windows[0].records],
         "window_id": "w-1",
@@ -161,7 +164,7 @@ def test_endpoint_scores_a_window(checkpoint, windows, monkeypatch):
 def test_endpoint_refuses_a_mixed_source_window_as_422(checkpoint, windows, monkeypatch):
     """A window spanning two sources is a client error, not a server fault."""
     monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", checkpoint)
-    client = TestClient(create_app())
+    client = TestClient(create_app(service_token=SERVICE_TOKEN), headers={SERVICE_TOKEN_HEADER: SERVICE_TOKEN})
     flows = [r.model_dump(mode="json") for r in windows[0].records]
     other = [r.model_dump(mode="json") for r in windows[1].records]
     if {f["src_ip"] for f in flows} == {f["src_ip"] for f in other}:
@@ -173,7 +176,7 @@ def test_endpoint_refuses_a_mixed_source_window_as_422(checkpoint, windows, monk
 
 def test_endpoint_refuses_without_a_checkpoint(tmp_path, windows, monkeypatch):
     monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", str(tmp_path / "absent"))
-    client = TestClient(create_app())
+    client = TestClient(create_app(service_token=SERVICE_TOKEN), headers={SERVICE_TOKEN_HEADER: SERVICE_TOKEN})
     body = {"flows": [r.model_dump(mode="json") for r in windows[0].records]}
     response = client.post("/score/windows", json=body)
     assert response.status_code == 503
@@ -182,7 +185,7 @@ def test_endpoint_refuses_without_a_checkpoint(tmp_path, windows, monkeypatch):
 
 def test_models_list_reports_the_checkpoint_with_its_real_address(checkpoint, monkeypatch):
     monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", checkpoint)
-    client = TestClient(create_app())
+    client = TestClient(create_app(service_token=SERVICE_TOKEN), headers={SERVICE_TOKEN_HEADER: SERVICE_TOKEN})
     models = client.get("/models").json()["models"]
     flownet = [m for m in models if m["model_id"] == "flownet-test-0.0.1"]
     assert len(flownet) == 1
@@ -192,7 +195,7 @@ def test_models_list_reports_the_checkpoint_with_its_real_address(checkpoint, mo
 
 def test_models_list_omits_flownet_without_a_checkpoint(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_FLOWNET_CHECKPOINT_DIR", str(tmp_path / "absent"))
-    client = TestClient(create_app())
+    client = TestClient(create_app(service_token=SERVICE_TOKEN), headers={SERVICE_TOKEN_HEADER: SERVICE_TOKEN})
     ids = [m["model_id"] for m in client.get("/models").json()["models"]]
     assert "flownet-v1" not in ids
     assert not any(i.startswith("flownet-") for i in ids)

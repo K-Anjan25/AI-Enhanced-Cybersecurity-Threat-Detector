@@ -38,7 +38,7 @@ CATALOGUE: dict[str, Any] = {
 
 
 def _registrar(monkeypatch: pytest.MonkeyPatch) -> tuple[ModelRegistrar, ModelOpsService]:
-    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout: CATALOGUE)
+    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout, token=None: CATALOGUE)
     ops = ModelOpsService()
     return ModelRegistrar("http://ml.test", ops, interval=3600.0), ops
 
@@ -89,7 +89,7 @@ def test_an_entry_without_a_content_address_is_refused_not_placeholdered(
     monkeypatch.setattr(
         registrar_module,
         "_fetch_json",
-        lambda url, timeout: {
+        lambda url, timeout, token=None: {
             "models": [{"model_id": "lognet-v1", "kind": "log", "status": "active"}]
         },
     )
@@ -132,7 +132,7 @@ def _eval_dir(tmp_path: Path, *, model_id: str = "flownet-v0.1.0") -> Path:
 def test_a_matching_report_is_attached_with_its_split_and_source(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout: FLOWNET_CATALOGUE)
+    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout, token=None: FLOWNET_CATALOGUE)
     ops = ModelOpsService()
     registrar = ModelRegistrar(
         "http://ml", ops, interval=60, eval_reports_dir=str(_eval_dir(tmp_path))
@@ -149,7 +149,7 @@ def test_a_matching_report_is_attached_with_its_split_and_source(
 def test_a_report_for_another_model_is_skipped_and_registration_continues(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout: FLOWNET_CATALOGUE)
+    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout, token=None: FLOWNET_CATALOGUE)
     ops = ModelOpsService()
     registrar = ModelRegistrar(
         "http://ml",
@@ -166,7 +166,7 @@ def test_a_report_for_another_model_is_skipped_and_registration_continues(
 def test_no_reports_directory_means_no_evaluations_and_no_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout: FLOWNET_CATALOGUE)
+    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout, token=None: FLOWNET_CATALOGUE)
     ops = ModelOpsService()
     registrar = ModelRegistrar("http://ml", ops, interval=60)
 

@@ -132,6 +132,9 @@ class Settings(BaseSettings):
     otel_exporter_endpoint: str = Field(default="")
 
     ml_service_url: str = Field(default="http://localhost:8001")
+    #: Shared secret for the ML service (AEGIS_ML_SERVICE_TOKEN). Sent on every call;
+    #: the ML service refuses protected routes without it.
+    ml_service_token: SecretStr | None = Field(default=None, repr=False)
 
     # Kafka bootstrap servers (host:port). Empty keeps the flow path in-process (the
     # rule-based DetectionEngine). Set, flows go to flows.raw and a live consumer

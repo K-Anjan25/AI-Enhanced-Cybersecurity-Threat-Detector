@@ -206,6 +206,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         model_ops=app.state.model_ops,
         interval=30.0,
         eval_reports_dir=getattr(app.state.settings, "ml_eval_reports_dir", "") or None,
+        service_token=_ml_token(app.state.settings),
     )
     app.state.model_registrar = model_registrar
     model_registrar.start()
@@ -317,6 +318,15 @@ def build_oidc_sign_in(settings: Settings) -> OidcSignIn | None:
     )
 
 
+def _ml_token(settings: object) -> str | None:
+    """The ML service shared secret, or None when it is not configured."""
+    secret = getattr(settings, "ml_service_token", None)
+    if secret is None:
+        return None
+    value: str = secret.get_secret_value()
+    return value or None
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the FastAPI application.
 
@@ -377,7 +387,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # applies heuristic rules, and writes alerts to the alert store.
     ml_scorer = None
     if getattr(app.state.settings, "ml_detection_enabled", False):
-        ml_scorer = MlWindowScorer(app.state.settings.ml_service_url)
+        ml_scorer = MlWindowScorer(
+            app.state.settings.ml_service_url, token=_ml_token(app.state.settings)
+        )
     app.state.detection_engine = DetectionEngine(
         app.state.alert_store,
         interval=15.0,
@@ -406,7 +418,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if kafka_servers.strip():
         publisher, live, kafka_bus = build_kafka_pipeline(
             bootstrap_servers=kafka_servers,
-            ml_client=MlWindowScorer(resolved.ml_service_url),
+            ml_client=MlWindowScorer(resolved.ml_service_url, token=_ml_token(resolved)),
             alerts=app.state.alert_store,
             hub=app.state.alert_hub,
             registry=app.state.entity_registry,

@@ -6,7 +6,9 @@ model registry, and the health contract that the backend probes.
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+import os
+
+from fastapi import Depends, FastAPI, Request
 
 from aegis_ml.registry.model_registry import ModelRegistry
 from aegis_ml.serving.drift import router as drift_router
@@ -14,11 +16,16 @@ from aegis_ml.serving.flow_window import router as flow_window_router
 from aegis_ml.serving.health import ServiceHealth, build_health
 from aegis_ml.serving.models import router as models_router
 from aegis_ml.serving.scoring import router as scoring_router
+from aegis_ml.serving.service_auth import SERVICE_TOKEN_ENV, require_service_token
 
 __version__ = "0.1.0"
 
 
-def create_app(registry: ModelRegistry | None = None) -> FastAPI:
+def create_app(
+    registry: ModelRegistry | None = None,
+    *,
+    service_token: str | None = None,
+) -> FastAPI:
     """Build the inference FastAPI application.
 
     Args:
@@ -32,12 +39,16 @@ def create_app(registry: ModelRegistry | None = None) -> FastAPI:
     )
     app.state.registry = registry if registry is not None else ModelRegistry()
     app.state.version = __version__
+    configured = service_token if service_token is not None else os.environ.get(SERVICE_TOKEN_ENV)
+    app.state.service_token = configured or None
 
     # Include scoring, drift, and model endpoints
-    app.include_router(scoring_router)
-    app.include_router(flow_window_router)
-    app.include_router(drift_router)
-    app.include_router(models_router)
+    # Every inference and model route needs the shared secret. Probes stay public.
+    guard = [Depends(require_service_token)]
+    app.include_router(scoring_router, dependencies=guard)
+    app.include_router(flow_window_router, dependencies=guard)
+    app.include_router(drift_router, dependencies=guard)
+    app.include_router(models_router, dependencies=guard)
 
     @app.get(
         "/internal/healthz",

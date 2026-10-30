@@ -19,6 +19,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from app.core.logging import get_logger
+from app.services.ml_auth import ml_request_headers
 from app.services.rule_detector import MlWindowResult
 
 logger = get_logger("aegis.ml_window_scorer")
@@ -51,8 +52,9 @@ def _recent(flows: list[dict[str, object]]) -> list[dict[str, Any]]:
 class MlWindowScorer:
     """Scores one window by calling the ML service over HTTP."""
 
-    def __init__(self, base_url: str, *, timeout: float = 2.0) -> None:
-        """Remember the ML service URL. Only http(s) is accepted."""
+    def __init__(self, base_url: str, *, timeout: float = 2.0, token: str | None = None) -> None:
+        """Remember the ML service URL and shared secret. Only http(s) is accepted."""
+        self._token = token
         scheme = urlsplit(base_url).scheme
         if scheme not in _ALLOWED_SCHEMES:
             raise ValueError(f"ML service URL must be http or https, got {scheme!r}")
@@ -67,7 +69,7 @@ class MlWindowScorer:
         request = urllib.request.Request(  # noqa: S310 - scheme checked in __init__
             self._url,
             data=body,
-            headers={"Content-Type": "application/json"},
+            headers=ml_request_headers(self._token),
             method="POST",
         )
         try:

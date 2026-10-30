@@ -14,9 +14,11 @@ import textwrap
 SCRIPT = textwrap.dedent("""
     import sys
     sys.modules["torch"] = None  # any `import torch` now raises ImportError
+    import os
+    os.environ["AEGIS_ML_SERVICE_TOKEN"] = "no-torch-token-with-enough-entropy-2026"  # pragma: allowlist secret
     from fastapi.testclient import TestClient
     from aegis_ml.serving.app import app
-    client = TestClient(app)
+    client = TestClient(app, headers={"X-AEGIS-Service-Token": "no-torch-token-with-enough-entropy-2026"})  # pragma: allowlist secret
     assert client.get("/internal/healthz").status_code == 200
     assert client.get("/models").status_code == 200
     flow = {

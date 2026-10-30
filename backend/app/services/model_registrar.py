@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
+from app.services.ml_auth import ml_request_headers
 from app.services.model_ops import ModelVersion
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ _EVAL_SUFFIX = ".eval.json"
 _CONFIG_SUFFIX = ".config.json"
 
 
-def _fetch_json(url: str, timeout: float) -> dict[str, Any]:
+def _fetch_json(url: str, timeout: float, token: str | None = None) -> dict[str, Any]:
     """Fetch one JSON document over http(s).
 
     Raises:
@@ -43,7 +44,7 @@ def _fetch_json(url: str, timeout: float) -> dict[str, Any]:
         raise ValueError(msg)
     # The scheme is checked above, so neither call can open a file: or custom URL.
     request = urllib.request.Request(  # noqa: S310
-        url, headers={"Content-Type": "application/json"}
+        url, headers=ml_request_headers(token)
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310  # nosec B310
         document: dict[str, Any] = json.loads(response.read())
@@ -60,6 +61,7 @@ class ModelRegistrar:
         *,
         interval: float = 30.0,
         eval_reports_dir: str | None = None,
+        service_token: str | None = None,
     ) -> None:
         """Remember the model service, the poll interval, and where reports live.
 
@@ -67,6 +69,7 @@ class ModelRegistrar:
         ``model_id`` matches a registered version is attached to that version.
         """
         self._ml_url = ml_service_url.rstrip("/")
+        self._token = service_token
         self._model_ops = model_ops
         self._interval = interval
         self._eval_dir = eval_reports_dir or None
@@ -113,7 +116,7 @@ class ModelRegistrar:
         url = f"{self._ml_url}/models"
         try:
             logger.info("model_registrar_fetching url=%s", url)
-            data = _fetch_json(url, timeout=10)
+            data = _fetch_json(url, timeout=10, token=self._token)
             models: list[dict[str, Any]] = list(data.get("models", []))
             logger.info("model_registrar_got_models count=%d", len(models))
         except Exception as exc:  # noqa: BLE001 - any fetch failure is recorded, not raised
