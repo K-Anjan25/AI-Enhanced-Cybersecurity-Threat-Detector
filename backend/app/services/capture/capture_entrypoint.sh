@@ -7,11 +7,13 @@
 # that are wanted, stops the ones that are not, and restarts one that died while wanted.
 # Capture starts stopped. A restart of the container also comes back stopped.
 #
-# AEGIS_CAPTURE_ENGINES is the allowlist of engines this sensor may run (default
-# zeek,suricata). tshark is opt-in: it duplicates zeek's flows.
-#   zeek      connection log (conn.log) -> flows
-#   suricata  alerts, DNS, HTTP and TLS -> logs
-#   tshark    packet-level flow aggregation -> flows
+# AEGIS_CAPTURE_ENGINES is the allowlist of engines this sensor may run (default: suricata).
+#   suricata  alerts, DNS, HTTP and TLS -> logs, and eve.json flow events -> flows
+#   tshark    packet-level flow aggregation -> flows (opt-in; it duplicates suricata's flows
+#             when both run, so enable it only on its own)
+#   zeek      connection log (conn.log) -> flows. Not in the image any more (option C); the
+#             script refuses it rather than failing later. Kept so an image that adds zeek
+#             back can still use it.
 set -euo pipefail
 
 # Refuse the development default password; see docker/.env.example.
@@ -20,7 +22,7 @@ if [ -z "${AEGIS_PASSWORD:-}" ] || [ "${AEGIS_PASSWORD}" = "admin123456789" ]; t
     exit 2
 fi
 
-ENGINES="${AEGIS_CAPTURE_ENGINES:-zeek,suricata}"
+ENGINES="${AEGIS_CAPTURE_ENGINES:-suricata}"
 API_URL="${AEGIS_API_URL:-http://backend:8000}"
 EMAIL="${AEGIS_EMAIL:-admin@aegis.local}"
 APP_DIR="${AEGIS_APP_DIR:-/app}"
@@ -32,7 +34,13 @@ if [ -z "${ENGINES//[, ]/}" ]; then
 fi
 for engine in ${ENGINES//,/ }; do
     case "$engine" in
-        zeek|suricata|tshark) ;;
+        zeek)
+            if ! command -v zeek >/dev/null 2>&1; then
+                echo "refusing to start: zeek is not installed in this image (use suricata for flows)" >&2
+                exit 2
+            fi
+            ;;
+        suricata|tshark) ;;
         *)
             echo "refusing to start: unknown engine '$engine' in AEGIS_CAPTURE_ENGINES" >&2
             exit 2
@@ -87,8 +95,12 @@ start_suricata() {
     fi
     suricata -i "$SURICATA_IFACE" -l "$SURICATA_LOG_DIR" &
     wait_for_file "$SURICATA_LOG_DIR/eve.json" SURICATA || return 1
+    # Flows come from suricata's eve.json only when zeek is not also running; with both,
+    # zeek's conn.log would count every connection twice.
+    local flows_flag=()
+    if ! allowed_engine zeek; then flows_flag=(--flows); fi
     tail -n +1 -F "$SURICATA_LOG_DIR/eve.json" | python3 -u "$APP_DIR/suricata_bridge.py" \
-        --api "$API_URL" --email "$EMAIL" --password "$AEGIS_PASSWORD" &
+        "${flows_flag[@]}" --api "$API_URL" --email "$EMAIL" --password "$AEGIS_PASSWORD" &
 }
 
 start_tshark() {

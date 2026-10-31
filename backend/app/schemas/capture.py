@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 #: The engines a request may name by default, matching the sensor's default allowlist.
-DEFAULT_CAPTURE_ENGINES: list[str] = ["zeek", "suricata"]
+DEFAULT_CAPTURE_ENGINES: list[str] = ["suricata"]
 
 
 class CaptureStateIn(BaseModel):

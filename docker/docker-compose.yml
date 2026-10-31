@@ -240,9 +240,10 @@ services:
   # backend/app/services/capture/bridges/README.md ("Docker Desktop").
   # Default interface per service differs; see the same README for the table.
   # Network capture: one container, one image (replaces capture, zeek, suricata and
-  # tshark). Engines run side by side, chosen by AEGIS_CAPTURE_ENGINES. zeek supplies
-  # flows and suricata supplies alerts and protocol logs. tshark is opt-in: it
-  # aggregates the same connections as zeek, so enabling it counts flows twice.
+  # tshark). Engines run side by side, chosen by AEGIS_CAPTURE_ENGINES. suricata supplies
+  # alerts, protocol logs and flows (eve.json flow events). Zeek was removed from the image
+  # (option C). tshark is opt-in: it aggregates the same connections as suricata's flows,
+  # so enabling it with suricata counts flows twice.
   capture:
     # Zeek plus Suricata with the full ET Open rule set (~69k rules) used 964 MiB and was
     # OOM-killed at the old 1g limit. Raise it if the container shows OOMKilled=true again.
@@ -255,7 +256,7 @@ services:
       AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
       # No default: the capture service refuses to start without a non-default password.
       AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
-      AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-zeek,suricata}
+      AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-suricata}
       # AEGIS_CAPTURE_INTERFACE is still honoured as the fallback for every engine.
       AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
       AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}

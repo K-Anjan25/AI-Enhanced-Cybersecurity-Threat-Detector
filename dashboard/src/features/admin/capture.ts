@@ -14,12 +14,15 @@
 import type { CaptureState } from '../../api/capture';
 
 export const CAPTURE_ENGINES = [
-  { id: 'zeek', label: 'Zeek', note: 'Connection log, for flows.' },
-  { id: 'suricata', label: 'Suricata', note: 'Alerts, DNS, HTTP and TLS. No rules are loaded yet.' },
+  {
+    id: 'suricata',
+    label: 'Suricata',
+    note: 'Flows, alerts, DNS, HTTP and TLS. No rules are loaded yet.',
+  },
   {
     id: 'tshark',
     label: 'tshark',
-    note: 'Packet-level flows. Duplicates Zeek’s flows, so it is off unless chosen.',
+    note: 'Packet-level flows. Duplicates Suricata’s flows, so it is off unless chosen.',
   },
 ] as const;
 

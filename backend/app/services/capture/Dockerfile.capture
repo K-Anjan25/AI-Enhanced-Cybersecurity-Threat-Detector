@@ -1,22 +1,20 @@
-# One capture image for every engine (Zeek, Suricata, tshark). It replaces the four
-# containers capture, zeek, suricata and tshark, which all ran with host networking
-# and NET_ADMIN and posted to the same API. Engines are selected at runtime with
-# AEGIS_CAPTURE_ENGINES (see capture_entrypoint.sh).
+# One capture image for the engines that remain: Suricata (the flow and alert source) and
+# tshark (opt-in). It replaces the four containers capture, zeek, suricata and tshark, which
+# all ran with host networking and NET_ADMIN and posted to the same API. Engines are selected
+# at runtime with AEGIS_CAPTURE_ENGINES (see capture_entrypoint.sh).
+#
+# Zeek was removed (option C): Suricata's eve.json `flow` events now supply the flows, through
+# suricata_bridge.py --flows. Zeek's conn.log had richer per-connection fields (the trade-off
+# of this change). Its memory share of the capture container has not been measured separately.
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        curl gnupg2 ca-certificates \
+        curl ca-certificates \
         python3 python3-pip libpcap-dev dos2unix \
         suricata suricata-update tshark && \
-    echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_22.04/ /' | \
-        tee /etc/apt/sources.list.d/security:zeek.list && \
-    curl -fsSL https://download.opensuse.org/repositories/security:zeek/xUbuntu_22.04/Release.key | \
-        gpg --dearmor | tee /etc/apt/trusted.gpg.d/security_zeek.gpg > /dev/null && \
-    apt-get update && \
-    apt-get install -y zeek && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb && \
     rm -rf /usr/share/doc /usr/share/man /usr/share/locale
 
@@ -40,7 +38,10 @@ RUN mkdir -p /etc/suricata/rules && \
     suricata -T -c /etc/suricata/suricata.yaml -l /tmp && \
     echo "Suricata rules: $(grep -c '^alert' /etc/suricata/rules/suricata.rules) alert rules loaded"
 
-ENV PATH="/opt/zeek/bin:${PATH}"
+# Flows come from Suricata's eve.json `flow` events. Fail the build if the shipped config
+# does not emit them, rather than shipping an image with no flows.
+RUN grep -Eq '^[[:space:]]*- flow[[:space:]]*$' /etc/suricata/suricata.yaml && \
+    echo "Suricata eve-log emits flow events"
 
 WORKDIR /app
 # The spool directory exists in the image so a named volume mounted over it inherits
@@ -48,8 +49,7 @@ WORKDIR /app
 # the privilege is granted explicitly by compose (cap_add: NET_ADMIN), not by --privileged.
 RUN mkdir -p /var/lib/aegis-spool
 
-COPY app/services/capture/bridges/zeek_bridge.py \
-     app/services/capture/bridges/suricata_bridge.py \
+COPY app/services/capture/bridges/suricata_bridge.py \
      app/services/capture/bridges/tcpdump_bridge.py \
      app/services/capture/bridges/shipper.py \
      app/services/capture/bridges/login.py \
