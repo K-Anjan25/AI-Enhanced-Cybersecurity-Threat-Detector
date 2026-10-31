@@ -30,7 +30,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
-import { sessionToken, onSessionTokenChange } from './api/session';
+import { sessionRole, sessionToken, onSessionTokenChange } from './api/session';
 import { signOut } from './api/auth';
 import { AppShell } from './components/layout/AppShell';
 import { EmptyState } from './components/ui';
@@ -70,6 +70,23 @@ function Offered({ children }: { children: ReactNode }) {
       <EmptyState
         title="This screen needs a wider window"
         description="Widen the window to view this screen."
+      />
+    </div>
+  );
+}
+
+/**
+ * The Admin screens are for administrators. A viewer who opens `/admin` sees a plain
+ * refusal instead of the page, which would otherwise render and fail on every call.
+ */
+function AdminOnly({ children }: { children: ReactNode }) {
+  if (sessionRole() === 'admin') return <>{children}</>;
+  return (
+    <div className="max-w-xl">
+      <h1 className="text-h1">Admins only</h1>
+      <EmptyState
+        title="This screen is for administrators"
+        description="Ask an administrator if you need a change to the users, keys or capture settings."
       />
     </div>
   );
@@ -145,7 +162,9 @@ function Shell({ onSignOut }: { onSignOut: () => void }) {
           path="/admin/*"
           element={
             <Offered>
-              <AdminPage />
+              <AdminOnly>
+                <AdminPage />
+              </AdminOnly>
             </Offered>
           }
         />

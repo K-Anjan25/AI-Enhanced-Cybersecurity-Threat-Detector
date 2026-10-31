@@ -85,6 +85,27 @@ export function sessionToken(): string | null {
 }
 
 /** The current refresh token, or `null` when the tab has no session. */
+/**
+ * The signed-in user's role, read from the access token's `role` claim.
+ *
+ * This only decides what the screen shows (the Admin link and page). It is not a
+ * security check: the API enforces every capability on each request, and a forged
+ * token cannot pass its signature check. `null` when there is no token or no role.
+ */
+export function sessionRole(): string | null {
+  const token = sessionToken();
+  const payload = token?.split('.')[1];
+  if (!payload) return null;
+  try {
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const claims = JSON.parse(atob(padded)) as { role?: unknown };
+    return typeof claims.role === 'string' ? claims.role : null;
+  } catch {
+    return null;
+  }
+}
+
 export function refreshToken(): string | null {
   if (!refreshLoaded) {
     const stored = storage()?.getItem(SESSION_REFRESH_TOKEN_KEY) ?? '';

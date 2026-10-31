@@ -35,6 +35,7 @@ import { useViewportClass } from '../hooks/viewport';
 import { NarrowNotice } from './NarrowNotice';
 import { useTheme } from '../../theme/ThemeProvider';
 import { NAV_ITEMS } from './nav';
+import { sessionRole } from '../../api/session';
 import { AegisLogo } from '../brand/AegisLogo';
 
 interface AppShellProps {
@@ -68,7 +69,10 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
   // lists only the entries that open. Listing the others would send a phone to
   // a "Not offered" page.
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const navItems = narrow ? NAV_ITEMS.filter((item) => NARROW_OFFERED.has(item.to)) : NAV_ITEMS;
+  const isAdmin = sessionRole() === 'admin';
+  // Admin is hidden from non-admins: the page is also gated, so this is only the link.
+  const allowed = NAV_ITEMS.filter((item) => isAdmin || item.to !== '/admin');
+  const navItems = narrow ? allowed.filter((item) => NARROW_OFFERED.has(item.to)) : allowed;
   const sections = [...new Set(navItems.map((item) => item.section))];
 
   return (

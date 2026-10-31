@@ -19,8 +19,8 @@ import { resetSessionForTests, setSessionToken } from './api/session';
  * than rendering it against a real one. What is being checked here is the routing
  * and the shell; the page's own behaviour is OverviewPage.test.tsx.
  */
-function renderAt(path: string) {
-  setSessionToken('test-session-token');
+function renderAt(path: string, role: 'admin' | 'viewer' = 'admin') {
+  setSessionToken(tokenWithRole(role));
   const seen = stubFetch([
     {
       match: '/api/v1/alerts',
@@ -132,7 +132,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+
+/** A token whose payload carries the role claim, as the API issues it. */
+function tokenWithRole(role: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub: 'admin@example.com', role }))
+    .toString('base64')
+    .replace(/=+$/, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+  return `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`;
+}
+
 describe('routing and shell', () => {
+  it('hides the Admin link and refuses the admin screen for a viewer', () => {
+    renderAt('/admin/users', 'viewer');
+    expect(screen.getByRole('heading', { name: 'Admins only' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /admin/i })).toBeNull();
+  });
+
   it('renders the overview page at the root', () => {
     renderAt('/');
 

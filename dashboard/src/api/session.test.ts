@@ -7,6 +7,7 @@ import {
   resetSessionForTests,
   SESSION_REFRESH_TOKEN_KEY,
   SESSION_TOKEN_KEY,
+  sessionRole,
   sessionToken,
   setSessionCredentials,
   setSessionToken,
@@ -109,5 +110,33 @@ describe('the session token', () => {
     clearSessionToken();
 
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe('the signed-in role', () => {
+  /** A token shaped like the API's: header.payload.signature, payload base64url. */
+  function tokenWithRole(role: string): string {
+    const payload = Buffer.from(JSON.stringify({ sub: 'x@example.com', role }))
+      .toString('base64')
+      .replace(/=+$/, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+    return `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`;
+  }
+
+  it('is null when nobody is signed in', () => {
+    expect(sessionRole()).toBeNull();
+  });
+
+  it('reads the role claim from the access token', () => {
+    setSessionToken(tokenWithRole('admin'));
+    expect(sessionRole()).toBe('admin');
+    setSessionToken(tokenWithRole('viewer'));
+    expect(sessionRole()).toBe('viewer');
+  });
+
+  it('is null for a token that is not a readable payload', () => {
+    setSessionToken('not-a-jwt');
+    expect(sessionRole()).toBeNull();
   });
 });
