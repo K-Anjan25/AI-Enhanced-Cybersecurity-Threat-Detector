@@ -506,6 +506,38 @@ class RuleDetector:
             alerts.extend(self._correlate_and_store(detection, reasons, now))
         return alerts
 
+    def ingest_signature(
+        self,
+        *,
+        entity_key: str,
+        family: str,
+        score: float,
+        at: datetime,
+        evidence_id: str,
+        reasons: list[str],
+    ) -> list[dict[str, object]]:
+        """Turn one IDS signature hit into a log-modality detection and store its alert.
+
+        Signature hits (Suricata ``alert`` events) are already decisions made by
+        the sensor, so they enter the same correlator as the model scores but
+        with ``Modality.log``. ``evidence_id`` must be stable for the event so a
+        replayed alert is absorbed, not counted twice.
+        """
+        from app.services.correlator import Modality
+
+        detection = Detection(
+            entity_id=_entity_id(entity_key),
+            family=family,
+            modality=Modality.log,
+            score=score,
+            at=at,
+            evidence_id=evidence_id,
+            model_id="suricata-signature",
+            explanation=Explanation(reasons=tuple(reasons)),
+        )
+        self._total_detections += 1
+        return self._correlate_and_store(detection, reasons, datetime.now(UTC))
+
     def _correlate_and_store(
         self, detection: Detection, reasons: list[str], now: datetime
     ) -> list[dict[str, object]]:

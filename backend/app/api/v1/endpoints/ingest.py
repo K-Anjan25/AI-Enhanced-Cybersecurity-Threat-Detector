@@ -154,6 +154,11 @@ async def _ingest(
         detection_engine = getattr(request.app.state, "detection_engine", None)
         if detection_engine is not None and publisher is None and modality == "flow" and accepted:
             detection_engine.feed([r.model_dump() for r in accepted])
+        # Suricata alert hits are sensor decisions, not model scores: they go straight to
+        # the alert store through the same correlator, in-process only. A Kafka deployment
+        # does not get them yet (the scoring worker owns that path).
+        if detection_engine is not None and publisher is None and modality == "log" and accepted:
+            detection_engine.feed_signatures([r.model_dump() for r in accepted])
         # Feed accepted flows to drift monitor for PSI computation.
         drift_monitor = getattr(request.app.state, "drift_monitor", None)
         if drift_monitor is not None and modality == "flow" and accepted:

@@ -234,6 +234,36 @@ def _ship() -> Any:
     return _SHIPPER
 
 
+def to_log_v1(record: dict[str, Any]) -> dict[str, Any]:
+    """Map a bridge log record onto the ``log@1`` wire contract the API validates.
+
+    ``log@1`` forbids unknown keys and requires ``service``, so the bridge's
+    ``source``/``structured`` shape was refused with 422-style errors. Structured
+    fields move into ``parameters``, which is ``dict[str, str]``: lists are joined
+    and every value is coerced to text, so the alert adapter can read them back.
+    """
+    structured = record.get("structured") or {}
+    parameters: dict[str, str] = {}
+    for key, value in structured.items():
+        if value is None:
+            text = ""
+        elif isinstance(value, (list, tuple)):
+            text = ",".join(str(v) for v in value)
+        else:
+            text = str(value)
+        parameters[str(key)] = text[:500]
+    host = str(record.get("host") or "") or "unknown"
+    return {
+        "schema_version": "log@1",
+        "timestamp": record.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+        "host": host,
+        "service": str(record.get("source") or "suricata"),
+        "level": record.get("level") or "info",
+        "message": str(record.get("message") or "suricata event")[:2000],
+        "parameters": parameters,
+    }
+
+
 def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
     """Deliver records through the shared shipper and return how many the API accepted.
 
@@ -242,6 +272,8 @@ def send_batch(records: list[dict[str, Any]], modality: str = "flows") -> int:
     """
     if modality == "flows":
         records = [c for c in (to_flow_v1(r) for r in records) if c is not None]
+    elif modality == "logs":
+        records = [to_log_v1(r) for r in records]
     if not records:
         return 0
     return int(_ship().send(records, modality))
@@ -275,7 +307,7 @@ def parse_alert(event: dict[str, Any]) -> dict[str, Any]:
     src_ip = event.get("src_ip", "")
     dst_ip = event.get("dest_ip", "")
     src_port = event.get("src_port", 0)
-    dst_port = event.get("dest_ip", 0)
+    dst_port = event.get("dest_port", 0)
     proto = event.get("proto", "TCP")
 
     message = (

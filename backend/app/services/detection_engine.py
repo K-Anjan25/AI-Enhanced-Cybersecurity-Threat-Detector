@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import threading
 from collections import deque
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.core.logging import get_logger
@@ -77,6 +78,51 @@ class DetectionEngine:
         with self._lock:
             for record in records:
                 self._buffer.append(record)
+
+    def feed_signatures(self, records: list[dict[str, object]]) -> int:
+        """Store Suricata alert hits directly as alerts; return how many were stored.
+
+        A hit is only taken from a record whose ``service`` is ``suricata-alert``.
+        Other log lines are not alerts. Severity 1/2/3 maps to score 0.9/0.6/0.3,
+        which the correlator turns into the alert's severity.
+        """
+        stored = 0
+        for record in records:
+            if record.get("service") != "suricata-alert":
+                continue
+            params = record.get("parameters") or {}
+            if not isinstance(params, dict):
+                continue
+            try:
+                ts = record["timestamp"]
+                if not isinstance(ts, datetime):
+                    ts = datetime.fromisoformat(str(ts))
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=UTC)
+                severity = int(str(params.get("severity", "3")) or 3)
+            except (KeyError, ValueError, TypeError):
+                continue
+            src = str(params.get("src_ip") or record.get("host") or "")
+            if not src:
+                continue
+            category = str(params.get("category") or "alert")
+            signature = str(params.get("signature") or "unknown signature")
+            score = {1: 0.9, 2: 0.6}.get(severity, 0.3)
+            evidence = (
+                f"suricata:{params.get('signature_id', '0')}:{src}:"
+                f"{params.get('dst_ip', '')}:{params.get('dst_port', '')}:{ts.isoformat()}"
+            )
+            stored += len(
+                self._detector.ingest_signature(
+                    entity_key=src,
+                    family=f"ids:{category}",
+                    score=score,
+                    at=ts,
+                    evidence_id=evidence,
+                    reasons=[signature],
+                )
+            )
+        return stored
 
     def start(self) -> None:
         """Start the background detection loop."""
