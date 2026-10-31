@@ -113,6 +113,9 @@ services:
       context: ../ml-service
     environment:
       AEGIS_ENV: development
+      # Shared secret between the backend and the ML service. Without it the ML service
+      # answers 503 on /models and scoring, so the model registry stays empty.
+      AEGIS_ML_SERVICE_TOKEN: ${AEGIS_ML_SERVICE_TOKEN:?set AEGIS_ML_SERVICE_TOKEN in docker/.env (see .env.example)}
       AEGIS_LOG_LEVEL: INFO
     # The trained FlowNet checkpoint (data/checkpoints/flownet, not in Git). Without it the
     # service runs, reports no flow model, and the backend scores with rules only.
@@ -137,6 +140,9 @@ services:
         aegis_ml: ../ml-service
     environment:
       AEGIS_ENV: development
+      # Shared secret between the backend and the ML service. Without it the ML service
+      # answers 503 on /models and scoring, so the model registry stays empty.
+      AEGIS_ML_SERVICE_TOKEN: ${AEGIS_ML_SERVICE_TOKEN:?set AEGIS_ML_SERVICE_TOKEN in docker/.env (see .env.example)}
       AEGIS_SERVICE_NAME: aegis-backend
       AEGIS_SECRET_KEY: ${AEGIS_SECRET_KEY:?set AEGIS_SECRET_KEY to a random value of at least 32 characters}
       AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
