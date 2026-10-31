@@ -59,6 +59,7 @@ or body do not match the schema below.
 | `GET` | `/api/v1/overview` | One window's counts, severity series and named entities (FR-50) | admin, analyst, responder, viewer | `200` `OverviewOut` | — |
 | `POST` | `/api/v1/privacy/erasure` | Erase one data subject across every store (NFR-05, R-37) | admin | `200` `ErasureReportOut` | `ErasureRequest` |
 | `GET` | `/api/v1/privacy/erasures` | The erasure ledger, newest first (NFR-05) | admin | `200` `ErasureLedgerPageOut` | — |
+| `GET` | `/api/v1/reports/daily` | A deterministic report of one UTC day's stored alerts (Phase 3) | admin, analyst, responder, viewer | `200` `application/json` | — |
 | `GET` | `/api/v1/retention` | Retention policy and the plan a run would execute (NFR-05) | admin | `200` `RetentionPlanOut` | — |
 | `POST` | `/api/v1/retention/run` | Apply the retention plan (NFR-05) | admin | `200` `RetentionRunOut` | — |
 | `GET` | `/api/v1/thresholds` | Thresholds in force, and the FR-13 defaults behind them (R-69) | admin, analyst, responder, viewer | `200` `ThresholdListOut` | — |

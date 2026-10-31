@@ -78,3 +78,27 @@ def test_suricata_alert_appears_on_alerts_api(client: TestClient) -> None:
     items = body.get("items", body if isinstance(body, list) else [])
     families = [item.get("family") for item in items]
     assert "ids:A Network Trojan was detected" in families
+
+
+def test_daily_report_counts_stored_alerts_and_states_them(client: TestClient) -> None:
+    recent = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+    line = json.dumps(to_log_v1(parse_alert({**EVE, "timestamp": recent}))).encode()
+    client.post(
+        "/api/v1/ingest/logs",
+        content=line,
+        headers={**_headers(client, "analyst"), "content-type": "application/x-ndjson"},
+    )
+    day = datetime.now(UTC).date().isoformat()
+    report = client.get(
+        "/api/v1/reports/daily", params={"day": day}, headers=_headers(client, "viewer")
+    )
+    assert report.status_code == 200, report.text
+    body = report.json()
+    assert body["source"] == "stored alerts only"
+    assert body["totals"]["alerts"] == 1
+    assert body["totals"]["by_severity"]["critical"] == 1
+    assert body["facts"][0].startswith("1 alerts were recorded on")
+    bad = client.get(
+        "/api/v1/reports/daily", params={"day": "31/10/2026"}, headers=_headers(client, "viewer")
+    )
+    assert bad.status_code == 400

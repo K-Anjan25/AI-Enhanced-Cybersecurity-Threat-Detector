@@ -178,6 +178,8 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # an alert may read the window's counts, and no role may read it that may not
     # read the alerts themselves.
     "/api/v1/overview": frozenset(Role),
+    # The daily report is the same stored alerts, rendered as sentences (Phase 3).
+    "/api/v1/reports/daily": frozenset(Role),
     "/api/v1/detection/status": frozenset(Role),
     # One alert and its explanation, evidence and context: the detail behind the
     # list, so it is the same read the list is (FR-51, T-404).

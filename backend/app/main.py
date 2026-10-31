@@ -41,6 +41,7 @@ from app.api.v1.endpoints import (
     metrics,
     models,
     overview,
+    reports,
     privacy,
     stream,
     thresholds,
@@ -694,6 +695,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(hunt.router)
     app.include_router(alerts.router)
     app.include_router(overview.router)
+    app.include_router(reports.router)
     app.include_router(webhooks.router)
     app.include_router(audit.router)
     app.include_router(api_keys.router)
