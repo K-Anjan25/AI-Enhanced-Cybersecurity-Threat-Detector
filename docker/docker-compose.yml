@@ -245,9 +245,12 @@ services:
   # (option C). tshark is opt-in: it aggregates the same connections as suricata's flows,
   # so enabling it with suricata counts flows twice.
   capture:
-    # Zeek plus Suricata with the full ET Open rule set (~69k rules) used 964 MiB and was
-    # OOM-killed at the old 1g limit. Raise it if the container shows OOMKilled=true again.
+    # Hard caps so capture cannot starve the host: at most 2 CPUs and 2 GiB RAM. Measured
+    # before Zeek was removed: 1.996 GiB and 520% CPU with Zeek and Suricata. Suricata alone
+    # is expected to use less; check `docker stats`. If it reaches the limit, raise mem_limit
+    # to 4g (the upper end of the allowed range) rather than removing the cap.
     mem_limit: 2g
+    cpus: 2.0
     build:
       context: ../backend
       dockerfile: app/services/capture/Dockerfile.capture
