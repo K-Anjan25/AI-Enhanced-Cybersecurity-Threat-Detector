@@ -306,21 +306,29 @@ def parse_alert(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def parse_flow(event: dict[str, Any]) -> dict[str, Any]:
-    """Suricata flow event → AEGIS flow record."""
-    """Convert Suricata flow event → AEGIS flow record."""
+    """Convert a Suricata eve.json flow event to an AEGIS flow record.
+
+    Suricata nests the counters, the lifetime and the state under `flow`
+    (`pkts_toserver`, `bytes_toclient`, `age` in whole seconds, `state`), and keeps only the
+    addresses and ports at the top level. Reading the counters from the top level gave zero
+    bytes and packets for every flow, so they are read from `flow` here.
+    """
+    flow = event.get("flow") or {}
+    pkts_to_server = int(flow.get("pkts_toserver") or 0)
+    pkts_to_client = int(flow.get("pkts_toclient") or 0)
     return {
         "src_ip": event.get("src_ip", ""),
         "dst_ip": event.get("dest_ip", ""),
         "src_port": event.get("src_port", 0),
         "dst_port": event.get("dest_port", 0),
-        "protocol": event.get("proto", "tcp").lower(),
-        "src_bytes": event.get("bytes_toserver", 0),
-        "dst_bytes": event.get("bytes_toclient", 0),
-        "packets": event.get("pkts_toserver", 0) + event.get("pkts_toclient", 0),
-        "src_packets": event.get("pkts_toserver", 0),
-        "dst_packets": event.get("pkts_toclient", 0),
-        "duration": event.get("flow", {}).get("duration", 0),
-        "state": event.get("flow", {}).get("state", "unknown"),
+        "protocol": str(event.get("proto", "tcp")).lower(),
+        "src_bytes": int(flow.get("bytes_toserver") or 0),
+        "dst_bytes": int(flow.get("bytes_toclient") or 0),
+        "packets": pkts_to_server + pkts_to_client,
+        "src_packets": pkts_to_server,
+        "dst_packets": pkts_to_client,
+        "duration": float(flow.get("age") or 0),
+        "state": flow.get("state", "unknown"),
         "timestamp": event.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "label": None,
     }

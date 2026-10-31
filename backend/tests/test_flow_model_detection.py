@@ -401,14 +401,23 @@ def test_suricata_flow_event_is_valid_flow_v1() -> None:
         "src_port": 51000,
         "dest_port": 443,
         "proto": "TCP",
-        "bytes_toserver": 100,
-        "bytes_toclient": 900,
-        "pkts_toserver": 5,
-        "pkts_toclient": 6,
-        "flow": {"duration": 1.2, "state": "established"},
+        "flow": {
+            "bytes_toserver": 100,
+            "bytes_toclient": 900,
+            "pkts_toserver": 5,
+            "pkts_toclient": 6,
+            "age": 1,
+            "state": "established",
+        },
         "timestamp": "2026-10-17T10:00:00.123456+0000",
     }
-    out = suricata.to_flow_v1(suricata.parse_flow(event))
+    record = suricata.parse_flow(event)
+    # Suricata nests the counters under `flow`; they must not come out as zero.
+    assert (record["src_bytes"], record["dst_bytes"]) == (100, 900)
+    assert (record["src_packets"], record["dst_packets"], record["packets"]) == (5, 6, 11)
+    assert record["duration"] == 1.0
+    assert record["state"] == "established"
+    out = suricata.to_flow_v1(record)
     assert out is not None
     FlowRecordIn.model_validate(out)
 
@@ -419,11 +428,13 @@ def test_suricata_icmp_without_ports_is_valid_flow_v1() -> None:
         "src_ip": "10.0.0.5",
         "dest_ip": "10.0.0.9",
         "proto": "ICMP",
-        "bytes_toserver": 84,
-        "bytes_toclient": 84,
-        "pkts_toserver": 1,
-        "pkts_toclient": 1,
-        "flow": {"duration": 0.0},
+        "flow": {
+            "bytes_toserver": 84,
+            "bytes_toclient": 84,
+            "pkts_toserver": 1,
+            "pkts_toclient": 1,
+            "age": 0,
+        },
         "timestamp": "2026-10-17T10:00:00+0000",
     }
     out = suricata.to_flow_v1(suricata.parse_flow(event))
