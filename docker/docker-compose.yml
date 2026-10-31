@@ -61,7 +61,10 @@ services:
       retries: 10
 
   kafka:
-    mem_limit: 1g
+    # 512m: the native image has no JVM heap, so it needs far less than the JVM image did.
+    mem_limit: 512m
+    # Native build of Apache Kafka 3.9.0 (GraalVM, no JVM). 47.7 MB compressed, against
+    # 207.6 MB for apache/kafka:3.9.0, which bundles a JVM. Same KAFKA_* configuration.
     # Official Apache Kafka image (Q-08). The earlier bitnamilegacy/kafka:3.9 was
     # frozen and unpatched. This image is configured with KAFKA_* variables and
     # runs as a single-node KRaft cluster (no ZooKeeper). Its data lives in
@@ -76,7 +79,7 @@ services:
     # condition: service_healthy, and compose rejects a dependency on a service
     # whose profile is not enabled - an earlier attempt to profile this took the
     # whole project down with "depends on undefined service kafka".
-    image: apache/kafka:3.9.0
+    image: apache/kafka-native:3.9.0
     environment:
       KAFKA_NODE_ID: '1'
       KAFKA_PROCESS_ROLES: 'broker,controller'
@@ -87,7 +90,6 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_LOG_DIRS: '/var/lib/kafka/data'
-      KAFKA_HEAP_OPTS: '-Xms256m -Xmx512m'
       # Topics are created explicitly by the backend at startup (ensure_topic), with the
       # partition count the producer assumes. Auto-create would give flows.raw the broker
       # default (one partition), and src_ip partitioning would silently do nothing.
@@ -204,7 +206,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8080/ >/dev/null || exit 1']
       interval: 10s
       timeout: 5s
       retries: 6

@@ -17,7 +17,8 @@ RUN apt-get update && \
         gpg --dearmor | tee /etc/apt/trusted.gpg.d/security_zeek.gpg > /dev/null && \
     apt-get update && \
     apt-get install -y zeek && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb && \
+    rm -rf /usr/share/doc /usr/share/man /usr/share/locale
 
 # Let the non-root wireshark group capture (tshark is opt-in; this keeps it usable).
 RUN echo 'wireshark-common wireshark-common/install-setuid boolean true' | debconf-set-selections && \
