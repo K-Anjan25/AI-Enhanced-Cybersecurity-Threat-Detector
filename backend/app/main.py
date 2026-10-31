@@ -6,6 +6,7 @@ reported as a single actionable line rather than a traceback (rule R-06).
 
 from __future__ import annotations
 
+import contextlib
 import sys
 import threading
 import uuid
@@ -52,13 +53,14 @@ from app.auth.tokens import TokenService
 from app.core.config import ConfigurationError, Settings, get_settings
 from app.core.logging import bind_request_id, clear_request_context, configure_logging, get_logger
 from app.db.engine import async_session_factory, create_async_database_engine
+from app.db.user_store import SqlUserDirectory
 from app.messaging.kafka_bus import KafkaBus, KafkaBusError
 from app.observability.tracing import configure_tracing, exporter_for
 from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
-from app.services.auth_accounts import AuthAccountStore
+from app.services.auth_accounts import AccountAlreadyProvisioned, AuthAccountStore
 from app.services.capture_control import CaptureControl
 from app.services.detection_engine import DetectionEngine
 from app.services.drift_monitor import DriftMonitor
@@ -212,6 +214,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.model_registrar = model_registrar
     model_registrar.start()
     logger.info("model_registrar_started")
+    logger.info("user_directory_backend=%s", getattr(app.state, "user_store_backend", "unknown"))
     try:
         yield
     finally:
@@ -587,7 +590,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # initial administrator from environment-provided credentials, or explicitly
     # enable the development-only first-account form. Both use the same in-memory
     # directory, and both remain process-local until the database adapter lands.
-    user_directory = InMemoryUserDirectory()
+    # Accounts are kept in Postgres whenever a database was named (auto), so a restart does
+    # not erase signups. Without one, the in-memory directory is used and says so in the log.
+    user_store_on = store_requested(resolved.user_store, database_url_named=named_url)
+    user_directory = (
+        SqlUserDirectory.from_url(resolved.database_url)
+        if user_store_on
+        else InMemoryUserDirectory()
+    )
+    app.state.user_store_backend = "postgres" if user_store_on else "memory"
     app.state.auth_accounts = AuthAccountStore(user_directory)
     app.state.capture_control = CaptureControl()
     app.state.login_throttle = build_login_throttle(
@@ -599,10 +610,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redis_url=resolved.redis_url,
     )
     if resolved.bootstrap_admin_email is not None and resolved.bootstrap_admin_password is not None:
-        app.state.auth_accounts.create_initial_admin(
-            resolved.bootstrap_admin_email,
-            resolved.bootstrap_admin_password.get_secret_value(),
-        )
+        # With a persistent directory the first administrator survives a restart, so the
+        # bootstrap runs again and finds it. Its password is the one set first.
+        with contextlib.suppress(AccountAlreadyProvisioned):
+            app.state.auth_accounts.create_initial_admin(
+                resolved.bootstrap_admin_email,
+                resolved.bootstrap_admin_password.get_secret_value(),
+            )
     app.state.user_admin = UserAdminService(directory=user_directory)
     # The hand-set threshold panel (T-410). It reads and writes the same store the
     # recalibration job does, so a value a person set and a value the job fitted

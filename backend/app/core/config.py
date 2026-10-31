@@ -182,6 +182,10 @@ class Settings(BaseSettings):
     # deployment may store its logs and roll its traffic up in memory, and the two
     # screens say which they got rather than sharing one answer.
     flow_store: LogStoreMode = Field(default=LogStoreMode.AUTO)
+    # Where user accounts and their password hashes live (T-417). ``auto`` means "the
+    # Postgres users table when AEGIS_DATABASE_URL was named, process memory otherwise"
+    # -- the same rule as the stores above. In memory, every account is lost on restart.
+    user_store: LogStoreMode = Field(default=LogStoreMode.AUTO)
     # The rollup's retention, in minutes. The default is the widest range the traffic
     # explorer offers, so every offered window is fully answerable by a rollup; a wider
     # one is answered for the part it still holds, and the caveats say so.

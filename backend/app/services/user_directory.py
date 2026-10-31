@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Protocol
 
 from app.db.models import UserRole
@@ -145,12 +145,16 @@ class RoleChange:
     actor: str
 
 
-class UserDirectory(Protocol):
-    """Where user rows live.
+class DuplicateAccount(ValueError):
+    """An account with this email address already exists."""
 
-    Mirrors the ``users`` table's addressable columns. The persistent adapter is a
-    session over that table -- unwired because no session exists (D-030) -- and the
-    in-memory implementation is what runs.
+
+class UserDirectory(Protocol):
+    """Where user rows and their password hashes live.
+
+    Mirrors the ``users`` table. The in-memory implementation runs in tests and in
+    single-process runs; the Postgres adapter in ``app.db.user_store`` is used when a
+    database is configured, so accounts survive a restart.
     """
 
     def rows(self) -> Sequence[UserRecord]:
@@ -161,8 +165,24 @@ class UserDirectory(Protocol):
         """One user, or ``None``."""
         ...
 
+    def find_by_email(self, email: str) -> UserRecord | None:
+        """The user with this normalised email address, or ``None``."""
+        ...
+
+    def add_account(self, *, email: str, role: UserRole, argon2_hash: str) -> UserRecord:
+        """Insert a new user and its password hash, and return the stored row.
+
+        The directory assigns the id. Raises :class:`DuplicateAccount` if the email is
+        already registered.
+        """
+        ...
+
+    def password_hash(self, user_id: int) -> str | None:
+        """The stored Argon2id hash for a user, or ``None``."""
+        ...
+
     def put(self, record: UserRecord) -> None:
-        """Insert or replace one user row."""
+        """Replace one user's role, status and email. The password hash is unchanged."""
         ...
 
 
@@ -171,19 +191,20 @@ class InMemoryUserDirectory:
 
     Starts **empty**, like the model registry (D-047): a deployment's users are its
     own, and a directory seeded from code would put an identity nobody chose into
-    the table that decides who can administer the system. What that costs is named
-    on the screen rather than hidden: an unseeded deployment shows an empty
-    directory and cannot demonstrate the last-admin rule until its users exist.
+    the table that decides who can administer the system.
     """
 
-    __slots__ = ("_rows",)
+    __slots__ = ("_hashes", "_rows")
 
     def __init__(self, users: Sequence[UserRecord] = ()) -> None:
-        """Start from ``users``, refusing a duplicate id."""
+        """Start from ``users``, refusing a duplicate id or email."""
         self._rows: dict[int, UserRecord] = {}
+        self._hashes: dict[int, str] = {}
         for record in users:
             if record.id in self._rows:
                 raise ValueError(f"user id {record.id} appears twice")
+            if any(row.email == record.email for row in self._rows.values()):
+                raise ValueError(f"user email {record.email} appears twice")
             self._rows[record.id] = record
 
     def rows(self) -> tuple[UserRecord, ...]:
@@ -194,8 +215,33 @@ class InMemoryUserDirectory:
         """One user, or ``None``."""
         return self._rows.get(user_id)
 
+    def find_by_email(self, email: str) -> UserRecord | None:
+        """The user with this normalised email address, or ``None``."""
+        for row in self._rows.values():
+            if row.email == email:
+                return row
+        return None
+
+    def add_account(self, *, email: str, role: UserRole, argon2_hash: str) -> UserRecord:
+        """Insert a new user with the next id, refusing a duplicate email."""
+        if self.find_by_email(email) is not None:
+            raise DuplicateAccount(email)
+        record = UserRecord(
+            id=max(self._rows, default=0) + 1,
+            email=email,
+            role=role,
+            created_at=datetime.now(UTC),
+        )
+        self._rows[record.id] = record
+        self._hashes[record.id] = argon2_hash
+        return record
+
+    def password_hash(self, user_id: int) -> str | None:
+        """The stored hash for a user, or ``None``."""
+        return self._hashes.get(user_id)
+
     def put(self, record: UserRecord) -> None:
-        """Insert or replace one user row."""
+        """Replace one user row. The hash is kept."""
         self._rows[record.id] = record
 
     def __len__(self) -> int:

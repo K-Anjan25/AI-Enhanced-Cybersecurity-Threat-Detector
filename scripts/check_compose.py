@@ -53,6 +53,7 @@ CAPTURE_SERVICES = {"capture"}
 # redis holds only expiring shared counters (the login throttle). It is a soft
 # dependency: the backend starts and degrades to a per-process limit without it.
 EXPECTED_SERVICES = {
+    "migrate",
     "postgres",
     "redis",
     "kafka",

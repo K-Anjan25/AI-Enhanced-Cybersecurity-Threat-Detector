@@ -134,6 +134,23 @@ services:
       retries: 6
       start_period: 10s
 
+  # One-shot schema step: `alembic upgrade head`, then exit. The stack had no migration
+  # step, so the tables the account store and the log store read were never created
+  # here. The backend starts only after this exits successfully.
+  migrate:
+    build:
+      context: ../backend
+      additional_contexts:
+        aegis_ml: ../ml-service
+    image: aegis-migrate:local
+    command: ['alembic', 'upgrade', 'head']
+    environment:
+      AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
   backend:
     mem_limit: 768m
     build:
@@ -178,6 +195,8 @@ services:
     ports:
       - '8000:8000'
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       kafka:
