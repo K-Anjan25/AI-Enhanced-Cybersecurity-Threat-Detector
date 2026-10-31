@@ -489,7 +489,7 @@ def main() -> None:
         sys.exit(1)
 
     print(f"[SURICATA] Bridge started. API={API_URL}", file=sys.stderr)
-    flows_note = "flows→flows" if args.flows else "flows skipped (Zeek is the flow source)"
+    flows_note = "flows→flows" if args.flows else "flows skipped (pass --flows to ingest them)"
     print(f"[SURICATA] Sending: alerts→logs, {flows_note}, dns/http/tls→logs", file=sys.stderr)
 
     flow_batch: list[dict[str, Any]] = []

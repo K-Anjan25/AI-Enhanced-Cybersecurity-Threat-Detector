@@ -54,8 +54,8 @@ COPY app/services/capture/bridges/suricata_bridge.py \
      app/services/capture/bridges/shipper.py \
      app/services/capture/bridges/login.py \
      app/services/capture/bridges/capture_state.py ./
-COPY app/services/capture/capture_entrypoint.sh .
+COPY app/services/capture/capture_entrypoint.sh app/services/capture/replay_pcap.sh ./
 
-RUN dos2unix capture_entrypoint.sh && chmod +x capture_entrypoint.sh
+RUN dos2unix capture_entrypoint.sh replay_pcap.sh && chmod +x capture_entrypoint.sh replay_pcap.sh
 
 CMD ["./capture_entrypoint.sh"]
