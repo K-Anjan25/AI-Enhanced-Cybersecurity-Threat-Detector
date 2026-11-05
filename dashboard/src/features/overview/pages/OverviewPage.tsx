@@ -15,11 +15,13 @@
  * every figure came with a "partial coverage" asterisk. The counts are now the
  * window's counts, which is why the page has no partial-coverage language left —
  * there is nothing partial to describe. The pipeline strip is still `/metrics`
- * (D-060): a scrape is not a window.
+ * (D-060): a scrape is not a window. Capture sensor health is separately sourced
+ * from backend-received Docker heartbeats; an unreported sensor remains unknown,
+ * rather than being rendered as a healthy zero.
  *
  * Layout follows §4.1: the header with the connection pill and the window selector,
- * the KPI tiles, the severity chart, top entities beside the family mix, and the
- * pipeline strip across the bottom.
+ * the KPI tiles, the severity chart, top entities beside the family mix, then the
+ * measured pipeline strip and capture-sensor heartbeat panel.
  */
 import { useState } from 'react';
 
@@ -31,6 +33,7 @@ import {
   seriesFromOverview,
   tallyFromOverview,
 } from '../aggregate';
+import { CaptureHealthPanel } from '../components/CaptureHealthPanel';
 import { FamilyMixChart } from '../components/FamilyMixChart';
 import { KpiTiles } from '../components/KpiTiles';
 import { PipelineStrip } from '../components/PipelineStrip';
@@ -40,6 +43,7 @@ import {
   rangeSpec,
   RANGES,
   useDocumentVisible,
+  useCaptureHealth,
   useMetrics,
   useOverviewWindow,
   usePrefersReducedMotion,
@@ -59,6 +63,7 @@ export function OverviewPage() {
   const overview = useOverviewWindow(range, visible);
   const metrics = useMetrics(visible);
   const readiness = useReadiness(visible);
+  const captureHealth = useCaptureHealth(visible);
   const previousMetrics = usePrevious(metrics.data);
   const palette = useChartPalette();
   const reducedMotion = usePrefersReducedMotion();
@@ -183,6 +188,12 @@ export function OverviewPage() {
           probes={readiness.data?.checks}
         />
       )}
+
+      <CaptureHealthPanel
+        health={captureHealth.data}
+        loading={captureHealth.isLoading}
+        error={captureHealth.isError}
+      />
     </div>
   );
 }

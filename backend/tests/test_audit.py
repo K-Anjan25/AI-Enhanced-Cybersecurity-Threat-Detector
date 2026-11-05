@@ -953,6 +953,9 @@ def test_an_action_value_is_stable_wire_format() -> None:
         "auth.login",
         "auth.refresh",
         "auth.logout",
+        # The recurring capture-health report is a real attributed mutation; its
+        # audit record carries sensor identity and configured engines, never traffic.
+        "capture.heartbeat",
     }
 
 

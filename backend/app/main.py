@@ -30,6 +30,7 @@ from app.api.v1.endpoints import (
     api_keys,
     audit,
     auth,
+    capture,
     flows,
     health,
     hunt,
@@ -57,6 +58,7 @@ from app.services.alert_store import InMemoryAlertStore
 from app.services.alert_stream import AlertHub
 from app.services.audit_log import InMemoryAuditTrail
 from app.services.auth_accounts import AuthAccountStore
+from app.services.capture_health import CaptureHealthRegistry
 from app.services.detection_engine import DetectionEngine
 from app.services.drift_monitor import DriftMonitor
 from app.services.entity_registry import EntityRegistry
@@ -367,6 +369,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # per-process; a multi-replica deployment needs a shared bus behind this
     # interface, which is named in the module docstring rather than implied.
     app.state.alert_hub = AlertHub()
+    # Capture heartbeats are latest-only operational liveness, not retained traffic.
+    app.state.capture_health = CaptureHealthRegistry()
     # The store the query API reads and the pipeline writes (T-319). In memory
     # here, like every other store in this environment; D-053 records the
     # PostgreSQL adapter as unwired and the case-id column it would need.
@@ -647,6 +651,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     declare_components(app, (FlowRecordIn, LogRecordIn))
     app.include_router(health.router)
     app.include_router(auth.router)
+    app.include_router(capture.router)
     app.include_router(metrics.router)
     app.include_router(ingest.router)
     # ``stream`` comes first because its paths are literal where ``alerts`` now has

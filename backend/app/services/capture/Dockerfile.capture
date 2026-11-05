@@ -19,8 +19,9 @@ RUN apt-get update && \
     apt-get install -y zeek && \
     rm -rf /var/lib/apt/lists/*
 
-# Let the non-root wireshark group capture (tshark is opt-in; this keeps it usable).
-RUN echo 'wireshark-common wireshark-common/install-setuid boolean true' | debconf-set-selections && \
+# Capture runs as root with explicit NET_ADMIN/NET_RAW capabilities; do not install a
+# setuid dumpcap fallback that could widen privileges if the image user ever changes.
+RUN echo 'wireshark-common wireshark-common/install-setuid boolean false' | debconf-set-selections && \
     dpkg-reconfigure -f noninteractive wireshark-common 2>/dev/null || true
 
 # Suricata rules; a failure here only leaves the stock ruleset empty.
@@ -30,15 +31,15 @@ ENV PATH="/opt/zeek/bin:${PATH}"
 
 WORKDIR /app
 # The spool directory exists in the image so a named volume mounted over it inherits
-# writable ownership. The engines run as root because packet capture needs raw sockets;
-# the privilege is granted explicitly by compose (cap_add: NET_ADMIN), not by --privileged.
+# writable ownership. Capture runs as root with only the NET_ADMIN/NET_RAW capabilities
+# added by Compose; it does not use --privileged or a setuid dumpcap binary.
 RUN mkdir -p /var/lib/aegis-spool
 
 COPY app/services/capture/bridges/zeek_bridge.py \
      app/services/capture/bridges/suricata_bridge.py \
      app/services/capture/bridges/tcpdump_bridge.py \
      app/services/capture/bridges/shipper.py ./
-COPY app/services/capture/capture_entrypoint.sh .
+COPY app/services/capture/capture_entrypoint.sh app/services/capture/capture_heartbeat.py ./
 
 RUN dos2unix capture_entrypoint.sh && chmod +x capture_entrypoint.sh
 

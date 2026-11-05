@@ -6,11 +6,11 @@
  * the DOM. That is the difference between testing this screen and testing a mock's
  * cooperation.
  *
- * Since T-416 this file's stub is *one* route — `GET /api/v1/overview` — because
- * that is the page's one source. The tests therefore also assert the request
- * itself: one aggregate per window, carrying the window the operator selected, and
- * no page walk at all. A screen that quietly went back to counting pages would fail
- * on the request count rather than only on a number.
+ * The overview's four data sources are explicit here: one aggregate for alert
+ * panels, a metrics scrape, readiness probes, and backend-received capture
+ * heartbeats. The tests assert the aggregate request itself: one window per
+ * selection, and no alert-page walk at all. A screen that quietly went back to
+ * counting pages would fail on the request count rather than only on a number.
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -109,6 +109,7 @@ function routes(
     overview?: StubRoute['respond'];
     metrics?: StubRoute['respond'];
     readz?: StubRoute['respond'];
+    capture?: StubRoute['respond'];
   } = {},
 ) {
   return [
@@ -122,6 +123,12 @@ function routes(
       respond:
         overrides.readz ??
         (() => jsonResponse({ status: 'ready', service: 'aegis', version: '0.1.0', checks: [] })),
+    },
+    {
+      match: '/api/v1/capture/status',
+      respond:
+        overrides.capture ??
+        (() => jsonResponse({ status: 'unknown', heartbeat_timeout_seconds: 45, sensors: [] })),
     },
   ];
 }
@@ -144,6 +151,46 @@ describe('OverviewPage', () => {
     expect(screen.getByRole('heading', { name: 'Threat family mix' })).toBeInTheDocument();
     expect(
       await screen.findByRole('region', { name: 'Detection pipeline health' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows backend-received capture heartbeats without inventing sensor state', async () => {
+    stubFetch(
+      routes({
+        capture: () =>
+          jsonResponse({
+            status: 'healthy',
+            heartbeat_timeout_seconds: 45,
+            sensors: [
+              {
+                sensor_id: 'linux-edge-1',
+                engines: ['zeek', 'suricata', 'tshark'],
+                status: 'healthy',
+                last_seen_at: '2026-10-06T11:59:53Z',
+                age_seconds: 7,
+              },
+            ],
+          }),
+      }),
+    );
+    renderWithProviders(<OverviewPage />);
+
+    const panel = await screen.findByRole('region', { name: 'Capture sensor health' });
+    expect(within(panel).getByText('linux-edge-1')).toBeInTheDocument();
+    expect(within(panel).getByText('Engines: zeek, suricata, tshark')).toBeInTheDocument();
+    expect(within(panel).getByText('7 seconds ago')).toBeInTheDocument();
+    expect(within(panel).getAllByText('Healthy')).toHaveLength(2);
+    expect(
+      within(panel).getByText(/authenticated heartbeats received by the backend/),
+    ).toBeInTheDocument();
+  });
+
+  it('says capture status is unknown when no sensor has reported', async () => {
+    stubFetch(routes());
+    renderWithProviders(<OverviewPage />);
+
+    expect(
+      await screen.findByText(/No capture sensor has reported. Status is unknown/),
     ).toBeInTheDocument();
   });
 

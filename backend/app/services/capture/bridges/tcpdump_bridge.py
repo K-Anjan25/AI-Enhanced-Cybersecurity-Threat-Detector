@@ -322,7 +322,9 @@ def parse_tshark_line(line: str) -> dict[str, Any] | None:
         return None
 
     try:
-        ts = float(parts[0]) if parts[0] else 0
+        if not parts[0]:
+            return None
+        ts = float(parts[0])
         src_ip = parts[1] if len(parts) > 1 else ""
         dst_ip = parts[2] if len(parts) > 2 else ""
         src_port = int(parts[3]) if len(parts) > 3 and parts[3] else 0
@@ -337,11 +339,7 @@ def parse_tshark_line(line: str) -> dict[str, Any] | None:
         fin = int(parts[10]) if len(parts) > 10 and parts[10] else 0
         psh = int(parts[11]) if len(parts) > 11 and parts[11] else 0
 
-        timestamp = (
-            datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
-            if ts
-            else datetime.now(timezone.utc).isoformat()
-        )
+        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
 
         return {
             "type": "flow",
@@ -378,17 +376,15 @@ def parse_tshark_dns_line(line: str) -> dict[str, Any] | None:
         return None
 
     try:
-        ts = float(parts[0]) if parts[0] else 0
+        if not parts[0]:
+            return None
+        ts = float(parts[0])
         src_ip = parts[1]
         dst_ip = parts[2]
         qname = parts[3]
         qtype = parts[4] if parts[4] else "A"
 
-        timestamp = (
-            datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
-            if ts
-            else datetime.now(timezone.utc).isoformat()
-        )
+        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
 
         return {
             "type": "log",
@@ -410,6 +406,69 @@ def parse_tshark_dns_line(line: str) -> dict[str, Any] | None:
         return None
 
 
+def parse_tshark_detail_line(line: str) -> dict[str, Any] | None:
+    """Map selected tshark metadata to one truthful ``log@1`` record.
+
+    Zeek supplies canonical connection flows and Suricata supplies alert/DNS/HTTP/TLS
+    records. These selected packet observations are logs, not flow records, and include
+    only frame metadata (never decoded payload or credential text).
+    Fields: timestamp, frame number/length, IPv4/IPv6 addresses, TCP/UDP ports, protocol stack.
+    """
+    parts = line.removesuffix(chr(10)).removesuffix(chr(13)).split(chr(9))
+    if len(parts) < 12:
+        return None
+    try:
+        timestamp_value = float(parts[0])
+        frame_number = int(parts[1])
+        frame_length = int(parts[2])
+        if timestamp_value <= 0 or frame_number < 0 or frame_length < 0:
+            return None
+        timestamp = datetime.fromtimestamp(timestamp_value, tz=timezone.utc).isoformat()
+        src_ip = parts[3] or parts[4]
+        dst_ip = parts[5] or parts[6]
+        if not src_ip or not dst_ip:
+            return None
+        src_port = parts[7] or parts[8]
+        dst_port = parts[9] or parts[10]
+        protocol_stack = parts[11].strip()
+        if not protocol_stack:
+            return None
+        parameters = {
+            "frame_number": str(frame_number),
+            "frame_length": str(frame_length),
+            "protocol_stack": protocol_stack,
+            "src_ip": src_ip,
+            "dst_ip": dst_ip,
+        }
+        if src_port:
+            parameters["src_port"] = str(int(src_port))
+        if dst_port:
+            parameters["dst_port"] = str(int(dst_port))
+    except (OverflowError, OSError, ValueError):
+        return None
+
+    protocol = protocol_stack.rsplit(":", maxsplit=1)[-1]
+    source = f"{src_ip}:{src_port}" if src_port else src_ip
+    destination = f"{dst_ip}:{dst_port}" if dst_port else dst_ip
+    message = (
+        f"{protocol.upper()} packet #{frame_number} {source} → {destination} "
+        f"({frame_length} bytes)"
+    )
+    return {
+        "type": "log",
+        "record": {
+            "schema_version": "log@1",
+            "timestamp": timestamp,
+            "host": src_ip,
+            "service": "tshark",
+            "level": "info",
+            "message": message,
+            "template_id": "capture.tshark.protocol_packet",
+            "parameters": parameters,
+        },
+    }
+
+
 def main() -> None:
     """Parse arguments, authenticate, and stream tcpdump/tshark output to AEGIS."""
     global API_URL, EMAIL, PASSWORD
@@ -419,7 +478,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--format",
-        choices=["tcpdump", "tshark", "tshark-dns"],
+        choices=["tcpdump", "tshark", "tshark-dns", "tshark-detail"],
         default="tcpdump",
         help="Input format",
     )
@@ -447,7 +506,9 @@ def main() -> None:
     print(f"[TSHARK] Bridge started. API={API_URL} format={args.format}", file=sys.stderr)
 
     # Select parser
-    if args.format == "tshark-dns":
+    if args.format == "tshark-detail":
+        parse_fn = parse_tshark_detail_line
+    elif args.format == "tshark-dns":
         parse_fn = parse_tshark_dns_line
     elif args.format == "tshark":
         parse_fn = parse_tshark_line
