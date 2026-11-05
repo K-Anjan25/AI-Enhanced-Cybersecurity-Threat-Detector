@@ -60,7 +60,7 @@ AEGIS
 │   ├── Alert detail         /alerts/:id            evidence + verdict
 │   └── Cases                /cases                 grouped, correlated incidents
 ├── Explore
-│   ├── Traffic              /traffic               flow time-series + entity graph
+│   ├── Traffic              /traffic               flow time-series + ranked relationships
 │   ├── Logs                 /logs                  log stream + anomaly windows
 │   └── Hunt                 /hunt                  structured search over raw data
 ├── Models
@@ -170,9 +170,10 @@ Non-negotiables:
 ### 4.4 Traffic explorer — `/traffic`
 
 - Top: brushable time-series of flow volume with the composite anomaly score overlaid on a second axis; brushing filters everything below.
-- Left: entity table (host / user / service) with alert counts, sortable.
-- Right: D3 force-directed entity graph — nodes are entities sized by flow volume, edges weighted by flow count, node fill by peak severity. Hover shows a tooltip; click pins an entity and filters the whole page.
-- Graph controls: severity filter, min-flow threshold, "show only alerted entities" toggle, and a static-layout fallback for >2,000 nodes (a force simulation at that size is unusable — we switch to a ranked adjacency matrix and say so).
+- Left: address table with traffic totals and alert counts, sortable.
+- Right: a bounded relationship table built from the flow read model's real directed edges. Sort by observed bytes descending, then flow count; retain source → destination direction and let an analyst pin either endpoint to focus the address table.
+- Relationship rendering is capped at the top 30 rows and states how many total relationships were returned. Do not run a force simulation or build an address-by-address matrix at any size; those layouts add runtime and quadratic work without improving the underlying evidence.
+- Controls: protocol and direction filters, minimum-flow threshold, and "show only addresses with an open alert" toggle.
 
 ### 4.5 Logs — `/logs`
 
@@ -319,7 +320,7 @@ All primitives live in `dashboard/src/components/ui` and are the only approved b
 |---|---|---|
 | Alert volume by severity      | Chart.js | Stacked area, severity palette, brushable x-axis, y-axis starts at 0 — never truncate a count axis                 |
 | Flow volume + anomaly score   | D3       | Dual axis, explicit axis labels and units, score axis 0–1 fixed                                                    |
-| Entity relationship graph     | D3 force | Node size = flow volume, fill = peak severity, edge width = flow count; ≥ 2,000 nodes switches to adjacency matrix |
+| Directed flow relationships  | HTML table | Top 30 source → destination edges, bytes descending and flow count as tie-break; endpoints are pinnable; no force simulation or adjacency matrix |
 | Threat family mix             | Chart.js | Horizontal bars, sorted descending, counts labelled at bar end                                                     |
 | Drift PSI                     | Chart.js | Horizontal bars with a 0.25 threshold marker line                                                                  |
 | Score distribution comparison | D3       | Two overlaid histograms with a legend and the threshold marked                                                     |
@@ -350,7 +351,7 @@ Chart rules: every axis is labelled with units; every series has a legend entry;
 
 | Breakpoint   | Behaviour                                                                                                      |
 |---|---|
-| ≥ 1440 px    | Full layout, side-by-side panels, entity graph always visible                                                  |
+| ≥ 1440 px    | Full layout, side-by-side panels, relationship table always visible                                            |
 | 1024–1439 px | Panels stack in pairs, nav rail collapses to icons by default                                                  |
 | 768–1023 px  | Single column, nav becomes a drawer, tables keep the 4 most important columns                                  |
 | < 768 px     | Triage-focused: alert list and alert detail only. The hamburger opens a navigation drawer that lists only the Alerts entry. A banner states that the full console needs a larger screen. |
@@ -387,7 +388,7 @@ Target **WCAG 2.1 AA**, verified in CI where automatable and audited per release
 | UI primitive components (§6)                     | FE          | Built — T-402 DONE                                                                                                                                             |
 | Alert triage screen (highest value)              | FE          | Built — T-404 DONE                                                                                                                                             |
 | Overview dashboard                               | FE          | Built — T-403 DONE                                                                                                                                             |
-| D3 entity graph + time-series                    | FE          | Built — T-406 DONE                                                                                                                                             |
+| Ranked flow relationships + brushable time-series | FE          | Built — T-406 DONE; relationship display follow-up recorded in [D-109](memory.md#d-109--bounded-directed-flow-relationships-replace-the-force-layout-and-matrix-2026-11-05) |
 | Accessibility audit of the first three screens   | Design      | Automated axe and keyboard checks complete (T-413); manual screen-reader pass remains unrun, see [release-note.md](release-note.md#accessibility-t-413-nfr-09) |
 | Authentication gate and first-admin setup (§4.9) | FE/platform | Sign-in/session flow built (T-417); human visual sign-off pending. Durable account and refresh state are follow-up infrastructure (D-081).                     |
 

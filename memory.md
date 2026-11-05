@@ -4,7 +4,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Document**     | Persistent project context, decisions, and ledger                                                                                                                                                      |
 | **Version**      | 0.1                                                                                                                                                                                                    |
-| **Last updated** | 2026-10-07 (Wednesday)                                                                                                                                                                                 |
+| **Last updated** | 2026-11-05 (Thursday)                                                                                                                                                                                 |
 | **Purpose**      | The document a new engineer — or you in three months — reads first                                                                                                                                     |
 | **Related**      | [prd.md](prd.md) · [architecture.md](architecture.md) · [rules.md](rules.md) · [design.md](design.md) · [task.md](task.md) · [api-reference.md](api-reference.md) · [release-note.md](release-note.md) |
 
@@ -4183,3 +4183,13 @@ Known open points: the un-reversed promotion rows carry `promoted_by`, a user id
 **CI:** the pre-commit job failed on `3782535` and `e6cb82e`. Its hooks run over every file, and the local checks covered only the changed files. Prettier flagged the browser scripts and the report. Both are formatted now, and the head commit has to be confirmed green on CI.
 
 **Not done, and why:** precision at the `high` threshold (UNSW-NB15 and CIC-IDS2017 hosts unreachable from the sandbox); Docker builds and `helm lint` (no binaries reachable); the screen-reader pass (needs a person; script in `docs/accessibility-manual-pass.md`); capture rate at 18–20 records/s (no capture rig); the k6 run itself (k6 cannot be downloaded here).
+
+### D-109 — Bounded directed flow relationships replace the force layout and matrix (2026-11-05)
+
+**Context.** The earlier traffic panel used a force simulation at small scale and an adjacency matrix at high node counts. The operator asked that the relationship view avoid both force simulation and quadratic all-pairs work, while remaining grounded in real backend data.
+
+**Decision.** Render the flow read model's observed, directed source → destination edges as a responsive HTML table. Order by observed bytes descending, then flow count, then stable address order. Show at most 30 rows and state the total number of eligible relationships; preserve opposite directions as distinct edges. Either endpoint can be pinned to focus the address table. Do not synthesize relationships, run a force layout, or construct an address-by-address matrix.
+
+**Implementation.** `dashboard/src/features/traffic/graph.ts` filters to visible endpoints and ranks edges in O(E log E); `EntityGraph.tsx` renders only the bounded rows. Removed `d3-force` and its types; D3 scale utilities remain for the brushable flow series. Updated the design, architecture and T-406 task descriptions to match.
+
+**Verification.** Dashboard full suite: 1,135 tests passed. Production build, TypeScript typecheck, ESLint, Stylelint and Prettier checks passed. The build still reports the existing large JavaScript chunk warning; Vitest and axe emit existing jsdom canvas/act warnings.
