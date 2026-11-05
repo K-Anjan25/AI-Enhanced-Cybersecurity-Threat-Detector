@@ -163,6 +163,39 @@ def test_a_report_for_another_model_is_skipped_and_registration_continues(
     assert ops.get("flownet-v0.1.0").metrics is None
 
 
+def test_a_matching_report_without_split_provenance_is_not_attached(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout: FLOWNET_CATALOGUE)
+    directory = _eval_dir(tmp_path)
+    (directory / "flownet.config.json").unlink()
+    ops = ModelOpsService()
+    registrar = ModelRegistrar("http://ml", ops, interval=60, eval_reports_dir=str(directory))
+
+    registrar._register_models()
+
+    assert ops.get("flownet-v0.1.0").metrics is None
+    assert registrar.stats["errors"] == 0
+
+
+def test_a_matching_file_with_a_non_eval_schema_is_not_attached(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(registrar_module, "_fetch_json", lambda url, timeout: FLOWNET_CATALOGUE)
+    directory = _eval_dir(tmp_path)
+    report_path = directory / "flownet.eval.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["schema_version"] = "eval@1"
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    ops = ModelOpsService()
+    registrar = ModelRegistrar("http://ml", ops, interval=60, eval_reports_dir=str(directory))
+
+    registrar._register_models()
+
+    assert ops.get("flownet-v0.1.0").metrics is None
+    assert registrar.stats["errors"] == 0
+
+
 def test_no_reports_directory_means_no_evaluations_and_no_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
