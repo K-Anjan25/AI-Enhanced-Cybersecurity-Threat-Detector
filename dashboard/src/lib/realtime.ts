@@ -69,7 +69,13 @@ export interface DroppedFrame {
   after: number | null;
 }
 
-export type RealtimeFrame = ReadyFrame | AlertFrame | HeartbeatFrame | DroppedFrame;
+/** Application-level echo used to measure RTT in browsers without ping controls. */
+export interface PongFrame {
+  type: 'pong';
+  id: number;
+}
+
+export type RealtimeFrame = ReadyFrame | AlertFrame | HeartbeatFrame | DroppedFrame | PongFrame;
 
 /** The connection states a screen can be in, in the order they can occur. */
 export type RealtimeState = 'connecting' | 'live' | 'polling' | 'refused';
@@ -208,6 +214,11 @@ export function parseFrame(raw: unknown): RealtimeFrame | null {
       reason: typeof raw['reason'] === 'string' ? raw['reason'] : 'dropped',
       after: numberOrNull(raw['after']),
     };
+  }
+  if (type === 'pong') {
+    const id = numberOrNull(raw['id']);
+    if (id === null || !Number.isSafeInteger(id) || id < 0) return null;
+    return { type: 'pong', id };
   }
   return null;
 }

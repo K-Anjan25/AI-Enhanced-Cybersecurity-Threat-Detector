@@ -147,6 +147,64 @@ describe('AlertStreamClient', () => {
     expect(states.at(-1)?.detail).toBeNull();
   });
 
+  it('measures socket RTT with application-level pings and ignores stale pongs', () => {
+    let now = 100;
+    const rtts: (number | null)[] = [];
+    const { client, sockets } = build({
+      now: () => now,
+      onRtt: (rttMs) => rtts.push(rttMs),
+    });
+
+    client.start();
+    const socket = sockets.last();
+    socket.open();
+    socket.emit({ ...READY, heartbeat_seconds: 1 });
+
+    expect(socket.sent).toHaveLength(1);
+    const ping = JSON.parse(socket.sent[0]!) as { type: string; id: number };
+    expect(ping).toMatchObject({ type: 'ping' });
+
+    now = 142.75;
+    socket.emit({ type: 'pong', id: ping.id + 1 });
+    expect(client.currentRttMs).toBeNull();
+
+    socket.emit({ type: 'pong', id: ping.id });
+    expect(client.currentRttMs).toBe(42.8);
+    expect(rtts).toEqual([42.8]);
+
+    socket.serverClose(1006);
+    expect(client.currentRttMs).toBeNull();
+    expect(rtts).toEqual([42.8, null]);
+  });
+
+  it('clears the displayed RTT when the next application ping times out', () => {
+    let now = 0;
+    const rtts: (number | null)[] = [];
+    const { client, sockets, clock } = build({
+      now: () => now,
+      onRtt: (rttMs) => rtts.push(rttMs),
+    });
+    client.start();
+    const socket = sockets.last();
+    socket.open();
+    socket.emit({ ...READY, heartbeat_seconds: 1 });
+    const firstPing = JSON.parse(socket.sent[0]!) as { id: number };
+
+    now = 25;
+    socket.emit({ type: 'pong', id: firstPing.id });
+    expect(client.currentRttMs).toBe(25);
+
+    now = 1_025;
+    clock.advance(1_000); // next ping goes out
+    expect(socket.sent).toHaveLength(2);
+    now = 2_025;
+    clock.advance(1_000); // no pong for that ping
+
+    expect(client.currentRttMs).toBeNull();
+    expect(rtts).toEqual([25, null]);
+    client.stop();
+  });
+
   it('falls back to REST polling the moment the socket dies', async () => {
     const seen = stubFetch([
       {

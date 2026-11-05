@@ -36,6 +36,7 @@ import { NarrowNotice } from './NarrowNotice';
 import { useTheme } from '../../theme/ThemeProvider';
 import { NAV_ITEMS } from './nav';
 import { AegisLogo } from '../brand/AegisLogo';
+import { RealtimeStatus } from '../realtime/RealtimeStatus';
 
 interface AppShellProps {
   /**
@@ -108,6 +109,7 @@ export function AppShell({ onOpenPalette, onSignOut, children }: AppShellProps) 
           </button>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <RealtimeStatus />
           <button
             type="button"
             onClick={toggleTheme}
