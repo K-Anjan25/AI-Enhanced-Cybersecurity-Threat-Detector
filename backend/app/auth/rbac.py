@@ -162,6 +162,10 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # it, so viewer is deliberately absent from both entries.
     "/api/v1/ingest/flows": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    # Capture sensors report liveness as an ingest operation; all readers may inspect
+    # status, but only ingest-capable roles can update it.
+    "/api/v1/capture/heartbeat": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    "/api/v1/capture/status": frozenset(Role),
     # Reading alerts is the viewer's whole job, so viewer is present here.
     "/api/v1/alerts": frozenset(Role),
     # The overview is those same rows, aggregated (T-416): every role that may read

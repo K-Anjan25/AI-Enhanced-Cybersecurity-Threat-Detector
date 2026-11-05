@@ -24,7 +24,14 @@ import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react
 import { useEffect, useRef, useState } from 'react';
 
 import { fetchMetrics } from '../../api/metrics';
-import { fetchOverview, fetchReadiness, type Overview, type Readiness } from './api';
+import {
+  fetchCaptureHealth,
+  fetchOverview,
+  fetchReadiness,
+  type CaptureHealth,
+  type Overview,
+  type Readiness,
+} from './api';
 import { useAlertSync } from '../../components/realtime/useAlertSync';
 import type { MetricsSnapshot } from './pipeline';
 
@@ -158,6 +165,15 @@ export function useReadiness(enabled: boolean): UseQueryResult<Readiness, Error>
   return useQuery({
     queryKey: ['overview', 'readiness'],
     queryFn: ({ signal }) => fetchReadiness(signal),
+    refetchInterval: enabled ? CHART_REFRESH_MS : false,
+  });
+}
+
+/** The Docker capture services' real backend-received heartbeats. */
+export function useCaptureHealth(enabled: boolean): UseQueryResult<CaptureHealth, Error> {
+  return useQuery({
+    queryKey: ['overview', 'capture-health'],
+    queryFn: ({ signal }) => fetchCaptureHealth(signal),
     refetchInterval: enabled ? CHART_REFRESH_MS : false,
   });
 }

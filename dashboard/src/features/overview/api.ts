@@ -140,6 +140,28 @@ export async function fetchReadiness(signal?: AbortSignal): Promise<Readiness> {
   return getJson<Readiness>('/readyz', { signal, okStatuses: [503] });
 }
 
+/** A Docker-managed capture engine reported by the backend heartbeat registry. */
+export type CaptureEngine = 'zeek' | 'suricata' | 'tshark';
+
+export interface CaptureSensorHealth {
+  sensor_id: string;
+  engines: CaptureEngine[];
+  status: 'healthy' | 'stale';
+  last_seen_at: string;
+  age_seconds: number;
+}
+
+export interface CaptureHealth {
+  status: 'unknown' | 'healthy' | 'stale';
+  heartbeat_timeout_seconds: number;
+  sensors: CaptureSensorHealth[];
+}
+
+/** Read real Docker capture heartbeats; an empty list is explicitly unknown. */
+export async function fetchCaptureHealth(signal?: AbortSignal): Promise<CaptureHealth> {
+  return getJson<CaptureHealth>('/api/v1/capture/status', { signal });
+}
+
 /** Detection engine status. */
 export interface DetectionStatus {
   rule_engine?: {

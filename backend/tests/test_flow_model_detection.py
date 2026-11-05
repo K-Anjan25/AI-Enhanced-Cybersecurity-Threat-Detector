@@ -28,7 +28,7 @@ from typing import Any
 import pytest
 from app.auth.tokens import TokenService
 from app.core.config import Settings
-from app.schemas.ingest import FlowRecordIn
+from app.schemas.ingest import FlowRecordIn, LogRecordIn
 from app.services.alert_store import InMemoryAlertStore
 from app.services.detection_engine import DetectionEngine
 from app.services.ml_window_scorer import MlWindowScorer, _parse
@@ -455,6 +455,28 @@ def test_tshark_numeric_protocol_is_mapped_to_a_name() -> None:
     assert out is not None
     assert out["protocol"] == "tcp"
     FlowRecordIn.model_validate(out)
+
+
+def test_tshark_protocol_details_are_logs_not_duplicate_flow_records() -> None:
+    tcpdump = load_bridge("tcpdump_bridge.py")
+    parsed = tcpdump.parse_tshark_detail_line(
+        "1792000000.1\t88\t142\t10.0.0.5\t\t10.0.0.8\t\t51000\t\t445\t\t" "eth:ip:tcp:smb2"
+    )
+    assert parsed is not None
+    assert parsed["type"] == "log"
+    record = parsed["record"]
+    LogRecordIn.model_validate(record)
+    assert record["service"] == "tshark"
+    assert record["parameters"] == {
+        "frame_number": "88",
+        "frame_length": "142",
+        "protocol_stack": "eth:ip:tcp:smb2",
+        "src_ip": "10.0.0.5",
+        "dst_ip": "10.0.0.8",
+        "src_port": "51000",
+        "dst_port": "445",
+    }
+    assert tcpdump.parse_tshark_detail_line("not-a-packet") is None
 
 
 # ── capture to ingest, and on to the detection engine ───────────────────────────

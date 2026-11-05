@@ -2,13 +2,15 @@
 # One capture container, several engines. Each engine runs as a pipeline: the engine
 # writes its log, `tail -F` follows it, and a bridge posts the records to the AEGIS API.
 #
-# Engines are chosen with AEGIS_CAPTURE_ENGINES (comma-separated):
-#   zeek      connection log (conn.log) -> flows            (default)
-#   suricata  alerts, DNS, HTTP and TLS -> logs             (default)
-#   tshark    packet-level flow aggregation -> flows        (opt-in: duplicates zeek's flows)
+# Engines are chosen with AEGIS_CAPTURE_ENGINES (comma-separated; all three are on by
+# default):
+#   zeek      connection log (conn.log) -> canonical flows
+#   suricata  alerts, DNS, HTTP and TLS -> logs
+#   tshark    selected additional protocol details -> logs (never duplicate flows)
 #
 # The container exits if any engine or bridge exits, so the restart policy brings the
-# whole set back together rather than leaving one engine silently down.
+# whole set back together rather than leaving one engine silently down. A separate
+# reporter sends real sensor heartbeats; no traffic is generated or simulated.
 set -euo pipefail
 
 # Refuse the development default password; see docker/.env.example.
@@ -17,12 +19,14 @@ if [ -z "${AEGIS_PASSWORD:-}" ] || [ "${AEGIS_PASSWORD}" = "admin123456789" ]; t
     exit 2
 fi
 
-ENGINES="${AEGIS_CAPTURE_ENGINES:-zeek,suricata}"
+ENGINES="${AEGIS_CAPTURE_ENGINES:-zeek,suricata,tshark}"
 API_URL="${AEGIS_API_URL:-http://backend:8000}"
 EMAIL="${AEGIS_EMAIL:-admin@aegis.local}"
 ZEEK_IFACE="${AEGIS_ZEEK_INTERFACE:-eth0}"
 SURICATA_IFACE="${AEGIS_SURICATA_INTERFACE:-eth0}"
 TSHARK_IFACE="${AEGIS_TSHARK_INTERFACE:-any}"
+SENSOR_ID="${AEGIS_CAPTURE_SENSOR_ID:-docker-host-capture}"
+HEARTBEAT_INTERVAL="${AEGIS_CAPTURE_HEARTBEAT_SECONDS:-15}"
 ZEEK_LOG_DIR="/tmp/zeek-logs"
 SURICATA_LOG_DIR="/var/log/suricata"
 
@@ -72,11 +76,18 @@ start_suricata() {
 }
 
 start_tshark() {
-    echo "[TSHARK] Starting on $TSHARK_IFACE"
-    tshark -i "$TSHARK_IFACE" -T fields \
-        -e frame.time_epoch -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport \
-        -e udp.srcport -e udp.dstport -e ip.proto -e frame.len -e dns.qry.name -l \
-        2>/dev/null | python3 -u /app/tcpdump_bridge.py --format tshark \
+    echo "[TSHARK] Starting protocol-detail capture on $TSHARK_IFACE"
+    # Zeek owns canonical flows; Suricata owns alert/DNS/HTTP/TLS logs. Tshark
+    # contributes selected application-protocol packet metadata as log@1 records,
+    # avoiding a second flow count and excluding decoded payload/credential text.
+    tshark -i "$TSHARK_IFACE" -n \
+        -Y 'smb2 || rdp || mqtt || modbus || ssh || kerberos || ntlmssp' \
+        -T fields -E header=n -E quote=n \
+        -e frame.time_epoch -e frame.number -e frame.len \
+        -e ip.src -e ipv6.src -e ip.dst -e ipv6.dst \
+        -e tcp.srcport -e udp.srcport -e tcp.dstport -e udp.dstport \
+        -e frame.protocols -l \
+        2>/dev/null | python3 -u /app/tcpdump_bridge.py --format tshark-detail \
         --api "$API_URL" --email "$EMAIL" --password "$AEGIS_PASSWORD" &
     PIDS+=("$!")
 }
@@ -105,6 +116,11 @@ if [ "${#PIDS[@]}" -eq 0 ]; then
     echo "refusing to start: AEGIS_CAPTURE_ENGINES names no engine" >&2
     exit 2
 fi
+
+python3 -u /app/capture_heartbeat.py \
+    --api "$API_URL" --email "$EMAIL" --password "$AEGIS_PASSWORD" \
+    --sensor-id "$SENSOR_ID" --engines "$ENGINES" --interval "$HEARTBEAT_INTERVAL" &
+PIDS+=("$!")
 
 # Supervise: the first child to exit ends the container (the restart policy restarts it).
 wait -n "${PIDS[@]}" || true

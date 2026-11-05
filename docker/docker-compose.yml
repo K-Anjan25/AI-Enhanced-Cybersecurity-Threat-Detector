@@ -195,19 +195,13 @@ services:
       timeout: 5s
       retries: 6
 
-  # Network capture service — captures REAL traffic from the host network.
-  # Requires: --cap-add=NET_ADMIN or --privileged
-  # Override interface with a Linux interface name, e.g.:
-  #   AEGIS_CAPTURE_INTERFACE=wlan0 docker compose up
-  # Windows/macOS adapter names (Wi-Fi, Ethernet) do not exist in the container.
-  # On Docker Desktop, network_mode: host is the Linux VM's network, not the host
-  # adapter, so little real traffic is seen. See
-  # backend/app/services/capture/bridges/README.md ("Docker Desktop").
-  # Default interface per service differs; see the same README for the table.
-  # Network capture: one container, one image (replaces capture, zeek, suricata and
-  # tshark). Engines run side by side, chosen by AEGIS_CAPTURE_ENGINES. zeek supplies
-  # flows and suricata supplies alerts and protocol logs. tshark is opt-in: it
-  # aggregates the same connections as zeek, so enabling it counts flows twice.
+  # Main live capture service. Zeek provides canonical connection flows, Suricata
+  # provides IDS/DNS/HTTP/TLS logs, and tshark provides selected additional protocol
+  # details as logs (not duplicate flow records). All three run by default under one
+  # supervisor; the service reports backend health heartbeats independently of traffic.
+  # Host-network capture requires Linux and raw/network-admin capture capabilities.
+  # Docker Desktop runs containers in a VM and may not expose host adapter traffic.
+  # Set AEGIS_CAPTURE_INTERFACE to override all engine-specific defaults together.
   capture:
     mem_limit: 1g
     build:
@@ -218,7 +212,9 @@ services:
       AEGIS_EMAIL: ${AEGIS_BOOTSTRAP_ADMIN_EMAIL:-admin@aegis.local}
       # No default: the capture service refuses to start without a non-default password.
       AEGIS_PASSWORD: ${AEGIS_BOOTSTRAP_ADMIN_PASSWORD:-}
-      AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-zeek,suricata}
+      AEGIS_CAPTURE_ENGINES: ${AEGIS_CAPTURE_ENGINES:-zeek,suricata,tshark}
+      AEGIS_CAPTURE_SENSOR_ID: ${AEGIS_CAPTURE_SENSOR_ID:-docker-host-capture}
+      AEGIS_CAPTURE_HEARTBEAT_SECONDS: ${AEGIS_CAPTURE_HEARTBEAT_SECONDS:-15}
       # AEGIS_CAPTURE_INTERFACE is still honoured as the fallback for every engine.
       AEGIS_ZEEK_INTERFACE: ${AEGIS_ZEEK_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
       AEGIS_SURICATA_INTERFACE: ${AEGIS_SURICATA_INTERFACE:-${AEGIS_CAPTURE_INTERFACE:-eth0}}
@@ -235,6 +231,7 @@ services:
         condition: service_healthy
     cap_add:
       - NET_ADMIN
+      - NET_RAW
     restart: unless-stopped
 
 volumes:
