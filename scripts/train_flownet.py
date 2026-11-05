@@ -19,8 +19,10 @@ a pad equal the training mean rather than an arbitrary constant.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import subprocess
 import sys
 import time
 from collections.abc import Sequence
@@ -49,13 +51,20 @@ from aegis_ml.data.records import FlowRecord  # noqa: E402
 from aegis_ml.data.splits import (  # noqa: E402
     family_split,
     group_split,
+    leave_one_entity_out,
     split_windows,
     window_families,
 )
 from aegis_ml.data.synthetic import generate_dataset  # noqa: E402
-from aegis_ml.data.windowing import Window, WindowKey, window_flows  # noqa: E402
+from aegis_ml.data.windowing import (  # noqa: E402
+    FLOW_WINDOW_SIZE,
+    Window,
+    WindowKey,
+    window_flows,
+)
 from aegis_ml.training.baselines import design_matrix  # noqa: E402
 from aegis_ml.training.evaluation import EvalReport, evaluate  # noqa: E402
+from aegis_ml.training.loao_eval import loao_report  # noqa: E402
 
 PARSERS = {
     "cic-ids2017": parse_cic_ids2017,
@@ -133,6 +142,97 @@ def _sequences(
     return sequences, labels, padded
 
 
+MANIFEST_FILE = "training_manifest.json"
+# Keys of the LOAO report that are printed as a one-line summary.
+LOAO_PRINT = ("roc_auc", "pr_auc", "threshold", "recall", "fpr")
+
+
+def _sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _git_sha() -> str | None:
+    """The commit the code ran from, or None outside a git checkout (R-63)."""
+    try:
+        out = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            ["git", "rev-parse", "HEAD"],  # noqa: S607 - git is looked up on PATH by design
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+def _manifest(
+    args: argparse.Namespace,
+    *,
+    model_id: str,
+    width: int,
+    params: int,
+    key: WindowKey,
+    report: EvalReport,
+) -> dict[str, object]:
+    """The R-63 training manifest for one artifact.
+
+    ``dataset_files`` is empty for synthetic runs and ``baseline`` is null when no
+    baseline run was named. The serving side only calls a manifest complete when both
+    are present, so neither gap is hidden.
+    """
+    dataset_files: list[dict[str, str]] = []
+    if not args.synthetic:
+        for raw in args.file:
+            path = raw if os.path.isabs(raw) else os.path.join(ROOT, raw)
+            if not os.path.isfile(path):
+                path = os.path.join(ROOT, "data", "raw", os.path.basename(raw))
+            dataset_files.append({"name": os.path.basename(path), "sha256": _sha256_file(path)})
+    baseline: dict[str, str] | None = None
+    if args.baseline_run:
+        if not os.path.isfile(args.baseline_run):
+            raise SystemExit(f"--baseline-run {args.baseline_run} does not exist")
+        baseline = {
+            "name": os.path.basename(args.baseline_run),
+            "sha256": _sha256_file(args.baseline_run),
+        }
+    return {
+        "schema": "training_manifest@1",
+        "model_id": model_id,
+        "dataset_files": dataset_files,
+        "git_sha": _git_sha(),
+        "seed": args.seed,
+        "config": {
+            "split_policy": args.split_policy,
+            "holdout_family": list(args.holdout_family or []),
+            "holdout_entity": args.holdout_entity,
+            "sample_frac": args.sample_frac,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "learning_rate": args.learning_rate,
+            "window_key": key.value,
+            "input_dim": width,
+            "parameters": params,
+        },
+        "metrics": json.loads(report.model_dump_json()),
+        "baseline": baseline,
+    }
+
+
+def _resolve_device(choice: str, cuda_ok: bool) -> str:
+    """Pick the training device. ``auto`` uses CUDA when torch can see a GPU."""
+    if choice == "cuda" and not cuda_ok:
+        raise SystemExit("--device cuda requested, but torch cannot see a CUDA GPU")
+    if choice == "cpu" or (choice == "auto" and not cuda_ok):
+        return "cpu"
+    return "cuda"
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments, train FlowNet, and write the run log."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -159,13 +259,37 @@ def main(argv: list[str] | None = None) -> int:
         help="entity dimension a window is keyed on (D-013)",
     )
     parser.add_argument("--out", required=True, help="where to write the run log")
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help="directory to write the serving artifacts to: flownet.pt (weights), "
+        "flownet.config.json, flownet.preprocessor.json and flownet.eval.json",
+    )
+    parser.add_argument(
+        "--baseline-run",
+        default=None,
+        help="run log written by scripts/run_baselines.py on the same data (R-64). "
+        "Its name and hash go into the training manifest.",
+    )
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument(
+        "--device",
+        choices=["auto", "cpu", "cuda"],
+        default="auto",
+        help="auto uses CUDA when torch can see a GPU, otherwise the CPU",
+    )
+    parser.add_argument(
         "--split-policy",
-        choices=("entity-disjoint", "temporal-only", "entity-only", "family-holdout"),
+        choices=(
+            "entity-disjoint",
+            "temporal-only",
+            "entity-only",
+            "family-holdout",
+            "leave-one-attacker-out",
+        ),
         default="entity-disjoint",
         help=(
             "temporal = chronological and entity-disjoint (R-60/R-61). "
@@ -181,6 +305,11 @@ def main(argv: list[str] | None = None) -> int:
             "Attack family to withhold from training, for --split-policy "
             "family-holdout. Repeatable. Required by that policy."
         ),
+    )
+    parser.add_argument(
+        "--holdout-entity",
+        default=None,
+        help="Attacker source IP to hold out, for --split-policy leave-one-attacker-out.",
     )
     parser.add_argument(
         "--sample-frac",
@@ -202,9 +331,7 @@ def main(argv: list[str] | None = None) -> int:
     reports: list[ParseReport] = []
     if args.synthetic:
         print(f"generating {args.synthetic:,} records per scenario (seed {args.seed})")
-        records = list(
-            generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows
-        )
+        records = list(generate_dataset(per_scenario=args.synthetic, seed=args.seed).flows)
     else:
         records = []
         for raw in args.file:
@@ -228,9 +355,7 @@ def main(argv: list[str] | None = None) -> int:
         print("no records to train on", file=sys.stderr)
         return 1
 
-    records.sort(
-        key=lambda record: record.timestamp
-    )  # window_flows needs arrival order
+    records.sort(key=lambda record: record.timestamp)  # window_flows needs arrival order
     windows = window_flows(records, key=key)
     print(f"{len(records):,} records -> {len(windows):,} windows keyed by {key.value}")
 
@@ -244,6 +369,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         split = family_split(windows, holdout=args.holdout_family)
+    elif args.split_policy == "leave-one-attacker-out":
+        if key != WindowKey.SOURCE:
+            print("leave-one-attacker-out holds out a source: use --key source", file=sys.stderr)
+            return 1
+        if not args.holdout_entity:
+            print("leave-one-attacker-out needs --holdout-entity", file=sys.stderr)
+            return 1
+        split = leave_one_entity_out(windows, holdout=args.holdout_entity)
     elif entity_only:
         split = group_split(windows)
     else:
@@ -258,6 +391,12 @@ def main(argv: list[str] | None = None) -> int:
             f"warning: holding out {sorted(args.holdout_family)}; the model has never "
             "seen this family. Neither leakage invariant is enforced, because the "
             "thing held out is the attack type, not the host - read the audit",
+            file=sys.stderr,
+        )
+    elif args.split_policy == "leave-one-attacker-out":
+        print(
+            f"warning: leave-one-attacker-out holds out {args.holdout_entity}. R-61 holds "
+            "exactly; R-60 is dropped. Measures detection of an unseen attacker.",
             file=sys.stderr,
         )
     elif entity_only:
@@ -292,6 +431,23 @@ def main(argv: list[str] | None = None) -> int:
     preprocessor = _fit(split.train, key)
     train_seq, train_y, _ = _sequences(split.train, key, preprocessor, 50)
     test_seq, test_y, padded = _sequences(split.test, key, preprocessor, 50)
+    loao = args.split_policy == "leave-one-attacker-out"
+    # Every policy gets the same window-level block (any-attack labels, max flow
+    # score per window, threshold from validation benign), so FlowNet and the
+    # baselines are always compared on the same windows.
+    valid_seq, valid_y, _ = _sequences(split.valid, key, preprocessor, 50)
+    window_capable = any(label == 0 for label in valid_y) and any(test_y) and not all(test_y)
+    if loao:
+        # The threshold is set on validation benign windows only (loao_eval), so
+        # the held-out attacker never influences it. Refuse before training if a
+        # fold cannot support that: no benign validation window, or a test fold
+        # with only one class.
+        if not any(label == 0 for label in valid_y):
+            print("refusing to train: no benign validation windows", file=sys.stderr)
+            return 1
+        if not (any(test_y) and not all(test_y)):
+            print("refusing to train: the test fold needs both classes", file=sys.stderr)
+            return 1
 
     if 0.0 < args.sample_frac < 1.0:
         # A stride, not a draw, so two runs train on the same windows (R-67).
@@ -314,12 +470,14 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(train_seq):,} train / {len(test_seq):,} test windows"
     )
 
-    x_train = torch.tensor(train_seq, dtype=torch.float32)
-    y_train = torch.tensor(train_y, dtype=torch.float32)
+    device = _resolve_device(args.device, torch.cuda.is_available())
+    model.to(device)
+    x_train = torch.tensor(train_seq, dtype=torch.float32, device=device)
+    y_train = torch.tensor(train_y, dtype=torch.float32, device=device)
     optimiser = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     bce = torch.nn.BCEWithLogitsLoss()
 
-    print(f"training {args.epochs} epochs on CPU")
+    print(f"training {args.epochs} epochs on {device}")
     started = time.perf_counter()
     model.train()
     for epoch in range(args.epochs):
@@ -329,6 +487,7 @@ def main(argv: list[str] | None = None) -> int:
         total, batches = 0.0, 0
         for start in range(0, order.numel(), args.batch_size):
             index = order[start : start + args.batch_size]
+            index = index.to(device)
             x, y = x_train[index], y_train[index]
             optimiser.zero_grad()
             output = model(x)
@@ -341,16 +500,91 @@ def main(argv: list[str] | None = None) -> int:
     elapsed = time.perf_counter() - started
 
     model.eval()
-    x_test = torch.tensor(test_seq, dtype=torch.float32)
+    x_test = torch.tensor(test_seq, dtype=torch.float32, device=device)
     with torch.no_grad():
-        scores = torch.sigmoid(model(x_test).anomaly_logits).tolist()
+        scores = torch.sigmoid(model(x_test).anomaly_logits).cpu().tolist()
     report: EvalReport = evaluate(
         [float(s) for s in scores],
         [bool(t) for t in test_y],
         model_id="flownet-v0.1.0",
     )
+    window_block: dict[str, object] | None = None
+    if window_capable:
+        with torch.no_grad():
+            valid_scores = (
+                torch.sigmoid(
+                    model(
+                        torch.tensor(valid_seq, dtype=torch.float32, device=device)
+                    ).anomaly_logits
+                )
+                .cpu()
+                .tolist()
+            )
+        window_block = loao_report(
+            [float(s) for s in scores],
+            [bool(t) for t in test_y],
+            [float(s) for s in valid_scores],
+            [bool(t) for t in valid_y],
+        )
+        summary = {name: float(value) for name, value in window_block.items() if name in LOAO_PRINT}
+        label = args.holdout_entity if loao else args.split_policy
+        print(
+            f"window eval {label}: roc_auc={summary['roc_auc']:.4f} "
+            f"pr_auc={summary['pr_auc']:.4f} threshold={summary['threshold']:.6f} "
+            f"recall={summary['recall']:.4f} fpr={summary['fpr']:.4f}"
+        )
+    loao_block = window_block if loao else None
 
     minutes = elapsed / 60.0
+    # Serving loads the weights on the CPU, so the checkpoint is written from the CPU copy.
+    model.to("cpu")
+    if args.checkpoint:
+        # Serving needs the weights, the exact input width, the fitted scaler and
+        # vocabularies (R-62), and the evaluation that was measured on this model.
+        os.makedirs(args.checkpoint, exist_ok=True)
+        torch.save(model.state_dict(), os.path.join(args.checkpoint, "flownet.pt"))
+        with open(
+            os.path.join(args.checkpoint, "flownet.config.json"), "w", encoding="utf-8"
+        ) as handle:
+            json.dump(
+                {
+                    "model_id": "flownet-v0.1.0",
+                    "input_dim": width,
+                    "d_model": model.config.d_model,
+                    "nhead": model.config.nhead,
+                    "dim_feedforward": model.config.dim_feedforward,
+                    "max_seq_len": model.config.max_seq_len,
+                    "window_size": FLOW_WINDOW_SIZE,
+                    "window_key": key.value,
+                    "split_policy": args.split_policy,
+                    "sample_frac": args.sample_frac,
+                    "epochs": args.epochs,
+                    "seed": args.seed,
+                },
+                handle,
+                indent=2,
+            )
+            handle.write("\n")
+        preprocessor.save(os.path.join(args.checkpoint, "flownet.preprocessor.json"))
+        with open(
+            os.path.join(args.checkpoint, "flownet.eval.json"), "w", encoding="utf-8"
+        ) as handle:
+            handle.write(report.model_dump_json(indent=2))
+            handle.write("\n")
+        with open(os.path.join(args.checkpoint, MANIFEST_FILE), "w", encoding="utf-8") as handle:
+            json.dump(
+                _manifest(
+                    args,
+                    model_id="flownet-v0.1.0",
+                    width=width,
+                    params=params,
+                    key=key,
+                    report=report,
+                ),
+                handle,
+                indent=2,
+            )
+            handle.write("\n")
     log: dict[str, object] = {
         "task": "T-201",
         "model_id": "flownet-v0.1.0",
@@ -360,6 +594,7 @@ def main(argv: list[str] | None = None) -> int:
         "windows": len(windows),
         "split_policy": args.split_policy,
         "holdout_family": list(args.holdout_family or []),
+        "holdout_entity": args.holdout_entity,
         "split_audit": audit,
         "train_windows": len(train_seq),
         "test_windows": len(test_seq),
@@ -385,12 +620,13 @@ def main(argv: list[str] | None = None) -> int:
                 "target_parameters": PARAMETER_TARGET,
                 "band": [int(PARAMETER_TARGET * 0.8), int(PARAMETER_TARGET * 1.2)],
                 "actual_parameters": params,
-                "passed": bool(
-                    0.8 * PARAMETER_TARGET <= params <= 1.2 * PARAMETER_TARGET
-                ),
+                "passed": bool(0.8 * PARAMETER_TARGET <= params <= 1.2 * PARAMETER_TARGET),
             },
         },
         "report": json.loads(report.model_dump_json()),
+        "loao": loao_block,
+        "window_eval": window_block,
+        "window_scoring": "window-level, any-attack labels, max flow score per window",
     }
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as handle:
@@ -404,9 +640,7 @@ def main(argv: list[str] | None = None) -> int:
         f"(band {band[0]:,}-{band[1]:,}): "
         f"{'within' if band[0] <= params <= band[1] else 'OUTSIDE'}"
     )
-    print(
-        f"test fold: {report.positives:,} attack / {report.negatives:,} benign windows"
-    )
+    print(f"test fold: {report.positives:,} attack / {report.negatives:,} benign windows")
     print(
         f"ROC-AUC {report.metrics.roc_auc:.4f}  "
         f"PR-AUC {report.metrics.pr_auc:.4f}  "

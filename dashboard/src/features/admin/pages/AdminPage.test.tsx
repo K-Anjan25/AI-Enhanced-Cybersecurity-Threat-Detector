@@ -84,7 +84,7 @@ describe('AdminPage', () => {
   it('lists each section with what it answers at /admin', async () => {
     stubFetch(stubs());
     renderAdmin('/admin');
-    const heading = await screen.findByRole('heading', { name: 'Sections' });
+    const heading = await screen.findByRole('heading', { name: 'Governance Overview' });
     expect(heading).toBeInTheDocument();
     // All six of design.md §3's admin children, connectors included: T-422 built the
     // last one, so the index is now a map of real routes and nothing says "not built".

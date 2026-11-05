@@ -235,7 +235,12 @@ def load_checkpoint(directory: str, config: TrainingConfig) -> tuple[Checkpoint,
             f"({checkpoint.config_digest[:12]} != {expected[:12]})"
         )
         raise ValueError(msg)
-    state: dict[str, object] = torch.load(os.path.join(directory, "weights.pt"), weights_only=False)
+    # The saved state is only model and optimiser state_dicts (tensors, numbers, tuples,
+    # dicts), which weights_only=True accepts. Loading with the unpickler would execute
+    # any code a tampered checkpoint carries (bandit B614).
+    state: dict[str, object] = torch.load(
+        os.path.join(directory, "weights.pt"), map_location="cpu", weights_only=True
+    )
     return checkpoint, state
 
 

@@ -1,100 +1,59 @@
-# AEGIS Network Capture & Integration Bridges
+# Docker-managed network capture
 
-## How It Works
+The Compose `capture` service is part of the main stack. It supervises Zeek,
+Suricata, tshark, their AEGIS bridges, and a backend heartbeat reporter. There is
+no host-side Python setup and no synthetic traffic generator.
 
-AEGIS captures real network traffic automatically when you run:
+## Real data sources
 
-```bash
-docker compose up
-```
+| Engine   | Default AEGIS data                                                                                 | Duplicate prevention                                                                       |
+| -------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Zeek     | `conn.log` records become the canonical `flow@1` connections.                                      | The only engine that writes flow records by default.                                       |
+| Suricata | EVE alert, DNS, HTTP, and TLS events become `log@1` records.                                       | Suricata flow events are skipped while Zeek is enabled.                                    |
+| tshark   | Selected SMB2, RDP, MQTT, Modbus, SSH, Kerberos, and NTLM packet metadata becomes `log@1` records. | Packet metadata is logged without payload/credential text and never becomes a flow record. |
 
-The `capture` service runs inside Docker with `network_mode: host` and `NET_ADMIN` capability. It captures REAL packets from your network interface using scapy, aggregates them into flows, and sends them to the backend API.
+The tshark protocol filter is intentionally limited to details not already covered
+by the Zeek flow feed and Suricata's alert/DNS/HTTP/TLS bridge. A quiet interface
+produces no fabricated flows or alerts. Sensor heartbeats are liveness metadata,
+not network-traffic records.
 
-**No manual commands needed. No fake data. No scripts to run.**
+## Run the stack
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  YOUR MACHINE                                                │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Docker Compose Stack                                  │ │
-│  │                                                        │ │
-│  │  ┌──────────┐    ┌──────────┐    ┌──────────┐         │ │
-│  │  │ capture  │    │ backend  │    │dashboard │         │ │
-│  │  │ (scapy)  │───►│ :8000    │───►│ :8080    │         │ │
-│  │  └────┬─────┘    └──────────┘    └──────────┘         │ │
-│  │       │                                                │ │
-│  └───────┼────────────────────────────────────────────────┘ │
-│          │                                                    │
-│          │  network_mode: host                                │
-│          │  (sees ALL host traffic)                            │
-│          │                                                    │
-│  ┌───────┴──────────────────────────────────────────────────┐│
-│  │  Host Network Interface (Wi-Fi, Ethernet, etc.)          ││
-│  └──────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AEGIS_CAPTURE_INTERFACE` | `any` | Network interface to capture (`any` = all) |
-| `AEGIS_API_URL` | `http://backend:8000` | Backend API URL |
-| `AEGIS_FLUSH_INTERVAL` | `10` | Seconds between flow flushes |
-| `AEGIS_CAPTURE_FILTER` | (empty) | BPF filter expression |
-
-## Override Interface
+From the repository root, copy `docker/.env.example` to `docker/.env`, set a
+random `AEGIS_SECRET_KEY` and a strong `AEGIS_BOOTSTRAP_ADMIN_PASSWORD`, then run:
 
 ```bash
-# Capture only on Wi-Fi
-AEGIS_CAPTURE_INTERFACE=Wi-Fi docker compose up
-
-# Capture only on Ethernet
-AEGIS_CAPTURE_INTERFACE=Ethernet docker compose up
-
-# Capture on Linux interface
-AEGIS_CAPTURE_INTERFACE=wlan0 docker compose up
+docker compose -f docker/docker-compose.yml up --build
 ```
 
-## Optional: Zeek/Suricata/tcpdump Bridges
+Compose starts all three capture engines by default. The single capture image
+keeps the engine processes together so a failed engine or bridge causes the
+container to restart rather than leaving a partial sensor silently running.
 
-If you have Zeek, Suricata, or tcpdump installed, you can use the bridge scripts to feed their output into AEGIS. These are **optional** — the capture service handles everything automatically.
+## Capture health
 
-### Zeek Bridge
-```bash
-# Requires Zeek installed on the host
-sudo zeek -i eth0 local | python3 bridges/zeek_bridge.py
-```
+The reporter sends an authenticated heartbeat every 15 seconds to
+`POST /api/v1/capture/heartbeat`. The dashboard/API reads the latest real reports
+from `GET /api/v1/capture/status`; a sensor becomes stale after 45 seconds with
+no report. An empty sensor list is `unknown`, not `healthy`, and reports expire
+in memory rather than being retained as traffic data.
 
-### Suricata Bridge
-```bash
-# Requires Suricata installed on the host
-sudo suricata -i eth0 -l /var/log/suricata/
-python3 bridges/suricata_bridge.py /var/log/suricata/eve.json
-```
+The sensor identifier and heartbeat interval can be set with
+`AEGIS_CAPTURE_SENSOR_ID` and `AEGIS_CAPTURE_HEARTBEAT_SECONDS` in `docker/.env`.
+The interval accepts 1–30 seconds to stay below the backend's 45-second stale threshold.
+The capture status endpoint is read-only for dashboard users; reporting requires
+an ingest-capable backend account.
 
-### tcpdump/tshark Bridge
-```bash
-# Requires Wireshark/tshark installed on the host
-tshark -i Ethernet -T fields -e frame.time_epoch -e ip.src -e ip.dst \
-  -e tcp.srcport -e tcp.dstport -e ip.proto -e frame.len | \
-  python3 bridges/tcpdump_bridge.py --format tshark
-```
+## Host and interface requirements
 
-## Detection Rules
+The Compose service uses host networking and the `NET_ADMIN`/`NET_RAW`
+capabilities. On Linux it captures the named host interface. Zeek and Suricata
+default to `eth0`; tshark defaults to `any`. To select an interface for all three,
+set `AEGIS_CAPTURE_INTERFACE` in `docker/.env`; per-engine overrides are
+`AEGIS_ZEEK_INTERFACE`, `AEGIS_SURICATA_INTERFACE`, and `AEGIS_TSHARK_INTERFACE`.
 
-The rule-based detector (built into the backend) automatically detects:
-
-| Rule | What It Detects | Score |
-|------|----------------|-------|
-| Port Scan | 15+ destination ports from one source | 0.50 — 0.99 |
-| C2 Beacon | Regular-interval connections | 0.60 — 0.99 |
-| Exfiltration | 50+ MB outbound transfers | 0.50 — 0.99 |
-| Brute Force | 10+ failed auth attempts | 0.50 — 0.99 |
-| DNS Tunnel | Large DNS queries (>512 bytes) | 0.40 — 0.95 |
-| Lateral Movement | Internal-to-internal on sensitive ports | 0.50 — 0.95 |
-
-Alerts appear automatically on the dashboard when suspicious traffic is detected.
+Docker Desktop runs Linux containers in a VM. Host networking there may expose
+only VM traffic, not the Windows/macOS Wi-Fi or Ethernet adapter. This is a
+platform limitation, not a reason to substitute generated traffic. For full
+host-interface capture, run Compose on a Linux host with permission to capture
+on the selected interface.

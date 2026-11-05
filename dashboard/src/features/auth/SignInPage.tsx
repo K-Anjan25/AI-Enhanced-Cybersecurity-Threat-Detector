@@ -1,17 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { ArrowRight, Fingerprint, KeyRound, ShieldCheck, UserPlus } from 'lucide-react';
 =======
 import { ArrowRight, Fingerprint, KeyRound } from 'lucide-react';
 >>>>>>> f724bc324a8e821099fe3e44050b1b4e1fd79a0d
+=======
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 import { ApiError } from '../../api/client';
 import { getAuthStatus, signIn, signUp, setupLocalAdmin } from '../../api/auth';
 import { Button, Spinner } from '../../components/ui';
 import { useTheme } from '../../theme/ThemeProvider';
-import { VectorShield } from '../../components/cyberpunk/VectorShield';
-import { GlitchText } from '../../components/cyberpunk/GlitchText';
+import { AegisLogo } from '../../components/brand/AegisLogo';
 
 type AuthMode = 'setup' | 'signin' | 'signup';
 
@@ -69,79 +73,32 @@ export function SignInPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen bg-base text-ink">
-      {/* Cyberpunk static grid — zero JS */}
-      <div className="cyber-grid-bg" aria-hidden="true" />
+    <main className="flex min-h-screen flex-col bg-base text-ink">
+      <header className="flex h-topbar items-center justify-between px-6">
+        <Link to="/" className="flex items-center gap-2 text-h2 uppercase tracking-widest">
+          <AegisLogo />
+          AEGIS
+        </Link>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          className="rounded-input border border-line px-3 py-1 text-body-sm font-semibold text-muted hover:text-ink"
+        >
+          {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+        </button>
+      </header>
 
-      <button
-        type="button"
-        onClick={toggleTheme}
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-        className="absolute right-6 top-6 z-10 rounded-input border border-line bg-surface px-3 py-2 font-mono text-caption text-muted transition-colors hover:text-ink"
-      >
-        {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-      </button>
+      <section className="flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm rounded-card border border-line bg-surface p-8">
+          <h1 className="text-h1">{setupAvailable ? 'Create administrator' : 'Sign in'}</h1>
 
-      <section className="hidden w-1/2 flex-col justify-between border-r border-line bg-surface p-8 xl:flex">
-        <div className="flex items-center gap-3">
-          <VectorShield size={48} status="secure" />
-          <div>
-            <GlitchText as="h2" intensity="subtle" className="text-h2 tracking-wide">
-              AEGIS
-            </GlitchText>
-            <p className="font-mono text-caption uppercase tracking-wider text-muted">Security operations</p>
-          </div>
-        </div>
-
-        <div className="max-w-xl">
-          <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-base px-3 py-2 font-mono text-caption text-accent">
-            <Fingerprint aria-hidden="true" className="size-icon-sm" />
-            AI-enhanced threat detection
-          </span>
-          <h1 className="mt-6 text-display leading-tight">Clarity in every security decision.</h1>
-          <p className="mt-4 max-w-xl text-body text-muted">
-            Investigate activity, understand model evidence, and take governed action from one
-            focused operations console.
-          </p>
-
-          <ul className="mt-8 grid gap-3">
-            <li className="flex items-start gap-3 rounded-card border border-line bg-base p-4">
-              <span className="mt-1 h-2 w-2 rounded-pill bg-severity-benign" aria-hidden="true" />
-              <span>
-                <span className="block text-body font-semibold">Evidence stays explicit</span>
-                <span className="mt-1 block text-body-sm text-muted">
-                  Recorded model evaluations are shown as recorded; missing evidence stays
-                  unavailable.
-                </span>
-              </span>
-            </li>
-            <li className="flex items-start gap-3 rounded-card border border-line bg-base p-4">
-              <span className="mt-1 h-2 w-2 rounded-pill bg-accent" aria-hidden="true" />
-              <span>
-                <span className="block text-body font-semibold">
-                  Access is enforced server-side
-                </span>
-                <span className="mt-1 block text-body-sm text-muted">
-                  Roles govern protected operations, not just what the interface displays.
-                </span>
-              </span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <p className="font-mono text-caption text-muted">AEGIS / ACCESS CONTROL / SECURE CHANNEL</p>
-        </div>
-      </section>
-
-      <section className="flex min-w-0 flex-1 items-center justify-center px-4 py-16 md:px-8">
-        <div className="neon-card w-full max-w-md overflow-hidden" style={{ '--neon-border': 'rgba(0, 240, 255, 0.3)', '--neon-glow': 'rgba(0, 240, 255, 0.15)', '--neon-text': '#00f0ff' } as React.CSSProperties}>
-          <div className="h-1" style={{ background: 'linear-gradient(90deg, #00f0ff, #8b72ff, #ff2a6d)' }} />
-          <div className="neon-card__content p-6 md:p-8">
-            <div className="mb-6 flex items-center gap-3 xl:hidden">
-              <VectorShield size={40} status="secure" />
-              <span className="font-mono text-caption uppercase tracking-widest text-accent">AEGIS</span>
+          {status.isPending ? (
+            <div className="mt-6 flex items-center gap-3 text-body-sm text-muted">
+              <Spinner />
+              Checking account setup…
             </div>
+<<<<<<< HEAD
             <p className="font-mono text-caption font-semibold uppercase tracking-wider text-accent">
               // SECURE WORKSPACE LOGIN
             </p>
@@ -164,8 +121,15 @@ export function SignInPage() {
                 : mode === 'signup'
                   ? 'Register with your work email. New accounts start with read-only access; an administrator grants roles.'
                   : 'Use your provisioned operator account to continue.'}
+=======
+          ) : status.isError ? (
+            <p className="mt-6 text-body-sm text-severityText-high" role="status">
+              Authentication service unreachable.
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
             </p>
+          ) : null}
 
+<<<<<<< HEAD
             {status.isPending ? (
               <div className="mt-6 flex items-center gap-3 rounded-card border border-line bg-base p-4 text-body-sm text-muted">
                 <Spinner />
@@ -197,11 +161,47 @@ export function SignInPage() {
             ) : null}
 
             <form className="mt-6 grid gap-4" onSubmit={submit}>
+=======
+          <form className="mt-6 grid gap-4" onSubmit={submit}>
+            <div>
+              <label className="text-caption font-semibold text-ink" htmlFor="auth-email">
+                Email address
+              </label>
+              <input
+                id="auth-email"
+                autoComplete="username"
+                type="email"
+                required
+                maxLength={254}
+                value={email}
+                onChange={(event) => setEmail(event.currentTarget.value)}
+                className="mt-2 h-row-comfortable w-full rounded-input border border-line bg-base px-3 text-body text-ink"
+              />
+            </div>
+            <div>
+              <label className="text-caption font-semibold text-ink" htmlFor="auth-password">
+                Password
+              </label>
+              <input
+                id="auth-password"
+                autoComplete={setupAvailable ? 'new-password' : 'current-password'}
+                type="password"
+                required
+                minLength={12}
+                maxLength={256}
+                value={password}
+                onChange={(event) => setPassword(event.currentTarget.value)}
+                className="mt-2 h-row-comfortable w-full rounded-input border border-line bg-base px-3 text-body text-ink"
+              />
+            </div>
+            {setupAvailable ? (
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
               <div>
-                <label className="text-caption font-semibold text-ink" htmlFor="auth-email">
-                  Email address
+                <label className="text-caption font-semibold text-ink" htmlFor="auth-confirm">
+                  Confirm password
                 </label>
                 <input
+<<<<<<< HEAD
                   id="auth-email"
                   autoComplete="username"
                   type="email"
@@ -219,14 +219,19 @@ export function SignInPage() {
                 <input
                   id="auth-password"
                   autoComplete={needsConfirmation ? 'new-password' : 'current-password'}
+=======
+                  id="auth-confirm"
+                  autoComplete="new-password"
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
                   type="password"
                   required
                   minLength={12}
                   maxLength={256}
-                  value={password}
-                  onChange={(event) => setPassword(event.currentTarget.value)}
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.currentTarget.value)}
                   className="mt-2 h-row-comfortable w-full rounded-input border border-line bg-base px-3 text-body text-ink"
                 />
+<<<<<<< HEAD
                 {needsConfirmation ? (
                   <p className="mt-2 text-caption text-muted">Use at least 12 characters.</p>
                 ) : null}
@@ -249,16 +254,18 @@ export function SignInPage() {
                   />
                 </div>
               ) : null}
+=======
+              </div>
+            ) : null}
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
-              {error === null ? null : (
-                <p
-                  className="rounded-card border border-line bg-base p-3 text-body-sm text-severityText-critical"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
+            {error === null ? null : (
+              <p className="text-body-sm text-severityText-critical" role="alert">
+                {error}
+              </p>
+            )}
 
+<<<<<<< HEAD
               <Button
                 type="submit"
                 loading={pending}
@@ -311,6 +318,17 @@ export function SignInPage() {
               Passwords are protected with Argon2id; tokens stay in this tab.
             </div>
           </div>
+=======
+            <Button
+              type="submit"
+              loading={pending}
+              className="mt-2 h-row-comfortable w-full justify-center"
+            >
+              {setupAvailable ? 'Create administrator' : 'Sign in'}
+              <ArrowRight aria-hidden="true" className="size-icon-sm" />
+            </Button>
+          </form>
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
         </div>
       </section>
     </main>
@@ -332,7 +350,7 @@ function authErrorMessage(error: unknown, mode: AuthMode): string {
       return 'Local setup is disabled by the backend. Enable it only for a private development instance.';
     }
     if (error.failure === 'unreachable' || error.failure === 'timeout') {
-      return 'The authentication service could not be reached. Check the backend and dashboard proxy.';
+      return 'Authentication service unreachable.';
     }
     return `Authentication was refused (HTTP ${error.status ?? 'unknown'}).`;
   }

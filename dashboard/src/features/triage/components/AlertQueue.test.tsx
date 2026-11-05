@@ -50,7 +50,11 @@ describe('AlertQueue', () => {
     renderQueue();
 
     const first = screen.getAllByRole('link')[0] as HTMLElement;
+<<<<<<< HEAD
     // The pill sits inside the link's row, so read the row's text.
+=======
+    // The pill renders its label as a sibling of the detail, so read the row's text.
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
     expect(first.textContent).toContain('Critical');
     expect(first.textContent).toContain('Reconnaissance');
     expect(first.textContent).toContain('0.96');

@@ -861,16 +861,18 @@ def test_the_reader_stops_at_a_disconnect_message_and_does_not_read_on() -> None
 
     socket = FakeSocket()
     with pytest.raises(WebSocketDisconnect):
-        run(_drain(socket))  # type: ignore[arg-type]
+        run(_drain(socket, asyncio.Lock()))  # type: ignore[arg-type]
     assert socket.calls == 1
 
 
-def test_the_socket_refuses_an_anonymous_handshake_with_4401(client: TestClient) -> None:
+def test_the_socket_accepts_then_refuses_an_anonymous_client_with_4401(client: TestClient) -> None:
+    # A completed handshake lets the browser observe the application close code;
+    # closing during the handshake is reported as the opaque code 1006 instead.
     with (
+        client.websocket_connect("/api/v1/alerts/ws") as socket,
         pytest.raises(WebSocketDisconnect) as excinfo,
-        client.websocket_connect("/api/v1/alerts/ws"),
     ):
-        pass
+        socket.receive_json()
     assert excinfo.value.code == 4401
 
 
@@ -887,12 +889,12 @@ def test_a_role_without_read_is_refused_with_4403(
 
     monkeypatch.setitem(rbac.ROLE_CAPABILITIES, rbac.Role.VIEWER, frozenset())
     with (
-        pytest.raises(WebSocketDisconnect) as excinfo,
         client.websocket_connect(
             "/api/v1/alerts/ws", headers=headers(client.app.state.token_service)
-        ),
+        ) as socket,
+        pytest.raises(WebSocketDisconnect) as excinfo,
     ):
-        pass
+        socket.receive_json()
     assert excinfo.value.code == 4403
 
 
@@ -901,23 +903,23 @@ def test_the_socket_refuses_a_role_without_read_with_4403(
 ) -> None:
     """Every role holds READ today, so the refusal is shown with a bare token."""
     with (
-        pytest.raises(WebSocketDisconnect) as excinfo,
         client.websocket_connect(
             "/api/v1/alerts/ws", headers={"Authorization": "Bearer not-a-token"}
-        ),
+        ) as socket,
+        pytest.raises(WebSocketDisconnect) as excinfo,
     ):
-        pass
+        socket.receive_json()
     assert excinfo.value.code == 4401
     # And with no capability at all: a subject with an unknown role is refused.
     pair = auth.issue("ghost@corp", "viewer")
     forged = pair.access_token[:-1] + ("A" if pair.access_token[-1] != "A" else "B")
     with (
-        pytest.raises(WebSocketDisconnect) as excinfo,
         client.websocket_connect(
             "/api/v1/alerts/ws", headers={"Authorization": f"Bearer {forged}"}
-        ),
+        ) as socket,
+        pytest.raises(WebSocketDisconnect) as excinfo,
     ):
-        pass
+        socket.receive_json()
     assert excinfo.value.code == 4401
 
 
@@ -928,10 +930,23 @@ def test_a_browser_can_carry_its_token_in_the_subprotocol(
     pair = auth.issue("browser@corp", "viewer")
     with client.websocket_connect(
         "/api/v1/alerts/ws",
-        headers={"Sec-WebSocket-Protocol": f"aegis.bearer.{pair.access_token}"},
+        headers={"Sec-WebSocket-Protocol": f"aegis.bearer, aegis.bearer.{pair.access_token}"},
     ) as socket:
         assert socket.accepted_subprotocol == "aegis.bearer"
         assert socket.receive_json()["type"] == "ready"
+
+
+def test_the_socket_echoes_application_ping_for_browser_rtt(
+    client: TestClient, auth: TokenService
+) -> None:
+    """Browser WebSocket APIs cannot send control pings, so the app protocol echoes an id."""
+    with client.websocket_connect("/api/v1/alerts/ws", headers=headers(auth)) as socket:
+        assert socket.receive_json()["type"] == "ready"
+        socket.send_text("not-json")
+        for ping_id in [True, -1, 1.5, 2**53]:
+            socket.send_json({"type": "ping", "id": ping_id})
+        socket.send_json({"type": "ping", "id": 17})
+        assert socket.receive_json() == {"type": "pong", "id": 17}
 
 
 def test_killing_the_socket_mid_stream_loses_no_alert(

@@ -133,6 +133,7 @@ class AuditAction(StrEnum):
     auth_login = "auth.login"
     auth_refresh = "auth.refresh"
     auth_logout = "auth.logout"
+    capture_heartbeat = "capture.heartbeat"
 
 
 #: Route to action: the coverage contract (FR-42). A mutating route missing from
@@ -163,6 +164,7 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/auth/login"): AuditAction.auth_login,
         ("POST", "/api/v1/auth/refresh"): AuditAction.auth_refresh,
         ("POST", "/api/v1/auth/logout"): AuditAction.auth_logout,
+        ("POST", "/api/v1/capture/heartbeat"): AuditAction.capture_heartbeat,
     }
 )
 

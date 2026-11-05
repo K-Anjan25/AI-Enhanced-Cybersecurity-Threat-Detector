@@ -73,7 +73,6 @@ describe('the ui barrel', () => {
         'SeverityPill',
         'ScoreMeter',
         'Toast',
-        'ConnectionStatus',
         'EmptyState',
         'ErrorState',
         'Skeleton',

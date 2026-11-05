@@ -298,6 +298,7 @@ describe('design.md agreement', () => {
     expect(Object.keys(dark).sort()).toEqual(
       [
         '--color-accent',
+        '--color-brand-blue',
         '--color-bg-base',
         '--color-bg-surface',
         '--color-border',
@@ -322,8 +323,9 @@ describe('design.md agreement', () => {
   });
 
   it('implements the badge rule with the published ratios', () => {
-    expect(dark['--color-on-severity']).toBe('#0b0e14');
-    expect(light['--color-on-severity']).toBe(dark['--color-on-severity']);
+    // Two-colour palette (D-099): filled-badge text is the ground colour of each theme.
+    expect(dark['--color-on-severity']).toBe(dark['--color-bg-base']);
+    expect(light['--color-on-severity']).toBe(light['--color-bg-base']);
     const rule = section('**Badge rule.**');
     for (const severity of SEVERITIES) {
       const published = new RegExp(`${severity} ([\\d.]+)`).exec(rule);
@@ -366,7 +368,7 @@ describe('design.md agreement', () => {
     const published = new Map(
       rows_.filter((row) => /^\d+ \/ \d+$/.test(row[1] ?? '')).map((row) => [row[0]!, row[1]!]),
     );
-    expect(published.size, 'no type steps parsed out of §5.4').toBe(6);
+    expect(published.size, 'no type steps parsed out of §5.4').toBe(8);
     expect(published.get('type.display')).toBe('32 / 36');
     expect(published.get('type.h1')).toBe('24 / 32');
     expect(published.get('type.h2')).toBe('18 / 26');

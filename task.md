@@ -4,7 +4,7 @@
 |---|---|
 | **Document** | Work breakdown, backlog, and delivery plan |
 | **Version** | 1.0 |
-| **Last updated** | 2026-10-07 (Wednesday) |
+| **Last updated** | 2026-10-21 |
 | **Status** | Live planning document — update as work lands |
 | **Derives from** | [prd.md](prd.md) · [architecture.md](architecture.md) |
 | **Gated by** | [rules.md](rules.md) — Definition of Done §10 |
@@ -21,6 +21,8 @@
 **Every task has acceptance criteria.** A task with no testable criteria is not ready to start. "Investigate X" tasks must state what artifact the investigation produces.
 
 **Status values:** `TODO` · `IN PROGRESS` · `BLOCKED` · `DONE` · `DROPPED`. Status changes are made in this file in the same PR as the code.
+
+**Status update 2026-10-21.** Delivered since 2026-10-07 without a task ID: a login throttle on failed passwords (per account and per address, Redis-shared when `AEGIS_REDIS_URL` is set; relates to T-316, which is already DONE and covers request limits, not credential attempts); a shared capture shipper for the zeek, suricata and tcpdump bridges (1000 records per request, retry, disk spool capped by `AEGIS_SPOOL_MAX_MB`); numpy-vectorised LOAO baselines and a GPU-default FlowNet runner. The dashboard landing page is complete on the branch. Still open: spool durability across container restarts (the default spool is not a mounted volume), a Redis URL in the production Helm values for multi-replica login throttling, and CI confirmation on the latest push.
 
 **Status as of 2026-10-07.** E4's design.md §3 screens are built; T-420's recorded-evidence contract and T-417's authenticated dashboard flow are implemented. T-421 still needs a PSI gauge producer. T-417's account and refresh stores are process-local until the database-backed adapters land; no demo credential or evaluation data is seeded. E5 remains untouched; per-task status is recorded under each epic table.
 
@@ -233,7 +235,7 @@ Goal: the triage loop, finished properly. Screens in priority order.
 | T-403 | Overview dashboard: KPI tiles, severity area chart, top entities, pipeline health strip (FR-50) | 2.5 | T-402, T-305 | Degraded pipeline stages render red with the exceeded budget; stale data shows a "last update" age — **DONE 2026-10-06, see [D-060](memory.md#d-060--the-overview-reads-the-scrape-for-its-health-and-the-alert-window-for-everything-else--and-says-what-it-cannot-measure-t-403-2026-10-06)** |
 | T-404 | Alert triage screen: list + detail with the four zones and keyboard verdicts (FR-51) | 4 | T-402, T-308 | Full triage loop completable without a mouse; `explanation_unavailable` and `evidence expired` states render explicitly — **DONE 2026-10-06, see [D-061](memory.md#d-061--the-triage-screen-renders-what-it-was-given-reasons-or-the-reason-there-are-none-evidence-or-the-date-it-expired-and-the-history-that-warns-t-404-2026-10-06)** |
 | T-405 | Real-time layer: single WebSocket at the app shell, pub/sub hook, reconnect with backoff, disconnected banner | 1.5 | T-310 | Killing the connection shows the banner and falls back to polling; reconnecting replays missed alerts — **DONE 2026-10-06, see [D-062](memory.md#d-062--the-live-channel-degrades-into-the-same-frames-and-a-refusal-stops-the-retry-but-not-the-screen-t-405-2026-10-06)** |
-| T-406 | Traffic explorer: D3 time-series with brushing + entity graph with the ≥ 2,000-node fallback (FR-52) | 3.5 | T-402, T-305 | Brushing filters all dependent panels; the graph switches to adjacency mode and labels the switch — **DONE 2026-10-06, see [D-063](memory.md#d-063--the-traffic-explorer-brushes-one-model-counts-alerted-records-rather-than-traffic-and-says-which-graph-it-is-drawing-t-406-2026-10-06)** |
+| T-406 | Traffic explorer: D3 time-series with brushing + bounded directed flow-relationship table (FR-52) | 3.5 | T-402, T-305 | Brushing filters dependent panels; pinning either endpoint focuses the address table; top 30 relationships are ordered by observed bytes and flow count. No force simulation or adjacency matrix — **DONE 2026-10-06; display follow-up 2026-11-05, see [D-109](memory.md#d-109--bounded-directed-flow-relationships-replace-the-force-layout-and-matrix-2026-11-05)** |
 | T-407 | Log explorer with template clustering and pausable live tail | 2.5 | T-402, T-305 | 10,000 identical lines collapse to one row with a count; pause freezes the view — **DONE 2026-10-06, see [D-064](memory.md#d-064--the-log-tail-is-a-window-with-an-end-and-every-read-carries-the-sentence-that-says-so-t-407-2026-10-06)** |
 | T-408 | Hunt console: query input, autocomplete, saved queries, results table, audited CSV export | 3 | T-305 | Export is blocked below `responder` and writes an audit entry; empty results show the executed query — **DONE 2026-10-06, see [D-065](memory.md#d-065--a-hunt-is-a-structured-question-with-one-canonical-echo-and-an-export-that-is-a-recorded-egress-t-408-2026-10-06)** |
 | T-409 | Model ops + drift screens (FR-53) | 2.5 | T-315 | Promotion requires typing the model ID; drift bars mark the 0.25 threshold — **DONE 2026-10-06, see [D-067](memory.md#d-067--the-drift-screen-reads-the-scrape-the-computation-publishes-and-a-promotion-is-refused-with-a-reason-before-the-server-refuses-it-t-409-2026-10-06)** |

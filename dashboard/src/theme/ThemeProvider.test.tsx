@@ -22,15 +22,15 @@ describe('ThemeProvider', () => {
     document.documentElement.removeAttribute('data-theme');
   });
 
-  it('defaults to the dark theme, which is the SOC default', () => {
+  it('defaults to the light theme', () => {
     render(
       <ThemeProvider>
         <Probe />
       </ThemeProvider>,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent('dark');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(screen.getByRole('status')).toHaveTextContent('light');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
   });
 
   it('restores a previously chosen theme', () => {
@@ -56,9 +56,9 @@ describe('ThemeProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'toggle' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('light');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'light');
-    expect(window.localStorage.getItem('aegis.theme')).toBe('light');
+    expect(screen.getByRole('status')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(window.localStorage.getItem('aegis.theme')).toBe('dark');
   });
 
   it('ignores an unrecognised stored value rather than applying a bad theme', () => {
@@ -70,7 +70,7 @@ describe('ThemeProvider', () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByRole('status')).toHaveTextContent('dark');
+    expect(screen.getByRole('status')).toHaveTextContent('light');
   });
 
   it('throws when useTheme is used outside a provider', () => {

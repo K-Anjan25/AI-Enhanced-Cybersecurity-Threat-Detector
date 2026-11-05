@@ -2,12 +2,12 @@
  * The traffic explorer, end to end through the page an analyst opens (T-418).
  *
  * The only faked things are the network (`fetch`, via the shared stub) and the clock.
- * Everything between — the queries, the mapping, the brush, the graph layout, the
- * components — is the real code, so the assertions are on what the screen says.
+ * Everything between — the queries, the mapping, the brush, the relationship ranking,
+ * the components — is the real code, so the assertions are on what the screen says.
  *
  * What this file holds the acceptance criterion to:
  *
- *   * **One request fills the series, the table and the graph.** The count of `/flows`
+ *   * **One request fills the series, the address table and relationships.** The count of `/flows`
  *     requests is asserted, because a screen that made two would be a screen whose
  *     panels could disagree about the window.
  *   * **The caveats are the API's own sentences.** They are rendered verbatim, and the
@@ -21,7 +21,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { expectAccessible } from '../../../test/axe';
+import { expectAxeClean } from '../../../test/axe';
 import { jsonResponse, Providers, stubFetch } from '../../../test/query';
 import { TrafficPage } from './TrafficPage';
 import type { FlowAggregate, FlowBucket, FlowEntity } from '../../../api/flows';
@@ -153,7 +153,14 @@ describe('TrafficPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Traffic' })).toBeInTheDocument();
     expect(await series()).toBeInTheDocument();
     expect(await table()).toBeInTheDocument();
-    expect(screen.getByText(/Force layout/)).toBeInTheDocument();
+    const relationships = await screen.findByRole('table', {
+      name: /Directed source-to-destination conversations/,
+    });
+    expect(within(relationships).getByRole('columnheader', { name: 'SOURCE' })).toBeInTheDocument();
+    expect(
+      within(relationships).getByRole('columnheader', { name: 'OBSERVED BYTES' }),
+    ).toBeInTheDocument();
+    expect(within(relationships).getByText('560 B')).toBeInTheDocument();
     expect(flowRequests(requests)).toHaveLength(1);
   });
 
@@ -307,15 +314,23 @@ describe('TrafficPage', () => {
     expect(await screen.findByText(/describe the brushed window/)).toBeInTheDocument();
   });
 
-  it('pins an address from the graph and says the view is pinned', async () => {
+  it('pins an endpoint from the relationship table and updates the address table', async () => {
     stubTraffic();
     renderPage();
-    const graph = await screen.findByRole('group', { name: /Address relationships/ });
+    const graph = await screen.findByRole('table', {
+      name: /Directed source-to-destination conversations/,
+    });
 
-    await userEvent.click(within(graph).getByRole('button', { name: /Address 10\.0\.0\.1,/ }));
+    await userEvent.click(
+      within(graph).getByRole('button', { name: 'Pin source endpoint 10.0.0.1' }),
+    );
 
     await waitFor(() => expect(screen.getByText(/pinned to one address/)).toBeInTheDocument());
-    expect(screen.getByText(/10\.0\.0\.1 and its neighbours are shown/)).toBeInTheDocument();
+    expect(screen.getByText(/Pinned endpoint:/)).toBeInTheDocument();
+    expect(screen.getByText('10.0.0.1', { selector: 'code' })).toBeInTheDocument();
+    expect(
+      within(graph).getByRole('button', { name: 'Unpin source endpoint 10.0.0.1' }),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('pins from the table too, so the graph is not the only way in', async () => {
@@ -444,7 +459,7 @@ describe('TrafficPage', () => {
   it('says so when the controls leave no addresses, rather than drawing an empty graph', async () => {
     stubTraffic();
     renderPage();
-    await screen.findByRole('group', { name: /Address relationships/ });
+    await screen.findByRole('table', { name: /Directed source-to-destination conversations/ });
 
     await userEvent.type(screen.getByLabelText('Min flows'), '9999');
 
@@ -481,11 +496,11 @@ describe('TrafficPage', () => {
     expect(new Set(open)).toEqual(new Set(['1', '0']));
   });
 
-  it('has no serious accessibility violations', async () => {
+  it('has no accessibility violations at any impact level (WCAG 2.2 AA and best practice)', async () => {
     stubTraffic();
     const { container } = renderPage();
     await series();
 
-    await expectAccessible(container as HTMLElement);
+    await expectAxeClean(container as HTMLElement);
   });
 });

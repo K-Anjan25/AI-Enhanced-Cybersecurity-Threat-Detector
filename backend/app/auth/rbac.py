@@ -145,6 +145,8 @@ UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
+        "/api/v1/auth/oidc/start",
+        "/api/v1/auth/oidc/callback",
     }
 )
 
@@ -162,12 +164,17 @@ ROUTE_MATRIX: dict[str, frozenset[Role]] = {
     # it, so viewer is deliberately absent from both entries.
     "/api/v1/ingest/flows": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
     "/api/v1/ingest/logs": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    # Capture sensors report liveness as an ingest operation; all readers may inspect
+    # status, but only ingest-capable roles can update it.
+    "/api/v1/capture/heartbeat": frozenset({Role.ANALYST, Role.RESPONDER, Role.ADMIN}),
+    "/api/v1/capture/status": frozenset(Role),
     # Reading alerts is the viewer's whole job, so viewer is present here.
     "/api/v1/alerts": frozenset(Role),
     # The overview is those same rows, aggregated (T-416): every role that may read
     # an alert may read the window's counts, and no role may read it that may not
     # read the alerts themselves.
     "/api/v1/overview": frozenset(Role),
+    "/api/v1/detection/status": frozenset(Role),
     # One alert and its explanation, evidence and context: the detail behind the
     # list, so it is the same read the list is (FR-51, T-404).
     "/api/v1/alerts/{alert_id}": frozenset(Role),

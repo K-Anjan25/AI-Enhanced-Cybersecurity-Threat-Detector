@@ -42,8 +42,9 @@ export interface KpiTilesProps {
 
 export function KpiTiles({ tiles }: KpiTilesProps) {
   return (
-    <dl className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <dl className="grid grid-cols-2 gap-4 md:grid-cols-5">
       {tiles.map((tile) => (
+<<<<<<< HEAD
         <div key={tile.label} className="rounded-card border border-line bg-base p-4">
           <dt
             className={`text-caption font-semibold uppercase tracking-wide ${
@@ -51,6 +52,15 @@ export function KpiTiles({ tiles }: KpiTilesProps) {
             }`}
           >
             {tile.label}
+=======
+        <div key={tile.label} className="min-w-0 rounded-card border border-line bg-surface p-4">
+          <dt className="flex items-center gap-2 text-caption uppercase tracking-wide text-muted">
+            {tile.severity === undefined ? (
+              <span>{tile.label}</span>
+            ) : (
+              <SeverityPill severity={tile.severity} />
+            )}
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
           </dt>
           <dd className="mt-3 text-display font-semibold tabular-nums text-ink">
             {tile.value === null ? '—' : formatCount(tile.value)}
@@ -58,7 +68,7 @@ export function KpiTiles({ tiles }: KpiTilesProps) {
               <span className="ml-1 text-body-sm text-muted">{tile.unit}</span>
             )}
           </dd>
-          <dd className="mt-1 text-caption text-muted">{tile.caption}</dd>
+          <dd className="mt-1 text-body-sm font-semibold text-muted">{tile.caption}</dd>
         </div>
       ))}
     </dl>

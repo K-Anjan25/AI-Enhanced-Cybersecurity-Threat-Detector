@@ -255,11 +255,14 @@ def _cursor_from_header(last_event_id: str | None, *, fallback: int | None) -> i
     return value
 
 
-async def _drain(websocket: WebSocket) -> None:
-    """Read until the client goes away, so a disconnect is noticed promptly.
+async def _drain(websocket: WebSocket, send_lock: asyncio.Lock) -> None:
+    """Read until the client goes away, answering application pings on the way.
 
     A send-only loop learns about a dead peer only when the TCP stack gives up,
-    which is far longer than an analyst will wait for a banner to appear.
+    which is far longer than an analyst will wait for a banner to appear. The
+    reader also answers the dashboard's small JSON ``ping`` frames so the browser
+    can measure round-trip time without relying on WebSocket control frames, which
+    the browser API does not expose.
 
     The disconnect message is checked for explicitly rather than relied on to
     raise: a server that hands the same message back on every read would turn
@@ -270,18 +273,38 @@ async def _drain(websocket: WebSocket) -> None:
         message = await websocket.receive()
         if message.get("type") == "websocket.disconnect":
             raise WebSocketDisconnect(message.get("code") or 1000)
+        text = message.get("text")
+        if not isinstance(text, str) or len(text) > 128:
+            continue
+        try:
+            frame = json.loads(text)
+        except ValueError:
+            continue
+        if not isinstance(frame, dict) or frame.get("type") != "ping":
+            continue
+        ping_id = frame.get("id")
+        if (
+            isinstance(ping_id, bool)
+            or not isinstance(ping_id, int)
+            or not 0 <= ping_id <= 2**53 - 1
+        ):
+            continue
+        async with send_lock:
+            await websocket.send_json({"type": "pong", "id": ping_id})
 
 
 async def _send_frames(
     websocket: WebSocket,
     frames: AsyncIterator[Frame],
+    send_lock: asyncio.Lock,
 ) -> None:
-    """Forward frames to the socket until the subscription ends."""
+    """Forward stream frames, serialised with pong responses, until the stream ends."""
     async for kind, payload in frames:
-        await websocket.send_json({"type": kind, **payload})
-        if kind == "dropped":
-            await websocket.close(code=CLOSE_TRY_AGAIN_LATER)
-            return
+        async with send_lock:
+            await websocket.send_json({"type": kind, **payload})
+            if kind == "dropped":
+                await websocket.close(code=CLOSE_TRY_AGAIN_LATER)
+                return
 
 
 @router.websocket("/ws")
@@ -302,24 +325,28 @@ async def alert_socket(
             Capability.READ,
         )
     except Unauthenticated:
+        # Complete the upgrade before sending the application close code. Closing
+        # during the handshake makes browsers report an opaque 1006 instead of
+        # the 4401 the dashboard uses to return to sign-in.
+        await websocket.accept(subprotocol=_accepted_subprotocol(websocket))
         await websocket.close(code=CLOSE_UNAUTHENTICATED)
         return
     except Forbidden:
         # Deliberately not caught class-by-class above: the handshake reuses the
         # same refusal types the HTTP dependency raises, so the socket refuses
         # for the same reasons a request does.
+        await websocket.accept(subprotocol=_accepted_subprotocol(websocket))
         await websocket.close(code=CLOSE_FORBIDDEN)
         return
 
-    offered = websocket.headers.get("sec-websocket-protocol", "")
-    accepted = SUBPROTOCOL_PREFIX.rstrip(".") if SUBPROTOCOL_PREFIX in offered else None
-    await websocket.accept(subprotocol=accepted)
+    await websocket.accept(subprotocol=_accepted_subprotocol(websocket))
 
     subscription, caught = _hub(websocket).subscribe(after=after)
     heartbeat = _settings(websocket).alert_stream_heartbeat_seconds
     frames = _frames(subscription, caught, heartbeat_seconds=heartbeat)
-    sender = asyncio.create_task(_send_frames(websocket, frames))
-    reader = asyncio.create_task(_drain(websocket))
+    send_lock = asyncio.Lock()
+    sender = asyncio.create_task(_send_frames(websocket, frames, send_lock))
+    reader = asyncio.create_task(_drain(websocket, send_lock))
     try:
         done, pending = await asyncio.wait({sender, reader}, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
@@ -336,6 +363,15 @@ async def alert_socket(
         pass
     finally:
         subscription.close()
+
+
+def _accepted_subprotocol(websocket: WebSocket) -> str | None:
+    """Select the exact bearer protocol the browser offered, if present."""
+    protocol = SUBPROTOCOL_PREFIX.rstrip(".")
+    offered = {
+        item.strip() for item in websocket.headers.get("sec-websocket-protocol", "").split(",")
+    }
+    return protocol if protocol in offered else None
 
 
 def _socket_headers(websocket: WebSocket) -> Mapping[str, str]:

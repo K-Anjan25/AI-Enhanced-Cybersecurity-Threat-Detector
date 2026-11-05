@@ -54,14 +54,14 @@ export function TailControls({
         {paused ? 'Resume tail' : 'Pause tail'}
       </Button>
 
-      <p className="text-caption text-muted">
+      <p className="text-body-sm font-semibold text-muted">
         {paused
           ? `Paused${pausedAt === null ? '' : ` at ${pausedAt.toISOString().slice(11, 19)}Z`} — the window below is frozen and nothing is being read.`
           : `Live · ${windowLabel}`}
       </p>
 
       <div className="flex items-center gap-2">
-        <label className="text-caption text-muted" htmlFor="log-span">
+        <label className="text-body-sm font-semibold text-muted" htmlFor="log-span">
           Window
         </label>
         <select
@@ -79,7 +79,7 @@ export function TailControls({
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-caption text-muted" htmlFor="log-level">
+        <label className="text-body-sm font-semibold text-muted" htmlFor="log-level">
           Level
         </label>
         <select

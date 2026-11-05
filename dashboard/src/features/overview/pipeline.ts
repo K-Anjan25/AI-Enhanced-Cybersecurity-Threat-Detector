@@ -13,11 +13,13 @@
  * what they say. A budget edited in the prose and not here fails the test rather
  * than quietly comparing against a stale number.
  *
- * **A stage with no measurement says so.** Three of the four stages have no
- * latency histogram today (there is no per-stage timer for correlation or
- * notification), so they render as *not measured* with their budget visible —
- * which is a statement about the system, and a much better one than a zero that
- * would read as "fast". R-74 is the same rule: never print a number no run backs.
+ * **A stage with no measurement says so.** Every stage now has a timer: ingest and
+ * score from their own histograms, correlate (fusion plus persist) and notify (the
+ * hand-off to the live stream) from `aegis_correlate_latency_seconds` and
+ * `aegis_notify_latency_seconds`. A stage whose histogram has no samples yet still
+ * renders as *not measured* with its budget visible, which is a statement about the
+ * system and a much better one than a zero that would read as "fast". R-74 is the
+ * same rule: never print a number no run backs.
  */
 import {
   counterRate,
@@ -166,16 +168,15 @@ export function readPipeline(
       lag: worstLag(samples),
     },
     correlate: {
-      p95Ms: null,
-      throughputPerSecond: rateOf('aegis_alerts_created_total'),
+      p95Ms: p95Ms(samples, 'aegis_correlate_latency_seconds'),
+      throughputPerSecond: rateOf('aegis_correlate_latency_seconds_count'),
       lag: null,
     },
     notify: {
-      // Nothing counts or times a delivery yet: the webhook sender logs failures
-      // and the socket hub keeps no counter. Recorded as a gap rather than
-      // approximated from the alert counter.
-      p95Ms: null,
-      throughputPerSecond: null,
+      // Times the hand-off to the live stream (architecture.md "WebSocket delivery").
+      // Webhook delivery is retried asynchronously and is not part of this budget.
+      p95Ms: p95Ms(samples, 'aegis_notify_latency_seconds'),
+      throughputPerSecond: rateOf('aegis_notify_latency_seconds_count'),
       lag: null,
     },
   };

@@ -1,24 +1,14 @@
-# AEGIS — AI-Enhanced Cybersecurity Threat Detector
+<p align="center">
+  <img src="dashboard/public/aegis-logo.png" alt="AEGIS logo" width="128" />
+</p>
 
-Transformer models over **network flow records** and **system logs** to detect anomalies and
-predict cybersecurity threats before they become confirmed incidents.
+<h1 align="center">AEGIS — AI-Enhanced Cybersecurity Threat Detector</h1>
 
-> **Status: sprint S2 / milestone M3 (backend and API).** E0 and E1 are done, E2 is done
-> except the release gate Q-07 still owes, and E3 has reached the notification path — alerts
-> are produced, deduplicated and grouped, carry an immutable analyst verdict, are pushed over
-> a WebSocket with an SSE and REST fallback that resumes from a cursor, and can be delivered
-> to registered webhooks as HMAC-signed events with bounded retries, with every mutating
-> action recorded in an append-only audit trail and scoped API keys for machine-to-machine
-> ingestion whose secret is stored only as a keyed digest; querying alerts still needs a
-> database connection (T-319). The dashboard has the shell, the closed token layer,
-> the UI primitives, a working overview that reads the alert API and the metrics scrape, and the
-> triage screen with its keyboard loop, the live alert stream with its reconnect banner and REST
-> fallback, the traffic explorer with its brushable series and entity graph, the log explorer with
-> its template clustering and pausable tail, and the hunt console with its query language, saved
-> searches and audited CSV export (T-401…T-408). See
-> [memory.md](memory.md) for the authoritative current state, and [task.md](task.md) for
-> per-task status.
+<p align="center">
+  Transformer models over network flow records and system logs, to detect anomalies and predict threats before they become confirmed incidents.
+</p>
 
+<<<<<<< HEAD
 ## Read these first
 
 The project is documented before it is coded. Start with the PRD, then the architecture.
@@ -195,3 +185,8 @@ lines in it, so the panel says so instead of offering a dead link.
 Datasets (UNSW-NB15, CIC-IDS2017) are large and are **never committed** (R-40). The fetched
 copies are hash-verified by `scripts/fetch_datasets.py` and recorded in
 [memory.md](memory.md#data-sources).
+=======
+<p align="center">
+  Current state: <a href="memory.md">memory.md</a>. Per-task status: <a href="task.md">task.md</a>.
+</p>
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54

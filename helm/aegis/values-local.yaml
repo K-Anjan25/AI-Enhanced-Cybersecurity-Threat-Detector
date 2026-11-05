@@ -1,0 +1,49 @@
+# Local Docker Desktop Kubernetes only. Use together with values.yaml:
+#   helm upgrade --install aegis ./helm/aegis -n aegis -f helm/aegis/values-local.yaml
+# scripts/k8s-local.sh runs this for you. Never use these settings in a real cluster:
+# development mode, small resource limits and no ingress.
+
+backend:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+  env:
+    AEGIS_ENV: development
+    AEGIS_PORT: '8000'
+    AEGIS_HOST: '0.0.0.0'
+    AEGIS_LOG_LEVEL: INFO
+    AEGIS_REDIS_URL: ''
+  # Lists replace the defaults in values.yaml, so every key is repeated here.
+  secretEnv:
+    - AEGIS_SECRET_KEY
+    - AEGIS_DATABASE_URL
+    - AEGIS_BOOTSTRAP_ADMIN_EMAIL
+    - AEGIS_BOOTSTRAP_ADMIN_PASSWORD
+
+mlService:
+  env:
+    AEGIS_ENV: development
+    AEGIS_LOG_LEVEL: INFO
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+
+dashboard:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+ingress:
+  enabled: false

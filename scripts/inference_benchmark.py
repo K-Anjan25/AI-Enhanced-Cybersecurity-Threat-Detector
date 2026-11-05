@@ -82,9 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--seed", type=int, default=20260114)
     parser.add_argument("--input-dim", type=int, default=23)
-    parser.add_argument(
-        "--threads", type=int, default=0, help="0 = leave torch's default"
-    )
+    parser.add_argument("--threads", type=int, default=0, help="0 = leave torch's default")
     parser.add_argument("--out", default="data/runs/inference.json")
     args = parser.parse_args(argv)
 
@@ -130,18 +128,12 @@ def main(argv: list[str] | None = None) -> int:
     rng_untouched = rng_before == rng_after
 
     # Nor must it mutate the weights.
-    weights_before = [
-        bytes(p.detach().contiguous().untyped_storage()) for p in model.parameters()
-    ]
+    weights_before = [bytes(p.detach().contiguous().untyped_storage()) for p in model.parameters()]
     _score(model, window)
-    weights_after = [
-        bytes(p.detach().contiguous().untyped_storage()) for p in model.parameters()
-    ]
+    weights_after = [bytes(p.detach().contiguous().untyped_storage()) for p in model.parameters()]
     weights_untouched = weights_before == weights_after
 
-    deterministic = (
-        repeats_identical and rebuilt_identical and rng_untouched and weights_untouched
-    )
+    deterministic = repeats_identical and rebuilt_identical and rng_untouched and weights_untouched
 
     # --- latency -----------------------------------------------------------
     for _ in range(args.warmup):
@@ -159,9 +151,7 @@ def main(argv: list[str] | None = None) -> int:
         """Nearest-rank percentile of an already-sorted list."""
         if not sorted_values:
             raise ValueError("cannot take a percentile of an empty list")
-        index = min(
-            len(sorted_values) - 1, max(0, int(round(q * (len(sorted_values) - 1))))
-        )
+        index = min(len(sorted_values) - 1, max(0, int(round(q * (len(sorted_values) - 1)))))
         return sorted_values[index]
 
     p50 = percentile(samples, 0.50)
@@ -182,13 +172,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  rebuilt from the same seed        : {rebuilt_identical}")
     print(f"  torch RNG state untouched         : {rng_untouched}")
     print(f"  model weights untouched           : {weights_untouched}")
-    print(
-        f"  R-67 deterministic                : {'PASS' if deterministic else 'FAIL'}"
-    )
-    print(
-        f"latency over {args.iterations} scoring passes "
-        f"({args.warmup} warmup discarded):"
-    )
+    print(f"  R-67 deterministic                : {'PASS' if deterministic else 'FAIL'}")
+    print(f"latency over {args.iterations} scoring passes " f"({args.warmup} warmup discarded):")
     print(
         f"  fastest {fastest:.3f} ms  p50 {p50:.3f} ms  p95 {p95:.3f} ms  "
         f"p99 {p99:.3f} ms  slowest {slowest:.3f} ms"

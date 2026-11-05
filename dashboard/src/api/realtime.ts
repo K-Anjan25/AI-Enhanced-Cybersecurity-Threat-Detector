@@ -64,6 +64,7 @@ export const BEARER_PROTOCOL = 'aegis.bearer';
 export interface SocketLike {
   readyState: number;
   close(code?: number, reason?: string): void;
+  send(data: string): void;
   onopen: ((event: unknown) => void) | null;
   onclose: ((event: { code?: number; reason?: string }) => void) | null;
   onerror: ((event: unknown) => void) | null;
@@ -113,6 +114,10 @@ export interface StreamOptions {
   pollIntervalMs?: number;
   /** Jitter source for the backoff, so the schedule is deterministic in tests. */
   random?: () => number;
+  /** Monotonic time source used for RTT measurements. */
+  now?: () => number;
+  /** Where measured round-trip time changes go. `null` means no live sample. */
+  onRtt?: (rttMs: number | null) => void;
   /** Where frames go. */
   onFrame: (frame: RealtimeFrame) => void;
   /** Where state changes go, with a human-readable detail for the banner. */
@@ -120,6 +125,8 @@ export interface StreamOptions {
 }
 
 const OPEN = 1;
+const RTT_PING_MAX_INTERVAL_MS = 15_000;
+const RTT_PING_MIN_INTERVAL_MS = 1_000;
 
 function browserClock(): Clock {
   return {
@@ -141,11 +148,15 @@ export class AlertStreamClient {
   private readonly factory: SocketFactory;
   private readonly token: () => string | null;
   private readonly pollIntervalMs: number;
+  private readonly now: () => number;
 
   private socket: SocketLike | null = null;
   private state: RealtimeState = 'connecting';
   private cursor: number | null = null;
   private heartbeatSeconds = 15;
+  private rttMs: number | null = null;
+  private nextPingId = 1;
+  private pendingPing: { id: number; sentAt: number } | null = null;
   private attempt = 0;
   private running = false;
   private polling = false;
@@ -154,6 +165,7 @@ export class AlertStreamClient {
   private reconnectTimer: number | null = null;
   private silenceTimer: number | null = null;
   private connectTimer: number | null = null;
+  private pingTimer: number | null = null;
 
   constructor(options: StreamOptions) {
     this.options = options;
@@ -162,6 +174,7 @@ export class AlertStreamClient {
     this.factory = options.socketFactory ?? defaultFactory;
     this.token = options.token ?? sessionToken;
     this.pollIntervalMs = options.pollIntervalMs ?? FALLBACK_POLL_MS;
+    this.now = options.now ?? (() => performance.now());
   }
 
   /** The state the shell renders. */
@@ -172,6 +185,11 @@ export class AlertStreamClient {
   /** The resume position: the last sequence delivered to a subscriber. */
   get currentCursor(): number | null {
     return this.cursor;
+  }
+
+  /** The most recent application-level ping round trip, or null when unavailable. */
+  get currentRttMs(): number | null {
+    return this.rttMs;
   }
 
   /** Begin: open a socket and, if it does not hold, fall back to polling. */
@@ -186,6 +204,7 @@ export class AlertStreamClient {
   stop(): void {
     this.running = false;
     this.clearTimers();
+    this.clearRtt();
     const socket = this.socket;
     this.socket = null;
     if (socket !== null) {
@@ -261,15 +280,66 @@ export class AlertStreamClient {
     this.options.onState(state, detail);
   }
 
+  private setRtt(rttMs: number | null): void {
+    if (this.rttMs === rttMs) return;
+    this.rttMs = rttMs;
+    this.options.onRtt?.(rttMs);
+  }
+
+  private clearRtt(): void {
+    this.clearTimeout('pingTimer');
+    this.pendingPing = null;
+    this.setRtt(null);
+  }
+
+  private startRtt(socket: SocketLike): void {
+    this.clearRtt();
+    this.sendPing(socket);
+  }
+
+  private sendPing(socket: SocketLike): void {
+    if (!this.running || this.socket !== socket || socket.readyState !== OPEN) return;
+    if (this.pendingPing !== null) {
+      // A missing pong is a lost health sample, not a zero-millisecond round trip.
+      this.pendingPing = null;
+      this.setRtt(null);
+    }
+
+    const id = this.nextPingId;
+    this.nextPingId = id >= Number.MAX_SAFE_INTEGER ? 1 : id + 1;
+    this.pendingPing = { id, sentAt: this.now() };
+    try {
+      socket.send(JSON.stringify({ type: 'ping', id }));
+    } catch {
+      this.pendingPing = null;
+      this.setRtt(null);
+    }
+
+    const interval = Math.min(
+      RTT_PING_MAX_INTERVAL_MS,
+      Math.max(RTT_PING_MIN_INTERVAL_MS, this.heartbeatSeconds * 1_000),
+    );
+    this.pingTimer = this.clock.setTimeout(() => {
+      this.pingTimer = null;
+      if (this.socket !== socket) return;
+      if (this.pendingPing?.id === id) {
+        this.pendingPing = null;
+        this.setRtt(null);
+      }
+      this.sendPing(socket);
+    }, interval);
+  }
+
   private clearTimers(): void {
     this.clearTimeout('pollTimer');
     this.clearTimeout('reconnectTimer');
     this.clearTimeout('silenceTimer');
     this.clearTimeout('connectTimer');
+    this.clearTimeout('pingTimer');
   }
 
   private clearTimeout(
-    key: 'pollTimer' | 'reconnectTimer' | 'silenceTimer' | 'connectTimer',
+    key: 'pollTimer' | 'reconnectTimer' | 'silenceTimer' | 'connectTimer' | 'pingTimer',
   ): void {
     const handle = this[key];
     if (handle !== null) {
@@ -296,6 +366,14 @@ export class AlertStreamClient {
     }
     if (frame.type === 'ready') {
       this.heartbeatSeconds = frame.heartbeat_seconds;
+      return;
+    }
+    if (frame.type === 'pong') {
+      const pending = this.pendingPing;
+      if (pending !== null && frame.id === pending.id) {
+        this.pendingPing = null;
+        this.setRtt(Math.max(0, Math.round((this.now() - pending.sentAt) * 10) / 10));
+      }
       return;
     }
     if (frame.type === 'dropped' && frame.after !== null) {
@@ -352,6 +430,7 @@ export class AlertStreamClient {
         this.attempt = 0;
         this.stopPolling();
         this.setState('live', null);
+        this.startRtt(socket);
       }
       if (frame.type === 'dropped') this.attempt = 0;
     };
@@ -367,6 +446,7 @@ export class AlertStreamClient {
       this.socket = null;
       this.clearTimeout('connectTimer');
       this.clearTimeout('silenceTimer');
+      this.clearRtt();
       // A slow-reader drop is the server's doing, not a sign the client is
       // failing, so the next attempt starts from the base delay. Nothing else
       // resets here: a socket that had gone `live` already reset when its `ready`
@@ -430,6 +510,7 @@ export class AlertStreamClient {
     }
     this.clearTimeout('silenceTimer');
     this.clearTimeout('connectTimer');
+    this.clearRtt();
     this.scheduleReconnect(detail);
   }
 

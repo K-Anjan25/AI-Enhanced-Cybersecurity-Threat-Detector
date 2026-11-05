@@ -34,7 +34,6 @@ import {
   creationReadiness,
   issuedKey,
   keyRows,
-  keySummary,
   scopeChoices,
   type IssuedKey,
   type KeyRow,
@@ -58,7 +57,6 @@ export function KeysPanel() {
   const [secret, setSecret] = useState<IssuedKey | null>(null);
 
   const rows = keyRows(keys.data?.items);
-  const summary = keySummary(keys.data?.items);
   const choices = scopeChoices(scopes.data?.items);
   const readiness = creationReadiness(name, picked);
   const live = secretIsLive(secret, open ? token : null);
@@ -192,9 +190,6 @@ export function KeysPanel() {
       error={{ message: 'The key list could not be read' }}
     >
       <div className="flex flex-col gap-3">
-        <p className="text-body-sm text-muted" data-testid="key-summary">
-          {summary.note}
-        </p>
         {keyRefusalMessage(revoke.error, 'revoke') === null ? null : (
           <p className="text-body-sm text-severityText-critical" role="alert">
             {keyRefusalMessage(revoke.error, 'revoke')}
@@ -207,12 +202,7 @@ export function KeysPanel() {
           rowKey={(row) => String(row.id)}
           rowLabel={(row) => row.name}
           height={280}
-          empty={
-            <p className="text-body">
-              No keys have been issued. A key is how a collector authenticates (FR-44); issuing one
-              is the only way to obtain a credential, and it is shown once.
-            </p>
-          }
+          empty={<p className="text-body">No keys issued.</p>}
         />
       </div>
 
@@ -286,16 +276,8 @@ export function KeysPanel() {
               />
             </label>
             <fieldset className="flex flex-col gap-2">
-              <legend className="text-body-sm text-muted">
-                Scopes — at least one, and an empty set is refused rather than read as
-                &ldquo;everything&rdquo;.
-              </legend>
-              {choices.length === 0 ? (
-                <p className="text-body-sm text-muted">
-                  The scope list could not be read, so no key can be issued from here. A key without
-                  a scope is not a credential this screen will create.
-                </p>
-              ) : null}
+              <legend className="text-body-sm text-muted">Scopes (at least one)</legend>
+
               {/* The label is the scope's name and nothing else, so the control's
                   accessible name is exactly the scope (R-26); what it grants is
                   described beside it, where it reads as a sentence rather than as
@@ -334,7 +316,7 @@ export function KeysPanel() {
       <ConfirmDialog
         open={revoking !== null}
         title={`Revoke ${revoking?.name ?? ''}?`}
-        message="The key stops working on its next request. Its row stays, because the record of a credential having existed is what an audit reads."
+        message="The key stops working on its next request."
         confirmLabel="Revoke the key"
         onConfirm={() => {
           if (revoking === null) return;

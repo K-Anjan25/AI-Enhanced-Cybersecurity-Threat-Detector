@@ -1,11 +1,17 @@
 /**
  * The severity scale, as design.md §5.3 publishes it.
  *
+<<<<<<< HEAD
  * One source for the level names and the labels, so a component cannot invent a
  * seventh level or a different word for an existing one. The word is not
  * decoration: §5.3 pairs every level with its hue and its label, and NFR-09
  * forbids colour as the only encoding — a badge, a rail or a pill always carries
  * the level in words beside its colour.
+=======
+ * One source for the level names and their word labels, so a component cannot
+ * invent a seventh level. Colour is never the only encoding (NFR-09): every
+ * severity carries its word label, so no symbol is needed.
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
  *
  * `severity.test.ts` reads the table in §5.3 and asserts these values against it.
  */

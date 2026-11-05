@@ -113,12 +113,35 @@ class Settings(BaseSettings):
     # without limit and dropping something later.
     ingest_max_in_flight_records: int = Field(default=20_000, ge=1)
 
+    # Shared state (memory.md multi-replica note). Empty keeps every counter in the
+    # process. Set, the login throttle counts failures in Redis so N replicas share
+    # one limit rather than allowing N times the guesses. Compose caps Redis memory.
+    redis_url: str = Field(default="")
+    # Login throttle (T4 credential abuse). Per account, and per source address with
+    # a larger allowance because many users can share one NAT address.
+    login_account_max_failures: int = Field(default=5, ge=1)
+    login_address_max_failures: int = Field(default=100, ge=1)
+    login_window_seconds: int = Field(default=900, ge=1)
+
     # Tracing (NFR-07, T-317). Empty means no exporter: spans are still created
     # and their ids still propagate to the alert record, and nothing leaves the
     # process. Set it to an OTLP/HTTP endpoint to ship spans to a collector.
     otel_exporter_endpoint: str = Field(default="")
 
     ml_service_url: str = Field(default="http://localhost:8001")
+
+    # Kafka bootstrap servers (host:port). Empty keeps the flow path in-process (the
+    # rule-based DetectionEngine). Set, flows go to flows.raw and a live consumer
+    # scores them (D-085). Compose sets kafka:9092.
+    kafka_bootstrap_servers: str = Field(default="")
+
+    # Directory of ``eval@2`` reports (``*.eval.json`` with their ``*.config.json``)
+    # to attach to registered model versions. Empty means no evaluations are loaded.
+    ml_eval_reports_dir: str = Field(default="")
+
+    # Score each source window with the trained flow model in the detection cycle
+    # (2b). Rules run either way; a model that cannot be reached adds no alerts.
+    ml_detection_enabled: bool = Field(default=True)
 
     # Alert stream (FR-20). The interval is both how often a quiet stream says
     # "still here" and, per architecture.md §14, how often a dashboard whose
@@ -159,6 +182,16 @@ class Settings(BaseSettings):
     # prefixed '*.', comma-separated.
     webhook_allowlist: str = Field(default="")
 
+    # FR-43. OIDC sign-in for enterprise deployments. Off by default: the local
+    # password path is the v1.0 baseline. When enabled, every field below is
+    # required and the validator refuses a non-HTTPS issuer or redirect outside
+    # development (see app.auth.oidc for what the flow checks).
+    oidc_enabled: bool = Field(default=False)
+    oidc_issuer: str = Field(default="")
+    oidc_client_id: str = Field(default="")
+    oidc_client_secret: SecretStr | None = Field(default=None)
+    oidc_redirect_uri: str = Field(default="")
+
     # Retention (FR-05, NFR-05). Raw records default to 30 days; alerts live
     # longer because they are the analyst-facing record, and the validator in
     # app.services.retention refuses a deployment that inverts the two. Same
@@ -167,6 +200,20 @@ class Settings(BaseSettings):
     retention_raw_records_days: int = Field(default=30, ge=1, le=3650)
     retention_alerts_days: int = Field(default=400, ge=1, le=3650)
     retention_stats_days: int = Field(default=400, ge=1, le=3650)
+    # How often the scheduler runs retention (NFR-05). Retention used to run only when an
+    # operator called the route, so an unattended deployment kept everything. 0 turns the
+    # scheduler off; it is not created at all, rather than started and left idle.
+    retention_interval_seconds: int = Field(default=86_400, ge=0, le=604_800)
+    # FR-05's raw window, applied by the broker to the flow topic (``retention.ms``).
+    # Kafka is where raw records live, so it may not hold them longer than the policy
+    # promises: the validator below refuses a value above the raw window.
+    kafka_retention_hours: int = Field(default=720, ge=1, le=87_600)
+    # The longest a flow waits for its 50-flow window before the window is scored partial
+    # (live path). 0 scores every flow as it arrives; large values approach batch windows.
+    live_max_window_wait_seconds: float = Field(default=2.0, ge=0.0, le=300.0)
+    # FR-15: a repeat of the same (entity, family) inside this window is absorbed into
+    # the open alert as one more occurrence, not raised as a new alert.
+    alert_cool_down_minutes: int = Field(default=15, ge=1, le=1440)
 
     @field_validator("log_level")
     @classmethod
@@ -209,6 +256,18 @@ class Settings(BaseSettings):
         return normalised
 
     @model_validator(mode="after")
+    def _validate_kafka_retention(self) -> Settings:
+        """Refuse a Kafka window that outlives the raw-record window FR-05 promises."""
+        raw_hours = self.retention_raw_records_days * 24
+        if self.kafka_retention_hours > raw_hours:
+            raise ValueError(
+                f"AEGIS_KAFKA_RETENTION_HOURS ({self.kafka_retention_hours}) must not exceed "
+                f"the raw-record window, AEGIS_RETENTION_RAW_RECORDS_DAYS x 24 = {raw_hours}: "
+                "Kafka holding raw records longer than the policy is the inversion FR-05 forbids"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _validate_auth_bootstrap(self) -> Settings:
         """Require a real configured production entry point; keep setup opt-in."""
         email = self.bootstrap_admin_email
@@ -222,6 +281,28 @@ class Settings(BaseSettings):
             raise ValueError("AEGIS_BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters")
         if self.dev_auth_setup_enabled and self.env is not Environment.DEVELOPMENT:
             raise ValueError("AEGIS_DEV_AUTH_SETUP_ENABLED is permitted only in development")
+        if self.oidc_enabled:
+            missing = [
+                name
+                for name, value in (
+                    ("AEGIS_OIDC_ISSUER", self.oidc_issuer),
+                    ("AEGIS_OIDC_CLIENT_ID", self.oidc_client_id),
+                    ("AEGIS_OIDC_REDIRECT_URI", self.oidc_redirect_uri),
+                )
+                if not value
+            ]
+            if missing or self.oidc_client_secret is None:
+                raise ValueError(
+                    "AEGIS_OIDC_ENABLED requires AEGIS_OIDC_ISSUER, AEGIS_OIDC_CLIENT_ID, "
+                    "AEGIS_OIDC_CLIENT_SECRET and AEGIS_OIDC_REDIRECT_URI"
+                )
+            if self.env is not Environment.DEVELOPMENT:
+                for name, value in (
+                    ("AEGIS_OIDC_ISSUER", self.oidc_issuer),
+                    ("AEGIS_OIDC_REDIRECT_URI", self.oidc_redirect_uri),
+                ):
+                    if not value.startswith("https://"):
+                        raise ValueError(f"{name} must be an https URL outside development")
         if self.env is Environment.PRODUCTION and email is None:
             raise ValueError(
                 "production requires AEGIS_BOOTSTRAP_ADMIN_EMAIL and AEGIS_BOOTSTRAP_ADMIN_PASSWORD"

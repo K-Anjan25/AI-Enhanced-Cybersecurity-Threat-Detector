@@ -7,7 +7,11 @@
  *     fold is that ten thousand identical lines are one thing to read.
  *   * The **rail** marks a cluster holding an error or critical line. §4.5 asks for
  *     the severity colour *and* a left border — colour alone would fail NFR-09 — so
+<<<<<<< HEAD
  *     the level chip carries the same hue and says the level in words. The
+=======
+ *     the level chip carries the same hue and the word label the palette publishes. The
+>>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
  *     rail is drawn inside the first cell: `DataTable` renders its rows as divs with
  *     no row-class hook, and adding one to a shared primitive for a single screen
  *     would be the tail wagging the component. A short vertical rule at the row's
@@ -40,7 +44,6 @@ export function ClusterTable({ rows, openKey, onOpen, empty }: ClusterTableProps
           <Badge tone={row.tone}>{row.level}</Badge>
           {/* The rail is a second, non-colour affordance for the same fact; these are
               the words that make it a third, for a reader who sees neither. */}
-          {row.notable ? <span className="sr-only"> (error or worse)</span> : null}
         </span>
       ),
     };
@@ -60,7 +63,7 @@ export function ClusterTable({ rows, openKey, onOpen, empty }: ClusterTableProps
             {row.template}
           </Button>
           <span
-            className="truncate font-mono text-caption text-muted"
+            className="truncate font-mono text-body-sm font-semibold text-muted"
             title={row.cluster.sample_message}
           >
             {row.cluster.sample_message}

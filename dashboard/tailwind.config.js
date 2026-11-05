@@ -34,6 +34,7 @@ const colors = {
   ink: 'var(--color-text-primary)',
   muted: 'var(--color-text-muted)',
   accent: 'var(--color-accent)',
+  brand: 'var(--color-brand-blue)',
   // Text that sits *on* a fill rather than on a surface: the badge rule's
   // near-black (§5.3) and the primary button's on-accent. Both variables existed
   // in index.css from the start; without a utility here the badge rule had no way
@@ -113,17 +114,19 @@ export default {
       lg: '1024px',
       xl: '1440px',
     },
-    // design.md §5.4's two stacks and nothing else. `font-serif` emits nothing:
-    // a third stack would be a decision, and the document names two.
+    // design.md §5.4's stacks and nothing else. `font-serif` emits nothing.
     fontFamily: {
-      sans: ['Rajdhani', 'Inter', 'system-ui', 'sans-serif'],
+      sans: ['Inter', 'system-ui', 'sans-serif'],
       mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-      display: ['Orbitron', 'Rajdhani', 'sans-serif'],
+      // Titles and headings (design.md §5.4): the Cybercore demo stack.
+      display: ['"Courier New"', 'ui-monospace', 'monospace'],
     },
     // The documented type scale and nothing else, so the 12px floor cannot be
     // undercut by a Tailwind default step (`text-xs` is exactly 12px, but
     // `text-sm`/`text-base` are steps nobody published a line-height for).
     fontSize: {
+      hero: ['64px', { lineHeight: '68px', fontWeight: '600' }],
+      stat: ['48px', { lineHeight: '52px', fontWeight: '600' }],
       display: ['32px', { lineHeight: '36px', fontWeight: '600' }],
       h1: ['24px', { lineHeight: '32px', fontWeight: '600' }],
       h2: ['18px', { lineHeight: '26px', fontWeight: '600' }],

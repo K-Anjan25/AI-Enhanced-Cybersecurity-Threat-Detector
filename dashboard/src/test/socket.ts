@@ -20,6 +20,8 @@ export interface FakeSocket {
   readonly protocols: string[];
   /** Every close code this socket was closed with. */
   readonly closes: (number | undefined)[];
+  /** Application frames sent from the client to the server. */
+  readonly sent: string[];
   /** True once a close has been requested, by either side. */
   closed: boolean;
   readyState: number;
@@ -28,6 +30,7 @@ export interface FakeSocket {
   onerror: ((event: unknown) => void) | null;
   onmessage: ((event: { data: unknown }) => void) | null;
   close(code?: number, reason?: string): void;
+  send(data: string): void;
   /** The server accepted the handshake. */
   open(): void;
   /** The server sent a frame (an object is serialised like the real transport). */
@@ -53,12 +56,17 @@ export function fakeSockets(): FakeSocketFactory {
       url,
       protocols: [...protocols],
       closes: [],
+      sent: [],
       closed: false,
       readyState: 0,
       onopen: null,
       onclose: null,
       onerror: null,
       onmessage: null,
+      send(data) {
+        if (this.closed) throw new Error('socket is closed');
+        this.sent.push(data);
+      },
       close(code) {
         this.closes.push(code);
         this.closed = true;

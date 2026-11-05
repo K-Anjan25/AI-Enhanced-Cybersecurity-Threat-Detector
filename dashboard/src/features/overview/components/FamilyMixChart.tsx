@@ -75,12 +75,11 @@ export function FamilyMixChart({
         : {
             error: {
               message: 'The family mix could not be loaded',
-              detail: 'It reads the same alert window as the tiles.',
               action: <Button onClick={onRetry}>Retry</Button>,
             },
           })}
     >
-      <p className="mb-2 text-caption text-muted">{windowLabel}</p>
+      <p className="mb-2 text-body-sm font-semibold text-muted">{windowLabel}</p>
       {asTable ? (
         <table id="family-mix-table" className="w-full border-collapse text-body-sm">
           <caption className="sr-only">Threat family mix, {windowLabel}, as a table</caption>
@@ -99,7 +98,7 @@ export function FamilyMixChart({
           </thead>
           <tbody>
             {sorted.map((family) => (
-              <tr key={family.family} className="border-b border-line/50">
+              <tr key={family.family} className="border-b border-line">
                 <th scope="row" className="py-1 pr-4 text-left font-normal text-ink">
                   {family.family}
                 </th>

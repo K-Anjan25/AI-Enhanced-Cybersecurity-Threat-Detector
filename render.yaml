@@ -1,0 +1,42 @@
+# Render Blueprint for AEGIS: one web service named "aegis", plus the database.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> this repository, branch
+# arena/1deaae32-ai-enhanced-cybersecurity-thre, Blueprint Path render.yaml.
+# Render asks for the values marked `sync: false`. Nothing secret is stored here.
+#
+# Free plan consequences:
+#   - The service sleeps when idle. The first request after a sleep is slow.
+#   - The ML service is inside the container and not exposed.
+#   - Migrations run at container start, before the API starts.
+#
+# The image is built from deploy/aegis/Dockerfile and runs nginx, the backend and the
+# ML service together (deploy/aegis/start.sh).
+
+services:
+  - type: web
+    name: aegis
+    runtime: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: ./deploy/aegis/Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: AEGIS_ENV
+        value: production
+      - key: AEGIS_LOG_LEVEL
+        value: INFO
+      - key: AEGIS_SECRET_KEY
+        generateValue: true
+      # postgresql+psycopg://USER:PASSWORD@HOST:5432/DBNAME, from aegis-db's
+      # External Database URL. AEGIS refuses a bare postgresql:// URL.
+      - key: AEGIS_DATABASE_URL
+        sync: false
+      # Production refuses to start without the bootstrap admin. Enter both values.
+      - key: AEGIS_BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: AEGIS_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: aegis-db
+    plan: free
