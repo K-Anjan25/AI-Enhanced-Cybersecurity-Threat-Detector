@@ -145,6 +145,9 @@ class ModelRegistrar:
             return
         for name in names:
             path = os.path.join(self._eval_dir, name)
+            if os.path.islink(path) or not os.path.isfile(path):
+                logger.warning("model_registrar_eval_not_regular_file path=%s", path)
+                continue
             try:
                 with open(path, encoding="utf-8") as handle:
                     report = json.load(handle)
@@ -153,15 +156,33 @@ class ModelRegistrar:
                 continue
             if not isinstance(report, dict) or report.get("model_id") != model_id:
                 continue
-            split = "unspecified"
+            if report.get("schema_version") != "eval@2":
+                logger.warning("model_registrar_eval_schema_refused path=%s", path)
+                continue
+
+            # The split is part of the evidence. Never replace a missing training
+            # config with a made-up label such as "unspecified".
             config_path = path[: -len(_EVAL_SUFFIX)] + _CONFIG_SUFFIX
-            if os.path.isfile(config_path):
-                try:
-                    with open(config_path, encoding="utf-8") as handle:
-                        split = str(json.load(handle).get("split_policy", split))
-                except (OSError, ValueError):
-                    logger.warning("model_registrar_config_unreadable path=%s", config_path)
-            evaluated_at = datetime.fromtimestamp(os.path.getmtime(path), tz=UTC)
+            if os.path.islink(config_path) or not os.path.isfile(config_path):
+                logger.warning("model_registrar_eval_config_missing path=%s", config_path)
+                continue
+            try:
+                with open(config_path, encoding="utf-8") as handle:
+                    config = json.load(handle)
+            except (OSError, ValueError) as exc:
+                logger.warning(
+                    "model_registrar_config_unreadable path=%s error=%s", config_path, exc
+                )
+                continue
+            split = config.get("split_policy") if isinstance(config, dict) else None
+            if not isinstance(split, str) or not split.strip():
+                logger.warning("model_registrar_eval_split_missing path=%s", config_path)
+                continue
+            try:
+                evaluated_at = datetime.fromtimestamp(os.path.getmtime(path), tz=UTC)
+            except OSError as exc:
+                logger.warning("model_registrar_eval_stat_failed path=%s error=%s", path, exc)
+                continue
             try:
                 self._model_ops.record_evaluation(
                     model_id,
