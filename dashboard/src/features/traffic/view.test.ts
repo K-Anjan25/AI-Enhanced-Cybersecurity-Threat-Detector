@@ -15,10 +15,11 @@
  *     controls that would have hidden it.
  *   * **The caveats are the source's, verbatim.** The screen renders the server's
  *     sentences as they arrive, adding only the client-side facts (which sub-window the
- *     numbers describe, what the matrix did not draw).
+ *     numbers describe, how many lower-ranked relationships are not displayed).
  */
 import { describe, expect, it } from 'vitest';
 
+import { FLOW_RELATIONSHIP_LIMIT } from './graph';
 import { buildTrafficView, DEFAULT_FILTERS } from './view';
 import type { FlowAggregate, FlowBucket, FlowEntity } from '../../api/flows';
 
@@ -245,19 +246,24 @@ describe('the caveats', () => {
     expect(view().notes.join(' ')).not.toContain('brushed window');
   });
 
-  it('says what the ranked matrix left undrawn', () => {
-    // Past the node limit the graph becomes a matrix, and a matrix without the count of
-    // what it is not drawing looks like the whole graph.
-    const many = Array.from({ length: 2_001 }, (_unused, index) =>
-      entity({ ip: `10.0.${String(index % 250)}.${String(Math.floor(index / 250))}` }),
+  it('states how many lower-ranked directed relationships are omitted', () => {
+    const many = Array.from({ length: FLOW_RELATIONSHIP_LIMIT + 10 }, (_unused, index) =>
+      entity({ ip: `10.0.1.${String(index + 1)}` }),
     );
-    const model = view({
-      panels: aggregate({ entities: many }),
-      aggregate: aggregate({ entities: many }),
-    });
+    const edges = many.slice(1).map((address, index) => ({
+      source: many[0]?.ip ?? '',
+      target: address.ip,
+      flows: index + 1,
+      bytes: (index + 1) * 100,
+    }));
+    const data = aggregate({ entities: many, edges });
+    const model = view({ panels: data, aggregate: data });
 
-    expect(model.graph.mode).toBe('adjacency');
-    expect(model.notes.join(' ')).toContain('most active of 2001 addresses');
+    expect(model.graph.relationships).toHaveLength(FLOW_RELATIONSHIP_LIMIT);
+    expect(model.graph.totalRelationships).toBe(FLOW_RELATIONSHIP_LIMIT + 9);
+    expect(model.notes.join(' ')).toContain(
+      `top ${String(FLOW_RELATIONSHIP_LIMIT)} of ${String(FLOW_RELATIONSHIP_LIMIT + 9)} directed conversations`,
+    );
   });
 
   it('keeps a source caveat even when the panel has no rows', () => {

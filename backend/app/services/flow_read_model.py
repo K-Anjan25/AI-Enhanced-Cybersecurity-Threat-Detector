@@ -1,11 +1,11 @@
 """The traffic read model's arithmetic and its in-process half (T-418, FR-52).
 
-design.md §4.4 draws the traffic explorer from three numbers: a brushable series of
-**flow volume**, an entity table, and a force-directed graph whose **edges are flow
-counts**. Until this module existed the screen got all three from the alert API: the
-"volume" was the raw-record count the alerts carried, and an edge meant two entities
-appeared in one correlation trace. Every figure on the screen was therefore a statement
-about the *alerted* subset of the traffic, and the panel said so.
+design.md §4.4 draws the traffic explorer from the flow read model: a brushable series of
+**flow volume**, an address table, and a bounded relationship table whose **directed
+edges are flow counts and observed bytes**. Until this module existed the screen got all
+three from the alert API: the "volume" was the raw-record count the alerts carried, and
+an edge meant two entities appeared in one correlation trace. Every figure on the screen
+was therefore a statement about the *alerted* subset of the traffic, and the panel said so.
 
 **What a flow read model counts, and what it must not pretend to.** A ``flow@1`` record
 says when a conversation happened, between which two addresses, how much it moved and in
@@ -91,7 +91,7 @@ FLOW_ENTITY_LIMIT_MAX = 200
 DEFAULT_FLOW_EDGE_LIMIT = 200
 FLOW_EDGE_LIMIT_MAX = 1_000
 
-#: design.md §4.4 switches the graph to an adjacency matrix beyond 2,000 nodes.
+#: Bound address state independently of the frontend's display limit.
 MAX_ROLLUP_NODES = 2_000
 #: Pairs, not nodes: a fully meshed 2,000-node graph would be two million edges.
 MAX_ROLLUP_EDGES = 20_000

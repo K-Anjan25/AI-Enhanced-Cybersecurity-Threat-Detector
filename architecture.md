@@ -309,7 +309,7 @@ Non-negotiable training rules (enforced in CI where possible, see [rules.md](rul
 - **Feature-sliced:** `src/features/<domain>/pages` and `/components`. No cross-feature imports; shared code lives in `components/ui` or `lib`.
 - **API layer:** one typed client module per backend resource, generated types preferred. Components never call `fetch` directly.
 - **Realtime:** a single WebSocket connection at the app shell, fanned out through a pub/sub hook. Auto-reconnect with exponential backoff and a visible `disconnected` banner.
-- **Visualisation:** D3 for the entity graph and time-series brushing; Chart.js for standard KPI and bar charts. Both share the severity palette in [design.md](design.md#5-design-tokens).
+- **Visualisation:** D3 scales for the brushable traffic time-series; directed flow relationships are rendered as a bounded HTML table from the flow API, with no force simulation or all-pairs matrix. Chart.js handles standard KPI and bar charts. Shared chart colours come from [design.md](design.md#5-design-tokens).
 - **No detection logic in the browser.** The UI displays and filters; it never computes scores or re-derives severity.
 
 ## 11. Deployment

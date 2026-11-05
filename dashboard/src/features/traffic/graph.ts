@@ -1,289 +1,51 @@
 /**
- * The entity graph: which mode it is drawn in, and where the nodes go.
+ * Ranked, directed flow relationships for the traffic explorer.
  *
- * design.md §4.4 asks for a force-directed graph and, in the same paragraph, for
- * the admission that a force simulation stops being usable at scale: "a static
- * layout fallback for >2,000 nodes (a force simulation at that size is unusable —
- * we switch to a ranked adjacency matrix and say so)".
- *
- * So the *mode* is a decision this module makes and states, not a rendering
- * detail:
- *
- *   * `force` below the limit — `d3-force` (D-007: D3 for custom visuals), ticked
- *     a fixed number of times and with no timer, so a layout is reproducible,
- *     testable, and never animates when the analyst has asked for reduced motion.
- *     Reproducible here is a property of the whole call, not of a seed: d3 starts
- *     nodes from a deterministic spiral, its own jitter source is a fixed-seed LCG,
- *     and the tick count is ours — so the same graph lands in the same places.
- *   * `adjacency` above it — a ranked matrix, which is what an analyst can actually
- *     read at that size. It is capped in *displayed* rank and says how many of N it
- *     is showing; a 3,000-column matrix drawn in full would be a wall of pixels.
- *
- * The `reason` string is carried with the mode because the rule that started this
- * task is "the graph switches to adjacency mode **and labels the switch**": the
- * label is data here, so the panel cannot render the mode without the explanation.
+ * The relationship panel stays bounded and deterministic: it lists the highest-volume
+ * source → destination conversations rather than running a force simulation or building
+ * an address-by-address matrix. Work is O(E log E) for the supplied edge list, and only
+ * the top `FLOW_RELATIONSHIP_LIMIT` rows are rendered.
  */
-import {
-  forceCenter,
-  forceCollide,
-  forceLink,
-  forceManyBody,
-  forceSimulation,
-  type SimulationLinkDatum,
-  type SimulationNodeDatum,
-} from 'd3-force';
-
 import type { TrafficEdge, TrafficNode } from './aggregate';
 
-/**
- * The node count at which the force simulation is abandoned.
- *
- * §4.4's number, kept as a named constant because the test that pins the switch
- * needs a boundary and a boundary spelled `2000` in two files is a boundary that
- * can disagree with itself.
- */
-export const GRAPH_NODE_LIMIT = 2_000;
+/** The maximum number of directed conversations rendered in the panel. */
+export const FLOW_RELATIONSHIP_LIMIT = 30;
 
-/**
- * How many ranked nodes the adjacency matrix draws.
- *
- * A matrix is O(n²) cells; past this the cells are smaller than a pixel and the
- * reader learns nothing. The panel says "showing the N most active of M" — the
- * count it did not draw is stated, never implied.
- */
-export const ADJACENCY_ROWS = 40;
-
-export type GraphMode = 'force' | 'adjacency';
-
-/** What the panel renders, and why. */
 export interface GraphModel {
-  mode: GraphMode;
-  /** The switch's explanation, rendered wherever the mode is. */
-  reason: string;
-  nodes: TrafficNode[];
-  edges: TrafficEdge[];
+  /** Visible addresses used to filter drawable relationships. */
+  addressCount: number;
+  /** Highest observed bytes first, then flow count and stable address order. */
+  relationships: TrafficEdge[];
+  /** All drawable directed relationships before the display limit. */
+  totalRelationships: number;
 }
 
 /**
- * Decide the mode and keep the edges the nodes can still carry.
+ * Filter relationships to visible endpoints, rank them, then retain a bounded prefix.
  *
- * An edge whose endpoint was filtered out is dropped rather than drawn to nowhere —
- * a half-edge would make the graph claim a relationship to an entity the analyst
- * has filtered away.
+ * `TrafficEdge` is directional; source and destination are never collapsed into an
+ * undirected pair. Ties are resolved lexically so a refresh cannot reorder equal rows.
  */
 export function buildGraph(
   nodes: readonly TrafficNode[],
   edges: readonly TrafficEdge[],
+  limit: number = FLOW_RELATIONSHIP_LIMIT,
 ): GraphModel {
-  const kept = [...nodes];
-  const ids = new Set(kept.map((node) => node.id));
-  const drawable = edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target));
-  const mode: GraphMode = kept.length > GRAPH_NODE_LIMIT ? 'adjacency' : 'force';
+  const endpointIds = new Set(nodes.map((node) => node.id));
+  const ranked = edges
+    .filter((edge) => endpointIds.has(edge.source) && endpointIds.has(edge.target))
+    .sort(
+      (left, right) =>
+        right.bytes - left.bytes ||
+        right.flows - left.flows ||
+        left.source.localeCompare(right.source) ||
+        left.target.localeCompare(right.target),
+    );
+  const boundedLimit = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : 0;
 
   return {
-    mode,
-    reason:
-      mode === 'adjacency'
-        ? `Showing a ranked adjacency matrix: ${String(kept.length)} addresses is past the ${String(GRAPH_NODE_LIMIT)}-node limit for a force layout.`
-        : `Force layout for ${String(kept.length)} addresses.`,
-    nodes: kept,
-    edges: drawable,
+    addressCount: nodes.length,
+    relationships: ranked.slice(0, boundedLimit),
+    totalRelationships: ranked.length,
   };
-}
-
-export interface LayoutRequest {
-  width: number;
-  height: number;
-  /** Simulation ticks. Fixed, so the same input always produces the same picture. */
-  iterations?: number;
-}
-
-export interface PositionedNode {
-  node: TrafficNode;
-  x: number;
-  y: number;
-  /** Radius in user units, from the node's record count. */
-  radius: number;
-}
-
-export interface PositionedEdge {
-  edge: TrafficEdge;
-  source: PositionedNode;
-  target: PositionedNode;
-}
-
-export interface GraphLayout {
-  nodes: PositionedNode[];
-  edges: PositionedEdge[];
-}
-
-/**
- * The simulation's own node type.
- *
- * d3-force writes `x`, `y`, `vx` and `vy` onto whatever it is handed, so the node
- * type has to be d3's `SimulationNodeDatum` plus the identity this module keys on.
- */
-type SimNode = SimulationNodeDatum & { id: string };
-
-/** A link whose ends are addresses, before the simulation rewrites them. */
-type SimLink = SimulationLinkDatum<SimNode> & { source: string; target: string };
-
-/**
- * Radius for a node, on the square root of its volume.
- *
- * Area is what a reader compares, and area grows with the square of the radius —
- * so a linear radius would draw a 100-record entity a hundred times the ink of a
- * 1-record one and read as a claim the data does not make.
- */
-export function nodeRadius(flows: number, maxFlows: number): number {
-  const MIN = 4;
-  const MAX = 22;
-  if (!(maxFlows > 0)) return MIN;
-  const share = Math.max(0, Math.min(1, flows / maxFlows));
-  return MIN + (MAX - MIN) * Math.sqrt(share);
-}
-
-/** The span of a layout: a graph with one node has no extent, and must not divide by zero. */
-function extent(values: readonly number[]): [number, number] {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const value of values) {
-    if (value < min) min = value;
-    if (value > max) max = value;
-  }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 0];
-  if (min === max) return [min - 1, max + 1];
-  return [min, max];
-}
-
-/**
- * Lay the graph out, deterministically, inside the given box.
- *
- * The simulation is run to a fixed tick count and then mapped into the panel's
- * coordinates here rather than by d3's `forceCenter`, so the same graph fills the
- * same panel the same way on every render and in every test. Nodes are drawn with
- * padding for their own radius, so a large node is never half outside the frame.
- */
-export function layoutGraph(model: GraphModel, request: LayoutRequest): GraphLayout {
-  const { width, height } = request;
-  const iterations = request.iterations ?? 120;
-  const pad = 24;
-  const innerWidth = Math.max(1, width - pad * 2);
-  const innerHeight = Math.max(1, height - pad * 2);
-
-  const maxFlows = model.nodes.reduce((best, node) => Math.max(best, node.flows), 0);
-  const radii = new Map(model.nodes.map((node) => [node.id, nodeRadius(node.flows, maxFlows)]));
-
-  if (model.nodes.length === 0) return { nodes: [], edges: [] };
-
-  // One node: a simulation would place it by its own forces; the honest answer is
-  // the centre of the panel.
-  if (model.nodes.length === 1) {
-    const only = model.nodes[0] as TrafficNode;
-    const positioned: PositionedNode = {
-      node: only,
-      x: width / 2,
-      y: height / 2,
-      radius: radii.get(only.id) ?? 4,
-    };
-    return { nodes: [positioned], edges: [] };
-  }
-
-  const simulation = forceSimulation<SimNode>(model.nodes.map((node) => ({ id: node.id })))
-    .force('charge', forceManyBody<SimNode>().strength(-120))
-    .force(
-      'link',
-      forceLink<SimNode, SimLink>(
-        model.edges.map((edge) => ({ source: edge.source, target: edge.target })),
-      )
-        .id((node) => node.id)
-        .distance(60)
-        .strength(0.3),
-    )
-    .force('center', forceCenter(0, 0))
-    .force('collide', forceCollide<SimNode>(8))
-    .stop();
-
-  for (let tick = 0; tick < iterations; tick += 1) simulation.tick();
-
-  const raw = simulation.nodes();
-  // `x`/`y` are optional in d3's type (a simulation initialises them itself), so
-  // the read is a pull with a defined fallback rather than a non-null assertion: a
-  // node the simulation never placed belongs at the origin, not at a crash.
-  const [minX, maxX] = extent(raw.map((node) => node.x ?? 0));
-  const [minY, maxY] = extent(raw.map((node) => node.y ?? 0));
-
-  const byId = new Map(model.nodes.map((node) => [node.id, node]));
-  const positioned: PositionedNode[] = [];
-  for (const node of raw) {
-    const source = byId.get(node.id);
-    if (source === undefined) continue;
-    const radius = radii.get(source.id) ?? 4;
-    positioned.push({
-      node: source,
-      x: pad + (((node.x ?? 0) - minX) / (maxX - minX)) * innerWidth,
-      y: pad + (((node.y ?? 0) - minY) / (maxY - minY)) * innerHeight,
-      radius,
-    });
-  }
-
-  const positions = new Map(positioned.map((node) => [node.node.id, node]));
-  const edges: PositionedEdge[] = [];
-  for (const edge of model.edges) {
-    const source = positions.get(edge.source);
-    const target = positions.get(edge.target);
-    if (source === undefined || target === undefined) continue;
-    edges.push({ edge, source, target });
-  }
-
-  return { nodes: positioned, edges };
-}
-
-/** One cell of the adjacency matrix. */
-export interface MatrixCell {
-  sourceId: string;
-  targetId: string;
-  /** The records that flowed from the row's address to the column's. */
-  flows: number;
-}
-
-export interface AdjacencyMatrix {
-  /** The addresses drawn, most active first — and the same order on both axes. */
-  axis: TrafficNode[];
-  /** How many entities exist, so the panel can say how many it is not drawing. */
-  total: number;
-  cells: MatrixCell[];
-  /** The heaviest relationship drawn, for shading. `0` when there are no edges. */
-  peak: number;
-}
-
-/**
- * A ranked adjacency matrix over the most active entities.
- *
- * Symmetric by construction: a cell is written for both `(a,b)` and `(b,a)` so the
- * reader does not have to know which axis is which to find a relationship, and the
- * diagonal stays empty because an entity is not related to itself.
- */
-export function adjacencyMatrix(
-  model: GraphModel,
-  limit: number = ADJACENCY_ROWS,
-): AdjacencyMatrix {
-  const axis = [...model.nodes].slice(0, Math.max(0, limit));
-  const drawn = new Set(axis.map((node) => node.id));
-  const cells: MatrixCell[] = [];
-  let peak = 0;
-
-  for (const edge of model.edges) {
-    if (!drawn.has(edge.source) || !drawn.has(edge.target)) continue;
-    cells.push({ sourceId: edge.source, targetId: edge.target, flows: edge.flows });
-    cells.push({ sourceId: edge.target, targetId: edge.source, flows: edge.flows });
-    peak = Math.max(peak, edge.flows);
-  }
-
-  cells.sort(
-    (left, right) =>
-      left.sourceId.localeCompare(right.sourceId) || left.targetId.localeCompare(right.targetId),
-  );
-
-  return { axis, total: model.nodes.length, cells, peak };
 }

@@ -266,7 +266,7 @@ export function TrafficPage() {
           {view === null ? (
             <Skeleton lines={5} />
           ) : (
-            <EntityGraph model={view.graph} palette={palette} pinnedId={pinned} onPin={setPinned} />
+            <EntityGraph model={view.graph} pinnedId={pinned} onPin={setPinned} />
           )}
         </Panel>
       </div>

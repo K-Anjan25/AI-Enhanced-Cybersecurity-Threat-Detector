@@ -24,7 +24,7 @@
  * And the caveats: the source's own sentences are carried through **verbatim** (the
  * T-419 rule — a reworded caveat is a second, unreviewed claim about the data), with
  * only the client-side facts added: which sub-window the numbers describe, how many
- * entities the controls hid, and what the ranked matrix left undrawn.
+ * entities the controls hid, and how many lower-ranked relationships are not displayed.
  *
  * What this module does *not* own any more: the selection's caption. The brush used
  * to filter a bucket list in the browser, and this module reported the selected
@@ -46,13 +46,7 @@ import {
   type TrafficEdge,
   type TrafficNode,
 } from './aggregate';
-import {
-  ADJACENCY_ROWS,
-  adjacencyMatrix,
-  buildGraph,
-  type AdjacencyMatrix,
-  type GraphModel,
-} from './graph';
+import { buildGraph, FLOW_RELATIONSHIP_LIMIT, type GraphModel } from './graph';
 
 /** The controls §4.4 names, as state the page holds. */
 export interface TrafficFilters {
@@ -88,8 +82,6 @@ export interface TrafficView {
   /** Every relationship the read returned; `buildGraph` keeps the drawable ones. */
   edges: TrafficEdge[];
   graph: GraphModel;
-  /** Present only in adjacency mode — computed when the mode needs it. */
-  matrix: AdjacencyMatrix | null;
   pinned: TrafficNode | null;
   /** Caveats that belong to this data, rendered rather than remembered. */
   notes: string[];
@@ -146,7 +138,6 @@ export function buildTrafficView(input: TrafficViewInput): TrafficView {
     nodes,
     edges,
     graph,
-    matrix: graph.mode === 'adjacency' ? adjacencyMatrix(graph) : null,
     pinned,
     notes: notesFor(input, graph),
     hiddenByControls: flagged.length - guarded.length,
@@ -166,10 +157,9 @@ function notesFor(input: TrafficViewInput, graph: GraphModel): string[] {
     const to = new Date(input.brush.to).toISOString().slice(11, 16);
     notes.push(`The table and the graph describe the brushed window (${from}–${to} UTC).`);
   }
-  if (graph.mode === 'adjacency') {
-    const drawn = Math.min(graph.nodes.length, ADJACENCY_ROWS);
+  if (graph.totalRelationships > graph.relationships.length) {
     notes.push(
-      `The matrix draws the ${String(drawn)} most active of ${String(graph.nodes.length)} addresses; the rest are counted, not drawn.`,
+      `The relationship panel shows the top ${String(Math.min(FLOW_RELATIONSHIP_LIMIT, graph.totalRelationships))} of ${String(graph.totalRelationships)} directed conversations among the visible addresses, ranked by observed bytes.`,
     );
   }
   return notes;
