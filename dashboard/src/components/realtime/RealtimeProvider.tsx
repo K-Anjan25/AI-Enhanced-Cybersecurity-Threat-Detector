@@ -60,6 +60,8 @@ export interface RealtimeContextValue {
   detail: string | null;
   /** When a frame last arrived, for §8.1's "last update 2 m ago". */
   lastUpdateAt: number | null;
+  /** Latest measured application-level WebSocket round-trip time in milliseconds. */
+  rttMs: number | null;
   /**
    * How many `ready` frames have reported an incomplete gap.
    *
@@ -82,13 +84,14 @@ export interface RealtimeProviderProps {
   children: ReactNode;
   /** Injections for tests; production passes nothing and gets the real things. */
   socketFactory?: SocketFactory | undefined;
-  options?: Partial<Omit<StreamOptions, 'onFrame' | 'onState'>> | undefined;
+  options?: Partial<Omit<StreamOptions, 'onFrame' | 'onState' | 'onRtt'>> | undefined;
 }
 
 export function RealtimeProvider({ children, socketFactory, options }: RealtimeProviderProps) {
   const [state, setState] = useState<RealtimeState>('connecting');
   const [detail, setDetail] = useState<string | null>(null);
   const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null);
+  const [rttMs, setRttMs] = useState<number | null>(null);
   const [resyncCount, setResyncCount] = useState(0);
   const [cursor, setCursor] = useState<number | null>(null);
   const listeners = useRef(new Set<AlertListener>());
@@ -111,6 +114,7 @@ export function RealtimeProvider({ children, socketFactory, options }: RealtimeP
         setDetail(nextDetail);
         setCursor(clientRef.current?.currentCursor ?? null);
       },
+      onRtt: (nextRtt: number | null) => setRttMs(nextRtt),
     });
   }
 
@@ -150,8 +154,17 @@ export function RealtimeProvider({ children, socketFactory, options }: RealtimeP
   }, []);
 
   const value = useMemo<RealtimeContextValue>(
-    () => ({ state, detail, lastUpdateAt, resyncCount, cursor, subscribeToAlerts, retryNow }),
-    [state, detail, lastUpdateAt, resyncCount, cursor, subscribeToAlerts, retryNow],
+    () => ({
+      state,
+      detail,
+      lastUpdateAt,
+      rttMs,
+      resyncCount,
+      cursor,
+      subscribeToAlerts,
+      retryNow,
+    }),
+    [state, detail, lastUpdateAt, rttMs, resyncCount, cursor, subscribeToAlerts, retryNow],
   );
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;

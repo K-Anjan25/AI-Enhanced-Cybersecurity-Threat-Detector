@@ -92,6 +92,13 @@ describe('parseFrame', () => {
     });
   });
 
+  it('reads a valid pong id and rejects malformed ping acknowledgements', () => {
+    expect(parseFrame({ type: 'pong', id: 17 })).toEqual({ type: 'pong', id: 17 });
+    for (const id of ['17', -1, 1.5, Number.MAX_SAFE_INTEGER + 1, null]) {
+      expect(parseFrame({ type: 'pong', id })).toBeNull();
+    }
+  });
+
   it('reports a drop with the cursor to resume from', () => {
     expect(parseFrame({ type: 'dropped', reason: 'slow reader', after: 21 })).toEqual({
       type: 'dropped',

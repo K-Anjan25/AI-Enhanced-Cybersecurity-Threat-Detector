@@ -92,7 +92,7 @@ function AlertList() {
   );
 }
 
-function renderShell(options: { pollIntervalMs?: number } = {}) {
+function renderShell(options: { pollIntervalMs?: number; now?: () => number } = {}) {
   const sockets = fakeSockets();
   const clock = fakeClock();
   const utils = render(
@@ -100,7 +100,12 @@ function renderShell(options: { pollIntervalMs?: number } = {}) {
       <QueryClientProvider client={testQueryClient()}>
         <RealtimeProvider
           socketFactory={sockets.factory}
-          options={{ clock, random: () => 0, pollIntervalMs: options.pollIntervalMs ?? 15_000 }}
+          options={{
+            clock,
+            random: () => 0,
+            pollIntervalMs: options.pollIntervalMs ?? 15_000,
+            ...(options.now === undefined ? {} : { now: options.now }),
+          }}
         >
           <MemoryRouter>
             <AppShell onOpenPalette={openPalette} onSignOut={() => undefined}>
@@ -188,6 +193,32 @@ describe('the shell and the live stream', () => {
     expect(screen.getByText('public page')).toBeInTheDocument();
     expect(sockets.sockets).toHaveLength(0);
     expect(seen.filter((request) => request.url.includes(NOTIFICATIONS_PATH))).toHaveLength(0);
+  });
+
+  it('shows real stream health and measured backend RTT in the app shell', async () => {
+    stubAlertEndpoints(() => []);
+    let now = 100;
+    const { sockets } = renderShell({ now: () => now });
+    const status = await screen.findByRole('status');
+
+    expect(status).toHaveTextContent('Connecting');
+
+    act(() => {
+      sockets.last().open();
+      sockets.last().emit(READY);
+    });
+    expect(status).toHaveTextContent('Live');
+
+    const ping = JSON.parse(sockets.last().sent[0]!) as { type: string; id: number };
+    expect(ping.type).toBe('ping');
+    now = 145;
+    act(() => sockets.last().emit({ type: 'pong', id: ping.id }));
+    expect(status).toHaveTextContent('45 ms');
+    expect(status).toHaveAttribute('title', expect.stringContaining('not ICMP'));
+
+    act(() => sockets.last().serverClose(1006));
+    expect(status).toHaveTextContent('Polling fallback');
+    expect(status).toHaveTextContent('—');
   });
 
   it('replays missed alerts across a reconnect, without waiting for an interval', async () => {
