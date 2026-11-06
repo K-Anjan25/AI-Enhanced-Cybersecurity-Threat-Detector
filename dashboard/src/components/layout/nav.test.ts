@@ -24,7 +24,7 @@
  * @vitest-environment node
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { ADMIN_SECTIONS, NAV_ITEMS, navDestinations } from './nav';
@@ -91,7 +91,9 @@ describe('the nav model', () => {
 
     const offenders: string[] = [];
     for (const file of sourceFiles(SRC)) {
-      const text = readFileSync(join(SRC.pathname, file), 'utf8');
+      // URL resolution rather than a pathname join: `SRC.pathname` joined with
+      // `path.join` is drive-relative on Windows and never resolves.
+      const text = readFileSync(fileURLToPath(new URL(file, SRC)), 'utf8');
       for (const [index, line] of text.split('\n').entries()) {
         if (TEXT_GLYPH_ICON.test(line)) offenders.push(`${file}:${String(index + 1)}`);
       }

@@ -420,7 +420,7 @@ describe('closed scales', () => {
 
 describe('shipped sources', () => {
   const shipped = readdirSync(SRC, { recursive: true })
-    .map((entry) => String(entry))
+    .map((entry) => String(entry).replace(/\\/g, '/'))
     .filter((name) => /\.(ts|tsx|css)$/.test(name))
     // The token file is where colour literals belong, and tests quote design.md's
     // values on purpose: neither is a shipped style.

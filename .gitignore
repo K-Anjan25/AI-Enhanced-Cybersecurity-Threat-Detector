@@ -41,3 +41,4 @@ dist/
 .vscode/
 *.swp
 .DS_Store
+datasets/

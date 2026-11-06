@@ -19,9 +19,13 @@ import { parseExposition } from '../../lib/prometheus';
 import { INGEST_ROUTE, readPipeline, STAGES, worstStatus, type MetricsSnapshot } from './pipeline';
 
 const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
-const architecture = readFileSync(`${REPO}architecture.md`, 'utf8');
-const prd = readFileSync(`${REPO}prd.md`, 'utf8');
-const design = readFileSync(`${REPO}design.md`, 'utf8');
+// Normalise CRLF so the end-anchored document table checks behave the same on Windows.
+function repoDoc(name: string): string {
+  return readFileSync(`${REPO}${name}`, 'utf8').replace(/\r\n/g, '\n');
+}
+const architecture = repoDoc('architecture.md');
+const prd = repoDoc('prd.md');
+const design = repoDoc('design.md');
 
 /** The §5 latency budget table, as {stage: ms}. */
 function documentedBudgets(): Record<string, number> {
