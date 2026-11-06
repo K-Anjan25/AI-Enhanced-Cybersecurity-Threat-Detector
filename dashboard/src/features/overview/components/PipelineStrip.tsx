@@ -6,11 +6,7 @@
  * The presentation rule is the acceptance criterion: **a stage over its budget is
  * red, and it says which budget it exceeded** — "p95 412 ms vs budget 150 ms
  * (NFR-01)". Colour alone would fail NFR-09 anyway, so the status is written out in
-<<<<<<< HEAD
- * words beside the hue.
-=======
  * words beside the mark, and the word is the second encoding besides the hue.
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
  *
  * A stage nothing measures renders as *not measured*, with its budget still shown:
  * the absence of an instrument is information an operator needs, and the

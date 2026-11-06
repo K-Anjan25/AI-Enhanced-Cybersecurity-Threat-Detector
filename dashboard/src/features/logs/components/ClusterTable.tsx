@@ -7,11 +7,7 @@
  *     fold is that ten thousand identical lines are one thing to read.
  *   * The **rail** marks a cluster holding an error or critical line. §4.5 asks for
  *     the severity colour *and* a left border — colour alone would fail NFR-09 — so
-<<<<<<< HEAD
- *     the level chip carries the same hue and says the level in words. The
-=======
  *     the level chip carries the same hue and the word label the palette publishes. The
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
  *     rail is drawn inside the first cell: `DataTable` renders its rows as divs with
  *     no row-class hook, and adding one to a shared primitive for a single screen
  *     would be the tail wagging the component. A short vertical rule at the row's

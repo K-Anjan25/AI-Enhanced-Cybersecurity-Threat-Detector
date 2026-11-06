@@ -5,13 +5,8 @@
 | **Codename** | AEGIS |
 | **Document** | Product Requirements Document |
 | **Version** | 0.2 |
-<<<<<<< HEAD
-| **Last updated** | 2026-10-08 |
-| **Status** | Approved for build — no code exists yet |
-=======
 | **Last updated** | 2026-10-21 |
 | **Status** | Approved for build; in build. The ML pipeline, backend API, dashboard and deployment manifests exist. Per-task status is in [task.md](task.md). |
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 | **Related** | [architecture.md](architecture.md) · [rules.md](rules.md) · [design.md](design.md) · [task.md](task.md) · [memory.md](memory.md) |
 
 ---
@@ -70,7 +65,7 @@ The product is a detection and triage platform, not a prevention appliance. It i
 - Deep packet inspection of encrypted payloads. We use flow metadata and log semantics, never payload decryption.
 - Endpoint detection (EDR), EDR telemetry ingestion, process-tree analysis.
 - Phishing-email NLP and URL reputation scoring.
-- Multi-tenant SaaS billing and metering. (Self-serve *account* signup moved into scope as FR-45 in v0.2; billing and metering stay out.)
+- Multi-tenant SaaS billing, self-serve signup, metering.
 - Automated remediation / SOAR playbooks that touch production hosts.
 - Adversarial-evasion hardening research (documented as a known limitation, not a solved problem).
 
@@ -144,7 +139,6 @@ Priority: **M** = must for v1.0, **S** = should, **C** = could.
 | FR-42 | M | Record every mutating action in an append-only audit log (actor, action, target, timestamp, source IP). |
 | FR-43 | S | Support OIDC SSO for enterprise deployments. |
 | FR-44 | S | Support scoped API keys for machine-to-machine ingestion. |
-| FR-45 | M | Allow self-service account registration once an account exists, creating the least-privileged (`viewer`) role; refuse registration before bootstrap so it cannot consume the one-shot first-admin setup, and audit every registration. |
 
 ### 5.6 Visualisation
 

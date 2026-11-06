@@ -6,25 +6,12 @@
  * with the chart below it — and the verdict tile says what its mean covers rather
  * than showing a figure whose basis is invisible.
  *
- * A severity tile wears its level as a small-caps label in the §5.3 text variant
- * of the hue: colour and word in the same element, so the pairing is never colour
- * alone (NFR-09) and nothing decorative is needed beside it. The number is
- * `text-display` with tabular figures (§5.4), so the tiles do not jitter as they
- * refresh, and each severity tile keeps the palette's ordering rather than the
+ * Numbers are `font.mono` with tabular figures (§5.4) so the tiles do not jitter as
+ * they refresh, and each severity tile keeps the palette's ordering rather than the
  * alphabet's — critical first, because that is the order an operator reads.
  */
-import type { Severity } from '../../../components/ui';
+import { SeverityPill, type Severity } from '../../../components/ui';
 import { formatCount } from '../../../lib/format';
-
-/** §5.3's text variant per level: where a severity tile's colour lives. */
-const LEVEL: Record<Severity, string> = {
-  critical: 'text-severityText-critical',
-  high: 'text-severityText-high',
-  medium: 'text-severityText-medium',
-  low: 'text-severityText-low',
-  info: 'text-severityText-info',
-  benign: 'text-severityText-benign',
-};
 
 export interface Tile {
   label: string;
@@ -44,15 +31,6 @@ export function KpiTiles({ tiles }: KpiTilesProps) {
   return (
     <dl className="grid grid-cols-2 gap-4 md:grid-cols-5">
       {tiles.map((tile) => (
-<<<<<<< HEAD
-        <div key={tile.label} className="rounded-card border border-line bg-base p-4">
-          <dt
-            className={`text-caption font-semibold uppercase tracking-wide ${
-              tile.severity === undefined ? 'text-muted' : LEVEL[tile.severity]
-            }`}
-          >
-            {tile.label}
-=======
         <div key={tile.label} className="min-w-0 rounded-card border border-line bg-surface p-4">
           <dt className="flex items-center gap-2 text-caption uppercase tracking-wide text-muted">
             {tile.severity === undefined ? (
@@ -60,9 +38,8 @@ export function KpiTiles({ tiles }: KpiTilesProps) {
             ) : (
               <SeverityPill severity={tile.severity} />
             )}
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
           </dt>
-          <dd className="mt-3 text-display font-semibold tabular-nums text-ink">
+          <dd className="mt-2 text-display font-semibold tabular-nums text-ink">
             {tile.value === null ? '—' : formatCount(tile.value)}
             {tile.unit === undefined || tile.value === null ? null : (
               <span className="ml-1 text-body-sm text-muted">{tile.unit}</span>

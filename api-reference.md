@@ -35,7 +35,6 @@ or body do not match the schema below.
 | `GET` | `/api/v1/auth/oidc/callback` | Complete an OpenID Connect sign-in (FR-43) | unauthenticated | `200` `TokenPairOut` | — |
 | `GET` | `/api/v1/auth/oidc/start` | Start an OpenID Connect sign-in (FR-43) | unauthenticated | `302` `text/plain` | — |
 | `POST` | `/api/v1/auth/refresh` | Rotate a single-use refresh token | unauthenticated | `200` `TokenPairOut` | `RefreshIn` |
-| `POST` | `/api/v1/auth/register` | Create an account with a chosen password | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `POST` | `/api/v1/auth/setup` | Create the first local development administrator | unauthenticated | `201` `TokenPairOut` | `CredentialsIn` |
 | `GET` | `/api/v1/auth/status` | Whether first-admin setup is available | unauthenticated | `200` `AuthStatusOut` | — |
 | `POST` | `/api/v1/capture/heartbeat` | Report a live capture sensor heartbeat | admin, analyst, responder | `200` `CaptureSensorHealth` | `CaptureHeartbeatIn` |
@@ -230,11 +229,7 @@ An issued key, **without** its secret.
 
 The actions the trail records, one per mutating route.
 
-<<<<<<< HEAD
-Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.register` or `auth.login` or `auth.refresh` or `auth.logout`.
-=======
 Types: `ingest.flows` or `ingest.logs` or `alert.verdict` or `webhook.create` or `webhook.delete` or `key.create` or `key.revoke` or `retention.apply` or `privacy.erasure` or `model.promote` or `model.rollback` or `threshold.recalibrate` or `threshold.set` or `user.role` or `hunt.export` or `alert.export` or `webhook.test` or `auth.setup` or `auth.login` or `auth.refresh` or `auth.logout` or `capture.heartbeat`.
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 ### `AuditEntryOut`
 
@@ -317,7 +312,7 @@ Recorded TP/FP/TN/FN counts, threshold and exact artifact provenance.
 
 ### `CredentialsIn`
 
-Email and password for local account setup, sign-in, or registration.
+Email and password for local account setup or sign-in.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
@@ -1210,7 +1205,7 @@ A hand-set threshold (design.md §4.8's manual edit).
 
 ### `TokenPairOut`
 
-The bearer pair returned after setup, registration, login or refresh rotation.
+The bearer pair returned after setup, login or refresh rotation.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |

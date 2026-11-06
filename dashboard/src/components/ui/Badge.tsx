@@ -5,13 +5,8 @@
  * which is the ground colour. The other four are outlined, so the filled and outlined
  * badges differ by shape as well as by the word.
  *
-<<<<<<< HEAD
- * Colour is never the only encoding (NFR-09): the label renders the level in
- * words, so a reader who cannot separate the hues still reads what the badge says.
-=======
  * Colour is never the only encoding (NFR-09): the severity is also written out in
  * words as the badge's children, so no symbol is drawn.
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
  */
 import { type ReactNode } from 'react';
 

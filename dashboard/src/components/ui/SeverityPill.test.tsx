@@ -18,13 +18,7 @@ describe('SeverityPill', () => {
     expect(pill.className).toContain(`text-severityText-${severity}`);
   });
 
-<<<<<<< HEAD
-  it('shows the level as its word and nothing beside it', () => {
-    // The word is the whole second encoding (NFR-09) — no decorative mark
-    // repeats what the label already says.
-=======
   it('draws no symbol, so the word carries the severity', () => {
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
     render(<SeverityPill severity="medium" />);
 
     const pill = screen.getByText(SEVERITY_LABELS.medium).parentElement as HTMLElement;

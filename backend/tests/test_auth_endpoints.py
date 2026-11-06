@@ -13,12 +13,7 @@ from fastapi.testclient import TestClient
 
 SECRET = "auth-test-signing-key-with-enough-entropy-2026"  # pragma: allowlist secret
 PASSWORD = "a-strong-test-password-for-auth"  # pragma: allowlist secret
-<<<<<<< HEAD
-SECOND_PASSWORD = "a-second-strong-password-for-auth"  # pragma: allowlist secret
-WINDOW = "start=2026-10-06T00:00:00Z&end=2026-10-07T00:00:00Z"
-=======
 WRONG_LOGIN = {"email": "ops@aegis.test", "password": "x" * 14}
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 
 def _settings(**overrides: object) -> Settings:
@@ -190,73 +185,12 @@ def test_development_setup_is_closed_by_default_and_routes_are_explicitly_public
     assert {
         "/api/v1/auth/status",
         "/api/v1/auth/setup",
-        "/api/v1/auth/register",
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
     } <= UNAUTHENTICATED_ROUTES
 
 
-<<<<<<< HEAD
-def test_registration_is_refused_while_no_account_is_provisioned() -> None:
-    """A registration before bootstrap would consume the one-shot setup (FR-45, D-082)."""
-    app = create_app(_settings())
-    with TestClient(app) as client:
-        response = client.post(
-            "/api/v1/auth/register",
-            json={"email": "squatter@localhost", "password": PASSWORD},
-        )
-
-    assert response.status_code == 409
-    assert response.json() == {"detail": "no account is provisioned yet"}
-    assert _audit_actions(app) == []
-
-
-def test_registration_creates_a_read_only_account_and_signs_it_in() -> None:
-    app = create_app(
-        _settings(
-            bootstrap_admin_email="operator@localhost",
-            bootstrap_admin_password=PASSWORD,
-        )
-    )
-    with TestClient(app) as client:
-        created = client.post(
-            "/api/v1/auth/register",
-            json={"email": "NewAnalyst@localhost", "password": SECOND_PASSWORD},
-        )
-        assert created.status_code == 201
-        pair = created.json()
-        access = {"Authorization": f"Bearer {pair['access_token']}"}
-
-        alerts = client.get(f"/api/v1/alerts?{WINDOW}", headers=access)
-        users = client.get("/api/v1/users", headers=access)
-        duplicate = client.post(
-            "/api/v1/auth/register",
-            json={"email": "newanalyst@localhost", "password": SECOND_PASSWORD},
-        )
-        login = client.post(
-            "/api/v1/auth/login",
-            json={"email": "newanalyst@localhost", "password": SECOND_PASSWORD},
-        )
-
-    assert pair["role"] == "viewer"
-    assert pair["subject"] == "newanalyst@localhost"
-    # The new account reads (viewer is R-53's read role) ...
-    assert alerts.status_code == 200
-    # ... and administration stays closed to it.
-    assert users.status_code == 403
-    assert duplicate.status_code == 409
-    assert duplicate.json() == {"detail": "an account with that email already exists"}
-    assert login.status_code == 200
-    assert login.json()["role"] == "viewer"
-    assert _audit_actions(app) == [AuditAction.auth_register, AuditAction.auth_login]
-    audit_records = app.state.audit_trail.entries(
-        start=datetime.min.replace(tzinfo=UTC),
-        end=datetime.max.replace(tzinfo=UTC),
-    )
-    assert SECOND_PASSWORD not in repr(audit_records)
-    assert pair["access_token"] not in repr(audit_records)
-=======
 def test_repeated_wrong_passwords_are_throttled_with_429_and_retry_after() -> None:
     """The login route refuses after the account limit, even with the right password."""
     app = create_app(
@@ -301,4 +235,3 @@ def test_a_successful_login_before_the_limit_resets_the_account_count() -> None:
             "/api/v1/auth/login", json={"email": "ops@aegis.test", "password": PASSWORD}
         )
     assert again.status_code == 200
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54

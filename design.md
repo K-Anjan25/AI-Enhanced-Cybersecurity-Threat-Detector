@@ -116,20 +116,16 @@ Purpose: "is anything happening, and is AEGIS itself healthy?"
 │ severity: [critical][high][medium][low]   family: ▾   status: open ▾   │
 │ entity: ______   time: last 24 h ▾   sort: score ▾    ⌘K quick filter  │
 ├────────────────────────────────────────────────────────────────────────┤
-│ CRITICAL    Port sweep from 10.4.11.9 → 1,204 dst ports   score 0.96   │
+│ ● CRITICAL  Port sweep from 10.4.11.9 → 1,204 dst ports   score 0.96   │
 │             Reconnaissance · web-07.prod · 2 min ago · 41 occurrences   │
-│ HIGH        Repeated auth failure then success · j.rivera  score 0.88   │
+│ ● HIGH      Repeated auth failure then success · j.rivera  score 0.88   │
 │             Credential abuse · 14 min ago · 6 occurrences               │
-│ MEDIUM      Periodic outbound beaconing · api-03 → 45.83.2.11  0.61     │
+│ ○ MEDIUM    Periodic outbound beaconing · api-03 → 45.83.2.11  0.61     │
 │             Exfiltration · 22 min ago · 12 occurrences                  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-<<<<<<< HEAD
-- Left severity rail: 3 px colour bar **plus** the severity label in words (NFR-09: colour is never the only encoding).
-=======
 - Left severity rail: 3 px colour bar **plus** the severity word.
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 - Row content hierarchy: severity label → one-line summary in plain language → family · entity · age · occurrences.
 - Bulk selection with checkbox column; bulk actions limited to what the role may do (R-53).
 - Virtualised list; the queue is expected to hold thousands of rows.
@@ -215,7 +211,6 @@ Standard CRUD screens built from the shared `DataTable` + `Modal` primitives. No
 
 - With no valid session, show a focused sign-in surface instead of mounting data screens; after sign-in, preserve the requested route. Sign-out clears the tab-scoped session.
 - The form uses operator-provisioned credentials. Production bootstrap credentials come from a secret manager; there is no built-in demo user or default password.
-- A **Create an account** view (T-424, FR-45) sits beside sign-in and is offered only while the status endpoint reports an account exists. It registers through `POST /api/v1/auth/register`, states that new accounts start with read-only access (the `viewer` role), confirms the password, and signs the new account in. Before bootstrap there is nothing to join, so the offer is withheld rather than shown to fail.
 - A first-administrator setup form is offered only when `AEGIS_DEV_AUTH_SETUP_ENABLED=true` in a private development environment. It warns that the first account has admin permissions and that the in-memory account is cleared when the backend process restarts.
 - Access and refresh tokens live only in `sessionStorage`; refresh is single-use and rotates. A failed refresh or HTTP 401 returns to sign-in and reopens the stream with the new credential. A 403 or WebSocket 4403 is a permissions refusal and does not sign the operator out; WebSocket 4401 clears the session.
 - The sign-in screen follows the same dark/light tokens as the console, keeps visible labels and errors, and never echoes a password or token.
@@ -232,62 +227,28 @@ The public marketing site uses the same palette, with a hero glow and texture in
 
 |Token|Value|Contrast|Use|
 |---|---|---|---|
-<<<<<<< HEAD
-| `bg.base` | `#050511` | � | App background |
-| `bg.surface` | `#0c0c1a` | � | Cards, panels, tables |
-| `border.default` | `#1a1a2e` | decorative | Hairlines; never the sole separator for essential info |
-| `text.primary` | `#e6e9ef` | 15.20 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#98a2b3` | 7.25 : 1 on `bg.base` A� 6.50 : 1 on `bg.surface` | Secondary labels, metadata |
-| `accent` | `#ff0aff` | 7.10 : 1 on `bg.base` A� 6.30 : 1 on `bg.surface` | Links, focus, primary actions |
-=======
 |`bg.base`|`#0B1A33`|—|App background|
 |`bg.surface`|`#16294D`|—|Cards, panels, tables (separated by `border.default`)|
 |`border.default`|`#6B93C4`|5.45 : 1 on `bg.base` · 4.52 : 1 on `bg.surface`|Hairlines and control boundaries; never the sole separator for essential info|
 |`text.primary`|`#EAF6FF`|15.81 : 1 on `bg.base` · 13.11 : 1 on `bg.surface`|Body, headings|
 |`text.muted`|`#9FB4CF`|8.19 : 1 on `bg.base` · 6.79 : 1 on `bg.surface`|Secondary labels, metadata (same colour as primary)|
 |`accent`|`#7FD8FF`|10.89 : 1 on `bg.base` · 9.03 : 1 on `bg.surface`|Links, focus, primary actions|
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 ### 5.2 Colour — light theme
 
 |Token|Value|Contrast|Use|
 |---|---|---|---|
-<<<<<<< HEAD
-| `bg.base` | `#FFFFFF` | — | App background |
-| `bg.surface` | `#F6F7F9` | — | Cards, panels, tables |
-| `border.default` | `#E2E5EA` | decorative | Hairlines |
-| `text.primary` | `#0B0E14` | 19.32 : 1 on `bg.base` | Body, headings |
-| `text.muted` | `#5A6473` | 5.99 : 1 on `bg.base` · 5.59 : 1 on `bg.surface` | Secondary labels |
-| `accent` | `#2F5D8A` | 6.88 : 1 on `bg.base` · 6.42 : 1 on `bg.surface` | Links, focus, primary actions |
-=======
 |`bg.base`|`#EAF6FF`|—|App background|
 |`bg.surface`|`#C9D6E8`|—|Cards, panels, tables (separated by `border.default`)|
 |`border.default`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Hairlines and control boundaries (WCAG 1.4.11)|
 |`text.primary`|`#0B1A33`|15.81 : 1 on `bg.base` · 11.79 : 1 on `bg.surface`|Body, headings|
 |`text.muted`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Secondary labels (same colour as primary)|
 |`accent`|`#16294D`|13.11 : 1 on `bg.base` · 9.78 : 1 on `bg.surface`|Links, focus, primary actions|
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 ### 5.3 Severity palette
 
 Severity has six levels, and the palette has few hues, so **colour does not tell the levels apart**. Each level is written out in words, and the filled and outlined badges differ by shape as well as by the word. The base value is the fill, border, or chart mark, and also the 3 px alert rail; the text value is for any text rendered on a background.
 
-<<<<<<< HEAD
-| Severity | Base (fill / chart) | Text on dark | Text on light |
-|---|---|---|---|
-| `critical` | `#E5484D` | `#FF6369` — 6.66 / 6.03 | `#C62A2F` — 5.57 / 5.19 |
-| `high` | `#F76808` | `#FFA057` — 9.58 / 8.67 | `#B34700` — 5.50 / 5.13 |
-| `medium` | `#FFC53D` | `#FFC53D` — 12.24 / 11.07 | `#7A5B00` — 6.32 / 5.89 |
-| `low` | `#3E8EF7` | `#70B0FF` — 8.59 / 7.77 | `#0B62C4` — 5.90 / 5.51 |
-| `info` | `#8B8D98` | `#98A2B3` — 7.50 / 6.79 | `#5A6473` — 5.99 / 5.59 |
-| `benign` | `#A7B0BE` | `#B9C2CF` — 10.74 / 9.72 | `#46536A` — 7.76 / 7.24 |
-
-*Ratios are `on bg.base` / `on bg.surface`. All text variants clear WCAG AA (≥ 4.5 : 1) on both surfaces in both themes. A severity is always rendered with its word beside its colour (NFR-09) — never a decorative mark that repeats the label.*
-
-**Badge rule.** A severity badge is a base-hue fill with `#0B0E14` text. Measured: critical 4.94, high 6.38, medium 12.24, low 5.90, info 5.85, benign 8.83 — all ≥ 4.5 : 1. White text on these fills fails (3.91 on critical, 1.58 on medium) and is prohibited.
-
-**Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 7.49 : 1 (dark) and 6.88 : 1 (light) — above the 3 : 1 non-text requirement.
-=======
 |Severity|Base (fill / border / chart)|Text|Label|Badge|
 |---|---|---|---|---|
 |`critical`|`#FFD6EC` dark · `#0B1A33` light|`#FFD6EC` dark · `#0B1A33` light — 13.29 / 15.81|`Critical`|Filled|
@@ -304,7 +265,6 @@ _Ratios are `on bg.base` / `on bg.surface`. Every text value clears WCAG AA (≥
 **Charts.** Six severity series cannot be told apart by colour. Any chart that plots more than one severity needs a legend, direct labels, or a pattern in addition to the colour.
 
 **Focus ring.** 2 px `accent`, offset 2 px. Measured against the adjacent background: 10.89 : 1 (dark) and 13.11 : 1 (light) — above the 3 : 1 non-text requirement.
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 ### 5.4 Typography
 
@@ -335,11 +295,7 @@ Minimum text size is 12 px. Numeric columns use tabular figures so values align 
 
 ### 5.6 Iconography
 
-<<<<<<< HEAD
-Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content.
-=======
 Lucide, 16 px in dense contexts and 20 px elsewhere, always with an accessible label when the icon is the only content. Severity additionally uses the word label from §5.3.
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
 
 ## 6. Component library
 
@@ -442,13 +398,6 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 
 | Date       | Version | Change                                                                                                                                                                                                                                                                                                                                                         |
 |---|---|---|
-<<<<<<< HEAD
-| 2026-10-02 | 0.1 | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios. |
-| 2026-10-07 | 0.2 | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
-| 2026-10-07 | 0.3 | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081). |
-| `accent` | `#ff0aff` | 7.10 : 1 on `bg.base` A� 6.30 : 1 on `bg.surface` | Links, focus, primary actions |
-| 2026-10-08 | 0.5 | §4.9 gains the self-service registration path (T-424, FR-45, D-082): a Create an account view offered only while an account exists, new accounts starting read-only, and its own copy and refusals beside sign-in. |
-=======
 | 2026-10-02 | 0.1     | Initial UI/UX specification. Severity and accent tokens validated against measured WCAG contrast ratios.                                                                                                                                                                                                                                                       |
 | 2026-10-07 | 0.2     | Clarified §4.7's recorded-only comparison: metadata-only version list, per-version metrics read, eval@2 ten-bin equal-width histogram, shared overlay with both thresholds and run provenance, and visible unavailability for missing/older reports; see D-080. Refreshed §11 implementation statuses and kept the manual screen-reader pass explicitly unrun. |
 | 2026-10-07 | 0.3     | Added §4.9's session gate, safe first-admin setup, tab-scoped token lifecycle, and distinction between expired credentials and permission refusals; no default account. Accounts and refresh state remain process-local (D-081).                                                                                                                               |
@@ -456,4 +405,3 @@ Implementation status is tracked in [task.md](task.md); this document remains th
 | 2026-10-17 | 0.5     | Rebuilt the landing page to the reference layout: hero headline, halftone art field (artwork supplied as `dashboard/public/landing-hero.jpg`), three feature cards, primary and secondary CTAs. Added `type.hero` (64/68) and `type.stat` (48/52) to §5.4.                                                                                                     |
 | 2026-10-17 | 0.6 | Re-based the palette on the brand sheet: Mariana Blue field and Grey type in dark, Dawning Mist field and Deep Blue accent in light. Replaced the cobalt values in §5.1 and §5.2; updated the severity text and badge ratios and the focus ring to match. |
 | 2026-10-17 | 0.7 | Toned the severity hues down to sit with the brand palette and kept each text variant at 4.5:1 or better. Replaced the symbol glyphs with the severity word, so every severity is written out in words; the §5.3 Glyph column is now Label. |
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54

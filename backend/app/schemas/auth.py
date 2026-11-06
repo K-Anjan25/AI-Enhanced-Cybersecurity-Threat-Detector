@@ -41,7 +41,7 @@ class AuthStatusOut(BaseModel):
 
 
 class CredentialsIn(BaseModel):
-    """Email and password for local account setup, sign-in, or registration."""
+    """Email and password for local account setup or sign-in."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -67,7 +67,7 @@ class RefreshIn(BaseModel):
 
 
 class TokenPairOut(BaseModel):
-    """The bearer pair returned after setup, registration, login or refresh rotation."""
+    """The bearer pair returned after setup, login or refresh rotation."""
 
     model_config = ConfigDict(frozen=True)
 

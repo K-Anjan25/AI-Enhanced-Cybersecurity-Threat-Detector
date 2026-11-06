@@ -1,4 +1,4 @@
-/** The browser-facing contracts for the password, registration and local-setup endpoints (T-417, T-424). */
+/** The browser-facing contracts for the password and local-setup endpoints (T-417). */
 import { getJson, postJson, postVoid } from './client';
 import { clearSessionToken, refreshToken, setSessionCredentials } from './session';
 
@@ -31,17 +31,6 @@ export async function setupLocalAdmin(
 ): Promise<SessionCredentials> {
   const credentials = await postJson<SessionCredentials>(
     '/api/v1/auth/setup',
-    { email, password },
-    PUBLIC_AUTH_OPTIONS,
-  );
-  setSessionCredentials(credentials.access_token, credentials.refresh_token);
-  return credentials;
-}
-
-/** Register an account with a chosen password; it starts read-only (FR-45). */
-export async function signUp(email: string, password: string): Promise<SessionCredentials> {
-  const credentials = await postJson<SessionCredentials>(
-    '/api/v1/auth/register',
     { email, password },
     PUBLIC_AUTH_OPTIONS,
   );

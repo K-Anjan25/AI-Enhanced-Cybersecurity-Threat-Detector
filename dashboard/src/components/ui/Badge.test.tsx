@@ -13,22 +13,6 @@ describe('Badge', () => {
       // is the foreground colour and the text is the `onSeverity` token (the ground colour).
       render(<Badge tone={severity}>{severity}</Badge>);
 
-<<<<<<< HEAD
-    const badge = screen.getByText(severity);
-    expect(badge.className).toContain(`bg-severity-${severity}`);
-    expect(badge.className).toContain('text-onSeverity');
-    expect(badge).toHaveTextContent(severity);
-  });
-
-  it('says the level in words with no symbol beside it (NFR-09)', () => {
-    // The word is the second encoding: colour alone would fail NFR-09, and a
-    // decorative mark would only repeat what the label already says. `textContent`
-    // is the assertion because a mark anywhere inside the badge lands in it,
-    // whether or not it is hidden from assistive technology.
-    render(<Badge tone="critical">Critical</Badge>);
-
-    expect(screen.getByText('Critical').textContent).toBe('Critical');
-=======
       const badge = screen.getByText(severity);
       expect(badge.className).toContain(`bg-severity-${severity}`);
       expect(badge.className).toContain('text-onSeverity');
@@ -57,7 +41,6 @@ describe('Badge', () => {
 
     const badge = screen.getByText('Critical');
     expect(badge.textContent).toBe('Critical');
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
   });
 
   it('renders neutral as a hairline chip rather than a severity fill', () => {

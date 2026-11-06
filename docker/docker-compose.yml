@@ -139,7 +139,7 @@ services:
       AEGIS_ENV: development
       AEGIS_SERVICE_NAME: aegis-backend
       AEGIS_SECRET_KEY: ${AEGIS_SECRET_KEY:?set AEGIS_SECRET_KEY to a random value of at least 32 characters}
-      AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-true}
+      AEGIS_DEV_AUTH_SETUP_ENABLED: ${AEGIS_DEV_AUTH_SETUP_ENABLED:-false}
       AEGIS_DATABASE_URL: postgresql+psycopg://aegis:aegis@postgres:5432/aegis
       AEGIS_ML_SERVICE_URL: http://ml-service:8001
       # Shared login throttle (see app/services/login_throttle.py). Empty = per process.
@@ -190,11 +190,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      # 127.0.0.1, not localhost: inside the container localhost can resolve to
-      # ::1 while nginx listens on IPv4, which fails the probe with "connection
-      # refused" while the service itself is up. scripts/check_compose.py pins
-      # this address family alongside the port.
-      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8080/ >/dev/null || exit 1']
       interval: 10s
       timeout: 5s
       retries: 6

@@ -78,15 +78,6 @@ const EXEMPTIONS: readonly Exemption[] = [
       'the same shimmer, plus the assertion that the bars are hidden from assistive technology — which is a claim about `aria-hidden` itself',
   },
   {
-<<<<<<< HEAD
-    file: 'components/ui/ConnectionStatus.test.tsx',
-    pattern: /\[aria-hidden="true"\]/,
-    reason:
-      'the status dot is hidden on purpose (the status region beside it carries the words), so the test has to look at the hidden element',
-  },
-  {
-=======
->>>>>>> 0f19cb4a572ae9b21e206b1588a6438ef427fc54
     file: 'components/ui/ScoreMeter.test.tsx',
     pattern: /\[aria-hidden="true"\]/,
     reason:
@@ -141,9 +132,6 @@ describe('R-87 — tests query what the user sees', () => {
   it('finds no test-id lookup, DOM query or class assertion outside the declared exemptions', () => {
     const undeclared: string[] = [];
     for (const file of files) {
-      // Resolved as a URL, not joined onto `SRC.pathname`: a pathname join
-      // produces a drive-relative path on Windows (`\C:\…`), which does not
-      // resolve. URL resolution is separator-agnostic on every platform.
       const text = readFileSync(fileURLToPath(new URL(file, SRC)), 'utf8');
       for (const [index, line] of text.split('\n').entries()) {
         if (!IMPLEMENTATION_QUERY.test(line)) continue;

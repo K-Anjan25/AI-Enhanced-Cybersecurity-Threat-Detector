@@ -342,12 +342,9 @@ def check_dashboard_healthcheck(services: dict[str, Any], problems: list[str]) -
     service = services.get("dashboard", {})
     published = {str(entry).split(":")[-1].split("/")[0] for entry in service.get("ports", [])}
     test = " ".join(service.get("healthcheck", {}).get("test", []))
-    # 127.0.0.1 is the pinned loopback: inside the container localhost can
-    # resolve to ::1 while nginx listens on IPv4, failing the probe while the
-    # service is up.
-    found = re.search(r"(?:localhost|127\.0\.0\.1):(\d+)", test)
+    found = re.search(r"localhost:(\d+)", test)
     if not found:
-        fail(problems, "dashboard healthcheck has no localhost/127.0.0.1 port")
+        fail(problems, "dashboard healthcheck has no localhost port")
         return
     if found.group(1) not in published:
         fail(

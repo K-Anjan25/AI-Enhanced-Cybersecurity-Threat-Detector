@@ -132,8 +132,7 @@ ROLE_CAPABILITIES: dict[Role, frozenset[Capability]] = {
 #: a scraper is a process, and what it reads are counters and durations with no
 #: alert content and no identifiers (R-58, D-050). Authentication routes are also
 #: public at the access-token layer, but require a password or refresh credential;
-#: `/auth/setup` is disabled unless explicitly enabled in development, and
-#: `/auth/register` refuses while no account is provisioned (FR-45, D-082).
+#: `/auth/setup` is disabled unless explicitly enabled in development.
 UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
     {
         "/healthz",
@@ -141,7 +140,6 @@ UNAUTHENTICATED_ROUTES: frozenset[str] = frozenset(
         "/metrics",
         "/api/v1/auth/status",
         "/api/v1/auth/setup",
-        "/api/v1/auth/register",
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",

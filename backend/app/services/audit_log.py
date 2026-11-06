@@ -126,10 +126,6 @@ class AuditAction(StrEnum):
     #: the record, for the same reasons they are not in the create record.
     webhook_test = "webhook.test"
     auth_setup = "auth.setup"
-    #: A self-service registration (FR-45, T-424): an account created by the person
-    #: who will hold it, so the row records who signed up and when, without the
-    #: password (R-58).
-    auth_register = "auth.register"
     auth_login = "auth.login"
     auth_refresh = "auth.refresh"
     auth_logout = "auth.logout"
@@ -160,7 +156,6 @@ AUDITED_ROUTES: Mapping[tuple[str, str], AuditAction] = MappingProxyType(
         ("POST", "/api/v1/hunt/export"): AuditAction.hunt_export,
         ("POST", "/api/v1/alerts/export"): AuditAction.alert_export,
         ("POST", "/api/v1/auth/setup"): AuditAction.auth_setup,
-        ("POST", "/api/v1/auth/register"): AuditAction.auth_register,
         ("POST", "/api/v1/auth/login"): AuditAction.auth_login,
         ("POST", "/api/v1/auth/refresh"): AuditAction.auth_refresh,
         ("POST", "/api/v1/auth/logout"): AuditAction.auth_logout,

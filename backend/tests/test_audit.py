@@ -948,11 +948,8 @@ def test_an_action_value_is_stable_wire_format() -> None:
         # two exports in the trail.
         "webhook.test",
         # T-417: successful first-admin setup and session mutations are audited;
-        # their credentials stay out of the trail. T-424: a self-service
-        # registration is a change to who can act, recorded with the role it
-        # created and never with the password.
+        # their credentials stay out of the trail.
         "auth.setup",
-        "auth.register",
         "auth.login",
         "auth.refresh",
         "auth.logout",
